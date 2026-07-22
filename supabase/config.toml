@@ -1,0 +1,9 @@
+# Supabase local config — link your remote project:
+#   npx supabase login
+#   npx supabase link --project-ref kyvsxzcffccteinvizlu
+#   npx supabase db push
+
+project_id = "kyvsxzcffccteinvizlu"
+
+[db]
+major_version = 15

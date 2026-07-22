@@ -1,0 +1,465 @@
+@import "../design-system/tokens.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 98%;
+    --foreground: 0 0% 7%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 7%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 7%;
+    --primary: 0 0% 7%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 10%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 40%;
+    --accent: 74 62% 50%;
+    --accent-foreground: 0 0% 7%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 74 62% 50%;
+    --radius: 0.625rem;
+    --site-gutter: 3.125rem;
+  }
+
+  @media (min-width: 768px) {
+    :root {
+      --site-gutter: 4rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    :root {
+      --site-gutter: 6rem;
+    }
+  }
+
+  @media (min-width: 1280px) {
+    :root {
+      --site-gutter: 7.5rem;
+    }
+  }
+
+  .dark {
+    --background: 0 0% 4%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 74 62% 50%;
+    --primary-foreground: 0 0% 7%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 65%;
+    --accent: 74 62% 50%;
+    --accent-foreground: 0 0% 7%;
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 16%;
+    --input: 0 0% 16%;
+    --ring: 74 62% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display tracking-tight;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: var(--font-display), var(--font-inter), system-ui, sans-serif;
+  }
+
+  .section-padding {
+    @apply py-20 md:py-24 lg:py-28;
+  }
+
+  .surface-card {
+    @apply rounded-2xl border border-slate-200/70 bg-white/90 shadow-[0_1px_2px_rgba(5,5,5,0.04),0_8px_24px_rgba(5,5,5,0.06)] backdrop-blur-sm dark:border-slate-800/80 dark:bg-slate-900/70;
+  }
+
+  .glass {
+    @apply border border-white/30 bg-white/75 backdrop-blur-xl dark:border-slate-700/40 dark:bg-slate-950/75;
+  }
+
+  .glass-nav {
+    @apply border-b border-slate-200/60 bg-white/85 backdrop-blur-xl dark:border-slate-800/60 dark:bg-slate-950/85;
+  }
+
+  .glass-nav-scrolled {
+    @apply border-slate-200/80 bg-white/95 shadow-[0_4px_24px_rgba(5,5,5,0.06)] dark:border-slate-800 dark:bg-slate-950/95;
+  }
+
+  .glass-card {
+    @apply rounded-2xl border border-slate-200/50 bg-white/80 shadow-lg backdrop-blur-md dark:border-slate-700/50 dark:bg-slate-900/80;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-brand-accent to-brand-accent-dark bg-clip-text text-transparent;
+  }
+
+  .hero-gradient {
+    background: linear-gradient(
+      152deg,
+      #050505 0%,
+      #0d100c 38%,
+      #141810 58%,
+      #1a1a1a 78%,
+      #050505 100%
+    );
+  }
+
+  .mesh-gradient {
+    background:
+      radial-gradient(ellipse 80% 50% at 20% 40%, rgba(164, 207, 48, 0.12), transparent),
+      radial-gradient(ellipse 60% 40% at 80% 20%, rgba(118, 184, 45, 0.08), transparent),
+      linear-gradient(152deg, #050505 0%, #0f120d 50%, #050505 100%);
+  }
+
+  .dot-pattern {
+    background-image: radial-gradient(rgba(164, 207, 48, 0.15) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  .accent-gradient {
+    background: linear-gradient(135deg, #a4cf30 0%, #8bc427 50%, #76b82d 100%);
+  }
+
+  .nav-link {
+    @apply relative text-sm font-medium text-slate-600 transition-colors hover:text-brand-primary dark:text-slate-300 dark:hover:text-white;
+  }
+
+  .nav-link-active {
+    @apply text-brand-primary dark:text-white;
+  }
+
+  .nav-link-active::after {
+    content: "";
+    @apply absolute -bottom-1 left-0 h-0.5 w-full rounded-full bg-brand-accent;
+  }
+
+  .prose-legal strong {
+    @apply font-semibold text-brand-primary dark:text-white;
+  }
+
+  .site-container {
+    @apply container mx-auto;
+    padding-inline: var(--site-gutter);
+  }
+
+  .site-px {
+    padding-inline: var(--site-gutter);
+  }
+
+  /* Premium admin shell */
+  .admin-shell {
+    @apply min-h-screen bg-[#F4F6F9] dark:bg-slate-950;
+  }
+
+  .admin-sidebar {
+    @apply fixed inset-y-0 left-0 z-30 flex w-[260px] flex-col border-r border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900;
+  }
+
+  .admin-main {
+    @apply min-h-screen lg:pl-[260px];
+  }
+
+  .admin-topbar {
+    @apply sticky top-0 z-20 border-b border-slate-200/80 bg-white/95 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95;
+  }
+
+  .ops-card {
+    @apply rounded-2xl border border-slate-200/80 bg-white shadow-[0_1px_0_rgba(15,23,42,0.04)] dark:border-slate-800 dark:bg-slate-950;
+  }
+
+  .admin-card {
+    @apply ops-card transition-shadow hover:shadow-[0_8px_28px_rgba(15,23,42,0.08)];
+  }
+
+  .admin-nav-item {
+    @apply flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium text-slate-600 transition-all hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white;
+  }
+
+  .admin-nav-item-active {
+    @apply bg-slate-900 text-white shadow-sm hover:bg-slate-800 hover:text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 dark:hover:text-slate-900;
+  }
+
+  .admin-metric-label,
+  .dashboard-metric-label {
+    @apply text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400;
+  }
+
+  .admin-table-head {
+    @apply text-[11px] font-semibold uppercase tracking-wider text-slate-500;
+  }
+
+  /* Shared dashboard shell — portfolio showcase baseline */
+  .ops-shell {
+    @apply min-h-screen bg-[#FAFBFC] dark:bg-slate-950;
+  }
+
+  .ops-sidebar {
+    @apply fixed inset-y-0 left-0 z-30 flex w-[260px] flex-col border-r border-slate-200/90 bg-white dark:border-slate-800 dark:bg-slate-950;
+  }
+
+  .ops-main {
+    @apply min-h-screen lg:pl-[260px];
+  }
+
+  .ops-header-stack {
+    @apply sticky top-0 z-30 border-b border-slate-200/90 bg-white/95 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/95;
+  }
+
+  /* Client Intelligence Platform — distinct from Ops */
+  .intel-shell {
+    @apply min-h-screen bg-[#FAFBFC] dark:bg-slate-950;
+  }
+
+  .intel-sidebar {
+    @apply fixed inset-y-0 left-0 z-30 flex w-[248px] flex-col border-r border-slate-200/50 bg-white/90 backdrop-blur-xl dark:border-slate-800/60 dark:bg-slate-950/95;
+  }
+
+  .intel-main {
+    @apply min-h-screen lg:pl-[248px];
+  }
+
+  .intel-header-stack {
+    @apply sticky top-0 z-30;
+  }
+
+  .intel-header {
+    @apply border-b border-slate-200/40 bg-white/75 backdrop-blur-2xl dark:border-slate-800/40 dark:bg-slate-950/75;
+  }
+
+  .intel-quick-access {
+    @apply border-b border-slate-100/80 bg-gradient-to-r from-slate-50/60 to-white/40 dark:border-slate-800/50 dark:from-slate-900/40 dark:to-slate-950/40;
+  }
+
+  .intel-context-bar {
+    @apply border-b border-slate-100/60 bg-slate-50/40 dark:border-slate-800/40 dark:bg-slate-900/20;
+  }
+
+  .intel-content {
+    @apply px-5 py-8 lg:px-10 lg:py-10;
+  }
+
+  .intel-card {
+    @apply rounded-2xl border border-slate-200/80 bg-white shadow-[0_1px_0_rgba(15,23,42,0.04)] dark:border-slate-800 dark:bg-slate-950;
+  }
+
+  .dashboard-page {
+    @apply space-y-8 pb-10;
+  }
+
+  .dashboard-section-eyebrow {
+    @apply text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400;
+  }
+
+  .dashboard-section-title {
+    @apply font-display text-lg font-semibold tracking-tight text-slate-900 dark:text-white md:text-xl;
+  }
+
+  .dashboard-card-hover {
+    @apply transition duration-500 hover:-translate-y-0.5 hover:shadow-[0_20px_40px_-20px_rgba(15,23,42,0.12)];
+  }
+
+  .dashboard-tabs-list {
+    @apply flex h-auto flex-wrap justify-start gap-1 rounded-2xl border border-slate-200/80 bg-white p-1 shadow-[0_1px_0_rgba(15,23,42,0.04)] dark:border-slate-800 dark:bg-slate-950;
+  }
+
+  .dashboard-tabs-trigger {
+    @apply rounded-xl px-3 py-1.5 text-xs font-medium text-slate-600 transition-all data-[state=active]:bg-slate-900 data-[state=active]:text-white dark:text-slate-400 dark:data-[state=active]:bg-white dark:data-[state=active]:text-slate-900 sm:text-sm;
+  }
+
+  .dashboard-list-row {
+    @apply rounded-xl bg-slate-50 px-3 py-2.5 transition-colors hover:bg-slate-100/80 dark:bg-slate-900/50 dark:hover:bg-slate-800/50;
+  }
+
+  .dashboard-ghost-link {
+    @apply h-8 text-xs text-slate-600;
+  }
+
+  .intel-nav-item {
+    @apply flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-[13px] font-medium text-slate-500 transition-all hover:bg-slate-100/80 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900/50 dark:hover:text-white;
+  }
+
+  .intel-nav-item-active {
+    @apply bg-slate-900 text-white shadow-lg shadow-slate-900/10 hover:bg-slate-800 hover:text-white dark:bg-white dark:text-slate-900 dark:shadow-none dark:hover:bg-slate-100 dark:hover:text-slate-900;
+  }
+
+  .intel-hero-strip {
+    @apply rounded-2xl border border-slate-200/80 bg-white px-5 py-5 shadow-[0_1px_0_rgba(15,23,42,0.04)] dark:border-slate-800 dark:bg-slate-950 md:px-6;
+  }
+
+  /* Legacy portal aliases → intel (backward compat) */
+  .portal-shell {
+    @apply intel-shell;
+  }
+
+  .portal-sidebar {
+    @apply intel-sidebar;
+  }
+
+  .portal-main {
+    @apply intel-main;
+  }
+
+  .portal-topbar {
+    @apply intel-header-stack;
+  }
+
+  .portal-card {
+    @apply intel-card transition-shadow hover:shadow-[0_12px_40px_rgba(15,23,42,0.08)];
+  }
+
+  .portal-nav-item {
+    @apply intel-nav-item;
+  }
+
+  .portal-nav-item-active {
+    @apply intel-nav-item-active;
+  }
+
+  .ops-nav-item {
+    @apply flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium text-slate-600 transition-all hover:bg-white hover:text-slate-900 hover:shadow-sm dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white;
+  }
+
+  .ops-nav-item-active {
+    @apply bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/80 dark:bg-slate-900 dark:text-white dark:ring-slate-700;
+  }
+
+  .portal-section-label {
+    @apply text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400;
+  }
+
+  /* Remove duplicate portal-card/nav - defined above with intel aliases */
+
+  /* BuildView Operations Control Center */
+  .ops-command-header {
+    @apply bg-white dark:bg-slate-950;
+  }
+
+  .ops-scope-cluster {
+    @apply flex h-9 max-w-full items-center overflow-x-auto rounded-lg border border-slate-200 bg-slate-50/80 [scrollbar-width:none] [-ms-overflow-style:none] dark:border-slate-700 dark:bg-slate-900/60 [&::-webkit-scrollbar]:hidden;
+  }
+
+  .ops-scope-select {
+    @apply rounded-none text-left font-medium text-slate-700 dark:text-slate-200;
+  }
+
+  .ops-scope-select [data-placeholder] {
+    @apply text-slate-400 font-normal;
+  }
+
+  .ops-scope-select > span:first-child {
+    @apply min-w-0 flex-1 truncate text-left;
+  }
+
+  .ops-quick-bar {
+    @apply border-t border-slate-100 bg-[#FAFBFC] dark:border-slate-800 dark:bg-slate-900/40;
+  }
+
+  .ops-content {
+    @apply px-5 py-8 lg:px-10 lg:py-10;
+  }
+
+  .ops-queue-card {
+    @apply ops-card dashboard-card-hover block p-5;
+  }
+
+  .ops-search-trigger {
+    @apply flex h-9 w-full items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-left transition-colors hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600;
+  }
+
+  .ops-kbd {
+    @apply rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-slate-400 dark:border-slate-700 dark:bg-slate-800;
+  }
+
+  .ops-quick-action {
+    @apply border border-slate-200/80 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800;
+  }
+
+  .ops-quick-action-primary {
+    @apply border-slate-900 bg-slate-900 text-white hover:bg-slate-800 dark:border-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100;
+  }
+
+  .ops-btn-primary {
+    @apply rounded-xl bg-slate-900 text-white transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100;
+  }
+
+  .ops-page-eyebrow {
+    @apply text-[10px] font-semibold uppercase tracking-[0.2em] text-brand-accent;
+  }
+
+  .ops-workspace-banner {
+    @apply flex flex-col gap-3 rounded-2xl border border-slate-200/80 bg-gradient-to-r from-slate-50 to-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800 dark:from-slate-900 dark:to-slate-950;
+  }
+
+  .ops-workspace-banner-empty {
+    @apply items-start sm:items-center;
+  }
+
+  .ops-upload-zone {
+    @apply transition-colors hover:border-slate-300 hover:bg-white dark:hover:border-slate-600;
+  }
+
+  /* Compare Progress — flagship module */
+  .compare-glass-toolbar {
+    @apply sticky top-0 z-30 border-b border-slate-200/80 bg-white/80 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/80;
+  }
+
+  .compare-card {
+    @apply rounded-xl border border-slate-200/70 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_rgba(15,23,42,0.06)] dark:border-slate-800 dark:bg-slate-900;
+  }
+
+  .compare-kpi {
+    @apply compare-card p-4 transition-all hover:shadow-[0_12px_32px_rgba(15,23,42,0.1)];
+  }
+
+  .compare-scan-thumb {
+    @apply relative aspect-video overflow-hidden rounded-lg bg-slate-900 ring-2 ring-transparent transition-all;
+  }
+
+  .compare-scan-thumb-selected {
+    @apply ring-slate-900 dark:ring-white;
+  }
+
+  .compare-sync-badge-synced {
+    @apply inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-medium text-emerald-200;
+  }
+
+  .compare-sync-badge-independent {
+    @apply inline-flex items-center gap-1 rounded-full bg-slate-700 px-2 py-0.5 text-[10px] font-medium text-slate-300;
+  }
+
+  @media print {
+    .compare-glass-toolbar,
+    .intel-sidebar,
+    .intel-header-stack,
+    .portal-sidebar,
+    .portal-topbar {
+      display: none !important;
+    }
+    .intel-main,
+    .portal-main {
+      padding-left: 0 !important;
+    }
+  }
+}
