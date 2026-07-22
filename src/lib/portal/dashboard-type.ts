@@ -1,4 +1,4 @@
-import type { Client, User } from "@/lib/types";
+import type { User as AuthUser } from "@/lib/types";
 import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard,
@@ -71,8 +71,8 @@ export function getPortalSidebarFooter(type: ClientDashboardType): string {
 }
 
 export function resolveClientDashboardType(
-  user: Pick<User, "dashboard_type"> | null | undefined,
-  client: Pick<Client, "dashboard_type"> | null | undefined
+  user: Pick<AuthUser, "dashboard_type"> | null | undefined,
+  client: { dashboard_type?: ClientDashboardType | null } | null | undefined
 ): ClientDashboardType {
   const userType = user?.dashboard_type;
   if (userType === "construction" || userType === "portfolio") {

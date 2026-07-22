@@ -647,7 +647,7 @@ export type Client = Timestamps &
     logo_url: string | null;
     subscription_status: SubscriptionStatus;
     is_active: boolean;
-    dashboard_type?: ClientDashboardType;
+    dashboard_type?: ClientDashboardType | null;
   };
 
 export type ClientDashboardType = "construction" | "portfolio";
@@ -923,6 +923,7 @@ export type ClientInsert = {
   logo_url?: string | null;
   subscription_status?: SubscriptionStatus;
   is_active?: boolean;
+  dashboard_type?: ClientDashboardType | null;
   created_by?: string | null;
   updated_by?: string | null;
 };
@@ -1136,7 +1137,7 @@ export type SavedComparisonInsert = {
 // =============================================================================
 
 export type ClientUpdate = Partial<ClientInsert> & Partial<SoftDeleteFields>;
-export type UserUpdate = Partial<UserInsert>;
+export type UserUpdate = Partial<UserInsert> & Partial<SoftDeleteFields>;
 export type ProjectUpdate = Partial<ProjectInsert> & Partial<SoftDeleteFields>;
 export type ProjectAssignmentUpdate = Partial<ProjectAssignmentInsert> & Partial<SoftDeleteFields>;
 export type ProjectTourUpdate = Partial<ProjectTourInsert>;

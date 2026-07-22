@@ -1556,10 +1556,11 @@ export async function getPortalWorkspaceBootstrap(): Promise<PortalWorkspaceBoot
     }
   }
 
-  let clientRow: Pick<
+  type ClientPortalFields = Pick<
     Client,
     "name" | "company_name" | "logo_url" | "dashboard_type"
-  > | null = null;
+  >;
+  let clientRow: ClientPortalFields | null = null;
 
   if (clientId) {
     // Service role avoids RLS/schema-cache edge cases when reading dashboard_type.
@@ -1571,7 +1572,7 @@ export async function getPortalWorkspaceBootstrap(): Promise<PortalWorkspaceBoot
         .eq("id", clientId)
         .is("deleted_at", null)
         .maybeSingle();
-      clientRow = data as typeof clientRow;
+      clientRow = (data as ClientPortalFields | null) ?? null;
     } catch {
       const { data } = await supabase
         .from("clients")
@@ -1579,7 +1580,7 @@ export async function getPortalWorkspaceBootstrap(): Promise<PortalWorkspaceBoot
         .eq("id", clientId)
         .is("deleted_at", null)
         .maybeSingle();
-      clientRow = data as typeof clientRow;
+      clientRow = (data as ClientPortalFields | null) ?? null;
     }
 
     clientName = clientRow?.company_name?.trim() || clientRow?.name?.trim() || null;
