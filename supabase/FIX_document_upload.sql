@@ -1,4 +1,41 @@
--- Run in Supabase SQL Editor if document upload fails due to missing columns / storage policies
+-- Run in Supabase SQL Editor if document upload fails
+-- Creates staff helper (if missing), document columns, and staff policies
+
+-- Staff helper used by RLS policies
+CREATE OR REPLACE FUNCTION public.is_buildview_staff()
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.users
+    WHERE id = auth.uid()
+      AND is_active = true
+      AND deleted_at IS NULL
+      AND role IN (
+        'super_admin',
+        'admin',
+        'operations_manager',
+        'site_engineer'
+      )
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION public.is_super_admin()
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT public.is_buildview_staff();
+$$;
+
+GRANT EXECUTE ON FUNCTION public.is_buildview_staff() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_super_admin() TO authenticated;
 
 -- Spatial + version columns used by the app
 ALTER TABLE public.documents
@@ -21,7 +58,7 @@ WHERE document_group_id IS NULL;
 ALTER TABLE public.documents
   ALTER COLUMN document_group_id SET NOT NULL;
 
--- Staff can manage documents (policies historically used is_super_admin, which may be staff-aware)
+-- Staff can manage documents
 DROP POLICY IF EXISTS "documents_staff_all" ON public.documents;
 CREATE POLICY "documents_staff_all"
   ON public.documents
