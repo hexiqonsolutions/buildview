@@ -138,11 +138,7 @@ export function ProfileForm({ user, client }: ProfileFormProps) {
                 <p className="text-sm text-green-600 dark:text-green-400">{state.success}</p>
               )}
 
-              <Button
-                type="submit"
-                className="bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
-                disabled={isPending}
-              >
+              <Button type="submit" variant="outline" disabled={isPending}>
                 {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Save Changes
               </Button>
