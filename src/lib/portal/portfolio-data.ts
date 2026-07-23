@@ -63,16 +63,20 @@ export async function getPortfolioDashboardData(
   });
 
   const [projectsRaw, toursRaw] = await Promise.all([getProjects(), getAccessibleTours()]);
-  const projectIds = new Set(projectsRaw.map((p) => p.id));
 
-  let projects = projectsRaw;
-  if (normalized.projectId) {
-    projects = projects.filter((p) => p.id === normalized.projectId);
-  }
+  // Portfolio home always shows every assigned project.
+  // Workspace `?project=` is for navigating into a project, not for hiding the rest.
+  const projects = projectsRaw;
+  const projectIds = new Set(projects.map((p) => p.id));
 
+  // Tours still respect building/floor filters when set; ignore project-only narrowing.
+  const tourScope = {
+    ...normalized,
+    projectId: null,
+  };
   const scopedTours = filterToursByScope(
     toursRaw as ProjectTour[],
-    normalized,
+    tourScope,
     projectIds
   ) as ProjectTour[];
 

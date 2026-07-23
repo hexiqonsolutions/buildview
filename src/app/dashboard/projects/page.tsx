@@ -1,6 +1,6 @@
+import { getProjects } from "@/lib/actions/data";
 import {
   getPortalScopedAccessibleTours,
-  getPortalScopedProjects,
   parsePortalWorkspaceScopeFromParams,
 } from "@/lib/portal/scope-server";
 import type { ProjectWithMeta } from "@/lib/actions/data";
@@ -18,9 +18,10 @@ export default async function ProjectsPage({
   const params = await searchParams;
   const scope = await parsePortalWorkspaceScopeFromParams(params);
 
+  // Project list always shows every assigned project (workspace project filter is for detail pages).
   const [projects, tours] = await Promise.all([
-    getPortalScopedProjects(scope),
-    getPortalScopedAccessibleTours(scope),
+    getProjects(),
+    getPortalScopedAccessibleTours({ ...scope, projectId: null }),
   ]);
 
   const latestTourByProject = new Map<string, ProjectTour>();

@@ -171,10 +171,13 @@ export function PortfolioShowcaseShell({ data }: { data: PortfolioDashboardData 
   const brand = data.clientName ?? clientName ?? "Studio";
 
   const stats = [
-    { label: "Projects completed", value: data.stats.completed || data.stats.projects },
+    { label: "Projects completed", value: data.stats.completed },
     { label: "Cities covered", value: data.stats.locations },
     { label: "Virtual walkthroughs", value: data.stats.walkthroughs },
-    { label: "Active projects", value: data.stats.projects },
+    {
+      label: "Active projects",
+      value: Math.max(0, data.stats.projects - data.stats.completed),
+    },
   ];
 
   return (
