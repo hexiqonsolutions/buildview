@@ -170,14 +170,16 @@ export function PortfolioShowcaseShell({ data }: { data: PortfolioDashboardData 
   const gridProjects = data.projects;
   const brand = data.clientName ?? clientName ?? "Studio";
 
+  const areaLabel =
+    data.stats.totalAreaSqft > 0
+      ? data.stats.totalAreaSqft.toLocaleString("en-IN")
+      : "—";
+
   const stats = [
     { label: "Projects completed", value: data.stats.completed },
     { label: "Cities covered", value: data.stats.locations },
     { label: "Virtual walkthroughs", value: data.stats.walkthroughs },
-    {
-      label: "Active projects",
-      value: Math.max(0, data.stats.projects - data.stats.completed),
-    },
+    { label: "Total area (sq ft)", value: areaLabel },
   ];
 
   return (

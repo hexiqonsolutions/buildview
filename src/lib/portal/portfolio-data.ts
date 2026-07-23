@@ -25,6 +25,8 @@ export type PortfolioDashboardData = {
     walkthroughs: number;
     locations: number;
     completed: number;
+    /** Sum of project area_sqft values (portfolio showcase metric). */
+    totalAreaSqft: number;
   };
   featuredProject: PortfolioProjectItem | null;
   featuredTour: (ProjectTour & { projectName: string; projectId: string }) | null;
@@ -148,6 +150,10 @@ export async function getPortfolioDashboardData(
       walkthroughs: scopedTours.length,
       locations: locations.size,
       completed: sortedProjects.filter((p) => p.status === "completed").length,
+      totalAreaSqft: sortedProjects.reduce(
+        (sum, p) => sum + (typeof p.area_sqft === "number" && p.area_sqft > 0 ? p.area_sqft : 0),
+        0
+      ),
     },
     featuredProject,
     featuredTour,
