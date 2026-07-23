@@ -93,34 +93,56 @@ export function ProfileForm({ user, client }: ProfileFormProps) {
           <div className="portal-card p-6">
             <form action={formAction} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" name="email" value={user.email} disabled readOnly />
+                <Label htmlFor="email" className="text-slate-700 dark:text-slate-300">
+                  Email
+                </Label>
+                <Input
+                  id="email"
+                  name="email"
+                  value={user.email}
+                  disabled
+                  readOnly
+                  className="border-slate-200 bg-slate-50 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="full_name">Full Name</Label>
+                <Label htmlFor="full_name" className="text-slate-700 dark:text-slate-300">
+                  Full Name
+                </Label>
                 <Input
                   id="full_name"
                   name="full_name"
                   defaultValue={user.full_name}
                   required
                   disabled={isPending}
+                  className="border-slate-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone</Label>
+                <Label htmlFor="phone" className="text-slate-700 dark:text-slate-300">
+                  Phone
+                </Label>
                 <Input
                   id="phone"
                   name="phone"
+                  type="tel"
                   defaultValue={user.phone ?? ""}
-                  placeholder="+1 (555) 123-4567"
+                  placeholder="+91 98765 43210"
                   disabled={isPending}
+                  className="border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:placeholder:text-slate-500"
                 />
               </div>
 
-              {state.error && <p className="text-sm text-red-600">{state.error}</p>}
-              {state.success && <p className="text-sm text-green-600">{state.success}</p>}
+              {state.error && <p className="text-sm text-red-600 dark:text-red-400">{state.error}</p>}
+              {state.success && (
+                <p className="text-sm text-green-600 dark:text-green-400">{state.success}</p>
+              )}
 
-              <Button type="submit" className="bg-slate-900 hover:bg-slate-800" disabled={isPending}>
+              <Button
+                type="submit"
+                className="bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+                disabled={isPending}
+              >
                 {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Save Changes
               </Button>
