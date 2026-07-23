@@ -9,6 +9,18 @@ export type SpatialHierarchy = {
   buildings: Array<Building & { floors: Floor[] }>;
 };
 
+function isSpatialReadError(error: { message?: string; code?: string } | null): boolean {
+  if (!error) return false;
+  const message = error.message?.toLowerCase() ?? "";
+  return (
+    error.code === "PGRST205" ||
+    message.includes("permission denied") ||
+    message.includes("schema cache") ||
+    message.includes("could not find") ||
+    (message.includes("relation") && (message.includes("buildings") || message.includes("floors")))
+  );
+}
+
 export async function getProjectSpatialHierarchy(projectId: string): Promise<SpatialHierarchy> {
   const supabase = await createClient();
 
@@ -20,7 +32,10 @@ export async function getProjectSpatialHierarchy(projectId: string): Promise<Spa
     .order("sort_order")
     .order("name");
 
-  if (buildingsError) throw new Error(buildingsError.message);
+  if (buildingsError) {
+    if (isSpatialReadError(buildingsError)) return { buildings: [] };
+    throw new Error(buildingsError.message);
+  }
 
   const buildingIds = buildings?.map((b) => b.id) ?? [];
   if (buildingIds.length === 0) return { buildings: [] };
@@ -33,7 +48,10 @@ export async function getProjectSpatialHierarchy(projectId: string): Promise<Spa
     .order("sort_order")
     .order("name");
 
-  if (floorsError) throw new Error(floorsError.message);
+  if (floorsError) {
+    if (isSpatialReadError(floorsError)) return { buildings: [] };
+    throw new Error(floorsError.message);
+  }
 
   const floorsByBuilding = new Map<string, Floor[]>();
   floors?.forEach((floor) => {

@@ -15,13 +15,14 @@ export default async function ProjectDetailPage({
 }) {
   const { id } = await params;
 
-  const [projectData, detail, invoices, user, spatialHierarchy] = await Promise.all([
+  const [projectData, detail, invoices, user, spatialHierarchyResult] = await Promise.all([
     getProjectWithClient(id),
     getProjectDetail(id),
     getProjectInvoices(id),
     getCurrentUser(),
-    getProjectSpatialHierarchy(id),
+    getProjectSpatialHierarchy(id).catch(() => ({ buildings: [] })),
   ]);
+  const spatialHierarchy = spatialHierarchyResult ?? { buildings: [] };
 
   if (!projectData) notFound();
 
