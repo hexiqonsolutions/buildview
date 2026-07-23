@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
-import { Menu, LogOut, User, Moon, Sun, Shield, Search } from "lucide-react";
+import { Menu, X, LogOut, User, Moon, Sun, Shield, Search } from "lucide-react";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -27,10 +27,16 @@ import { usePortalWorkspace } from "@/components/portal/workspace/portal-workspa
 interface IntelHeaderProps {
   user: UserType;
   onMenuClick: () => void;
+  menuOpen?: boolean;
   unreadNotifications?: number;
 }
 
-export function IntelHeader({ user, onMenuClick, unreadNotifications = 0 }: IntelHeaderProps) {
+export function IntelHeader({
+  user,
+  onMenuClick,
+  menuOpen = false,
+  unreadNotifications = 0,
+}: IntelHeaderProps) {
   const [darkMode, setDarkMode] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -79,9 +85,10 @@ export function IntelHeader({ user, onMenuClick, unreadNotifications = 0 }: Inte
           size="icon"
           className="shrink-0 lg:hidden"
           onClick={onMenuClick}
-          aria-label="Open menu"
+          aria-label={menuOpen ? "Close menu" : "Open menu"}
+          aria-expanded={menuOpen}
         >
-          <Menu className="h-5 w-5" />
+          {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </Button>
 
         <BrandLogo href={homeHref} size="md" className="shrink-0 lg:hidden" />

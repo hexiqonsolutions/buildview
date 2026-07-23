@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { OpsSidebar } from "@/components/admin/layout/ops-sidebar";
 import { OpsCommandHeader } from "@/components/admin/layout/ops-command-header";
 
@@ -19,6 +20,11 @@ interface AdminShellProps {
 
 export function AdminShell({ user, workspaceBootstrap, unreadNotifications = 0, children }: AdminShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const pathname = usePathname();
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   return (
     <PortalErrorBoundary>
@@ -30,7 +36,8 @@ export function AdminShell({ user, workspaceBootstrap, unreadNotifications = 0, 
             <div className="ops-header-stack sticky top-0 z-30">
               <OpsCommandHeader
                 user={user}
-                onMenuClick={() => setMobileOpen(true)}
+                menuOpen={mobileOpen}
+                onMenuClick={() => setMobileOpen((open) => !open)}
                 unreadNotifications={unreadNotifications}
               />
             </div>

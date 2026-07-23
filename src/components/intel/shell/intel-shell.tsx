@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { IntelSidebar } from "@/components/intel/shell/intel-sidebar";
 import { IntelHeader } from "@/components/intel/shell/intel-header";
@@ -26,6 +27,11 @@ interface IntelShellProps {
  */
 export function IntelShell({ user, unreadNotifications = 0, children }: IntelShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const pathname = usePathname();
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   return (
     <PortalErrorBoundary>
@@ -36,7 +42,12 @@ export function IntelShell({ user, unreadNotifications = 0, children }: IntelShe
           <div className="intel-main">
             <div className="intel-header-stack">
               <ImpersonationBanner />
-              <IntelHeader user={user} unreadNotifications={unreadNotifications} onMenuClick={() => setMobileOpen(true)} />
+              <IntelHeader
+                user={user}
+                unreadNotifications={unreadNotifications}
+                menuOpen={mobileOpen}
+                onMenuClick={() => setMobileOpen((open) => !open)}
+              />
               <IntelWorkspaceBar />
               <IntelContextBar />
             </div>

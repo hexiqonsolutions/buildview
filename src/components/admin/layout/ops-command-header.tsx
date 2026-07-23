@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import {
   Menu,
+  X,
   Search,
   Moon,
   Sun,
@@ -51,12 +52,14 @@ import type { User as UserType } from "@/lib/types";
 interface OpsCommandHeaderProps {
   user: UserType;
   onMenuClick: () => void;
+  menuOpen?: boolean;
   unreadNotifications?: number;
 }
 
 export function OpsCommandHeader({
   user,
   onMenuClick,
+  menuOpen = false,
   unreadNotifications = 0,
 }: OpsCommandHeaderProps) {
   const {
@@ -145,9 +148,10 @@ export function OpsCommandHeader({
               size="icon"
               className="h-9 w-9 shrink-0"
               onClick={onMenuClick}
-              aria-label="Open menu"
+              aria-label={menuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={menuOpen}
             >
-              <Menu className="h-5 w-5" />
+              {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
             <BrandLogo href={homeHref} size="md" className="shrink-0 max-w-[8.5rem]" />
           </div>
