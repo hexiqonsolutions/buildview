@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useActionState } from "react";
-import { Loader2, Moon, Sun, Building2, Bell } from "lucide-react";
+import { Loader2, Moon, Sun, Building2, Bell, LifeBuoy, Mail, Phone } from "lucide-react";
 import { updateProfile, type ProfileActionState } from "@/lib/actions/profile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,9 +15,11 @@ const initialState: ProfileActionState = {};
 interface ProfileFormProps {
   user: User;
   client?: Client | null;
+  supportEmail: string;
+  supportPhone: string;
 }
 
-export function ProfileForm({ user, client }: ProfileFormProps) {
+export function ProfileForm({ user, client, supportEmail, supportPhone }: ProfileFormProps) {
   const [state, formAction, isPending] = useActionState(updateProfile, initialState);
   const [darkMode, setDarkMode] = useState(false);
   const [emailNotifications, setEmailNotifications] = useState(true);
@@ -33,6 +35,12 @@ export function ProfileForm({ user, client }: ProfileFormProps) {
     localStorage.setItem("theme", checked ? "dark" : "light");
   }
 
+  const mailtoHref = `mailto:${supportEmail}?subject=${encodeURIComponent(
+    "BuildView portal support"
+  )}&body=${encodeURIComponent(
+    `Hi BuildView team,\n\nI need help with the portal.\n\nAccount: ${user.email}\nName: ${user.full_name}\n\nIssue:\n`
+  )}`;
+
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <Tabs defaultValue="contact" className="w-full">
@@ -42,6 +50,7 @@ export function ProfileForm({ user, client }: ProfileFormProps) {
           <TabsTrigger value="password">Password</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="theme">Theme</TabsTrigger>
+          <TabsTrigger value="support">Support</TabsTrigger>
         </TabsList>
 
         <TabsContent value="company" className="mt-6">
@@ -245,6 +254,63 @@ export function ProfileForm({ user, client }: ProfileFormProps) {
                   )}
                 />
               </button>
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="support" className="mt-6">
+          <div className="portal-card p-6">
+            <div className="mb-4 flex items-center gap-2">
+              <LifeBuoy className="h-4 w-4 text-slate-400" />
+              <h2 className="font-display text-base font-semibold text-slate-900 dark:text-white">
+                Need help?
+              </h2>
+            </div>
+            <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+              For portal access, projects, walkthroughs, or account questions, reach the BuildView
+              team. We typically respond within one business day.
+            </p>
+
+            <dl className="mt-5 space-y-4">
+              <div className="flex items-start gap-3">
+                <Mail className="mt-0.5 h-4 w-4 text-slate-400" />
+                <div>
+                  <dt className="text-xs text-slate-500">Support email</dt>
+                  <dd className="mt-1">
+                    <a
+                      href={mailtoHref}
+                      className="text-sm font-medium text-slate-900 underline-offset-2 hover:underline dark:text-white"
+                    >
+                      {supportEmail}
+                    </a>
+                  </dd>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <Phone className="mt-0.5 h-4 w-4 text-slate-400" />
+                <div>
+                  <dt className="text-xs text-slate-500">Phone</dt>
+                  <dd className="mt-1">
+                    <a
+                      href={`tel:${supportPhone.replace(/\s+/g, "")}`}
+                      className="text-sm font-medium text-slate-900 underline-offset-2 hover:underline dark:text-white"
+                    >
+                      {supportPhone}
+                    </a>
+                  </dd>
+                </div>
+              </div>
+            </dl>
+
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Button variant="outline" asChild>
+                <a href={mailtoHref}>Email support</a>
+              </Button>
+              <Button variant="outline" asChild>
+                <a href="/contact" target="_blank" rel="noopener noreferrer">
+                  Contact us
+                </a>
+              </Button>
             </div>
           </div>
         </TabsContent>

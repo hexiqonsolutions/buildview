@@ -13,7 +13,7 @@ export const siteConfig = {
     "https://buildview.io",
   contact: {
     email: "hello@buildview.io",
-    phone: "+1 (555) 123-4567",
+    phone: "+91 98765 43210",
     address: "123 Construction Ave, Suite 400, San Francisco, CA 94105",
   },
   social: {
