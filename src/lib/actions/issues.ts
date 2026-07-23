@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createSignedStorageUrl } from "@/lib/supabase/storage-server";
 import { resolveIssueImageStoragePath } from "@/lib/supabase/storage";
-import { notifySuperAdmins } from "@/lib/actions/notifications";
+import { notifyClientsIfEnabled, notifySuperAdmins } from "@/lib/actions/notifications";
 import { isNotificationRuleEnabled } from "@/lib/actions/platform-settings";
 import {
   createIssueSchema,
@@ -113,13 +113,24 @@ export async function createIssue(data: {
     (validated.priority === "critical" || validated.priority === "high") &&
     (await isNotificationRuleEnabled("onCriticalIssue"))
   ) {
-    await notifySuperAdmins({
-      title: `${validated.priority === "critical" ? "Critical" : "High"} issue reported`,
-      message: validated.title,
-      type: "issue_update",
-      link: "/admin/issues",
-    });
+    try {
+      await notifySuperAdmins({
+        title: `${validated.priority === "critical" ? "Critical" : "High"} issue reported`,
+        message: validated.title,
+        type: "issue_update",
+        link: "/admin/issues",
+      });
+    } catch (err) {
+      console.error("[createIssue] notifySuperAdmins", err);
+    }
   }
+
+  await notifyClientsIfEnabled("onIssueUpdate", validated.project_id, {
+    title: "New issue reported",
+    message: validated.title,
+    type: "issue_update",
+    link: `/dashboard/projects/${validated.project_id}?tab=issues`,
+  });
 
   revalidateIssuePaths(validated.project_id);
   revalidatePath("/admin/notifications");
@@ -148,7 +159,7 @@ export async function updateIssue(data: {
 
   const { data: existing, error: fetchError } = await supabase
     .from("issues")
-    .select("project_id, status")
+    .select("project_id, status, title")
     .eq("id", validation.data.id)
     .is("deleted_at", null)
     .single();
@@ -178,6 +189,20 @@ export async function updateIssue(data: {
 
   if (error) throw new Error(error.message);
 
+  const nextStatus = validation.data.status;
+  if (
+    nextStatus &&
+    nextStatus !== existing.status &&
+    (nextStatus === "resolved" || nextStatus === "closed")
+  ) {
+    await notifyClientsIfEnabled("onIssueUpdate", existing.project_id, {
+      title: nextStatus === "resolved" ? "Issue resolved" : "Issue closed",
+      message: existing.title,
+      type: "issue_update",
+      link: `/dashboard/projects/${existing.project_id}?tab=issues`,
+    });
+  }
+
   revalidateIssuePaths(existing.project_id);
 }
 
@@ -194,7 +219,7 @@ export async function updateIssueStatus(issueId: string, status: string) {
 
   const { data: existing, error: fetchError } = await supabase
     .from("issues")
-    .select("project_id")
+    .select("project_id, status, title")
     .eq("id", issueId)
     .is("deleted_at", null)
     .single();
@@ -211,6 +236,19 @@ export async function updateIssueStatus(issueId: string, status: string) {
     .eq("id", issueId);
 
   if (error) throw new Error(error.message);
+
+  const nextStatus = validation.data.status;
+  if (
+    nextStatus !== existing.status &&
+    (nextStatus === "resolved" || nextStatus === "closed")
+  ) {
+    await notifyClientsIfEnabled("onIssueUpdate", existing.project_id, {
+      title: nextStatus === "resolved" ? "Issue resolved" : "Issue closed",
+      message: existing.title,
+      type: "issue_update",
+      link: `/dashboard/projects/${existing.project_id}?tab=issues`,
+    });
+  }
 
   revalidateIssuePaths(existing.project_id);
 }

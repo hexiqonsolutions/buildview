@@ -52,7 +52,14 @@ export function PlatformSettingsPanel({
 }: {
   initialSettings?: PlatformSettings;
 }) {
-  const [settings, setSettings] = useState<PlatformSettings>(initialSettings);
+  const [settings, setSettings] = useState<PlatformSettings>({
+    ...DEFAULT_PLATFORM_SETTINGS,
+    ...initialSettings,
+    notifications: {
+      ...DEFAULT_PLATFORM_SETTINGS.notifications,
+      ...initialSettings.notifications,
+    },
+  });
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -155,6 +162,26 @@ export function PlatformSettingsPanel({
             }
           />
           <ToggleRow
+            label="Notify clients on timeline updates"
+            description="Progress milestones and site timeline events on their projects."
+            checked={settings.notifications.onTimeline}
+            onChange={(onTimeline) =>
+              updateSettings({
+                notifications: { ...settings.notifications, onTimeline },
+              })
+            }
+          />
+          <ToggleRow
+            label="Notify clients on issue updates"
+            description="New issues and when issues are resolved or closed on their projects."
+            checked={settings.notifications.onIssueUpdate}
+            onChange={(onIssueUpdate) =>
+              updateSettings({
+                notifications: { ...settings.notifications, onIssueUpdate },
+              })
+            }
+          />
+          <ToggleRow
             label="Alert admins on critical issues"
             description="High and critical issues notify BuildView staff."
             checked={settings.notifications.onCriticalIssue}
@@ -171,6 +198,26 @@ export function PlatformSettingsPanel({
             onChange={(onInvoiceSent) =>
               updateSettings({
                 notifications: { ...settings.notifications, onInvoiceSent },
+              })
+            }
+          />
+          <ToggleRow
+            label="Notify clients when invoice paid"
+            description="Client users receive an alert when an invoice is marked paid."
+            checked={settings.notifications.onInvoicePaid}
+            onChange={(onInvoicePaid) =>
+              updateSettings({
+                notifications: { ...settings.notifications, onInvoicePaid },
+              })
+            }
+          />
+          <ToggleRow
+            label="Notify clients on project access"
+            description="Alerts when a new project is created for their company or they are assigned to a project."
+            checked={settings.notifications.onProjectAssigned}
+            onChange={(onProjectAssigned) =>
+              updateSettings({
+                notifications: { ...settings.notifications, onProjectAssigned },
               })
             }
           />

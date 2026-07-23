@@ -15,6 +15,7 @@ import type {
 } from "@/lib/types";
 import { STORAGE_BUCKETS } from "@/lib/types";
 import { resolveSpatialForWrite } from "@/lib/admin/spatial-resolve";
+import { notifyClientsIfEnabled } from "@/lib/actions/notifications";
 
 function revalidateTimelinePaths(projectId: string) {
   revalidatePath("/admin/timeline");
@@ -44,6 +45,8 @@ export async function createTimelineEvent(data: {
     caption?: string;
     sort_order?: number;
   }>;
+  /** When true, caller already notifies clients (e.g. upload orchestrator). */
+  skipClientNotify?: boolean;
 }) {
   const validation = createTimelineEventSchema.safeParse(data);
   if (!validation.success) {
@@ -95,6 +98,15 @@ export async function createTimelineEvent(data: {
 
   if (data.photos && data.photos.length > 0) {
     await insertTimelinePhotos(event.id, data.photos, user?.id ?? null);
+  }
+
+  if (!data.skipClientNotify) {
+    await notifyClientsIfEnabled("onTimeline", validated.project_id, {
+      title: "Timeline updated",
+      message: validated.title,
+      type: "project_update",
+      link: `/dashboard/projects/${validated.project_id}?tab=timeline`,
+    });
   }
 
   revalidateTimelinePaths(validated.project_id);

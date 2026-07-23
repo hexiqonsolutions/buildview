@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { createSignedStorageUrl } from "@/lib/supabase/storage-server";
 import { resolveInvoiceStoragePath } from "@/lib/supabase/storage";
-import { notifyClientUsers } from "@/lib/actions/notifications";
+import { notifyClientUsers, notifyClientOrgIfEnabled, notifyClientsIfEnabled, notifyUsersIfEnabled } from "@/lib/actions/notifications";
 import { isNotificationRuleEnabled } from "@/lib/actions/platform-settings";
 import { normalizeMatterportUrl } from "@/lib/matterport";
 import { resolveSpatialForWrite } from "@/lib/admin/spatial-resolve";
@@ -82,24 +82,46 @@ export async function createProject(data: {
     created_by: user?.id ?? null,
   };
 
-  const { error } = await supabase.from("projects").insert(payload);
-  if (error) {
-    const msg = error.message.toLowerCase();
+  const { data: created, error } = await supabase.from("projects").insert(payload).select("id").single();
+  if (error || !created) {
+    const msg = (error?.message ?? "").toLowerCase();
     const missingPortfolioCols =
       (msg.includes("area_sqft") || msg.includes("portfolio_category")) &&
       (msg.includes("schema cache") || msg.includes("column") || msg.includes("could not find"));
 
     if (missingPortfolioCols) {
       const { area_sqft: _a, portfolio_category: _c, ...basePayload } = payload;
-      const { error: retryError } = await supabase.from("projects").insert(basePayload);
-      if (retryError) throw new Error(retryError.message);
-    } else {
-      throw new Error(error.message);
+      const { data: retryCreated, error: retryError } = await supabase
+        .from("projects")
+        .insert(basePayload)
+        .select("id")
+        .single();
+      if (retryError || !retryCreated) throw new Error(retryError?.message ?? "Failed to create project");
+      await notifyClientOrgIfEnabled("onProjectAssigned", data.client_id, {
+        title: "New project available",
+        message: `${data.name} has been added to your BuildView portal.`,
+        type: "project_update",
+        link: `/dashboard/projects/${retryCreated.id}`,
+      });
+      revalidatePath("/admin/projects");
+      revalidatePath("/dashboard/projects");
+      revalidatePath("/dashboard");
+      return retryCreated.id;
     }
+    throw new Error(error?.message ?? "Failed to create project");
   }
+
+  await notifyClientOrgIfEnabled("onProjectAssigned", data.client_id, {
+    title: "New project available",
+    message: `${data.name} has been added to your BuildView portal.`,
+    type: "project_update",
+    link: `/dashboard/projects/${created.id}`,
+  });
+
   revalidatePath("/admin/projects");
   revalidatePath("/dashboard/projects");
   revalidatePath("/dashboard");
+  return created.id;
 }
 
 export async function createTour(data: {
@@ -154,6 +176,13 @@ export async function createTour(data: {
   const { error } = await supabase.from("project_tours").insert(payload);
   if (error) throw new Error(error.message);
 
+  await notifyClientsIfEnabled("onUpload", parsed.data.project_id, {
+    title: "New Matterport scan available",
+    message: `${parsed.data.name} has been uploaded to your project.`,
+    type: "project_update",
+    link: `/dashboard/projects/${parsed.data.project_id}`,
+  });
+
   revalidatePath("/admin/tours");
   revalidatePath(`/admin/projects/${parsed.data.project_id}`);
   revalidatePath(`/dashboard/projects/${parsed.data.project_id}`);
@@ -173,6 +202,8 @@ export async function createReport(data: {
   mime_type?: string;
   building?: string;
   floor?: string;
+  /** When true, caller already notifies clients (e.g. upload orchestrator). */
+  skipClientNotify?: boolean;
 }) {
   const validation = createReportSchema.safeParse(data);
   if (!validation.success) {
@@ -215,6 +246,15 @@ export async function createReport(data: {
     .select("id")
     .single();
   if (error || !report) throw new Error(error?.message ?? "Failed to create report");
+
+  if (!data.skipClientNotify) {
+    await notifyClientsIfEnabled("onUpload", validated.project_id, {
+      title: "New report uploaded",
+      message: `${validated.title} is now available in your project portal.`,
+      type: "project_update",
+      link: `/dashboard/projects/${validated.project_id}`,
+    });
+  }
 
   revalidatePath("/admin/reports");
   revalidatePath("/dashboard/reports");
@@ -269,6 +309,8 @@ export async function createDocument(data: {
   description?: string;
   building?: string;
   floor?: string;
+  /** When true, caller already notifies clients (e.g. upload orchestrator). */
+  skipClientNotify?: boolean;
 }) {
   const validation = createDocumentSchema.safeParse(data);
   if (!validation.success) {
@@ -316,6 +358,15 @@ export async function createDocument(data: {
     .select("id")
     .single();
   if (error || !document) throw new Error(error?.message ?? "Failed to create document");
+
+  if (!data.skipClientNotify) {
+    await notifyClientsIfEnabled("onUpload", validated.project_id, {
+      title: "New document uploaded",
+      message: `${validated.name} is now available in your documents.`,
+      type: "project_update",
+      link: `/dashboard/projects/${validated.project_id}`,
+    });
+  }
 
   revalidatePath("/admin/documents");
   revalidatePath("/dashboard/documents");
@@ -439,6 +490,21 @@ export async function assignUserToProject(projectId: string, userId: string) {
     });
     if (error) throw new Error(error.message);
   }
+
+  const { data: project } = await supabase
+    .from("projects")
+    .select("name")
+    .eq("id", projectId)
+    .maybeSingle();
+
+  await notifyUsersIfEnabled("onProjectAssigned", [userId], {
+    title: "You've been added to a project",
+    message: project?.name
+      ? `You now have access to ${project.name} in BuildView.`
+      : "You now have access to a new project in BuildView.",
+    type: "project_update",
+    link: `/dashboard/projects/${projectId}`,
+  });
 
   revalidatePath("/admin/projects");
   revalidatePath("/admin/users");
@@ -794,7 +860,7 @@ export async function updateInvoiceStatus(invoiceId: string, status: string) {
 
   if (error) throw new Error(error.message);
 
-  if (validation.data.status === "sent" && (await isNotificationRuleEnabled("onInvoiceSent"))) {
+  if (validation.data.status === "sent" || validation.data.status === "paid") {
     const { data: invoice } = await supabase
       .from("invoices")
       .select("client_id, invoice_number, amount, currency")
@@ -802,12 +868,33 @@ export async function updateInvoiceStatus(invoiceId: string, status: string) {
       .single();
 
     if (invoice) {
-      await notifyClientUsers(invoice.client_id, {
-        title: `Invoice ${invoice.invoice_number} sent`,
-        message: `A new invoice for ${invoice.currency} ${invoice.amount} is ready to view.`,
-        type: "invoice_update",
-        link: "/dashboard/invoices",
-      });
+      if (validation.data.status === "sent") {
+        try {
+          if (await isNotificationRuleEnabled("onInvoiceSent")) {
+            await notifyClientUsers(invoice.client_id, {
+              title: `Invoice ${invoice.invoice_number} sent`,
+              message: `A new invoice for ${invoice.currency} ${invoice.amount} is ready to view.`,
+              type: "invoice_update",
+              link: "/dashboard/invoices",
+            });
+          }
+        } catch (err) {
+          console.error("[updateInvoiceStatus] notify sent", err);
+        }
+      } else {
+        try {
+          if (await isNotificationRuleEnabled("onInvoicePaid")) {
+            await notifyClientUsers(invoice.client_id, {
+              title: `Invoice ${invoice.invoice_number} paid`,
+              message: `Payment recorded for ${invoice.currency} ${invoice.amount}.`,
+              type: "invoice_update",
+              link: "/dashboard/invoices",
+            });
+          }
+        } catch (err) {
+          console.error("[updateInvoiceStatus] notify paid", err);
+        }
+      }
     }
   }
 

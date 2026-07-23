@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { insertNotificationSystem } from "@/lib/actions/platform-settings";
+import { insertNotificationSystem, isNotificationRuleEnabled } from "@/lib/actions/platform-settings";
 import { sendTransactionalEmail } from "@/lib/email/send";
+import type { NotificationRuleKey } from "@/lib/admin/platform-settings";
 import type { Notification, NotificationInsert, NotificationType } from "@/lib/types";
 
 function revalidateNotificationPaths() {
@@ -243,5 +244,55 @@ export async function notifySuperAdmins(payload: {
     .eq("is_active", true)
     .is("deleted_at", null);
 
-  await notifyUsers(admins?.map((u) => u.id) ?? [], payload);
+  await notifyUsers(admins?.map((a) => a.id) ?? [], payload);
+}
+
+type ClientNotifyPayload = {
+  title: string;
+  message: string;
+  type?: NotificationType;
+  link?: string | null;
+  sendEmail?: boolean;
+};
+
+/**
+ * Fail-soft client notify — never throws, so Resend/outages don't break primary writes.
+ */
+export async function notifyClientsIfEnabled(
+  rule: NotificationRuleKey,
+  projectId: string,
+  payload: ClientNotifyPayload
+) {
+  try {
+    if (!(await isNotificationRuleEnabled(rule))) return;
+    await notifyProjectClientUsers(projectId, payload);
+  } catch (err) {
+    console.error("[notifyClientsIfEnabled]", rule, projectId, err);
+  }
+}
+
+export async function notifyClientOrgIfEnabled(
+  rule: NotificationRuleKey,
+  clientId: string,
+  payload: ClientNotifyPayload
+) {
+  try {
+    if (!(await isNotificationRuleEnabled(rule))) return;
+    await notifyClientUsers(clientId, payload);
+  } catch (err) {
+    console.error("[notifyClientOrgIfEnabled]", rule, clientId, err);
+  }
+}
+
+export async function notifyUsersIfEnabled(
+  rule: NotificationRuleKey,
+  userIds: string[],
+  payload: ClientNotifyPayload
+) {
+  try {
+    if (!(await isNotificationRuleEnabled(rule))) return;
+    await notifyUsers(userIds, payload);
+  } catch (err) {
+    console.error("[notifyUsersIfEnabled]", rule, err);
+  }
 }

@@ -1,13 +1,18 @@
+export type NotificationRuleKey =
+  | "onUpload"
+  | "onCriticalIssue"
+  | "onInvoiceSent"
+  | "onInvoicePaid"
+  | "onTimeline"
+  | "onIssueUpdate"
+  | "onProjectAssigned";
+
 export type PlatformSettings = {
   companyName: string;
   supportEmail: string;
   defaultCurrency: string;
   timezone: string;
-  notifications: {
-    onUpload: boolean;
-    onCriticalIssue: boolean;
-    onInvoiceSent: boolean;
-  };
+  notifications: Record<NotificationRuleKey, boolean>;
 };
 
 export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
@@ -19,5 +24,9 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
     onUpload: true,
     onCriticalIssue: true,
     onInvoiceSent: true,
+    onInvoicePaid: true,
+    onTimeline: true,
+    onIssueUpdate: true,
+    onProjectAssigned: true,
   },
 };

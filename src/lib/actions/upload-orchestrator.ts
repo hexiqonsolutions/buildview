@@ -152,6 +152,7 @@ export async function uploadMatterportWithAutomation(data: {
     tour_id: tour.id,
     building: spatial.building ?? undefined,
     floor: spatial.floor ?? undefined,
+    skipClientNotify: true,
   });
 
   await logActivity(
@@ -202,6 +203,7 @@ export async function uploadReportWithAutomation(data: {
     ...validation.data,
     building: validation.data.building ?? undefined,
     floor: validation.data.floor ?? undefined,
+    skipClientNotify: true,
   });
 
   await createTimelineEvent({
@@ -212,6 +214,7 @@ export async function uploadReportWithAutomation(data: {
     report_id: reportId,
     building: data.building ?? null,
     floor: data.floor ?? null,
+    skipClientNotify: true,
   });
 
   await logActivity(data.project_id, `Report uploaded: ${data.title}`, "report", reportId);
@@ -253,6 +256,7 @@ export async function uploadDocumentWithAutomation(data: {
     folder_id: validation.data.folder_id ?? undefined,
     building: validation.data.building ?? undefined,
     floor: validation.data.floor ?? undefined,
+    skipClientNotify: true,
   });
 
   const eventDate = data.event_date ?? new Date().toISOString().split("T")[0];
@@ -264,6 +268,7 @@ export async function uploadDocumentWithAutomation(data: {
     progress_note: data.description ?? `${data.category.replace(/_/g, " ")} document added to project.`,
     building: data.building ?? null,
     floor: data.floor ?? null,
+    skipClientNotify: true,
   });
 
   await logActivity(data.project_id, `Document uploaded: ${data.name}`, "document", documentId, {
@@ -446,6 +451,7 @@ export async function uploadIssueWithAutomation(data: {
     progress_note: data.description ?? `New ${data.priority} priority issue logged.`,
     building: data.building ?? null,
     floor: data.floor ?? null,
+    skipClientNotify: true,
   });
 
   await logActivity(data.project_id, `Issue reported: ${data.title}`, "issue", issueId, {

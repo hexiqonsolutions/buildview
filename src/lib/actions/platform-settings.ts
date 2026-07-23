@@ -6,6 +6,7 @@ import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { requireBuildViewStaff } from "@/lib/supabase/server";
 import {
   DEFAULT_PLATFORM_SETTINGS,
+  type NotificationRuleKey,
   type PlatformSettings,
 } from "@/lib/admin/platform-settings";
 import type { NotificationType } from "@/lib/types";
@@ -15,11 +16,7 @@ type SettingsRow = {
   support_email: string;
   default_currency: string;
   timezone: string;
-  notification_rules: {
-    onUpload?: boolean;
-    onCriticalIssue?: boolean;
-    onInvoiceSent?: boolean;
-  };
+  notification_rules: Partial<Record<NotificationRuleKey, boolean>>;
 };
 
 function rowToSettings(row: SettingsRow): PlatformSettings {
@@ -29,9 +26,24 @@ function rowToSettings(row: SettingsRow): PlatformSettings {
     defaultCurrency: row.default_currency,
     timezone: row.timezone,
     notifications: {
-      onUpload: row.notification_rules?.onUpload ?? true,
-      onCriticalIssue: row.notification_rules?.onCriticalIssue ?? true,
-      onInvoiceSent: row.notification_rules?.onInvoiceSent ?? true,
+      onUpload: row.notification_rules?.onUpload ?? DEFAULT_PLATFORM_SETTINGS.notifications.onUpload,
+      onCriticalIssue:
+        row.notification_rules?.onCriticalIssue ??
+        DEFAULT_PLATFORM_SETTINGS.notifications.onCriticalIssue,
+      onInvoiceSent:
+        row.notification_rules?.onInvoiceSent ??
+        DEFAULT_PLATFORM_SETTINGS.notifications.onInvoiceSent,
+      onInvoicePaid:
+        row.notification_rules?.onInvoicePaid ??
+        DEFAULT_PLATFORM_SETTINGS.notifications.onInvoicePaid,
+      onTimeline:
+        row.notification_rules?.onTimeline ?? DEFAULT_PLATFORM_SETTINGS.notifications.onTimeline,
+      onIssueUpdate:
+        row.notification_rules?.onIssueUpdate ??
+        DEFAULT_PLATFORM_SETTINGS.notifications.onIssueUpdate,
+      onProjectAssigned:
+        row.notification_rules?.onProjectAssigned ??
+        DEFAULT_PLATFORM_SETTINGS.notifications.onProjectAssigned,
     },
   };
 }
