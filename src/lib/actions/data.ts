@@ -14,6 +14,7 @@ import type {
   IssueWithRelations,
   TimelineEventWithRelations,
   User,
+  UserRole,
 } from "@/lib/types";
 import { getProjectProgressPercent, getProjectStageLabel } from "@/lib/utils";
 import type { TimelinePageData } from "@/lib/timeline/page-data";
@@ -777,10 +778,10 @@ export async function getProjects(): Promise<Project[]> {
     .eq("id", user.id)
     .single();
 
-  const role = profile?.role as Parameters<typeof isBuildViewStaffRole>[0] | undefined;
+  const role = profile?.role as UserRole | undefined;
 
   // BuildView staff see all projects (RLS maps staff via is_super_admin).
-  if (role && (isBuildViewStaffRole(role) || role === "super_admin")) {
+  if (role && isBuildViewStaffRole(role)) {
     const { data } = await supabase
       .from("projects")
       .select("*")
