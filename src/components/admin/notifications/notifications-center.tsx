@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import {
   Bell,
@@ -15,6 +15,7 @@ import {
   markAllNotificationsRead,
   markNotificationRead,
 } from "@/lib/actions/notifications";
+import { notifyNotificationsChanged } from "@/components/admin/notifications/notification-bell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn, formatRelativeTime } from "@/lib/utils";
@@ -53,6 +54,37 @@ export function NotificationsCenter({
   const [filter, setFilter] = useState<Filter>("all");
   const [isPending, startTransition] = useTransition();
 
+  // Opening the inbox marks everything read and clears the header badge.
+  useEffect(() => {
+    const hasUnread = notifications.some((n) => !n.is_read);
+    if (!hasUnread) {
+      notifyNotificationsChanged();
+      return;
+    }
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        await markAllNotificationsRead();
+        if (cancelled) return;
+        setItems((prev) =>
+          prev.map((n) => ({
+            ...n,
+            is_read: true,
+            read_at: n.read_at ?? new Date().toISOString(),
+          }))
+        );
+        notifyNotificationsChanged();
+      } catch {
+        // Keep unread state if mark-all fails
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [notifications]);
+
   const filtered = useMemo(() => {
     if (filter === "unread") return items.filter((n) => !n.is_read);
     return items;
@@ -66,6 +98,7 @@ export function NotificationsCenter({
       setItems((prev) =>
         prev.map((n) => (n.id === id ? { ...n, is_read: true, read_at: new Date().toISOString() } : n))
       );
+      notifyNotificationsChanged();
     });
   }
 
@@ -75,6 +108,7 @@ export function NotificationsCenter({
       setItems((prev) =>
         prev.map((n) => ({ ...n, is_read: true, read_at: new Date().toISOString() }))
       );
+      notifyNotificationsChanged();
     });
   }
 

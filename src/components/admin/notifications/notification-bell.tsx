@@ -2,11 +2,20 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Bell } from "lucide-react";
 import { getUnreadNotificationCount } from "@/lib/actions/notifications";
 import { useNotificationRealtime } from "@/hooks/use-notification-realtime";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
+export const NOTIFICATIONS_CHANGED_EVENT = "buildview:notifications-changed";
+
+export function notifyNotificationsChanged() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED_EVENT));
+  }
+}
 
 export function NotificationBell({
   initialCount = 0,
@@ -17,6 +26,7 @@ export function NotificationBell({
   userId?: string;
   href?: string;
 }) {
+  const pathname = usePathname();
   const [count, setCount] = useState(initialCount);
 
   const refresh = useCallback(async () => {
@@ -38,6 +48,22 @@ export function NotificationBell({
     refresh();
     const interval = window.setInterval(refresh, 120_000);
     return () => window.clearInterval(interval);
+  }, [refresh]);
+
+  // Clear / refresh badge when opening the inbox.
+  useEffect(() => {
+    if (pathname?.includes("/notifications")) {
+      setCount(0);
+      void refresh();
+    }
+  }, [pathname, refresh]);
+
+  useEffect(() => {
+    function onChanged() {
+      void refresh();
+    }
+    window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, onChanged);
+    return () => window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, onChanged);
   }, [refresh]);
 
   return (
