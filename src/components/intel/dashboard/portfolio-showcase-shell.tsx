@@ -174,7 +174,6 @@ export function PortfolioShowcaseShell({ data }: { data: PortfolioDashboardData 
     { label: "Projects completed", value: data.stats.completed },
     { label: "Cities covered", value: data.stats.locations },
     { label: "Virtual walkthroughs", value: data.stats.walkthroughs },
-    { label: "Disciplines", value: data.stats.disciplines },
   ];
 
   return (
@@ -301,7 +300,7 @@ export function PortfolioShowcaseShell({ data }: { data: PortfolioDashboardData 
           </p>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 lg:divide-x lg:divide-slate-100 dark:lg:divide-slate-800">
+        <div className="grid grid-cols-1 sm:grid-cols-3 sm:divide-x sm:divide-slate-100 dark:sm:divide-slate-800">
           {stats.map((stat) => (
             <div
               key={stat.label}

@@ -25,8 +25,6 @@ export type PortfolioDashboardData = {
     walkthroughs: number;
     locations: number;
     completed: number;
-    /** Distinct portfolio categories: architecture / interior / real_estate. */
-    disciplines: number;
   };
   featuredProject: PortfolioProjectItem | null;
   featuredTour: (ProjectTour & { projectName: string; projectId: string }) | null;
@@ -150,11 +148,6 @@ export async function getPortfolioDashboardData(
       walkthroughs: scopedTours.length,
       locations: locations.size,
       completed: sortedProjects.filter((p) => p.status === "completed").length,
-      disciplines: new Set(
-        sortedProjects
-          .map((p) => p.portfolio_category)
-          .filter((c): c is NonNullable<typeof c> => Boolean(c))
-      ).size,
     },
     featuredProject,
     featuredTour,
