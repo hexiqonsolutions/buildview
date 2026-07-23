@@ -9,7 +9,6 @@ import {
   FolderOpen,
   AlertTriangle,
   Receipt,
-  User,
   Bell,
 } from "lucide-react";
 
@@ -45,7 +44,6 @@ const CONSTRUCTION_NAV: PortalNavItem[] = [
   { href: "/dashboard/issues", label: "Issues", icon: AlertTriangle },
   { href: "/dashboard/invoices", label: "Invoices", icon: Receipt },
   { href: "/dashboard/notifications", label: "Notifications", icon: Bell },
-  { href: "/dashboard/profile", label: "Profile", icon: User },
 ];
 
 const PORTFOLIO_NAV: PortalNavItem[] = [
@@ -53,7 +51,6 @@ const PORTFOLIO_NAV: PortalNavItem[] = [
   { href: "/dashboard/projects", label: "Projects", icon: FolderKanban },
   { href: "/dashboard/documents", label: "Documents", icon: FolderOpen },
   { href: "/dashboard/notifications", label: "Notifications", icon: Bell },
-  { href: "/dashboard/profile", label: "Profile", icon: User },
 ];
 
 export function getPortalNavItems(type: ClientDashboardType): PortalNavItem[] {
