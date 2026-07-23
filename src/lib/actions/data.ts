@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { getProjectComments } from "@/lib/actions/comments";
-import { isBuildViewStaffRole } from "@/lib/auth/roles";
+import { isBuildViewStaffRole, isClientPortalRole } from "@/lib/auth/roles";
 import type {
   Client,
   ClientDashboardType,
@@ -773,11 +773,14 @@ export async function getProjects(): Promise<Project[]> {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("role")
+    .select("role, client_id")
     .eq("id", user.id)
     .single();
 
-  if (profile?.role === "super_admin") {
+  const role = profile?.role as Parameters<typeof isBuildViewStaffRole>[0] | undefined;
+
+  // BuildView staff see all projects (RLS maps staff via is_super_admin).
+  if (role && (isBuildViewStaffRole(role) || role === "super_admin")) {
     const { data } = await supabase
       .from("projects")
       .select("*")
@@ -786,16 +789,58 @@ export async function getProjects(): Promise<Project[]> {
     return data || [];
   }
 
+  const byId = new Map<string, Project>();
+
+  // Client portal users see every project under their company, plus any
+  // extra assignments (e.g. consultants added to specific projects).
+  if (role && isClientPortalRole(role) && profile?.client_id) {
+    // Prefer service role so org-wide listing works even before the
+    // has_project_access SQL fix is applied (RLS previously required Team rows).
+    let loadedOrg = false;
+    try {
+      const admin = createServiceRoleClient();
+      const { data: adminProjects } = await admin
+        .from("projects")
+        .select("*")
+        .eq("client_id", profile.client_id)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false });
+      for (const p of adminProjects || []) {
+        byId.set(p.id, p as Project);
+      }
+      loadedOrg = true;
+    } catch {
+      loadedOrg = false;
+    }
+
+    if (!loadedOrg) {
+      const { data: orgProjects } = await supabase
+        .from("projects")
+        .select("*")
+        .eq("client_id", profile.client_id)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false });
+
+      for (const p of orgProjects || []) {
+        byId.set(p.id, p as Project);
+      }
+    }
+  }
+
   const { data: assignments } = await supabase
     .from("project_assignments")
     .select("project:projects(*)")
     .eq("user_id", user.id)
     .is("deleted_at", null);
 
-  return (
-    assignments
-      ?.map((a) => a.project as unknown as Project)
-      .filter((p): p is Project => Boolean(p && p.id && !p.deleted_at)) || []
+  for (const a of assignments || []) {
+    const p = a.project as unknown as Project;
+    if (p?.id && !p.deleted_at) byId.set(p.id, p);
+  }
+
+  return Array.from(byId.values()).sort(
+    (a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
 }
 

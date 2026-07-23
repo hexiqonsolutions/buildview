@@ -53,6 +53,50 @@ export async function createClientRecord(data: {
   revalidatePath("/admin/clients");
 }
 
+/** Assign every active user belonging to a client org onto a project. */
+async function assignClientOrgUsersToProject(
+  projectId: string,
+  clientId: string,
+  assignedBy: string | null
+) {
+  const admin = createServiceRoleClient();
+  const { data: users } = await admin
+    .from("users")
+    .select("id")
+    .eq("client_id", clientId)
+    .eq("is_active", true)
+    .is("deleted_at", null);
+
+  for (const u of users || []) {
+    const { data: existing } = await admin
+      .from("project_assignments")
+      .select("id, deleted_at")
+      .eq("project_id", projectId)
+      .eq("user_id", u.id)
+      .maybeSingle();
+
+    if (existing?.deleted_at) {
+      await admin
+        .from("project_assignments")
+        .update({
+          deleted_at: null,
+          deleted_by: null,
+          assigned_by: assignedBy,
+          updated_by: assignedBy,
+        })
+        .eq("id", existing.id);
+    } else if (!existing) {
+      await admin.from("project_assignments").insert({
+        project_id: projectId,
+        user_id: u.id,
+        assigned_by: assignedBy,
+        created_by: assignedBy,
+        updated_by: null,
+      });
+    }
+  }
+}
+
 export async function createProject(data: {
   name: string;
   client_id: string;
@@ -82,6 +126,24 @@ export async function createProject(data: {
     created_by: user?.id ?? null,
   };
 
+  const finish = async (projectId: string) => {
+    try {
+      await assignClientOrgUsersToProject(projectId, data.client_id, user?.id ?? null);
+    } catch {
+      // Non-fatal: org-wide access still works after has_project_access SQL fix
+    }
+    await notifyClientOrgIfEnabled("onProjectAssigned", data.client_id, {
+      title: "New project available",
+      message: `${data.name} has been added to your BuildView portal.`,
+      type: "project_update",
+      link: `/dashboard/projects/${projectId}`,
+    });
+    revalidatePath("/admin/projects");
+    revalidatePath("/dashboard/projects");
+    revalidatePath("/dashboard");
+    return projectId;
+  };
+
   const { data: created, error } = await supabase.from("projects").insert(payload).select("id").single();
   if (error || !created) {
     const msg = (error?.message ?? "").toLowerCase();
@@ -97,31 +159,12 @@ export async function createProject(data: {
         .select("id")
         .single();
       if (retryError || !retryCreated) throw new Error(retryError?.message ?? "Failed to create project");
-      await notifyClientOrgIfEnabled("onProjectAssigned", data.client_id, {
-        title: "New project available",
-        message: `${data.name} has been added to your BuildView portal.`,
-        type: "project_update",
-        link: `/dashboard/projects/${retryCreated.id}`,
-      });
-      revalidatePath("/admin/projects");
-      revalidatePath("/dashboard/projects");
-      revalidatePath("/dashboard");
-      return retryCreated.id;
+      return finish(retryCreated.id);
     }
     throw new Error(error?.message ?? "Failed to create project");
   }
 
-  await notifyClientOrgIfEnabled("onProjectAssigned", data.client_id, {
-    title: "New project available",
-    message: `${data.name} has been added to your BuildView portal.`,
-    type: "project_update",
-    link: `/dashboard/projects/${created.id}`,
-  });
-
-  revalidatePath("/admin/projects");
-  revalidatePath("/dashboard/projects");
-  revalidatePath("/dashboard");
-  return created.id;
+  return finish(created.id);
 }
 
 export async function createTour(data: {
