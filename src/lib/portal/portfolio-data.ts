@@ -126,8 +126,8 @@ export async function getPortfolioDashboardData(
 
   const clientName = bootstrap.clientName;
   const tagline = clientName
-    ? `Immersive walkthroughs and curated work by ${clientName}`
-    : "Immersive walkthroughs and curated project showcase";
+    ? `Immersive walkthroughs curated for ${clientName}`
+    : "Immersive walkthroughs curated for your portfolio";
 
   const sortedProjects = [...portfolioProjects].sort((a, b) => {
     const aDate = a.latestTour?.capture_date ?? a.latestTour?.created_at ?? a.created_at;
