@@ -11,7 +11,11 @@ import {
 } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { Project } from "@/lib/types";
-import { parseWorkspaceScope, scopeToPortalQueryString } from "@/lib/admin/scope";
+import {
+  mergeWorkspaceIntoSearchParams,
+  parseWorkspaceScope,
+  workspaceScopesEqual,
+} from "@/lib/admin/scope";
 import {
   normalizeWorkspaceScope,
   spatialRefsForScope,
@@ -88,6 +92,25 @@ export function PortalWorkspaceProvider({
   const [hydrated, setHydrated] = useState(false);
   const [scope, setScope] = useState<WorkspaceScope>(DEFAULT_WORKSPACE);
   const skipUrlSync = useRef(false);
+  const bootstrapRef = useRef(bootstrap);
+  bootstrapRef.current = bootstrap;
+
+  // Stabilize bootstrap identity so RSC re-fetches with equal data don't re-hydrate.
+  const bootstrapKey = useMemo(
+    () =>
+      JSON.stringify({
+        clientId: bootstrap.clientId,
+        dashboardType: bootstrap.dashboardType,
+        projectIds: bootstrap.projects.map((p) => p.id),
+        buildingsByProject: bootstrap.buildingsByProject,
+        floorsByProject: bootstrap.floorsByProject,
+        buildingIdsByProject: bootstrap.buildingIdsByProject,
+        floorIdsByProject: bootstrap.floorIdsByProject,
+      }),
+    [bootstrap]
+  );
+
+  const searchKey = searchParams.toString();
 
   useEffect(() => {
     const fromUrl = parseWorkspaceScope(searchParams);
@@ -100,18 +123,22 @@ export function PortalWorkspaceProvider({
     );
     const stored = readStoredScope();
     const preferred = hasUrlScope ? fromUrl : stored;
-    setScope(resolveScope(bootstrap, preferred));
+    const next = resolveScope(bootstrapRef.current, preferred);
+    setScope((prev) => (workspaceScopesEqual(prev, next) ? prev : next));
     setHydrated(true);
-  }, [bootstrap, searchParams]);
+    // searchParams object identity changes often; searchKey is the stable signal.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: searchKey + bootstrapKey
+  }, [bootstrapKey, searchKey]);
 
   const syncScopeToUrl = useCallback(
     (next: WorkspaceScope) => {
       if (!hydrated || skipUrlSync.current) return;
       if (pathname.includes("matterport-comparison")) return;
-      const qs = scopeToPortalQueryString(next);
+      const qs = mergeWorkspaceIntoSearchParams(searchParams, next, "portal");
+      if (qs === null) return;
       router.replace(`${pathname}${qs}`, { scroll: false });
     },
-    [hydrated, pathname, router]
+    [hydrated, pathname, router, searchParams]
   );
 
   useEffect(() => {
@@ -122,9 +149,12 @@ export function PortalWorkspaceProvider({
 
   const applyScope = useCallback(
     (updater: (prev: WorkspaceScope) => WorkspaceScope) => {
-      setScope((prev) => resolveScope(bootstrap, updater(prev)));
+      setScope((prev) => {
+        const next = resolveScope(bootstrapRef.current, updater(prev));
+        return workspaceScopesEqual(prev, next) ? prev : next;
+      });
     },
-    [bootstrap]
+    []
   );
 
   const adminBootstrap = useMemo(() => portalToAdminBootstrap(bootstrap), [bootstrap]);
@@ -200,11 +230,16 @@ export function PortalWorkspaceProvider({
 
   const resetScope = useCallback(() => {
     skipUrlSync.current = true;
-    setScope(resolveScope(bootstrap, DEFAULT_WORKSPACE));
+    setScope(resolveScope(bootstrapRef.current, DEFAULT_WORKSPACE));
     localStorage.removeItem(PORTAL_WORKSPACE_STORAGE_KEY);
-    router.replace(pathname, { scroll: false });
+    const next = new URLSearchParams(searchParams.toString());
+    for (const key of ["client", "project", "building", "floor", "buildingId", "floorId"]) {
+      next.delete(key);
+    }
+    const qs = next.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     skipUrlSync.current = false;
-  }, [bootstrap, pathname, router]);
+  }, [pathname, router, searchParams]);
 
   const value = useMemo(
     () => ({

@@ -59,7 +59,18 @@ function safeRedirectPath(path: string | null): string {
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
-  const { url, anonKey } = getSupabasePublicConfig();
+  let url: string;
+  let anonKey: string;
+  try {
+    ({ url, anonKey } = getSupabasePublicConfig());
+  } catch (error) {
+    // Missing env on Vercel causes MIDDLEWARE_INVOCATION_FAILED (500).
+    // Fail soft so the site can still load public pages and show a clear signal.
+    console.error("[middleware] Supabase env missing:", error);
+    const response = NextResponse.next({ request });
+    response.headers.set("x-buildview-config-error", "missing-supabase-env");
+    return response;
+  }
 
   const supabase = createServerClient<Database>(url, anonKey, {
     cookies: {
@@ -85,13 +96,21 @@ export async function updateSession(request: NextRequest) {
 
   // Public routes — refresh session cookies but skip auth checks
   if (routeAccess === "public") {
-    await supabase.auth.getUser();
+    try {
+      await supabase.auth.getUser();
+    } catch (error) {
+      console.error("[middleware] public session refresh failed:", error);
+    }
     return supabaseResponse;
   }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user = null;
+  try {
+    const result = await supabase.auth.getUser();
+    user = result.data.user;
+  } catch (error) {
+    console.error("[middleware] getUser failed:", error);
+  }
 
   // ── Unauthenticated access ──────────────────────────────────────────────
 

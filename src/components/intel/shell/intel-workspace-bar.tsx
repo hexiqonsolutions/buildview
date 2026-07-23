@@ -86,13 +86,15 @@ export function IntelWorkspaceBar() {
             {companyLabel}
           </span>
         )}
-        <WorkspaceSelect
-          label="Project"
-          value={scope.projectId ?? ""}
-          onChange={(id) => setProjectId(id)}
-          icon={MapPin}
-          options={projects.map((p) => ({ value: p.id, label: p.name }))}
-        />
+        {scope.projectId ? (
+          <WorkspaceSelect
+            label="Project"
+            value={scope.projectId}
+            onChange={(id) => setProjectId(id)}
+            icon={MapPin}
+            options={projects.map((p) => ({ value: p.id, label: p.name }))}
+          />
+        ) : null}
         {!isPortfolio && showSpatial && buildings.length > 0 && (
           <WorkspaceSelect
             label="Building"

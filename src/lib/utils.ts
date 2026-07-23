@@ -102,7 +102,8 @@ export function getProjectStageLabel(status: string): string {
   return map[status] ?? formatStatus(status);
 }
 
-export function formatStatus(status: string): string {
+export function formatStatus(status: string | null | undefined): string {
+  if (!status) return "—";
   return status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 

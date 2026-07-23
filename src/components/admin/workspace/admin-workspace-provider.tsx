@@ -11,7 +11,11 @@ import {
 } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { Project } from "@/lib/types";
-import { parseWorkspaceScope, scopeToQueryString } from "@/lib/admin/scope";
+import {
+  mergeWorkspaceIntoSearchParams,
+  parseWorkspaceScope,
+  workspaceScopesEqual,
+} from "@/lib/admin/scope";
 import {
   normalizeWorkspaceScope,
   spatialRefsForScope,
@@ -92,6 +96,23 @@ export function AdminWorkspaceProvider({
   const [hydrated, setHydrated] = useState(false);
   const [scope, setScope] = useState<WorkspaceScope>(DEFAULT_WORKSPACE);
   const skipUrlSync = useRef(false);
+  const bootstrapRef = useRef(bootstrap);
+  bootstrapRef.current = bootstrap;
+
+  const bootstrapKey = useMemo(
+    () =>
+      JSON.stringify({
+        clientIds: bootstrap.clients.map((c) => c.id),
+        projectIds: bootstrap.projects.map((p) => p.id),
+        buildingsByProject: bootstrap.buildingsByProject,
+        floorsByProject: bootstrap.floorsByProject,
+        buildingIdsByProject: bootstrap.buildingIdsByProject,
+        floorIdsByProject: bootstrap.floorIdsByProject,
+      }),
+    [bootstrap]
+  );
+
+  const searchKey = searchParams.toString();
 
   useEffect(() => {
     const fromUrl = parseWorkspaceScope(searchParams);
@@ -105,18 +126,21 @@ export function AdminWorkspaceProvider({
     );
     const stored = readStoredScope();
     const preferred = hasUrlScope ? fromUrl : stored;
-    setScope(resolveScope(bootstrap, preferred));
+    const next = resolveScope(bootstrapRef.current, preferred);
+    setScope((prev) => (workspaceScopesEqual(prev, next) ? prev : next));
     setHydrated(true);
-  }, [bootstrap, searchParams]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: searchKey + bootstrapKey
+  }, [bootstrapKey, searchKey]);
 
   const syncScopeToUrl = useCallback(
     (next: WorkspaceScope) => {
       if (!hydrated || skipUrlSync.current) return;
       if (pathname.includes("/compare")) return;
-      const qs = scopeToQueryString(next);
+      const qs = mergeWorkspaceIntoSearchParams(searchParams, next, "admin");
+      if (qs === null) return;
       router.replace(`${pathname}${qs}`, { scroll: false });
     },
-    [hydrated, pathname, router]
+    [hydrated, pathname, router, searchParams]
   );
 
   useEffect(() => {
@@ -127,9 +151,12 @@ export function AdminWorkspaceProvider({
 
   const applyScope = useCallback(
     (updater: (prev: WorkspaceScope) => WorkspaceScope) => {
-      setScope((prev) => resolveScope(bootstrap, updater(prev)));
+      setScope((prev) => {
+        const next = resolveScope(bootstrapRef.current, updater(prev));
+        return workspaceScopesEqual(prev, next) ? prev : next;
+      });
     },
-    [bootstrap]
+    []
   );
 
   const client = useMemo(
@@ -232,8 +259,8 @@ export function AdminWorkspaceProvider({
   );
 
   const resetScope = useCallback(() => {
-    setScope(resolveScope(bootstrap, DEFAULT_WORKSPACE));
-  }, [bootstrap]);
+    setScope(resolveScope(bootstrapRef.current, DEFAULT_WORKSPACE));
+  }, []);
 
   const value = useMemo<AdminWorkspaceContextValue>(
     () => ({

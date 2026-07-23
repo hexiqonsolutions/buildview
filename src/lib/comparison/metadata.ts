@@ -23,7 +23,8 @@ function tryParseDescription(description: string | null): ParsedMeta {
   };
 }
 
-function inferFromName(name: string): ParsedMeta {
+function inferFromName(name: string | null | undefined): ParsedMeta {
+  if (!name) return {};
   const meta: ParsedMeta = {};
   const buildingMatch = name.match(/building[:\s]+([^|,/]+)/i);
   const floorMatch = name.match(/floor[:\s]+([^|,/]+)/i);

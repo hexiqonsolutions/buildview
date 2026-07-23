@@ -40,8 +40,28 @@ export function parseWorkspaceScope(
   };
 }
 
-export function scopeToQueryString(scope: WorkspaceScope): string {
-  const params = new URLSearchParams();
+const WORKSPACE_PARAM_VALUES = Object.values(WORKSPACE_PARAM_KEYS);
+
+/** True when two scopes would produce the same workspace filters. */
+export function workspaceScopesEqual(a: WorkspaceScope, b: WorkspaceScope): boolean {
+  return (
+    a.clientId === b.clientId &&
+    a.projectId === b.projectId &&
+    a.building === b.building &&
+    a.floor === b.floor &&
+    a.buildingId === b.buildingId &&
+    a.floorId === b.floorId
+  );
+}
+
+function clearWorkspaceParams(params: URLSearchParams) {
+  for (const key of WORKSPACE_PARAM_VALUES) {
+    params.delete(key);
+  }
+}
+
+function applyAdminWorkspaceParams(params: URLSearchParams, scope: WorkspaceScope) {
+  clearWorkspaceParams(params);
   if (scope.clientId) params.set(WORKSPACE_PARAM_KEYS.client, scope.clientId);
   if (scope.projectId) params.set(WORKSPACE_PARAM_KEYS.project, scope.projectId);
 
@@ -56,14 +76,10 @@ export function scopeToQueryString(scope: WorkspaceScope): string {
   } else if (scope.floor && scope.floor !== "all") {
     params.set(WORKSPACE_PARAM_KEYS.floor, scope.floor);
   }
-
-  const qs = params.toString();
-  return qs ? `?${qs}` : "";
 }
 
-/** Portal deep links omit client — the signed-in user's client is implicit. */
-export function scopeToPortalQueryString(scope: WorkspaceScope): string {
-  const params = new URLSearchParams();
+function applyPortalWorkspaceParams(params: URLSearchParams, scope: WorkspaceScope) {
+  clearWorkspaceParams(params);
   if (scope.projectId) params.set(WORKSPACE_PARAM_KEYS.project, scope.projectId);
 
   if (scope.buildingId) {
@@ -77,9 +93,43 @@ export function scopeToPortalQueryString(scope: WorkspaceScope): string {
   } else if (scope.floor && scope.floor !== "all") {
     params.set(WORKSPACE_PARAM_KEYS.floor, scope.floor);
   }
+}
 
+export function scopeToQueryString(scope: WorkspaceScope): string {
+  const params = new URLSearchParams();
+  applyAdminWorkspaceParams(params, scope);
   const qs = params.toString();
   return qs ? `?${qs}` : "";
+}
+
+/** Portal deep links omit client — the signed-in user's client is implicit. */
+export function scopeToPortalQueryString(scope: WorkspaceScope): string {
+  const params = new URLSearchParams();
+  applyPortalWorkspaceParams(params, scope);
+  const qs = params.toString();
+  return qs ? `?${qs}` : "";
+}
+
+/**
+ * Merge workspace scope into the current URL search params without dropping
+ * unrelated keys (e.g. `tab`). Returns null when nothing would change.
+ */
+export function mergeWorkspaceIntoSearchParams(
+  current: URLSearchParams,
+  scope: WorkspaceScope,
+  mode: "admin" | "portal"
+): string | null {
+  const next = new URLSearchParams(current.toString());
+  if (mode === "admin") {
+    applyAdminWorkspaceParams(next, scope);
+  } else {
+    applyPortalWorkspaceParams(next, scope);
+  }
+
+  const currentQs = current.toString();
+  const nextQs = next.toString();
+  if (currentQs === nextQs) return null;
+  return nextQs ? `?${nextQs}` : "";
 }
 
 export function mergeWorkspaceScope(
