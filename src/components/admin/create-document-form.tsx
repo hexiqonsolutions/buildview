@@ -106,7 +106,15 @@ export function CreateDocumentForm({
       setProjectId(fixedProjectId ?? "");
       setFolderId("none");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to upload document");
+      const message =
+        err instanceof Error ? err.message : "Failed to upload document";
+      if (/server components render/i.test(message)) {
+        setError(
+          "Upload may have succeeded, but the page failed to refresh. Close this dialog and refresh the documents list."
+        );
+      } else {
+        setError(message);
+      }
     }
     setLoading(false);
   }
