@@ -87,7 +87,7 @@ export function CreateProjectForm({
           </div>
           <div className="space-y-2">
             <Label>Client</Label>
-            <Select value={clientId} onValueChange={setClientId} required>
+            <Select value={clientId || undefined} onValueChange={setClientId} required>
               <SelectTrigger>
                 <SelectValue placeholder="Select client" />
               </SelectTrigger>
@@ -111,7 +111,10 @@ export function CreateProjectForm({
             </div>
             <div className="space-y-2">
               <Label>Category</Label>
-              <Select value={portfolioCategory} onValueChange={setPortfolioCategory}>
+              <Select
+                value={portfolioCategory || undefined}
+                onValueChange={setPortfolioCategory}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Optional" />
                 </SelectTrigger>

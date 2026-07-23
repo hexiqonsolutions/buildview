@@ -85,15 +85,17 @@ export async function createProject(data: {
   const { error } = await supabase.from("projects").insert(payload);
   if (error) {
     const msg = error.message.toLowerCase();
-    if (
+    const missingPortfolioCols =
       (msg.includes("area_sqft") || msg.includes("portfolio_category")) &&
-      (msg.includes("schema cache") || msg.includes("column"))
-    ) {
-      throw new Error(
-        "Database migration required. Paste and run supabase/FIX_project_portfolio_fields.sql in the Supabase SQL Editor, then try again."
-      );
+      (msg.includes("schema cache") || msg.includes("column") || msg.includes("could not find"));
+
+    if (missingPortfolioCols) {
+      const { area_sqft: _a, portfolio_category: _c, ...basePayload } = payload;
+      const { error: retryError } = await supabase.from("projects").insert(basePayload);
+      if (retryError) throw new Error(retryError.message);
+    } else {
+      throw new Error(error.message);
     }
-    throw new Error(error.message);
   }
   revalidatePath("/admin/projects");
   revalidatePath("/dashboard/projects");
@@ -666,15 +668,21 @@ export async function updateProjectRecord(data: {
 
   if (error) {
     const msg = error.message.toLowerCase();
-    if (
+    const missingPortfolioCols =
       (msg.includes("area_sqft") || msg.includes("portfolio_category")) &&
-      (msg.includes("schema cache") || msg.includes("column"))
-    ) {
-      throw new Error(
-        "Database migration required. Paste and run supabase/FIX_project_portfolio_fields.sql in the Supabase SQL Editor, then try again."
-      );
+      (msg.includes("schema cache") || msg.includes("column") || msg.includes("could not find"));
+
+    if (missingPortfolioCols) {
+      const { area_sqft: _a, portfolio_category: _c, ...basePayload } = payload;
+      const { error: retryError } = await supabase
+        .from("projects")
+        .update(basePayload)
+        .eq("id", validated.id)
+        .is("deleted_at", null);
+      if (retryError) throw new Error(retryError.message);
+    } else {
+      throw new Error(error.message);
     }
-    throw new Error(error.message);
   }
 
   revalidatePath("/admin/projects");
