@@ -1,22 +1,13 @@
-import {
-  getPortalScopedNotifications,
-  parsePortalWorkspaceScopeFromParams,
-} from "@/lib/portal/scope-server";
+import { getNotifications } from "@/lib/actions/notifications";
 import { NotificationsCenter } from "@/components/admin/notifications/notifications-center";
 import { IntelPage } from "@/components/intel/pages/intel-page";
-import { PortalWorkspaceContextStrip } from "@/components/portal/workspace/portal-workspace-context-strip";
 import { Bell } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-export default async function ClientNotificationsPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
-  const params = await searchParams;
-  const scope = await parsePortalWorkspaceScopeFromParams(params);
-  const notifications = await getPortalScopedNotifications(scope);
+export default async function ClientNotificationsPage() {
+  // Inbox matches the header badge — do not filter by workspace project scope.
+  const notifications = await getNotifications();
 
   return (
     <IntelPage
@@ -25,10 +16,7 @@ export default async function ClientNotificationsPage({
       icon={Bell}
       eyebrow="Alerts"
     >
-      <div className="space-y-6">
-        <PortalWorkspaceContextStrip noun="Notifications" />
-        <NotificationsCenter notifications={notifications} scopedEmpty />
-      </div>
+      <NotificationsCenter notifications={notifications} />
     </IntelPage>
   );
 }

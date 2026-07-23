@@ -35,7 +35,7 @@ export function IntelHeader({ user, onMenuClick, unreadNotifications = 0 }: Inte
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const homeHref = usePortalWorkspaceHref("/dashboard");
-  const notificationsHref = usePortalWorkspaceHref("/dashboard/notifications");
+  const notificationsHref = "/dashboard/notifications";
   const { dashboardType } = usePortalWorkspace();
   const isPortfolio = dashboardType === "portfolio";
 
