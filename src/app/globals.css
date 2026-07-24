@@ -216,7 +216,7 @@
   }
 
   .ops-sidebar {
-    @apply fixed inset-y-0 left-0 z-30 w-[260px] flex-col border-r border-slate-200/90 bg-white dark:border-slate-800 dark:bg-slate-950;
+    @apply fixed inset-y-0 left-0 w-[260px] flex-col border-r border-slate-200/90 bg-white dark:border-slate-800 dark:bg-slate-950;
   }
 
   .ops-main {
@@ -233,7 +233,7 @@
   }
 
   .intel-sidebar {
-    @apply fixed inset-y-0 left-0 z-30 w-[248px] flex-col border-r border-slate-200/50 bg-white/90 backdrop-blur-xl dark:border-slate-800/60 dark:bg-slate-950/95;
+    @apply fixed inset-y-0 left-0 w-[248px] flex-col border-r border-slate-200/50 bg-white/90 backdrop-blur-xl dark:border-slate-800/60 dark:bg-slate-950/95;
   }
 
   .intel-main {

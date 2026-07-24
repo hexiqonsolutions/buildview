@@ -34,6 +34,7 @@ import { useAdminWorkspace } from "@/components/admin/workspace/admin-workspace-
 import { filterNavByRole } from "@/lib/auth/nav-permissions";
 import type { PermissionResource } from "@/lib/auth/permissions";
 import type { UserRole } from "@/lib/types";
+import { MobileNavDrawer } from "@/components/layout/mobile-nav-drawer";
 
 const navSections: Array<{
   label: string;
@@ -181,19 +182,10 @@ export function OpsSidebar({ userRole, mobileOpen, onMobileClose }: OpsSidebarPr
 
   return (
     <>
-      <aside className="ops-sidebar hidden lg:flex">{content}</aside>
-      {mobileOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-[60] bg-black/40 lg:hidden"
-            onClick={onMobileClose}
-            aria-hidden
-          />
-          <aside className="ops-sidebar !fixed inset-y-0 left-0 z-[70] flex w-72 max-w-[85vw] flex-col bg-white dark:bg-slate-950 lg:hidden">
-            {content}
-          </aside>
-        </>
-      )}
+      <aside className="ops-sidebar z-30 hidden lg:flex">{content}</aside>
+      <MobileNavDrawer open={Boolean(mobileOpen)} onClose={() => onMobileClose?.()}>
+        {content}
+      </MobileNavDrawer>
     </>
   );
 }
