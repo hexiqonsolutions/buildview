@@ -48,6 +48,18 @@ export async function parsePortalWorkspaceScopeFromParams(
   });
 }
 
+/** List pages show all client projects/files; URL project/building is for detail views only. */
+export function broadPortalListScope(scope: WorkspaceScope): WorkspaceScope {
+  return {
+    ...scope,
+    projectId: null,
+    building: "all",
+    floor: "all",
+    buildingId: null,
+    floorId: null,
+  };
+}
+
 export async function getPortalScopedProjects(scope: WorkspaceScope) {
   const normalized = await withPortalNormalizedScope(scope);
   const projects = await getProjects();

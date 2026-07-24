@@ -1,4 +1,5 @@
 import {
+  broadPortalListScope,
   getPortalScopedIssues,
   getPortalScopedProjects,
   parsePortalWorkspaceScopeFromParams,
@@ -19,10 +20,11 @@ export default async function IssuesPage({
 }) {
   const params = await searchParams;
   const scope = await parsePortalWorkspaceScopeFromParams(params);
+  const listScope = broadPortalListScope(scope);
 
   const [projects, issues] = await Promise.all([
-    getPortalScopedProjects(scope),
-    getPortalScopedIssues(scope),
+    getPortalScopedProjects(listScope),
+    getPortalScopedIssues(listScope),
   ]);
 
   const projectNames = new Map(projects.map((p) => [p.id, p.name]));

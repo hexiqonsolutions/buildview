@@ -1,4 +1,5 @@
 import {
+  broadPortalListScope,
   getPortalScopedDocuments,
   getPortalScopedFolders,
   getPortalScopedProjects,
@@ -19,11 +20,12 @@ export default async function DocumentsPage({
 }) {
   const params = await searchParams;
   const scope = await parsePortalWorkspaceScopeFromParams(params);
+  const listScope = broadPortalListScope(scope);
 
   const [projects, documents, folders] = await Promise.all([
-    getPortalScopedProjects(scope),
-    getPortalScopedDocuments(scope),
-    getPortalScopedFolders(scope),
+    getPortalScopedProjects(listScope),
+    getPortalScopedDocuments(listScope),
+    getPortalScopedFolders(listScope),
   ]);
 
   const projectDocuments = projects
