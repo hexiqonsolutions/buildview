@@ -95,7 +95,7 @@ export function PortalProjectCard({
         <Button
           variant="default"
           size="sm"
-          className="mt-4 w-full bg-slate-900 hover:bg-slate-800"
+          className="mt-4 w-full bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
           asChild
         >
           <Link href={openHref}>
