@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2, Maximize2, Link2, Unlink } from "lucide-react";
+import { Loader2, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getMatterportEmbedUrl, isValidMatterportUrl } from "@/lib/matterport";
@@ -130,48 +130,6 @@ export function SyncedViewerPair({
         immersive={immersive}
       />
     </div>
-  );
-}
-
-export function SyncStatusBadge({
-  syncEnabled,
-  sameModel,
-  theme = "dark",
-}: {
-  syncEnabled: boolean;
-  sameModel: boolean;
-  theme?: "dark" | "light";
-}) {
-  const independentClass =
-    theme === "light"
-      ? "inline-flex items-center gap-1 rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-medium text-slate-600"
-      : "compare-sync-badge-independent";
-  const syncedClass =
-    theme === "light"
-      ? "inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700"
-      : "compare-sync-badge-synced";
-
-  if (!syncEnabled) {
-    return (
-      <span className={independentClass}>
-        <Unlink className="h-3 w-3" />
-        Independent
-      </span>
-    );
-  }
-  if (sameModel) {
-    return (
-      <span className={syncedClass}>
-        <Link2 className="h-3 w-3" />
-        Synced
-      </span>
-    );
-  }
-  return (
-    <span className={independentClass}>
-      <Unlink className="h-3 w-3" />
-      Independent — different models
-    </span>
   );
 }
 

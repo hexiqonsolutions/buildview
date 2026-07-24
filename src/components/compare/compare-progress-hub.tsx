@@ -1,14 +1,11 @@
 "use client";
 
-import type { ComponentType } from "react";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   RotateCcw,
   Download,
   Save,
-  Link2,
-  Unlink,
   Loader2,
   Camera,
   Columns2,
@@ -19,7 +16,7 @@ import {
 } from "lucide-react";
 import { fetchComparisonSnapshot, saveComparison, deleteSavedComparison } from "@/lib/actions/comparison";
 import type { ComparisonProjectsData, ComparisonSnapshot, SavedComparison } from "@/lib/comparison/types";
-import { SyncedViewerPair, SyncStatusBadge } from "@/components/compare/synced-viewer-pair";
+import { SyncedViewerPair } from "@/components/compare/synced-viewer-pair";
 import {
   CompareKpiRow,
   CompareProgressSummary,
@@ -58,7 +55,6 @@ import {
 import { useOptionalAdminWorkspace } from "@/components/admin/workspace/admin-workspace-provider";
 import { useOptionalPortalWorkspace } from "@/components/portal/workspace/portal-workspace-provider";
 import type { WorkspaceScope } from "@/lib/admin/workspace";
-import { extractMatterportModelId } from "@/lib/matterport";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
@@ -105,7 +101,6 @@ export function CompareProgressHub({
   const [scanAId, setScanAId] = useState(urlParams.scanAId ?? "");
   const [scanBId, setScanBId] = useState(urlParams.scanBId ?? "");
   const [snapshot, setSnapshot] = useState<ComparisonSnapshot | null>(null);
-  const [syncEnabled, setSyncEnabled] = useState(true);
   const [saveOpen, setSaveOpen] = useState(false);
   const [saveName, setSaveName] = useState("");
   const [manageOpen, setManageOpen] = useState(false);
@@ -279,11 +274,6 @@ export function CompareProgressHub({
     setScanAId(projectTours[0]?.id ?? "");
     setScanBId(projectTours[1]?.id ?? projectTours[0]?.id ?? "");
   };
-
-  const sameModel =
-    snapshot &&
-    extractMatterportModelId(snapshot.scanA.matterport_url) ===
-      extractMatterportModelId(snapshot.scanB.matterport_url);
 
   const handleSave = () => {
     if (!saveName.trim() || !projectId || !scanAId || !scanBId || isDemo) return;
@@ -537,19 +527,12 @@ export function CompareProgressHub({
               />
             </div>
 
-            <ViewerSyncBar
-              syncEnabled={syncEnabled}
-              onSyncEnabled={() => setSyncEnabled(true)}
-              onSyncDisabled={() => setSyncEnabled(false)}
-              sameModel={!!sameModel}
-            />
-
             <SyncedViewerPair
               leftUrl={snapshot.scanA.matterport_url}
               rightUrl={snapshot.scanB.matterport_url}
               leftTitle={snapshot.scanA.name}
               rightTitle={snapshot.scanB.name}
-              syncEnabled={syncEnabled}
+              syncEnabled
               immersive
             />
           </div>
@@ -703,68 +686,5 @@ function ScanHeader({
       </p>
       <p className="text-[11px] text-slate-500">{engineer}</p>
     </div>
-  );
-}
-
-function ViewerSyncBar({
-  syncEnabled,
-  onSyncEnabled,
-  onSyncDisabled,
-  sameModel,
-}: {
-  syncEnabled: boolean;
-  onSyncEnabled: () => void;
-  onSyncDisabled: () => void;
-  sameModel: boolean;
-}) {
-  return (
-    <div className="flex flex-col gap-3 border-b border-slate-100 bg-slate-50/90 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800 dark:bg-slate-900/60">
-      <p className="text-[11px] font-medium uppercase tracking-wider text-slate-400">
-        Side by Side
-      </p>
-      <div className="flex flex-wrap items-center gap-2">
-        <ToolbarPill active={syncEnabled} onClick={onSyncEnabled} icon={Link2} theme="light">
-          Sync Cameras
-        </ToolbarPill>
-        <ToolbarPill active={!syncEnabled} onClick={onSyncDisabled} icon={Unlink} theme="light">
-          Unsync
-        </ToolbarPill>
-        <SyncStatusBadge syncEnabled={syncEnabled} sameModel={sameModel} theme="light" />
-      </div>
-    </div>
-  );
-}
-
-function ToolbarPill({
-  active,
-  onClick,
-  icon: Icon,
-  children,
-  theme = "dark",
-}: {
-  active?: boolean;
-  onClick: () => void;
-  icon: ComponentType<{ className?: string }>;
-  children: React.ReactNode;
-  theme?: "dark" | "light";
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
-        theme === "light"
-          ? active
-            ? "bg-slate-900 text-white shadow-sm"
-            : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700"
-          : active
-            ? "bg-white text-slate-900"
-            : "text-slate-300 hover:text-white"
-      )}
-    >
-      <Icon className="h-3.5 w-3.5" />
-      {children}
-    </button>
   );
 }
