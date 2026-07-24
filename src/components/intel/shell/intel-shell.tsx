@@ -7,7 +7,6 @@ import { IntelSidebar } from "@/components/intel/shell/intel-sidebar";
 import { IntelHeader } from "@/components/intel/shell/intel-header";
 
 import { IntelContextBar } from "@/components/intel/shell/intel-context-bar";
-import { IntelWorkspaceBar } from "@/components/intel/shell/intel-workspace-bar";
 import { ImpersonationBanner } from "@/components/intel/shell/impersonation-banner";
 import { IntelProjectProvider } from "@/components/intel/shell/intel-project-context";
 import { PortalErrorBoundary } from "@/components/dashboard/portal-error-boundary";
@@ -48,7 +47,6 @@ export function IntelShell({ user, unreadNotifications = 0, children }: IntelShe
                 menuOpen={mobileOpen}
                 onMenuClick={() => setMobileOpen((open) => !open)}
               />
-              <IntelWorkspaceBar />
               <IntelContextBar />
             </div>
             <main className="intel-content">

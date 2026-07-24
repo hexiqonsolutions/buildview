@@ -11,10 +11,6 @@ import {
   Sun,
   Shield,
   Search,
-  SlidersHorizontal,
-  Building2,
-  Layers,
-  MapPin,
   LifeBuoy,
 } from "lucide-react";
 import { BrandLogo } from "@/components/brand/brand-logo";
@@ -27,22 +23,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { signOut } from "@/lib/actions/auth";
 import type { User as UserType } from "@/lib/types";
 import { NotificationBell } from "@/components/admin/notifications/notification-bell";
@@ -65,31 +46,11 @@ export function IntelHeader({
 }: IntelHeaderProps) {
   const [darkMode, setDarkMode] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [mobileScopeOpen, setMobileScopeOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const homeHref = usePortalWorkspaceHref("/dashboard");
   const notificationsHref = "/dashboard/notifications";
-  const {
-    hydrated,
-    projects,
-    scope,
-    buildings,
-    floors,
-    clientName,
-    dashboardType,
-    setProjectId,
-    setBuilding,
-    setFloor,
-  } = usePortalWorkspace();
+  const { dashboardType } = usePortalWorkspace();
   const isPortfolio = dashboardType === "portfolio";
-
-  const showMobileWorkspace =
-    hydrated && projects.length > 0 && !isPortfolio;
-
-  const projectLabel =
-    projects.find((p) => p.id === scope.projectId)?.name ||
-    clientName?.trim() ||
-    "Workspace";
 
   useEffect(() => {
     const stored = localStorage.getItem("theme");
@@ -123,49 +84,8 @@ export function IntelHeader({
     .toUpperCase()
     .slice(0, 2);
 
-  const showSpatial = Boolean(scope.projectId);
-  const scopeControls = (
-    <div className="space-y-3">
-      <StackedSelect
-        label="Project"
-        icon={MapPin}
-        value={scope.projectId ?? ""}
-        onChange={(id) => setProjectId(id || null)}
-        options={projects.map((p) => ({ value: p.id, label: p.name }))}
-      />
-      {!isPortfolio && showSpatial && buildings.length > 0 && (
-        <StackedSelect
-          label="Building"
-          icon={Building2}
-          value={scope.building}
-          onChange={setBuilding}
-          options={[
-            { value: "all", label: "All buildings" },
-            ...buildings.map((b) => ({ value: b, label: b })),
-          ]}
-        />
-      )}
-      {!isPortfolio &&
-        showSpatial &&
-        scope.building !== "all" &&
-        floors.length > 0 && (
-          <StackedSelect
-            label="Floor"
-            icon={Layers}
-            value={scope.floor}
-            onChange={setFloor}
-            options={[
-              { value: "all", label: "All floors" },
-              ...floors.map((f) => ({ value: f, label: f })),
-            ]}
-          />
-        )}
-    </div>
-  );
-
   return (
     <header className="intel-header border-b border-slate-200/40 dark:border-slate-800/40">
-      {/* Primary bar — mirrors admin ops header */}
       <div className="flex h-14 items-center gap-2 px-3 lg:gap-3 lg:px-8">
         <div className="flex min-w-0 shrink-0 items-center gap-1 lg:hidden">
           <Button
@@ -299,67 +219,7 @@ export function IntelHeader({
         </div>
       </div>
 
-      {/* Mobile workspace row — same structure as admin, without Upload */}
-      {showMobileWorkspace && (
-        <div className="flex items-center gap-2 border-t border-slate-100 px-3 py-2 lg:hidden dark:border-slate-800">
-          <Sheet open={mobileScopeOpen} onOpenChange={setMobileScopeOpen}>
-            <SheetTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-9 min-w-0 flex-1 justify-start gap-2 border-slate-200 px-3 text-xs font-medium dark:border-slate-700"
-              >
-                <SlidersHorizontal className="h-3.5 w-3.5 shrink-0 text-slate-500" />
-                <span className="truncate">{projectLabel}</span>
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="bottom" className="max-h-[85vh] rounded-t-2xl">
-              <SheetHeader className="text-left">
-                <SheetTitle>Workspace</SheetTitle>
-              </SheetHeader>
-              <div className="mt-4 space-y-3 pb-6">{scopeControls}</div>
-            </SheetContent>
-          </Sheet>
-        </div>
-      )}
-
       <IntelCommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
     </header>
-  );
-}
-
-function StackedSelect({
-  label,
-  value,
-  onChange,
-  options,
-  icon: Icon,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: Array<{ value: string; label: string }>;
-  icon: typeof MapPin;
-}) {
-  if (options.length === 0) return null;
-  return (
-    <div className="space-y-1.5">
-      <Label className="flex items-center gap-1.5 text-xs text-slate-500">
-        <Icon className="h-3.5 w-3.5" />
-        {label}
-      </Label>
-      <Select value={value || undefined} onValueChange={onChange}>
-        <SelectTrigger className="h-10 w-full border-slate-200 bg-white text-sm dark:border-slate-700 dark:bg-slate-900">
-          <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
-        </SelectTrigger>
-        <SelectContent>
-          {options.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              {option.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
   );
 }
