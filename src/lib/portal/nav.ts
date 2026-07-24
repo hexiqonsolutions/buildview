@@ -1,7 +1,7 @@
 import { scopeToPortalQueryString } from "@/lib/admin/scope";
 import type { WorkspaceScope } from "@/lib/admin/workspace";
 
-const NO_WORKSPACE_QUERY_PREFIXES = ["/dashboard/profile", "/admin"];
+const NO_WORKSPACE_QUERY_PREFIXES = ["/dashboard/profile", "/dashboard/support", "/admin"];
 
 /** Routes that should keep the active portal workspace in the URL. */
 export function portalHrefShouldCarryWorkspace(href: string): boolean {

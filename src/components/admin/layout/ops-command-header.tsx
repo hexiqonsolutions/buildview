@@ -15,6 +15,7 @@ import {
   Building2,
   Layers,
   SlidersHorizontal,
+  LifeBuoy,
 } from "lucide-react";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -279,6 +280,11 @@ export function OpsCommandHeader({
                 <DropdownMenuItem asChild>
                   <Link href="/dashboard/profile">
                     <User className="mr-2 h-4 w-4" /> Profile
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard/support">
+                    <LifeBuoy className="mr-2 h-4 w-4" /> Support
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>

@@ -1,11 +1,9 @@
 import { redirect } from "next/navigation";
 import { getProfileForPage } from "@/lib/actions/profile";
-import { getPlatformSettings } from "@/lib/actions/platform-settings";
 import { createClient } from "@/lib/supabase/server";
 import { ProfileForm } from "@/components/dashboard/profile-form";
 import { IntelPage } from "@/components/intel/pages/intel-page";
 import { User } from "lucide-react";
-import { siteConfig } from "@/lib/site-config";
 import type { Client } from "@/lib/types";
 
 export default async function ProfilePage() {
@@ -27,8 +25,6 @@ export default async function ProfilePage() {
     client = data;
   }
 
-  const platform = await getPlatformSettings();
-
   return (
     <IntelPage
       title="Profile"
@@ -36,12 +32,7 @@ export default async function ProfilePage() {
       icon={User}
       eyebrow="Account"
     >
-      <ProfileForm
-        user={user}
-        client={client}
-        supportEmail={platform.supportEmail || siteConfig.contact.email}
-        supportPhone={siteConfig.contact.phone}
-      />
+      <ProfileForm user={user} client={client} />
     </IntelPage>
   );
 }
