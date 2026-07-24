@@ -15,9 +15,11 @@ import {
   Search,
   Bell,
   AlertTriangle,
+  X,
 } from "lucide-react";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -133,16 +135,23 @@ export function OpsCommandPalette({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-lg">
-        <DialogHeader className="border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+      <DialogContent hideCloseButton className="gap-0 overflow-hidden p-0 sm:max-w-lg">
+        <DialogHeader className="border-b border-slate-100 px-3 py-3 dark:border-slate-800 sm:px-4">
           <DialogTitle className="sr-only">Command palette</DialogTitle>
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search pages, clients, issues, documents..."
-            className="border-0 bg-transparent shadow-none focus-visible:ring-0"
-            autoFocus
-          />
+          <div className="flex items-center gap-2">
+            <Search className="h-4 w-4 shrink-0 text-slate-400" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search pages, clients, issues, documents..."
+              className="min-w-0 flex-1 border-0 bg-transparent shadow-none focus-visible:ring-0"
+              autoFocus
+            />
+            <DialogClose className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white">
+              <X className="h-4 w-4" />
+              <span className="sr-only">Close</span>
+            </DialogClose>
+          </div>
         </DialogHeader>
         <div className="max-h-[min(60vh,420px)] overflow-y-auto p-2">
           {client && q.length >= 2 && (

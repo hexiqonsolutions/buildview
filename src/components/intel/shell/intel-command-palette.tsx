@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search } from "lucide-react";
+import { Search, X } from "lucide-react";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -83,18 +84,22 @@ export function IntelCommandPalette({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-lg">
-        <DialogHeader className="border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+      <DialogContent hideCloseButton className="gap-0 overflow-hidden p-0 sm:max-w-lg">
+        <DialogHeader className="border-b border-slate-100 px-3 py-3 dark:border-slate-800 sm:px-4">
           <DialogTitle className="sr-only">Search portal</DialogTitle>
           <div className="flex items-center gap-2">
-            <Search className="h-4 w-4 text-slate-400" />
+            <Search className="h-4 w-4 shrink-0 text-slate-400" />
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={dashboardType === "portfolio" ? "Search projects and documents…" : "Search projects, issues, documents…"}
-              className="border-0 shadow-none focus-visible:ring-0"
+              className="min-w-0 flex-1 border-0 shadow-none focus-visible:ring-0"
               autoFocus
             />
+            <DialogClose className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white">
+              <X className="h-4 w-4" />
+              <span className="sr-only">Close</span>
+            </DialogClose>
           </div>
         </DialogHeader>
 
