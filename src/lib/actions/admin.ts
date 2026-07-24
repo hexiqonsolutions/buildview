@@ -108,6 +108,7 @@ export async function createProject(data: {
   description?: string;
   area_sqft?: number | null;
   portfolio_category?: "architecture" | "interior" | "real_estate" | null;
+  cover_image_url?: string | null;
 }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -123,6 +124,7 @@ export async function createProject(data: {
     completion_date: data.completion_date ?? null,
     area_sqft: data.area_sqft ?? null,
     portfolio_category: data.portfolio_category ?? null,
+    cover_image_url: data.cover_image_url ?? null,
     created_by: user?.id ?? null,
   };
 
@@ -165,6 +167,34 @@ export async function createProject(data: {
   }
 
   return finish(created.id);
+}
+
+/** Set or clear a project's cover thumbnail URL after upload. */
+export async function updateProjectCoverImage(
+  projectId: string,
+  coverImageUrl: string | null
+) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { error } = await supabase
+    .from("projects")
+    .update({
+      cover_image_url: coverImageUrl,
+      updated_by: user?.id ?? null,
+    } satisfies ProjectUpdate)
+    .eq("id", projectId)
+    .is("deleted_at", null);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/admin/projects");
+  revalidatePath(`/admin/projects/${projectId}`);
+  revalidatePath("/dashboard/projects");
+  revalidatePath(`/dashboard/projects/${projectId}`);
+  revalidatePath("/dashboard");
 }
 
 export async function createTour(data: {

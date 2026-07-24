@@ -178,3 +178,45 @@ export function resolveInvoiceStoragePath(
 ): string | null {
   return resolveBucketStoragePath(storagePath, fileUrl, "documents");
 }
+
+/** Build project cover path: {projectId}/{timestamp}-{filename} */
+export function buildProjectCoverStoragePath(
+  projectId: string,
+  fileName: string
+): string {
+  return `${projectId}/${Date.now()}-${sanitizeFileName(fileName)}`;
+}
+
+/** Upload a project thumbnail/cover to the public project-covers bucket. */
+export async function uploadProjectCoverFile(
+  projectId: string,
+  file: File
+): Promise<UploadResult & { publicUrl: string }> {
+  const path = buildProjectCoverStoragePath(projectId, file.name);
+  const result = await uploadFileToStorage(STORAGE_BUCKETS.PROJECT_COVERS, path, file);
+  const supabase = createClient();
+  const { data } = supabase.storage.from(STORAGE_BUCKETS.PROJECT_COVERS).getPublicUrl(path);
+  return { ...result, publicUrl: data.publicUrl };
+}
+
+export const MAX_PROJECT_COVER_SIZE = 5 * 1024 * 1024; // 5 MB
+export const PROJECT_COVER_MIME_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+] as const;
+
+export function validateProjectCoverFile(file: File): string | null {
+  if (
+    !PROJECT_COVER_MIME_TYPES.includes(
+      file.type as (typeof PROJECT_COVER_MIME_TYPES)[number]
+    )
+  ) {
+    return "Thumbnail must be a JPEG, PNG, WebP, or GIF image.";
+  }
+  if (file.size > MAX_PROJECT_COVER_SIZE) {
+    return "Thumbnail must be 5 MB or smaller.";
+  }
+  return null;
+}

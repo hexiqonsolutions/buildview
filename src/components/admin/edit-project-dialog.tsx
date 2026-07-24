@@ -1,14 +1,19 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { Loader2, Pencil, Users } from "lucide-react";
+import { ImagePlus, Loader2, Pencil, Users, X } from "lucide-react";
 import {
   assignUserToProject,
   softDeleteProject,
   unassignUserFromProject,
+  updateProjectCoverImage,
   updateProjectRecord,
 } from "@/lib/actions/admin";
 import { getProjectAssignments } from "@/lib/actions/data";
+import {
+  uploadProjectCoverFile,
+  validateProjectCoverFile,
+} from "@/lib/supabase/storage";
 import type { Client, PortfolioCategory, Project, ProjectStatus, User } from "@/lib/types";
 import { PORTFOLIO_CATEGORY_LABELS, PROJECT_STATUS_LABELS } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -45,6 +50,9 @@ export function EditProjectDialog({ project, clients, users }: EditProjectDialog
   const [portfolioCategory, setPortfolioCategory] = useState<string>(
     project.portfolio_category ?? ""
   );
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+  const [removeCover, setRemoveCover] = useState(false);
   const [assignments, setAssignments] = useState<
     Array<{ id: string; user: { id: string; full_name: string; email: string } | null }>
   >([]);
@@ -57,6 +65,8 @@ export function EditProjectDialog({ project, clients, users }: EditProjectDialog
     setClientId(project.client_id);
     setStatus(project.status);
     setPortfolioCategory(project.portfolio_category ?? "");
+    setThumbnailFile(null);
+    setRemoveCover(false);
     setError(null);
 
     async function loadAssignments() {
@@ -72,12 +82,38 @@ export function EditProjectDialog({ project, clients, users }: EditProjectDialog
     loadAssignments();
   }, [open, project]);
 
+  useEffect(() => {
+    if (!thumbnailFile) {
+      setThumbnailPreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(thumbnailFile);
+    setThumbnailPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [thumbnailFile]);
+
   const clientUsers = users.filter(
     (u) => u.role === "client" && u.is_active && !u.deleted_at
   );
   const assignedUserIds = new Set(
     assignments.map((a) => a.user?.id).filter(Boolean) as string[]
   );
+  const coverPreview =
+    thumbnailPreview || (!removeCover ? project.cover_image_url : null);
+
+  function handleThumbnailChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null;
+    e.target.value = "";
+    if (!file) return;
+    const validationError = validateProjectCoverFile(file);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+    setError(null);
+    setRemoveCover(false);
+    setThumbnailFile(file);
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -103,6 +139,14 @@ export function EditProjectDialog({ project, clients, users }: EditProjectDialog
         area_sqft: areaSqft && Number.isFinite(areaSqft) ? areaSqft : null,
         portfolio_category: (portfolioCategory || null) as PortfolioCategory | null,
       });
+
+      if (thumbnailFile) {
+        const upload = await uploadProjectCoverFile(project.id, thumbnailFile);
+        await updateProjectCoverImage(project.id, upload.publicUrl);
+      } else if (removeCover && project.cover_image_url) {
+        await updateProjectCoverImage(project.id, null);
+      }
+
       setOpen(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update project");
@@ -182,6 +226,49 @@ export function EditProjectDialog({ project, clients, users }: EditProjectDialog
 
           <TabsContent value="details" className="mt-4">
             <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label>Thumbnail</Label>
+                <div className="flex items-start gap-3">
+                  <div className="relative flex h-24 w-32 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-dashed border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-900">
+                    {coverPreview ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={coverPreview}
+                        alt="Project thumbnail"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <ImagePlus className="h-6 w-6 text-slate-400" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <Input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      onChange={handleThumbnailChange}
+                      className="cursor-pointer text-xs file:mr-2 file:rounded file:border-0 file:bg-slate-100 file:px-2 file:py-1 file:text-xs"
+                    />
+                    <p className="text-[11px] text-slate-500">
+                      JPEG, PNG, WebP, or GIF up to 5 MB.
+                    </p>
+                    {(coverPreview || thumbnailFile) && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs text-slate-600"
+                        onClick={() => {
+                          setThumbnailFile(null);
+                          setRemoveCover(true);
+                        }}
+                      >
+                        <X className="mr-1 h-3.5 w-3.5" />
+                        Remove
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
               <div className="space-y-2">
                 <Label>Project Name</Label>
                 <Input name="name" defaultValue={project.name} required />

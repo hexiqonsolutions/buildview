@@ -109,6 +109,7 @@ export const STORAGE_BUCKETS = {
   ISSUE_IMAGES: "issue-images",
   TIMELINE_PHOTOS: "timeline-photos",
   AVATARS: "avatars",
+  PROJECT_COVERS: "project-covers",
 } as const;
 
 export type StorageBucket =
