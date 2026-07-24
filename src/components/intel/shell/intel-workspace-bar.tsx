@@ -1,7 +1,6 @@
 "use client";
 
 import { Building2, Layers, MapPin } from "lucide-react";
-import { usePathname } from "next/navigation";
 import { usePortalWorkspace } from "@/components/portal/workspace/portal-workspace-provider";
 import {
   Select,
@@ -47,7 +46,6 @@ function WorkspaceSelect({
 
 /** Project / building / floor selectors synced to portal URL workspace params. */
 export function IntelWorkspaceBar() {
-  const pathname = usePathname();
   const {
     hydrated,
     projects,
@@ -63,12 +61,8 @@ export function IntelWorkspaceBar() {
 
   const isPortfolio = dashboardType === "portfolio";
 
-  if (!hydrated || projects.length === 0) {
-    return null;
-  }
-
-  // Full-bleed portfolio home should not show workspace chrome.
-  if (isPortfolio && pathname === "/dashboard") {
+  // Portfolio showcase does not use project/building workspace filters.
+  if (!hydrated || projects.length === 0 || isPortfolio) {
     return null;
   }
 
@@ -79,7 +73,7 @@ export function IntelWorkspaceBar() {
     <div className="hidden border-b border-slate-200 bg-white px-4 py-2.5 lg:block lg:px-8 dark:border-slate-800 dark:bg-slate-950">
       <div className="flex flex-wrap items-center gap-2">
         <span className="mr-1 hidden text-[11px] font-semibold uppercase tracking-wider text-slate-500 sm:inline">
-          {isPortfolio ? "Showcase" : "Workspace"}
+          Workspace
         </span>
         {companyLabel && (
           <span className="hidden max-w-[160px] truncate rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-900 sm:inline dark:border-slate-700 dark:bg-slate-900 dark:text-white">
@@ -95,7 +89,7 @@ export function IntelWorkspaceBar() {
             options={projects.map((p) => ({ value: p.id, label: p.name }))}
           />
         ) : null}
-        {!isPortfolio && showSpatial && buildings.length > 0 && (
+        {showSpatial && buildings.length > 0 && (
           <WorkspaceSelect
             label="Building"
             value={scope.building}
@@ -107,7 +101,7 @@ export function IntelWorkspaceBar() {
             ]}
           />
         )}
-        {!isPortfolio && showSpatial && scope.building !== "all" && floors.length > 0 && (
+        {showSpatial && scope.building !== "all" && floors.length > 0 && (
           <WorkspaceSelect
             label="Floor"
             value={scope.floor}

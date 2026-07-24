@@ -49,7 +49,6 @@ import { NotificationBell } from "@/components/admin/notifications/notification-
 import { IntelCommandPalette } from "@/components/intel/shell/intel-command-palette";
 import { usePortalWorkspaceHref } from "@/components/portal/workspace/use-portal-workspace-href";
 import { usePortalWorkspace } from "@/components/portal/workspace/portal-workspace-provider";
-import { usePathname } from "next/navigation";
 
 interface IntelHeaderProps {
   user: UserType;
@@ -68,7 +67,6 @@ export function IntelHeader({
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [mobileScopeOpen, setMobileScopeOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const pathname = usePathname();
   const homeHref = usePortalWorkspaceHref("/dashboard");
   const notificationsHref = "/dashboard/notifications";
   const {
@@ -86,14 +84,12 @@ export function IntelHeader({
   const isPortfolio = dashboardType === "portfolio";
 
   const showMobileWorkspace =
-    hydrated &&
-    projects.length > 0 &&
-    !(isPortfolio && pathname === "/dashboard");
+    hydrated && projects.length > 0 && !isPortfolio;
 
   const projectLabel =
     projects.find((p) => p.id === scope.projectId)?.name ||
     clientName?.trim() ||
-    (isPortfolio ? "Showcase" : "Workspace");
+    "Workspace";
 
   useEffect(() => {
     const stored = localStorage.getItem("theme");
@@ -319,7 +315,7 @@ export function IntelHeader({
             </SheetTrigger>
             <SheetContent side="bottom" className="max-h-[85vh] rounded-t-2xl">
               <SheetHeader className="text-left">
-                <SheetTitle>{isPortfolio ? "Showcase" : "Workspace"}</SheetTitle>
+                <SheetTitle>Workspace</SheetTitle>
               </SheetHeader>
               <div className="mt-4 space-y-3 pb-6">{scopeControls}</div>
             </SheetContent>
