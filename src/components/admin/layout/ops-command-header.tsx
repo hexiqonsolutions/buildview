@@ -141,8 +141,10 @@ export function OpsCommandHeader({
   return (
     <>
       <header className="ops-command-header border-b border-slate-200/80 dark:border-slate-800">
+        {/* Primary bar */}
         <div className="flex h-14 items-center gap-2 px-3 lg:gap-3 lg:px-5">
-          <div className="flex shrink-0 items-center gap-1.5 lg:hidden">
+          {/* Mobile: menu + logo */}
+          <div className="flex min-w-0 shrink-0 items-center gap-1 lg:hidden">
             <Button
               variant="ghost"
               size="icon"
@@ -153,29 +155,21 @@ export function OpsCommandHeader({
             >
               {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
-            <BrandLogo href={homeHref} size="md" className="shrink-0 max-w-[8.5rem]" />
+            <BrandLogo href={homeHref} size="md" className="min-w-0 max-w-[7.5rem] shrink" />
           </div>
 
+          {/* Desktop / tablet: search field (hidden on phones to avoid double search) */}
           <button
             type="button"
             onClick={() => setPaletteOpen(true)}
-            className="ops-search-trigger hidden h-9 min-w-0 flex-1 sm:flex lg:max-w-[220px] xl:max-w-[260px]"
+            className="ops-search-trigger hidden min-w-0 flex-1 lg:flex lg:max-w-[220px] xl:max-w-[260px]"
           >
             <Search className="h-4 w-4 shrink-0 text-slate-400" />
             <span className="truncate text-sm text-slate-500">Search...</span>
             <kbd className="ops-kbd ml-auto hidden xl:inline-flex">⌘K</kbd>
           </button>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9 shrink-0 text-slate-500 sm:hidden"
-            onClick={() => setPaletteOpen(true)}
-            aria-label="Search"
-          >
-            <Search className="h-4 w-4" />
-          </Button>
-
+          {/* Desktop workspace scope */}
           {hydrated ? (
             <div className="hidden min-w-0 flex-1 lg:block">
               <WorkspaceScopeControls
@@ -195,36 +189,26 @@ export function OpsCommandHeader({
             <div className="hidden h-9 flex-1 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800 lg:block" />
           )}
 
-          <div className="ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
-            {hydrated && (
-              <Sheet open={mobileScopeOpen} onOpenChange={setMobileScopeOpen}>
-                <SheetTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-9 max-w-[9.5rem] gap-1.5 border-slate-200 px-2.5 text-xs font-medium lg:hidden dark:border-slate-700"
-                  >
-                    <SlidersHorizontal className="h-3.5 w-3.5 shrink-0 text-slate-500" />
-                    <span className="truncate">{clientLabel}</span>
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="bottom" className="max-h-[85vh] rounded-t-2xl">
-                  <SheetHeader className="text-left">
-                    <SheetTitle>Workspace</SheetTitle>
-                  </SheetHeader>
-                  <div className="mt-4 space-y-3 pb-6">{scopeControls}</div>
-                </SheetContent>
-              </Sheet>
-            )}
+          {/* Actions — keep mobile bar lean */}
+          <div className="ml-auto flex shrink-0 items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 text-slate-500 lg:hidden"
+              onClick={() => setPaletteOpen(true)}
+              aria-label="Search"
+            >
+              <Search className="h-4 w-4" />
+            </Button>
 
             <Button
               size="sm"
-              className="ops-btn-primary h-9 gap-1.5 px-2.5 sm:px-3"
+              className="ops-btn-primary hidden h-9 gap-1.5 px-2.5 lg:inline-flex xl:px-3"
               asChild
             >
               <Link href={uploadHref} aria-label="Upload">
                 <Upload className="h-4 w-4" />
-                <span className="hidden sm:inline">Upload</span>
+                <span className="hidden xl:inline">Upload</span>
               </Link>
             </Button>
 
@@ -238,7 +222,7 @@ export function OpsCommandHeader({
               variant="ghost"
               size="icon"
               onClick={toggleDarkMode}
-              className="h-9 w-9 text-slate-500"
+              className="hidden h-9 w-9 text-slate-500 lg:inline-flex"
               aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
             >
               {darkMode ? (
@@ -252,7 +236,8 @@ export function OpsCommandHeader({
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="h-9 max-w-[148px] gap-2 rounded-full pl-1 pr-2"
+                  size="icon"
+                  className="h-9 w-9 rounded-full p-0 lg:h-9 lg:w-auto lg:gap-2 lg:rounded-full lg:pl-1 lg:pr-2"
                 >
                   <Avatar className="h-7 w-7 shrink-0">
                     <AvatarImage src={user.avatar_url || undefined} alt={displayName} />
@@ -275,6 +260,22 @@ export function OpsCommandHeader({
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem asChild className="lg:hidden">
+                  <Link href={uploadHref}>
+                    <Upload className="mr-2 h-4 w-4" /> Upload
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="lg:hidden"
+                  onClick={() => toggleDarkMode()}
+                >
+                  {darkMode ? (
+                    <Sun className="mr-2 h-4 w-4" />
+                  ) : (
+                    <Moon className="mr-2 h-4 w-4" />
+                  )}
+                  {darkMode ? "Light mode" : "Dark mode"}
+                </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/dashboard/profile">
                     <User className="mr-2 h-4 w-4" /> Profile
@@ -297,6 +298,36 @@ export function OpsCommandHeader({
             </DropdownMenu>
           </div>
         </div>
+
+        {/* Mobile workspace row — keeps primary bar uncluttered */}
+        {hydrated && (
+          <div className="flex items-center gap-2 border-t border-slate-100 px-3 py-2 lg:hidden dark:border-slate-800">
+            <Sheet open={mobileScopeOpen} onOpenChange={setMobileScopeOpen}>
+              <SheetTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 min-w-0 flex-1 justify-start gap-2 border-slate-200 px-3 text-xs font-medium dark:border-slate-700"
+                >
+                  <SlidersHorizontal className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+                  <span className="truncate">{clientLabel}</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="bottom" className="max-h-[85vh] rounded-t-2xl">
+                <SheetHeader className="text-left">
+                  <SheetTitle>Workspace</SheetTitle>
+                </SheetHeader>
+                <div className="mt-4 space-y-3 pb-6">{scopeControls}</div>
+              </SheetContent>
+            </Sheet>
+            <Button size="sm" className="ops-btn-primary h-9 shrink-0 gap-1.5 px-3" asChild>
+              <Link href={uploadHref}>
+                <Upload className="h-4 w-4" />
+                Upload
+              </Link>
+            </Button>
+          </div>
+        )}
       </header>
 
       <OpsCommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />

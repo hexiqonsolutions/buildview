@@ -385,7 +385,7 @@
   }
 
   .ops-search-trigger {
-    @apply flex h-9 w-full items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-left transition-colors hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600;
+    @apply h-9 w-full items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-left transition-colors hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600;
   }
 
   .ops-kbd {
