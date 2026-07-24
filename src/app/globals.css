@@ -357,7 +357,7 @@
   }
 
   .ops-scope-cluster {
-    @apply flex h-9 max-w-full items-center overflow-x-auto rounded-lg border border-slate-200 bg-slate-50/80 [scrollbar-width:none] [-ms-overflow-style:none] dark:border-slate-700 dark:bg-slate-900/60 [&::-webkit-scrollbar]:hidden;
+    @apply inline-flex h-9 max-w-full items-center overflow-x-auto rounded-lg border border-slate-200 bg-slate-50/80 [scrollbar-width:none] [-ms-overflow-style:none] dark:border-slate-700 dark:bg-slate-900/60 [&::-webkit-scrollbar]:hidden;
   }
 
   .ops-scope-select {

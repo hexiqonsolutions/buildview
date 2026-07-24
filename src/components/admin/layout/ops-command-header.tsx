@@ -159,9 +159,9 @@ export function OpsCommandHeader({
             <BrandLogo href={homeHref} size="md" className="min-w-0 max-w-[7.5rem] shrink" />
           </div>
 
-          {/* Desktop workspace scope */}
+          {/* Desktop workspace scope — sized to content, scrolls if needed */}
           {hydrated ? (
-            <div className="hidden min-w-0 flex-1 lg:block">
+            <div className="hidden min-w-0 flex-1 overflow-hidden lg:block">
               <WorkspaceScopeControls
                 scope={scope}
                 clients={clients}
@@ -176,11 +176,11 @@ export function OpsCommandHeader({
               />
             </div>
           ) : (
-            <div className="hidden h-9 flex-1 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800 lg:block" />
+            <div className="hidden h-9 max-w-md flex-1 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800 lg:block" />
           )}
 
-          {/* Actions — keep mobile bar lean */}
-          <div className="ml-auto flex shrink-0 items-center gap-1">
+          {/* Actions — never shrink into the scope bar */}
+          <div className="ml-auto flex shrink-0 items-center gap-1 border-l border-slate-100 pl-2 dark:border-slate-800 sm:gap-1.5 sm:pl-3">
             <Button
               variant="ghost"
               size="icon"
@@ -431,7 +431,7 @@ function WorkspaceScopeControls({
       {clientOptions.length === 0 ? (
         <Link
           href="/admin/clients"
-          className="inline-flex h-9 min-w-[11rem] shrink-0 items-center gap-1.5 px-2.5 text-xs font-medium text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
+          className="inline-flex h-9 min-w-[9rem] shrink-0 items-center gap-1.5 px-2.5 text-xs font-medium text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
         >
           <Building2 className="h-3.5 w-3.5 text-slate-400" />
           Add a client
@@ -443,7 +443,7 @@ function WorkspaceScopeControls({
           onChange={(v) => setClientId(v || null)}
           options={clientOptions}
           placeholder="Client"
-          className="w-[min(100%,11rem)] shrink-0 sm:w-44"
+          className="w-[9.5rem] max-w-[28vw] shrink-0 xl:w-44"
           leading={
             clientLogoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -463,9 +463,9 @@ function WorkspaceScopeControls({
         placeholder="Project"
         disabled={!scope.clientId}
         emptyHint={!scope.clientId ? "Select client" : "No projects"}
-        className="w-[min(100%,10.5rem)] shrink-0 sm:w-40"
+        className="w-[9rem] max-w-[26vw] shrink-0 xl:w-40"
       />
-      <ScopeDivider />
+      <ScopeDivider className="hidden xl:block" />
       <ScopeSelect
         ariaLabel="Building"
         value={scope.building}
@@ -474,10 +474,10 @@ function WorkspaceScopeControls({
         placeholder="Building"
         disabled={!scope.projectId}
         emptyHint="Select project"
-        className="w-[8.5rem] shrink-0"
+        className="hidden w-[8.25rem] shrink-0 xl:flex"
         leading={<Layers className="h-3.5 w-3.5 text-slate-400" />}
       />
-      <ScopeDivider />
+      <ScopeDivider className="hidden xl:block" />
       <ScopeSelect
         ariaLabel="Floor"
         value={scope.floor}
@@ -486,7 +486,7 @@ function WorkspaceScopeControls({
         placeholder="Floor"
         disabled={!scope.projectId}
         emptyHint="Select project"
-        className="w-[7.5rem] shrink-0"
+        className="hidden w-[7.25rem] shrink-0 xl:flex"
       />
     </div>
   );
