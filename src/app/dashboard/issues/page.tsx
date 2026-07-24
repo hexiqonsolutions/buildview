@@ -7,7 +7,6 @@ import {
 import { IssuesList } from "@/components/issues/issues-list";
 import { IntelPage } from "@/components/intel/pages/intel-page";
 import { EmptyState } from "@/components/patterns/page-states";
-import { PortalWorkspaceContextStrip } from "@/components/portal/workspace/portal-workspace-context-strip";
 import { AlertTriangle } from "lucide-react";
 import type { IssueWithRelations } from "@/lib/types";
 
@@ -46,8 +45,6 @@ export default async function IssuesPage({
       eyebrow="Site Quality"
     >
       <div className="space-y-6">
-        <PortalWorkspaceContextStrip noun="Issues" />
-
         {issuesWithProject.length === 0 ? (
           <EmptyState
             icon={AlertTriangle}

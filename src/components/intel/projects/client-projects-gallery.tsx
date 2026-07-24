@@ -4,7 +4,6 @@ import Link from "next/link";
 import { FolderKanban, Sparkles } from "lucide-react";
 import { PortalProjectCard } from "@/components/portal/portal-project-card";
 import { IntelPage } from "@/components/intel/pages/intel-page";
-import { PortalWorkspaceContextStrip } from "@/components/portal/workspace/portal-workspace-context-strip";
 import { scopeToPortalQueryString } from "@/lib/admin/scope";
 import type { ProjectWithMeta } from "@/lib/actions/data";
 import { usePortalWorkspace } from "@/components/portal/workspace/portal-workspace-provider";
@@ -37,8 +36,6 @@ export function ClientProjectsGallery({ projects }: { projects: ProjectWithMeta[
       eyebrow={isPortfolio ? "Showcase" : "Portfolio"}
     >
       <div className="space-y-6">
-        <PortalWorkspaceContextStrip noun="Projects" />
-
         {projects.length === 0 ? (
           <div className="intel-card p-12 text-center">
             <p className="text-sm text-slate-500">

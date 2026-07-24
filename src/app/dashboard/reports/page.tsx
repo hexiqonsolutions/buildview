@@ -7,7 +7,6 @@ import {
 import { ReportsBrowser } from "@/components/portal/reports-browser";
 import { IntelPage } from "@/components/intel/pages/intel-page";
 import { EmptyState } from "@/components/patterns/page-states";
-import { PortalWorkspaceContextStrip } from "@/components/portal/workspace/portal-workspace-context-strip";
 import { FileText } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -43,8 +42,6 @@ export default async function ReportsPage({
       eyebrow="Progress Reports"
     >
       <div className="space-y-6">
-        <PortalWorkspaceContextStrip noun="Reports" />
-
         {reportsWithProject.length === 0 ? (
           <EmptyState
             icon={FileText}

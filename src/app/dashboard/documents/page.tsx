@@ -8,7 +8,6 @@ import {
 import { DocumentBrowser } from "@/components/documents/document-browser";
 import { IntelPage } from "@/components/intel/pages/intel-page";
 import { EmptyState } from "@/components/patterns/page-states";
-import { PortalWorkspaceContextStrip } from "@/components/portal/workspace/portal-workspace-context-strip";
 import { FolderOpen } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -46,8 +45,6 @@ export default async function DocumentsPage({
       eyebrow="Project Files"
     >
       <div className="space-y-6">
-        <PortalWorkspaceContextStrip noun="Documents" />
-
         {!hasDocuments ? (
           <EmptyState
             icon={FolderOpen}

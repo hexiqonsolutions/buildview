@@ -3,7 +3,6 @@
 import type { ClientDashboardData } from "@/lib/actions/data";
 import { scopeToPortalQueryString } from "@/lib/admin/scope";
 import { ExecutiveOverview } from "@/components/intel/dashboard/executive-overview";
-import { PortalWorkspaceContextStrip } from "@/components/portal/workspace/portal-workspace-context-strip";
 import { usePortalWorkspace } from "@/components/portal/workspace/portal-workspace-provider";
 
 interface ExecutiveOverviewShellProps {
@@ -16,13 +15,10 @@ export function ExecutiveOverviewShell({ firstName, data }: ExecutiveOverviewShe
   const workspaceQuery = hydrated ? scopeToPortalQueryString(scope) : "";
 
   return (
-    <div className="space-y-6">
-      <PortalWorkspaceContextStrip noun="Dashboard" />
-      <ExecutiveOverview
-        firstName={firstName}
-        data={data}
-        workspaceQuery={workspaceQuery}
-      />
-    </div>
+    <ExecutiveOverview
+      firstName={firstName}
+      data={data}
+      workspaceQuery={workspaceQuery}
+    />
   );
 }

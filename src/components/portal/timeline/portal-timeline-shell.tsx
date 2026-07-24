@@ -2,7 +2,6 @@
 
 import { useMemo } from "react";
 import { AdminTimelineView } from "@/components/admin/admin-timeline-view";
-import { PortalWorkspaceContextStrip } from "@/components/portal/workspace/portal-workspace-context-strip";
 import { usePortalWorkspace } from "@/components/portal/workspace/portal-workspace-provider";
 import type { TimelinePageData } from "@/lib/timeline/page-data";
 
@@ -55,15 +54,12 @@ export function PortalTimelineShell({
   ]);
 
   return (
-    <div className="space-y-6">
-      <PortalWorkspaceContextStrip noun="Timeline" />
-      <AdminTimelineView
-        data={data}
-        mode="client"
-        isDemo={isDemo}
-        initialProjectId={initialProjectId}
-        workspaceFilters={workspaceFilters}
-      />
-    </div>
+    <AdminTimelineView
+      data={data}
+      mode="client"
+      isDemo={isDemo}
+      initialProjectId={initialProjectId}
+      workspaceFilters={workspaceFilters}
+    />
   );
 }

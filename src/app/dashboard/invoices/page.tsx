@@ -4,7 +4,6 @@ import {
 } from "@/lib/portal/scope-server";
 import { IntelPage } from "@/components/intel/pages/intel-page";
 import { EmptyState } from "@/components/patterns/page-states";
-import { PortalWorkspaceContextStrip } from "@/components/portal/workspace/portal-workspace-context-strip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Download, Receipt } from "lucide-react";
@@ -29,8 +28,6 @@ export default async function InvoicesPage({
       eyebrow="Billing"
     >
       <div className="space-y-6">
-        <PortalWorkspaceContextStrip noun="Invoices" />
-
         {invoices.length === 0 ? (
           <EmptyState
             icon={Receipt}
