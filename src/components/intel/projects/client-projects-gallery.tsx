@@ -1,43 +1,29 @@
 "use client";
 
-import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Search, FolderKanban, Sparkles } from "lucide-react";
+import { FolderKanban, Sparkles } from "lucide-react";
 import { PortalProjectCard } from "@/components/portal/portal-project-card";
 import { IntelPage } from "@/components/intel/pages/intel-page";
 import { PortalWorkspaceContextStrip } from "@/components/portal/workspace/portal-workspace-context-strip";
-import { Input } from "@/components/ui/input";
 import { scopeToPortalQueryString } from "@/lib/admin/scope";
 import type { ProjectWithMeta } from "@/lib/actions/data";
 import { usePortalWorkspace } from "@/components/portal/workspace/portal-workspace-provider";
 
 export function ClientProjectsGallery({ projects }: { projects: ProjectWithMeta[] }) {
-  const [query, setQuery] = useState("");
   const { hydrated, scope, dashboardType } = usePortalWorkspace();
   const workspaceQuery = hydrated ? scopeToPortalQueryString(scope) : "";
   const isPortfolio = dashboardType === "portfolio";
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return projects;
-    return projects.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        p.location?.toLowerCase().includes(q) ||
-        p.client_name.toLowerCase().includes(q)
-    );
-  }, [projects, query]);
-
-  const active = filtered.filter((p) => p.status !== "completed");
-  const completed = filtered.filter((p) => p.status === "completed");
+  const active = projects.filter((p) => p.status !== "completed");
+  const completed = projects.filter((p) => p.status === "completed");
 
   const showcaseProjects = isPortfolio
-    ? [...filtered].sort((a, b) => {
+    ? [...projects].sort((a, b) => {
         const aDate = a.latestScanDate ?? a.created_at;
         const bDate = b.latestScanDate ?? b.created_at;
         return new Date(bDate).getTime() - new Date(aDate).getTime();
       })
-    : filtered;
+    : projects;
 
   return (
     <IntelPage
@@ -53,24 +39,12 @@ export function ClientProjectsGallery({ projects }: { projects: ProjectWithMeta[
       <div className="space-y-6">
         <PortalWorkspaceContextStrip noun="Projects" />
 
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <Input
-            placeholder={isPortfolio ? "Search portfolio…" : "Search projects…"}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-
-        {filtered.length === 0 ? (
+        {projects.length === 0 ? (
           <div className="intel-card p-12 text-center">
             <p className="text-sm text-slate-500">
-              {projects.length === 0
-                ? isPortfolio
-                  ? "No projects in this showcase yet. Your BuildView team will add work here."
-                  : "No projects in this workspace. Clear building/floor filters or select another project."
-                : "No projects match your search."}
+              {isPortfolio
+                ? "No projects in this showcase yet. Your BuildView team will add work here."
+                : "No projects in this workspace. Clear building/floor filters or select another project."}
             </p>
           </div>
         ) : isPortfolio ? (

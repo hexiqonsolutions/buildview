@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
-  Search,
   LayoutGrid,
   List,
   Download,
@@ -25,7 +24,6 @@ import { AdminMetricCard } from "@/components/admin/admin-metric-card";
 import { CreateProjectForm } from "@/components/admin/create-project-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -114,7 +112,6 @@ function exportProjectsCsv(projects: AdminProjectRow[]) {
 export function AdminProjectsView({ data, clients, mode = "admin" }: AdminProjectsViewProps) {
   const isAdmin = mode === "admin";
   const projectBase = isAdmin ? "/admin/projects" : "/dashboard/projects";
-  const [search, setSearch] = useState("");
   const [clientFilter, setClientFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | "all">("all");
   const [locationFilter, setLocationFilter] = useState("all");
@@ -125,20 +122,13 @@ export function AdminProjectsView({ data, clients, mode = "admin" }: AdminProjec
   const locations = useMemo(() => uniqueLocations(data.projects), [data.projects]);
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
     return data.projects.filter((p) => {
       if (clientFilter !== "all" && p.client_id !== clientFilter) return false;
       if (statusFilter !== "all" && p.status !== statusFilter) return false;
       if (locationFilter !== "all" && p.location !== locationFilter) return false;
-      if (!q) return true;
-      return (
-        p.name.toLowerCase().includes(q) ||
-        p.client_name.toLowerCase().includes(q) ||
-        p.location.toLowerCase().includes(q) ||
-        p.projectCode.toLowerCase().includes(q)
-      );
+      return true;
     });
-  }, [data.projects, search, clientFilter, statusFilter, locationFilter]);
+  }, [data.projects, clientFilter, statusFilter, locationFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
   const currentPage = Math.min(page, totalPages);
@@ -212,18 +202,6 @@ export function AdminProjectsView({ data, clients, mode = "admin" }: AdminProjec
 
       <div className="admin-card overflow-hidden">
         <div className="flex flex-col gap-3 border-b border-slate-100 p-4 dark:border-slate-800 lg:flex-row lg:items-center lg:justify-between">
-          <div className="relative min-w-[200px] flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <Input
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              placeholder="Search projects..."
-              className="h-9 pl-9"
-            />
-          </div>
           <div className="flex flex-wrap items-center gap-2">
             <Select
               value={clientFilter}
