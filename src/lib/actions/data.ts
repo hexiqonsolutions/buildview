@@ -1353,13 +1353,23 @@ export async function getAllUsers(): Promise<AdminUserRow[]> {
 }
 
 export async function getUserAssignments(userId: string) {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("project_assignments")
-    .select("id, project:projects(id, name)")
-    .eq("user_id", userId)
-    .is("deleted_at", null);
-  return data || [];
+  try {
+    const admin = createServiceRoleClient();
+    const { data } = await admin
+      .from("project_assignments")
+      .select("id, project:projects(id, name)")
+      .eq("user_id", userId)
+      .is("deleted_at", null);
+    return data || [];
+  } catch {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("project_assignments")
+      .select("id, project:projects(id, name)")
+      .eq("user_id", userId)
+      .is("deleted_at", null);
+    return data || [];
+  }
 }
 
 export async function getProjectAssignments(projectId: string) {

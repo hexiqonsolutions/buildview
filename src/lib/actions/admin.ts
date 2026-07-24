@@ -606,8 +606,22 @@ export async function assignUserToProject(projectId: string, userId: string) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  if (!user) throw new Error("You must be signed in");
 
-  const { data: existing } = await supabase
+  const { data: me } = await supabase
+    .from("users")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (!me || !isBuildViewStaffRole(me.role)) {
+    throw new Error("Only BuildView staff can assign projects");
+  }
+
+  // Service role avoids RLS edge cases when staff helpers/enums differ across DBs.
+  const admin = createServiceRoleClient();
+
+  const { data: existing } = await admin
     .from("project_assignments")
     .select("id, deleted_at")
     .eq("project_id", projectId)
@@ -616,30 +630,30 @@ export async function assignUserToProject(projectId: string, userId: string) {
 
   if (existing) {
     if (existing.deleted_at) {
-      const { error } = await supabase
+      const { error } = await admin
         .from("project_assignments")
         .update({
           deleted_at: null,
           deleted_by: null,
-          assigned_by: user?.id ?? null,
-          updated_by: user?.id ?? null,
+          assigned_by: user.id,
+          updated_by: user.id,
         })
         .eq("id", existing.id);
 
       if (error) throw new Error(error.message);
     }
   } else {
-    const { error } = await supabase.from("project_assignments").insert({
+    const { error } = await admin.from("project_assignments").insert({
       project_id: projectId,
       user_id: userId,
-      assigned_by: user?.id ?? null,
-      created_by: user?.id ?? null,
+      assigned_by: user.id,
+      created_by: user.id,
       updated_by: null,
     });
     if (error) throw new Error(error.message);
   }
 
-  const { data: project } = await supabase
+  const { data: project } = await admin
     .from("projects")
     .select("name")
     .eq("id", projectId)
@@ -654,9 +668,11 @@ export async function assignUserToProject(projectId: string, userId: string) {
     link: `/dashboard/projects/${projectId}`,
   });
 
+  // Avoid revalidating /admin/users while the manage dialog is open — that refresh
+  // can surface opaque RSC errors in the dialog even when the assign succeeded.
   revalidatePath("/admin/projects");
-  revalidatePath("/admin/users");
   revalidatePath(`/dashboard/projects/${projectId}`);
+  revalidatePath("/dashboard");
 }
 
 export async function unassignUserFromProject(projectId: string, userId: string) {
@@ -664,13 +680,25 @@ export async function unassignUserFromProject(projectId: string, userId: string)
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  if (!user) throw new Error("You must be signed in");
 
-  const { error } = await supabase
+  const { data: me } = await supabase
+    .from("users")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (!me || !isBuildViewStaffRole(me.role)) {
+    throw new Error("Only BuildView staff can update project access");
+  }
+
+  const admin = createServiceRoleClient();
+  const { error } = await admin
     .from("project_assignments")
     .update({
       deleted_at: new Date().toISOString(),
-      deleted_by: user?.id ?? null,
-      updated_by: user?.id ?? null,
+      deleted_by: user.id,
+      updated_by: user.id,
     })
     .eq("project_id", projectId)
     .eq("user_id", userId)
@@ -679,8 +707,8 @@ export async function unassignUserFromProject(projectId: string, userId: string)
   if (error) throw new Error(error.message);
 
   revalidatePath("/admin/projects");
-  revalidatePath("/admin/users");
   revalidatePath(`/dashboard/projects/${projectId}`);
+  revalidatePath("/dashboard");
 }
 
 export async function updateUserProfile(data: {

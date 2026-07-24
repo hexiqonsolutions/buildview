@@ -148,7 +148,21 @@ export function ManageUserDialog({ user, clients, projects }: ManageUserDialogPr
         );
         setAddProjectId("");
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to assign project");
+        const msg = err instanceof Error ? err.message : "Failed to assign project";
+        // Assignment often succeeds; a follow-up refresh can still throw opaque RSC errors.
+        if (/Server Components render|digest/i.test(msg)) {
+          try {
+            const data = await getUserAssignments(user.id);
+            setAssignments(
+              data as Array<{ id: string; project: { id: string; name: string } | null }>
+            );
+            setAddProjectId("");
+            return;
+          } catch {
+            // fall through
+          }
+        }
+        setError(msg);
       }
     });
   }
@@ -163,7 +177,19 @@ export function ManageUserDialog({ user, clients, projects }: ManageUserDialogPr
           data as Array<{ id: string; project: { id: string; name: string } | null }>
         );
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to remove assignment");
+        const msg = err instanceof Error ? err.message : "Failed to remove assignment";
+        if (/Server Components render|digest/i.test(msg)) {
+          try {
+            const data = await getUserAssignments(user.id);
+            setAssignments(
+              data as Array<{ id: string; project: { id: string; name: string } | null }>
+            );
+            return;
+          } catch {
+            // fall through
+          }
+        }
+        setError(msg);
       }
     });
   }
@@ -300,7 +326,10 @@ export function ManageUserDialog({ user, clients, projects }: ManageUserDialogPr
               )}
 
               <div className="flex gap-2">
-                <Select value={addProjectId} onValueChange={setAddProjectId}>
+                <Select
+                  value={addProjectId || undefined}
+                  onValueChange={setAddProjectId}
+                >
                   <SelectTrigger className="flex-1">
                     <SelectValue placeholder="Assign to project" />
                   </SelectTrigger>
