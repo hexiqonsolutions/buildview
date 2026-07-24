@@ -185,11 +185,13 @@ export function OpsSidebar({ userRole, mobileOpen, onMobileClose }: OpsSidebarPr
       {mobileOpen && (
         <>
           <div
-            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
+            className="fixed inset-0 z-[60] bg-black/40 lg:hidden"
             onClick={onMobileClose}
             aria-hidden
           />
-          <aside className="ops-sidebar z-50 flex w-72 max-w-[85vw] lg:hidden">{content}</aside>
+          <aside className="ops-sidebar !fixed inset-y-0 left-0 z-[70] flex w-72 max-w-[85vw] flex-col bg-white dark:bg-slate-950 lg:hidden">
+            {content}
+          </aside>
         </>
       )}
     </>
