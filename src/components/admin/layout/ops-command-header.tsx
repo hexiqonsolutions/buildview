@@ -159,9 +159,9 @@ export function OpsCommandHeader({
             <BrandLogo href={homeHref} size="md" className="min-w-0 max-w-[7.5rem] shrink" />
           </div>
 
-          {/* Desktop workspace scope — sized to content, scrolls if needed */}
+          {/* Desktop: client → project → building → floor → Upload */}
           {hydrated ? (
-            <div className="hidden min-w-0 flex-1 overflow-hidden lg:block">
+            <div className="hidden min-w-0 flex-1 items-center gap-2 lg:flex">
               <WorkspaceScopeControls
                 scope={scope}
                 clients={clients}
@@ -173,6 +173,7 @@ export function OpsCommandHeader({
                 setProjectId={setProjectId}
                 setBuilding={setBuilding}
                 setFloor={setFloor}
+                uploadHref={uploadHref}
               />
             </div>
           ) : (
@@ -189,17 +190,6 @@ export function OpsCommandHeader({
               aria-label="Search"
             >
               <Search className="h-4 w-4" />
-            </Button>
-
-            <Button
-              size="sm"
-              className="ops-btn-primary hidden h-9 gap-1.5 px-2.5 lg:inline-flex xl:px-3"
-              asChild
-            >
-              <Link href={uploadHref} aria-label="Upload">
-                <Upload className="h-4 w-4" />
-                <span className="hidden xl:inline">Upload</span>
-              </Link>
             </Button>
 
             <NotificationBell
@@ -344,6 +334,7 @@ function WorkspaceScopeControls({
   setBuilding,
   setFloor,
   stacked = false,
+  uploadHref,
 }: {
   scope: {
     clientId: string | null;
@@ -361,6 +352,7 @@ function WorkspaceScopeControls({
   setBuilding: (building: string) => void;
   setFloor: (floor: string) => void;
   stacked?: boolean;
+  uploadHref?: string;
 }) {
   const clientOptions: ScopeOption[] = clients.map((c) => ({
     value: c.id,
@@ -427,67 +419,77 @@ function WorkspaceScopeControls({
   }
 
   return (
-    <div className="ops-scope-cluster" role="group" aria-label="Workspace filters">
-      {clientOptions.length === 0 ? (
-        <Link
-          href="/admin/clients"
-          className="inline-flex h-9 min-w-[9rem] shrink-0 items-center gap-1.5 px-2.5 text-xs font-medium text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
-        >
-          <Building2 className="h-3.5 w-3.5 text-slate-400" />
-          Add a client
-        </Link>
-      ) : (
+    <div className="flex min-w-0 max-w-full items-center gap-2">
+      <div className="ops-scope-cluster min-w-0" role="group" aria-label="Workspace filters">
+        {clientOptions.length === 0 ? (
+          <Link
+            href="/admin/clients"
+            className="inline-flex h-9 min-w-[9rem] shrink-0 items-center gap-1.5 px-2.5 text-xs font-medium text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
+          >
+            <Building2 className="h-3.5 w-3.5 text-slate-400" />
+            Add a client
+          </Link>
+        ) : (
+          <ScopeSelect
+            ariaLabel="Client"
+            value={scope.clientId ?? ""}
+            onChange={(v) => setClientId(v || null)}
+            options={clientOptions}
+            placeholder="Client"
+            className="w-[7.25rem] shrink-0 xl:w-44"
+            leading={
+              clientLogoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={clientLogoUrl} alt="" className="h-4 w-4 rounded object-cover" />
+              ) : (
+                <Building2 className="h-3.5 w-3.5 text-slate-400" />
+              )
+            }
+          />
+        )}
+        <ScopeDivider />
         <ScopeSelect
-          ariaLabel="Client"
-          value={scope.clientId ?? ""}
-          onChange={(v) => setClientId(v || null)}
-          options={clientOptions}
-          placeholder="Client"
-          className="w-[9.5rem] max-w-[28vw] shrink-0 xl:w-44"
-          leading={
-            clientLogoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={clientLogoUrl} alt="" className="h-4 w-4 rounded object-cover" />
-            ) : (
-              <Building2 className="h-3.5 w-3.5 text-slate-400" />
-            )
-          }
+          ariaLabel="Project"
+          value={scope.projectId ?? ""}
+          onChange={(v) => setProjectId(v || null)}
+          options={projectOptions}
+          placeholder="Project"
+          disabled={!scope.clientId}
+          emptyHint={!scope.clientId ? "Select client" : "No projects"}
+          className="w-[7rem] shrink-0 xl:w-40"
         />
-      )}
-      <ScopeDivider />
-      <ScopeSelect
-        ariaLabel="Project"
-        value={scope.projectId ?? ""}
-        onChange={(v) => setProjectId(v || null)}
-        options={projectOptions}
-        placeholder="Project"
-        disabled={!scope.clientId}
-        emptyHint={!scope.clientId ? "Select client" : "No projects"}
-        className="w-[9rem] max-w-[26vw] shrink-0 xl:w-40"
-      />
-      <ScopeDivider className="hidden xl:block" />
-      <ScopeSelect
-        ariaLabel="Building"
-        value={scope.building}
-        onChange={setBuilding}
-        options={buildingOptions}
-        placeholder="Building"
-        disabled={!scope.projectId}
-        emptyHint="Select project"
-        className="hidden w-[8.25rem] shrink-0 xl:flex"
-        leading={<Layers className="h-3.5 w-3.5 text-slate-400" />}
-      />
-      <ScopeDivider className="hidden xl:block" />
-      <ScopeSelect
-        ariaLabel="Floor"
-        value={scope.floor}
-        onChange={setFloor}
-        options={floorOptions}
-        placeholder="Floor"
-        disabled={!scope.projectId}
-        emptyHint="Select project"
-        className="hidden w-[7.25rem] shrink-0 xl:flex"
-      />
+        <ScopeDivider />
+        <ScopeSelect
+          ariaLabel="Building"
+          value={scope.building}
+          onChange={setBuilding}
+          options={buildingOptions}
+          placeholder="Building"
+          disabled={!scope.projectId}
+          emptyHint="Select project"
+          className="w-[7.5rem] shrink-0 xl:w-[8.25rem]"
+          leading={<Layers className="h-3.5 w-3.5 text-slate-400" />}
+        />
+        <ScopeDivider />
+        <ScopeSelect
+          ariaLabel="Floor"
+          value={scope.floor}
+          onChange={setFloor}
+          options={floorOptions}
+          placeholder="Floor"
+          disabled={!scope.projectId}
+          emptyHint="Select project"
+          className="w-[6.5rem] shrink-0 xl:w-[7.25rem]"
+        />
+      </div>
+      {uploadHref ? (
+        <Button size="sm" className="ops-btn-primary h-9 shrink-0 gap-1.5 px-3" asChild>
+          <Link href={uploadHref} aria-label="Upload">
+            <Upload className="h-4 w-4" />
+            <span>Upload</span>
+          </Link>
+        </Button>
+      ) : null}
     </div>
   );
 }

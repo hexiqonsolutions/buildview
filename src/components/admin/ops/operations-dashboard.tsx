@@ -51,21 +51,15 @@ export function OperationsDashboard({ stats }: OperationsDashboardProps) {
 
   return (
     <div className="dashboard-page">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="ops-page-eyebrow">Operations Control Center</p>
-          <h1 className="font-display text-2xl font-bold tracking-tight text-slate-900 dark:text-white md:text-3xl">
-            Mission Control
-          </h1>
-          <p className="mt-1 max-w-2xl text-sm text-slate-500">
-            Manage BuildView operations across clients and projects. Select a client workspace
-            above — everything updates automatically.
-          </p>
-        </div>
-        <Link href="/admin/upload" className="ops-btn-primary inline-flex h-10 items-center gap-2 px-4 text-sm font-semibold">
-          <Upload className="h-4 w-4" />
-          Open Upload Center
-        </Link>
+      <div>
+        <p className="ops-page-eyebrow">Operations Control Center</p>
+        <h1 className="font-display text-2xl font-bold tracking-tight text-slate-900 dark:text-white md:text-3xl">
+          Mission Control
+        </h1>
+        <p className="mt-1 max-w-2xl text-sm text-slate-500">
+          Manage BuildView operations across clients and projects. Select a client workspace
+          above — everything updates automatically.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">

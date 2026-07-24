@@ -360,6 +360,13 @@
     @apply inline-flex h-9 max-w-full items-center overflow-x-auto rounded-lg border border-slate-200 bg-slate-50/80 [scrollbar-width:none] [-ms-overflow-style:none] dark:border-slate-700 dark:bg-slate-900/60 [&::-webkit-scrollbar]:hidden;
   }
 
+  /* Keep building/floor visible on tablet widths beside the sidebar */
+  @media (min-width: 1024px) and (max-width: 1279px) {
+    .ops-scope-cluster .ops-scope-select {
+      @apply px-1.5 text-[11px];
+    }
+  }
+
   .ops-scope-select {
     @apply rounded-none text-left font-medium text-slate-700 dark:text-slate-200;
   }
