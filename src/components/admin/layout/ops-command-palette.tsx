@@ -94,12 +94,17 @@ export function OpsCommandPalette({
     };
   }, [query]);
 
-  const q = query.toLowerCase();
-  const filteredRoutes = routes.filter((r) => r.label.toLowerCase().includes(q));
-  const filteredClients = clients.filter(
-    (c) => c.name.toLowerCase().includes(q) || c.company_name?.toLowerCase().includes(q)
-  );
-  const filteredProjects = clientProjects.filter((p) => p.name.toLowerCase().includes(q));
+  const q = query.toLowerCase().trim();
+  const filteredRoutes =
+    q.length >= 2 ? routes.filter((r) => r.label.toLowerCase().includes(q)) : [];
+  const filteredClients =
+    q.length >= 2
+      ? clients.filter(
+          (c) => c.name.toLowerCase().includes(q) || c.company_name?.toLowerCase().includes(q)
+        )
+      : [];
+  const filteredProjects =
+    q.length >= 2 ? clientProjects.filter((p) => p.name.toLowerCase().includes(q)) : [];
 
   const navigate = useCallback(
     (href: string) => {
@@ -119,6 +124,7 @@ export function OpsCommandPalette({
       entityResults.users.length > 0);
 
   const noResults =
+    q.length >= 2 &&
     filteredRoutes.length === 0 &&
     filteredClients.length === 0 &&
     filteredProjects.length === 0 &&
@@ -139,10 +145,15 @@ export function OpsCommandPalette({
           />
         </DialogHeader>
         <div className="max-h-[min(60vh,420px)] overflow-y-auto p-2">
-          {client && (
+          {client && q.length >= 2 && (
             <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
               Current: {client.company_name || client.name}
               {project ? ` · ${project.name}` : ""}
+            </p>
+          )}
+          {q.length < 2 && !searching && (
+            <p className="px-3 py-8 text-center text-sm text-slate-500">
+              Type at least 2 characters to search.
             </p>
           )}
           {filteredRoutes.length > 0 && (

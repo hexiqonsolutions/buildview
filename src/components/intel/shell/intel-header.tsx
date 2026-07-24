@@ -185,16 +185,6 @@ export function IntelHeader({
           <BrandLogo href={homeHref} size="md" className="min-w-0 max-w-[7.5rem] shrink" />
         </div>
 
-        <button
-          type="button"
-          onClick={() => setPaletteOpen(true)}
-          className="ops-search-trigger hidden min-w-0 flex-1 lg:flex lg:max-w-[220px] xl:max-w-[260px]"
-        >
-          <Search className="h-4 w-4 shrink-0 text-slate-400" />
-          <span className="truncate text-sm text-slate-500">Search...</span>
-          <kbd className="ops-kbd ml-auto hidden xl:inline-flex">⌘K</kbd>
-        </button>
-
         <div className="hidden min-w-0 flex-1 lg:block">
           <p className="font-display text-sm font-semibold text-slate-800 dark:text-slate-100">
             {isPortfolio ? "Portfolio Showcase" : "Construction Intelligence"}
@@ -210,7 +200,7 @@ export function IntelHeader({
           <Button
             variant="ghost"
             size="icon"
-            className="h-9 w-9 text-slate-500 lg:hidden"
+            className="h-9 w-9 text-slate-500"
             onClick={() => setPaletteOpen(true)}
             aria-label="Search"
           >

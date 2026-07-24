@@ -159,17 +159,6 @@ export function OpsCommandHeader({
             <BrandLogo href={homeHref} size="md" className="min-w-0 max-w-[7.5rem] shrink" />
           </div>
 
-          {/* Desktop / tablet: search field (hidden on phones to avoid double search) */}
-          <button
-            type="button"
-            onClick={() => setPaletteOpen(true)}
-            className="ops-search-trigger hidden min-w-0 flex-1 lg:flex lg:max-w-[220px] xl:max-w-[260px]"
-          >
-            <Search className="h-4 w-4 shrink-0 text-slate-400" />
-            <span className="truncate text-sm text-slate-500">Search...</span>
-            <kbd className="ops-kbd ml-auto hidden xl:inline-flex">⌘K</kbd>
-          </button>
-
           {/* Desktop workspace scope */}
           {hydrated ? (
             <div className="hidden min-w-0 flex-1 lg:block">
@@ -195,7 +184,7 @@ export function OpsCommandHeader({
             <Button
               variant="ghost"
               size="icon"
-              className="h-9 w-9 text-slate-500 lg:hidden"
+              className="h-9 w-9 text-slate-500"
               onClick={() => setPaletteOpen(true)}
               aria-label="Search"
             >

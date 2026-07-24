@@ -63,8 +63,9 @@ export function IntelCommandPalette({
     };
   }, [query]);
 
-  const q = query.toLowerCase();
-  const filteredRoutes = routes.filter((r) => r.label.toLowerCase().includes(q));
+  const q = query.toLowerCase().trim();
+  const filteredRoutes =
+    q.length >= 2 ? routes.filter((r) => r.label.toLowerCase().includes(q)) : [];
 
   const navigate = useCallback(
     (href: string) => {
@@ -99,6 +100,12 @@ export function IntelCommandPalette({
 
         <div className="max-h-[60vh] overflow-y-auto p-2">
           {searching && <p className="px-3 py-2 text-xs text-slate-400">Searching…</p>}
+
+          {q.length < 2 && !searching && (
+            <p className="px-3 py-8 text-center text-sm text-slate-500">
+              Type at least 2 characters to search.
+            </p>
+          )}
 
           {filteredRoutes.length > 0 && (
             <section className="mb-2">
