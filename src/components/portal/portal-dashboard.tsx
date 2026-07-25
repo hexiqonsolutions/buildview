@@ -60,30 +60,36 @@ export function PortalWelcomeBanner({
   profileHref?: string;
 }) {
   return (
-    <div className="intel-hero-strip flex flex-col gap-6 overflow-hidden sm:flex-row sm:items-center sm:justify-between">
-      <div className="relative z-10 flex max-w-xl items-start gap-4 sm:gap-5">
+    <div className="intel-hero-strip flex flex-col gap-5 overflow-hidden sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+      <div className="relative z-10 flex min-w-0 flex-1 items-center gap-4 sm:gap-5">
         <Link
           href={profileHref}
-          className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2"
+          className="shrink-0 self-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2"
           aria-label="Open profile"
         >
-          <Avatar className="h-14 w-14 ring-2 ring-white shadow-md dark:ring-slate-800 sm:h-16 sm:w-16">
-            <AvatarImage src={avatarUrl || undefined} alt={fullName || firstName} />
-            <AvatarFallback className="bg-slate-900 text-base font-semibold text-white sm:text-lg">
+          <Avatar className="h-20 w-20 ring-2 ring-white shadow-md dark:ring-slate-800 sm:h-24 sm:w-24">
+            <AvatarImage
+              src={avatarUrl || undefined}
+              alt={fullName || firstName}
+              className="object-cover"
+            />
+            <AvatarFallback className="bg-slate-900 text-xl font-semibold text-white sm:text-2xl">
               {welcomeInitials(fullName || firstName, email)}
             </AvatarFallback>
           </Avatar>
         </Link>
-        <div className="min-w-0 pt-0.5">
+        <div className="min-w-0 flex-1">
           <p className={typography.eyebrow}>Executive Overview</p>
-          <h1 className={`mt-1 ${typography.intelHeroTitle}`}>Welcome Back, {firstName}</h1>
-          <p className="mt-2 text-sm text-slate-500">
+          <h1 className={`mt-1 truncate ${typography.intelHeroTitle}`}>
+            Welcome Back, {firstName}
+          </h1>
+          <p className="mt-2 text-sm leading-relaxed text-slate-500 sm:max-w-md">
             Track construction progress, 3D tours, reports, and milestones across your active
             projects.
           </p>
         </div>
       </div>
-      <div className="relative flex shrink-0 items-center justify-center">
+      <div className="relative hidden shrink-0 items-center justify-center sm:flex">
         <div className="pointer-events-none absolute h-32 w-32 rounded-full bg-brand-accent/15 blur-2xl" />
         <div className="relative flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 shadow-lg lg:h-24 lg:w-24">
           <Building2 className="h-10 w-10 text-brand-accent lg:h-12 lg:w-12" strokeWidth={1.25} />

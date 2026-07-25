@@ -200,24 +200,28 @@ export function PortfolioShowcaseShell({
 
   return (
     <div className="dashboard-page portfolio-dashboard">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 sm:gap-5">
         <Link
           href="/dashboard/profile"
-          className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2"
+          className="shrink-0 self-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2"
           aria-label="Open profile"
         >
-          <Avatar className="h-12 w-12 ring-2 ring-white shadow-md dark:ring-slate-800 sm:h-14 sm:w-14">
-            <AvatarImage src={avatarUrl || undefined} alt={fullName || firstName} />
-            <AvatarFallback className="bg-slate-900 text-sm font-semibold text-white sm:text-base">
+          <Avatar className="h-16 w-16 ring-2 ring-white shadow-md dark:ring-slate-800 sm:h-20 sm:w-20">
+            <AvatarImage
+              src={avatarUrl || undefined}
+              alt={fullName || firstName}
+              className="object-cover"
+            />
+            <AvatarFallback className="bg-slate-900 text-lg font-semibold text-white sm:text-xl">
               {welcomeInitials(fullName || firstName, email)}
             </AvatarFallback>
           </Avatar>
         </Link>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
             Portfolio
           </p>
-          <h2 className="font-display text-xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-2xl">
+          <h2 className="truncate font-display text-xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-2xl">
             Welcome Back, {firstName}
           </h2>
         </div>
