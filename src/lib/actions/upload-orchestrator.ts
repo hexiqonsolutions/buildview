@@ -168,13 +168,17 @@ export async function uploadMatterportWithAutomation(data: {
     }
   );
 
-  if (await isNotificationRuleEnabled("onUpload")) {
-    await notifyProjectClientUsers(parsed.data.project_id, {
-      title: "New Matterport scan available",
-      message: `${parsed.data.name} has been uploaded to your project timeline.`,
-      type: "project_update",
-      link: `/dashboard/projects/${parsed.data.project_id}`,
-    });
+  try {
+    if (await isNotificationRuleEnabled("onUpload")) {
+      await notifyProjectClientUsers(parsed.data.project_id, {
+        title: "New Matterport scan available",
+        message: `${parsed.data.name} has been uploaded to your project timeline.`,
+        type: "project_update",
+        link: `/dashboard/projects/${parsed.data.project_id}`,
+      });
+    }
+  } catch (err) {
+    console.error("[uploadMatterportWithAutomation] notify failed:", err);
   }
 
   revalidatePaths(parsed.data.project_id);
@@ -287,13 +291,17 @@ export async function uploadDocumentWithAutomation(data: {
     category: data.category,
   });
 
-  if (await isNotificationRuleEnabled("onUpload")) {
-    await notifyProjectClientUsers(data.project_id, {
-      title: "New document uploaded",
-      message: `${data.name} is now available in your project documents.`,
-      type: "project_update",
-      link: `/dashboard/projects/${data.project_id}`,
-    });
+  try {
+    if (await isNotificationRuleEnabled("onUpload")) {
+      await notifyProjectClientUsers(data.project_id, {
+        title: "New document uploaded",
+        message: `${data.name} is now available in your project documents.`,
+        type: "project_update",
+        link: `/dashboard/projects/${data.project_id}`,
+      });
+    }
+  } catch (err) {
+    console.error("[uploadDocumentWithAutomation] notify failed:", err);
   }
 
   revalidatePaths(data.project_id);
@@ -320,6 +328,7 @@ export async function uploadTimelineUpdateWithAutomation(data: {
     report_id: data.report_id,
     building: data.building ?? null,
     floor: data.floor ?? null,
+    skipClientNotify: true,
   });
 
   await logActivity(
@@ -329,6 +338,19 @@ export async function uploadTimelineUpdateWithAutomation(data: {
     eventId,
     { building: data.building, floor: data.floor, engineer: data.engineer }
   );
+
+  try {
+    if (await isNotificationRuleEnabled("onUpload")) {
+      await notifyProjectClientUsers(data.project_id, {
+        title: "Timeline updated",
+        message: data.title,
+        type: "project_update",
+        link: `/dashboard/projects/${data.project_id}?tab=timeline`,
+      });
+    }
+  } catch (err) {
+    console.error("[uploadTimelineUpdateWithAutomation] notify failed:", err);
+  }
 
   revalidatePaths(data.project_id);
   return { eventId };
@@ -362,6 +384,19 @@ export async function attachSitePhotosWithAutomation(data: {
     data.event_id,
     { building: data.building, floor: data.floor, count: String(data.photos.length) }
   );
+
+  try {
+    if (await isNotificationRuleEnabled("onUpload")) {
+      await notifyProjectClientUsers(data.project_id, {
+        title: "New site photos uploaded",
+        message: `${data.title} — ${data.photos.length} photo${data.photos.length === 1 ? "" : "s"} added.`,
+        type: "project_update",
+        link: `/dashboard/projects/${data.project_id}?tab=timeline`,
+      });
+    }
+  } catch (err) {
+    console.error("[attachSitePhotosWithAutomation] notify failed:", err);
+  }
 
   revalidatePaths(data.project_id);
   return { eventId: data.event_id };

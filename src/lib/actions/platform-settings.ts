@@ -49,15 +49,32 @@ function rowToSettings(row: SettingsRow): PlatformSettings {
 }
 
 export async function getPlatformSettings(): Promise<PlatformSettings> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("platform_settings")
-    .select("company_name, support_email, default_currency, timezone, notification_rules")
-    .eq("id", "default")
-    .maybeSingle();
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("platform_settings")
+      .select("company_name, support_email, default_currency, timezone, notification_rules")
+      .eq("id", "default")
+      .maybeSingle();
 
-  if (error || !data) return DEFAULT_PLATFORM_SETTINGS;
-  return rowToSettings(data as SettingsRow);
+    if (!error && data) return rowToSettings(data as SettingsRow);
+  } catch {
+    // fall through to service role / defaults
+  }
+
+  try {
+    const admin = createServiceRoleClient();
+    const { data } = await admin
+      .from("platform_settings")
+      .select("company_name, support_email, default_currency, timezone, notification_rules")
+      .eq("id", "default")
+      .maybeSingle();
+    if (data) return rowToSettings(data as SettingsRow);
+  } catch {
+    // fall through
+  }
+
+  return DEFAULT_PLATFORM_SETTINGS;
 }
 
 export async function updatePlatformSettings(

@@ -2,15 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { insertNotificationSystem, isNotificationRuleEnabled } from "@/lib/actions/platform-settings";
 import { sendTransactionalEmail } from "@/lib/email/send";
 import type { NotificationRuleKey } from "@/lib/admin/platform-settings";
-import type { Notification, NotificationInsert, NotificationType } from "@/lib/types";
+import type { Notification, NotificationType } from "@/lib/types";
 
 function revalidateNotificationPaths() {
   revalidatePath("/admin/notifications");
-  revalidatePath("/admin");
-  revalidatePath("/dashboard");
   revalidatePath("/dashboard/notifications");
 }
 
@@ -104,31 +103,16 @@ export async function createNotification(data: {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const payload: NotificationInsert = {
+  // Always write via service role — RLS only allows inserting notifications for
+  // yourself / super_admin, which blocks admin→client upload alerts.
+  await insertNotificationSystem({
     user_id: data.user_id,
     title: data.title,
     message: data.message,
-    type: data.type ?? "info",
-    link: data.link ?? null,
-    is_read: false,
-    read_at: null,
+    type: data.type,
+    link: data.link,
     created_by: user?.id ?? null,
-    updated_by: null,
-  };
-
-  try {
-    const { error } = await supabase.from("notifications").insert(payload);
-    if (error) throw error;
-  } catch {
-    await insertNotificationSystem({
-      user_id: data.user_id,
-      title: data.title,
-      message: data.message,
-      type: data.type,
-      link: data.link,
-      created_by: user?.id ?? null,
-    });
-  }
+  });
 }
 
 async function emailNotificationRecipients(
@@ -137,25 +121,29 @@ async function emailNotificationRecipients(
 ) {
   if (userIds.length === 0) return;
 
-  const supabase = await createClient();
-  const { data: users } = await supabase
-    .from("users")
-    .select("email, full_name")
-    .in("id", userIds)
-    .eq("is_active", true)
-    .is("deleted_at", null);
+  try {
+    const admin = createServiceRoleClient();
+    const { data: users } = await admin
+      .from("users")
+      .select("email, full_name")
+      .in("id", userIds)
+      .eq("is_active", true)
+      .is("deleted_at", null);
 
-  const emails = users?.map((u) => u.email).filter(Boolean) as string[];
-  if (!emails?.length) return;
+    const emails = users?.map((u) => u.email).filter(Boolean) as string[];
+    if (!emails?.length) return;
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  const linkLine = payload.link ? `\n\nView: ${appUrl}${payload.link}` : "";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    const linkLine = payload.link ? `\n\nView: ${appUrl}${payload.link}` : "";
 
-  await sendTransactionalEmail({
-    to: emails,
-    subject: `[BuildView] ${payload.title}`,
-    text: `${payload.message}${linkLine}`,
-  });
+    await sendTransactionalEmail({
+      to: emails,
+      subject: `[BuildView] ${payload.title}`,
+      text: `${payload.message}${linkLine}`,
+    });
+  } catch (err) {
+    console.error("[emailNotificationRecipients]", err);
+  }
 }
 
 export async function notifyUsers(
@@ -169,7 +157,10 @@ export async function notifyUsers(
   }
 ) {
   const uniqueIds = [...new Set(userIds.filter(Boolean))];
-  if (uniqueIds.length === 0) return;
+  if (uniqueIds.length === 0) {
+    console.warn("[notifyUsers] no recipient user ids");
+    return;
+  }
 
   await Promise.all(
     uniqueIds.map((userId) =>
@@ -197,8 +188,8 @@ export async function notifyClientUsers(
     sendEmail?: boolean;
   }
 ) {
-  const supabase = await createClient();
-  const { data: users } = await supabase
+  const admin = createServiceRoleClient();
+  const { data: users } = await admin
     .from("users")
     .select("id")
     .eq("client_id", clientId)
@@ -218,15 +209,45 @@ export async function notifyProjectClientUsers(
     sendEmail?: boolean;
   }
 ) {
-  const supabase = await createClient();
-  const { data: project } = await supabase
-    .from("projects")
-    .select("client_id")
-    .eq("id", projectId)
-    .single();
+  const admin = createServiceRoleClient();
 
-  if (!project?.client_id) return;
-  await notifyClientUsers(project.client_id, payload);
+  const [{ data: project }, { data: assignments }] = await Promise.all([
+    admin.from("projects").select("client_id").eq("id", projectId).maybeSingle(),
+    admin
+      .from("project_assignments")
+      .select("user_id")
+      .eq("project_id", projectId)
+      .is("deleted_at", null),
+  ]);
+
+  const recipientIds = new Set<string>();
+
+  for (const row of assignments ?? []) {
+    if (row.user_id) recipientIds.add(row.user_id);
+  }
+
+  if (project?.client_id) {
+    const { data: orgUsers } = await admin
+      .from("users")
+      .select("id")
+      .eq("client_id", project.client_id)
+      .eq("is_active", true)
+      .is("deleted_at", null);
+
+    for (const u of orgUsers ?? []) {
+      recipientIds.add(u.id);
+    }
+  }
+
+  if (recipientIds.size === 0) {
+    console.warn(
+      "[notifyProjectClientUsers] no client recipients for project",
+      projectId
+    );
+    return;
+  }
+
+  await notifyUsers([...recipientIds], payload);
 }
 
 export async function notifySuperAdmins(payload: {
@@ -236,8 +257,8 @@ export async function notifySuperAdmins(payload: {
   link?: string | null;
   sendEmail?: boolean;
 }) {
-  const supabase = await createClient();
-  const { data: admins } = await supabase
+  const admin = createServiceRoleClient();
+  const { data: admins } = await admin
     .from("users")
     .select("id")
     .in("role", ["super_admin", "admin", "operations_manager"])
