@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { IssueCard } from "@/components/issues/issue-card";
+import { HighlightAnchor } from "@/components/portal/highlight-anchor";
 import { Button } from "@/components/ui/button";
 import {
   ISSUE_PRIORITY_LABELS,
@@ -14,11 +15,16 @@ import {
 interface IssuesListProps {
   issues: Array<IssueWithRelations & { projectName?: string }>;
   showProject?: boolean;
+  highlightId?: string | null;
 }
 
 const ALL = "all" as const;
 
-export function IssuesList({ issues, showProject = true }: IssuesListProps) {
+export function IssuesList({
+  issues,
+  showProject = true,
+  highlightId,
+}: IssuesListProps) {
   const [statusFilter, setStatusFilter] = useState<IssueStatus | typeof ALL>(ALL);
   const [priorityFilter, setPriorityFilter] = useState<IssuePriority | typeof ALL>(
     ALL
@@ -82,16 +88,21 @@ export function IssuesList({ issues, showProject = true }: IssuesListProps) {
       ) : (
         <div className="space-y-3">
           {filtered.map((issue) => (
-            <IssueCard
+            <HighlightAnchor
               key={issue.id}
-              issue={issue}
-              showProject={showProject}
-              projectHref={
-                issue.project_id
-                  ? `/dashboard/projects/${issue.project_id}`
-                  : undefined
-              }
-            />
+              id={`issue-${issue.id}`}
+              highlightId={highlightId ? `issue-${highlightId}` : null}
+            >
+              <IssueCard
+                issue={issue}
+                showProject={showProject}
+                projectHref={
+                  issue.project_id
+                    ? `/dashboard/projects/${issue.project_id}`
+                    : undefined
+                }
+              />
+            </HighlightAnchor>
           ))}
         </div>
       )}

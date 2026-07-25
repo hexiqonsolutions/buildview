@@ -22,6 +22,8 @@ import {
 import { useAdminWorkspace } from "@/components/admin/workspace/admin-workspace-provider";
 import {
   attachSitePhotosWithAutomation,
+  beginInvoiceUploadWithAutomation,
+  finalizeInvoiceUploadWithAutomation,
   uploadDocumentWithAutomation,
   uploadIssueWithAutomation,
   uploadMatterportWithAutomation,
@@ -32,6 +34,7 @@ import {
 } from "@/lib/actions/upload-orchestrator";
 import { addIssueImages } from "@/lib/actions/issues";
 import {
+  categoryIsInvoice,
   categoryIsIssue,
   categoryIsTimelineOnly,
   categoryNeedsFile,
@@ -45,6 +48,7 @@ import {
 } from "@/lib/admin/upload-type-config";
 import {
   uploadDocumentFile,
+  uploadInvoiceFile,
   uploadIssueImageFile,
   uploadReportFile,
   uploadTimelinePhotoFile,
@@ -127,6 +131,7 @@ export function UploadWizard() {
   const [eventDate, setEventDate] = useState(new Date().toISOString().split("T")[0]);
   const [issuePriority, setIssuePriority] = useState<IssuePriority>("medium");
   const [issueLocation, setIssueLocation] = useState("");
+  const [invoiceAmount, setInvoiceAmount] = useState("");
 
   const projectId = scope.projectId ?? "";
   const building = scope.building !== "all" ? scope.building : "";
@@ -144,6 +149,7 @@ export function UploadWizard() {
     setTitle("");
     setIssuePriority("medium");
     setIssueLocation("");
+    setInvoiceAmount("");
     setError(null);
     setResult(null);
     setStep(client && project ? "category" : "workspace");
@@ -161,12 +167,18 @@ export function UploadWizard() {
     if (categoryIsIssue(category) && !title.trim()) {
       return "Issue title is required.";
     }
+    if (categoryIsInvoice(category) && invoiceAmount.trim()) {
+      const amount = Number(invoiceAmount);
+      if (!Number.isFinite(amount) || amount < 0) {
+        return "Enter a valid invoice amount.";
+      }
+    }
     if (categoryNeedsFile(category)) {
       if (files.length === 0) return "Select at least one file.";
       if (REPORT_TYPE_CATEGORIES.has(category)) {
         const err = validateReportFile(files[0]);
         if (err) return err;
-      } else if (category in DOC_CATEGORY_MAP) {
+      } else if (category in DOC_CATEGORY_MAP || categoryIsInvoice(category)) {
         const err = validateDocumentFile(files[0]);
         if (err) return err;
       } else if (categoryIsIssue(category)) {
@@ -311,6 +323,34 @@ export function UploadWizard() {
       return upload;
     }
 
+    if (categoryIsInvoice(category)) {
+      const file = files[0];
+      const clientId = scope.clientId;
+      if (!clientId) throw new Error("Choose a client before uploading an invoice.");
+
+      const invoiceNumber =
+        title.trim() || file.name.replace(/\.[^.]+$/, "") || `INV-${Date.now()}`;
+      const amount = invoiceAmount.trim() ? Number(invoiceAmount) : 0;
+
+      const { invoiceId } = await beginInvoiceUploadWithAutomation({
+        project_id: projectId,
+        client_id: clientId,
+        invoice_number: invoiceNumber,
+        amount,
+        description: progressNote || undefined,
+      });
+
+      const upload = await uploadInvoiceFile(clientId, invoiceId, file);
+      return finalizeInvoiceUploadWithAutomation({
+        invoice_id: invoiceId,
+        project_id: projectId,
+        invoice_number: invoiceNumber,
+        storage_path: upload.path,
+        description: progressNote || undefined,
+        event_date: eventDate,
+      });
+    }
+
     if (category in DOC_CATEGORY_MAP) {
       const file = files[0];
       const docCat = (DOC_CATEGORY_MAP[category] ?? "other") as DocumentCategory;
@@ -348,7 +388,7 @@ export function UploadWizard() {
         setError(err);
         return;
       }
-    } else if (category in DOC_CATEGORY_MAP) {
+    } else if (category in DOC_CATEGORY_MAP || categoryIsInvoice(category)) {
       const err = validateDocumentFile(next[0]);
       if (err) {
         setError(err);
@@ -479,6 +519,8 @@ export function UploadWizard() {
             setIssuePriority={setIssuePriority}
             issueLocation={issueLocation}
             setIssueLocation={setIssueLocation}
+            invoiceAmount={invoiceAmount}
+            setInvoiceAmount={setInvoiceAmount}
             files={files}
             dragOver={dragOver}
             setDragOver={setDragOver}
@@ -795,6 +837,8 @@ function DetailsStep(props: {
   setIssuePriority: (v: IssuePriority) => void;
   issueLocation: string;
   setIssueLocation: (v: string) => void;
+  invoiceAmount: string;
+  setInvoiceAmount: (v: string) => void;
   files: File[];
   dragOver: boolean;
   setDragOver: (v: boolean) => void;
@@ -825,6 +869,8 @@ function DetailsStep(props: {
     setIssuePriority,
     issueLocation,
     setIssueLocation,
+    invoiceAmount,
+    setInvoiceAmount,
     files,
     dragOver,
     setDragOver,
@@ -916,8 +962,24 @@ function DetailsStep(props: {
       {categoryNeedsFile(category) && (
         <>
           {!categoryIsIssue(category) && (
-            <Field label="Title">
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Document title" />
+            <Field label={categoryIsInvoice(category) ? "Invoice number" : "Title"}>
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder={categoryIsInvoice(category) ? "INV-2026-001" : "Document title"}
+              />
+            </Field>
+          )}
+          {categoryIsInvoice(category) && (
+            <Field label="Amount (optional)">
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={invoiceAmount}
+                onChange={(e) => setInvoiceAmount(e.target.value)}
+                placeholder="0.00"
+              />
             </Field>
           )}
           {!categoryIsIssue(category) && (
@@ -1116,6 +1178,11 @@ function SuccessStep({
         {result?.documentId && (
           <Button variant="outline" size="sm" asChild>
             <Link href="/admin/documents">View documents</Link>
+          </Button>
+        )}
+        {result?.invoiceId && (
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/admin/invoices">View invoices</Link>
           </Button>
         )}
         {result?.eventId && (

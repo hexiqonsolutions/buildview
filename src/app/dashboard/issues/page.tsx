@@ -7,6 +7,7 @@ import {
 import { IssuesList } from "@/components/issues/issues-list";
 import { IntelPage } from "@/components/intel/pages/intel-page";
 import { EmptyState } from "@/components/patterns/page-states";
+import { firstSearchParam } from "@/lib/portal/search-params";
 import { AlertTriangle } from "lucide-react";
 import type { IssueWithRelations } from "@/lib/types";
 
@@ -20,6 +21,7 @@ export default async function IssuesPage({
   const params = await searchParams;
   const scope = await parsePortalWorkspaceScopeFromParams(params);
   const listScope = broadPortalListScope(scope);
+  const highlightIssueId = firstSearchParam(params.issue);
 
   const [projects, issues] = await Promise.all([
     getPortalScopedProjects(listScope),
@@ -54,7 +56,11 @@ export default async function IssuesPage({
           />
         ) : (
           <div className="intel-card p-5">
-            <IssuesList issues={issuesWithProject} showProject={projects.length > 1} />
+            <IssuesList
+              issues={issuesWithProject}
+              showProject={projects.length > 1}
+              highlightId={highlightIssueId}
+            />
           </div>
         )}
       </div>

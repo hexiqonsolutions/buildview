@@ -65,10 +65,17 @@ export function getAutomationPreview(category: UploadCategory): AutomationPrevie
     case "drawings":
     case "boqs":
     case "contracts":
-    case "invoices_doc":
     case "other":
       return {
         label: "Document",
+        timeline: true,
+        activity: true,
+        clientNotify: true,
+        adminNotify: false,
+      };
+    case "invoices_doc":
+      return {
+        label: "Invoice",
         timeline: true,
         activity: true,
         clientNotify: true,
@@ -115,18 +122,23 @@ export const REPORT_TYPE_CATEGORIES = new Set<UploadCategory>([
   "safety_report",
 ]);
 
+/** Document uploads → client Documents tab (not invoices). */
 export const DOC_CATEGORY_MAP: Partial<Record<UploadCategory, string>> = {
   drawings: "drawings",
   boqs: "boqs",
   contracts: "contracts",
-  invoices_doc: "other",
   other: "other",
 };
+
+export function categoryIsInvoice(category: UploadCategory): boolean {
+  return category === "invoices_doc";
+}
 
 export function categoryNeedsFile(category: UploadCategory): boolean {
   return (
     REPORT_TYPE_CATEGORIES.has(category) ||
     category in DOC_CATEGORY_MAP ||
+    categoryIsInvoice(category) ||
     category === "site_photos" ||
     category === "issue"
   );

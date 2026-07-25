@@ -1,7 +1,8 @@
 -- =============================================================================
 -- FIX: Project cover thumbnail uploads (run in Supabase SQL Editor)
 -- =============================================================================
--- Enables admin thumbnail upload when creating/editing projects.
+-- Uses existing is_super_admin() so it works even if extended roles
+-- (admin, operations_manager, etc.) were never added to this database.
 -- Path: project-covers/{project_id}/{timestamp}-{filename}
 -- =============================================================================
 
@@ -31,9 +32,9 @@ CREATE POLICY "storage_project_covers_staff_all"
   TO authenticated
   USING (
     bucket_id = 'project-covers'
-    AND public.is_buildview_staff()
+    AND public.is_super_admin()
   )
   WITH CHECK (
     bucket_id = 'project-covers'
-    AND public.is_buildview_staff()
+    AND public.is_super_admin()
   );

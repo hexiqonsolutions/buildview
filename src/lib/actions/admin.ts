@@ -39,6 +39,12 @@ import {
   updateUserSchema,
 } from "@/lib/validations/admin";
 import { isBuildViewStaffRole, isClientPortalRole } from "@/lib/auth/roles";
+import {
+  portalDocumentLink,
+  portalInvoiceLink,
+  portalMatterportLink,
+  portalReportLink,
+} from "@/lib/portal/notification-links";
 
 export async function createClientRecord(data: {
   name: string;
@@ -253,7 +259,7 @@ export async function createTour(data: {
     title: "New Matterport scan available",
     message: `${parsed.data.name} has been uploaded to your project.`,
     type: "project_update",
-    link: `/dashboard/projects/${parsed.data.project_id}`,
+    link: portalMatterportLink(parsed.data.project_id),
   });
 
   revalidatePath("/admin/tours");
@@ -345,9 +351,9 @@ export async function createReport(data: {
       if (!data.skipClientNotify) {
         await notifyClientsIfEnabled("onUpload", validated.project_id, {
           title: "New report uploaded",
-          message: `${validated.title} is now available in your project portal.`,
+          message: `${validated.title} is now available in Reports.`,
           type: "project_update",
-          link: `/dashboard/projects/${validated.project_id}`,
+          link: portalReportLink(validated.project_id, retryReport.id),
         });
       }
 
@@ -363,9 +369,9 @@ export async function createReport(data: {
   if (!data.skipClientNotify) {
     await notifyClientsIfEnabled("onUpload", validated.project_id, {
       title: "New report uploaded",
-      message: `${validated.title} is now available in your project portal.`,
+      message: `${validated.title} is now available in Reports.`,
       type: "project_update",
-      link: `/dashboard/projects/${validated.project_id}`,
+      link: portalReportLink(validated.project_id, report.id),
     });
   }
 
@@ -486,9 +492,9 @@ export async function createDocument(data: {
     if (!data.skipClientNotify) {
       await notifyClientsIfEnabled("onUpload", validated.project_id, {
         title: "New document uploaded",
-        message: `${validated.name} is now available in your documents.`,
+        message: `${validated.name} is now available in Documents.`,
         type: "project_update",
-        link: `/dashboard/projects/${validated.project_id}`,
+        link: portalDocumentLink(validated.project_id, document.id),
       });
     }
 
@@ -1091,7 +1097,7 @@ export async function updateInvoiceStatus(invoiceId: string, status: string) {
               title: `Invoice ${invoice.invoice_number} sent`,
               message: `A new invoice for ${invoice.currency} ${invoice.amount} is ready to view.`,
               type: "invoice_update",
-              link: "/dashboard/invoices",
+              link: portalInvoiceLink(null, invoiceId),
             });
           }
         } catch (err) {
@@ -1104,7 +1110,7 @@ export async function updateInvoiceStatus(invoiceId: string, status: string) {
               title: `Invoice ${invoice.invoice_number} paid`,
               message: `Payment recorded for ${invoice.currency} ${invoice.amount}.`,
               type: "invoice_update",
-              link: "/dashboard/invoices",
+              link: portalInvoiceLink(null, invoiceId),
             });
           }
         } catch (err) {

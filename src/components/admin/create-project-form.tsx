@@ -100,8 +100,23 @@ export function CreateProjectForm({
       });
 
       if (thumbnailFile) {
-        const upload = await uploadProjectCoverFile(projectId, thumbnailFile);
-        await updateProjectCoverImage(projectId, upload.publicUrl);
+        try {
+          const upload = await uploadProjectCoverFile(projectId, thumbnailFile);
+          await updateProjectCoverImage(projectId, upload.publicUrl);
+        } catch (uploadErr) {
+          const msg =
+            uploadErr instanceof Error ? uploadErr.message : "Thumbnail upload failed";
+          const bucketMissing = /bucket not found/i.test(msg);
+          alert(
+            bucketMissing
+              ? "Project was created, but the thumbnail could not upload.\n\nRun supabase/FIX_project_covers_bucket.sql in the Supabase SQL Editor, then add the thumbnail from Manage Project."
+              : `Project was created, but the thumbnail failed: ${msg}\n\nYou can add it later from Manage Project.`
+          );
+          resetFormState();
+          setOpen(false);
+          setLoading(false);
+          return;
+        }
       }
 
       resetFormState();

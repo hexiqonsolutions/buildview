@@ -16,6 +16,7 @@ import type {
 import { STORAGE_BUCKETS } from "@/lib/types";
 import { resolveSpatialForWrite } from "@/lib/admin/spatial-resolve";
 import { notifyClientsIfEnabled } from "@/lib/actions/notifications";
+import { portalTimelineLink } from "@/lib/portal/notification-links";
 
 function revalidateTimelinePaths(projectId: string) {
   revalidatePath("/admin/timeline");
@@ -131,7 +132,7 @@ export async function createTimelineEvent(data: {
           title: "Timeline updated",
           message: validated.title,
           type: "project_update",
-          link: `/dashboard/projects/${validated.project_id}?tab=timeline`,
+          link: portalTimelineLink(validated.project_id),
         });
       }
 
@@ -151,7 +152,7 @@ export async function createTimelineEvent(data: {
       title: "Timeline updated",
       message: validated.title,
       type: "project_update",
-      link: `/dashboard/projects/${validated.project_id}?tab=timeline`,
+      link: portalTimelineLink(validated.project_id),
     });
   }
 

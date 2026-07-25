@@ -5,6 +5,7 @@ import {
   parsePortalWorkspaceScopeFromParams,
 } from "@/lib/portal/scope-server";
 import { ReportsBrowser } from "@/components/portal/reports-browser";
+import { firstSearchParam } from "@/lib/portal/search-params";
 import { IntelPage } from "@/components/intel/pages/intel-page";
 import { EmptyState } from "@/components/patterns/page-states";
 import { FileText } from "lucide-react";
@@ -19,6 +20,7 @@ export default async function ReportsPage({
   const params = await searchParams;
   const scope = await parsePortalWorkspaceScopeFromParams(params);
   const listScope = broadPortalListScope(scope);
+  const highlightReportId = firstSearchParam(params.report);
 
   const [projects, reports] = await Promise.all([
     getPortalScopedProjects(listScope),
@@ -50,7 +52,7 @@ export default async function ReportsPage({
             variant="intel"
           />
         ) : (
-          <ReportsBrowser reports={reportsWithProject} />
+          <ReportsBrowser reports={reportsWithProject} highlightId={highlightReportId} />
         )}
       </div>
     </IntelPage>

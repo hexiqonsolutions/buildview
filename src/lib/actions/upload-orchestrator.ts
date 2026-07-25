@@ -14,13 +14,20 @@ import type {
   ProjectTourInsert,
   ReportType,
 } from "@/lib/types";
-import { createReport, createDocument } from "@/lib/actions/admin";
+import { createReport, createDocument, createInvoice, attachInvoicePdf } from "@/lib/actions/admin";
 import { addTimelinePhotos } from "@/lib/actions/timeline";
 import { createIssue } from "@/lib/actions/issues";
 import { notifyProjectClientUsers } from "@/lib/actions/notifications";
 import { isNotificationRuleEnabled } from "@/lib/actions/platform-settings";
 import { resolveSpatialForWrite } from "@/lib/admin/spatial-resolve";
 import { buildTourDescription } from "@/lib/admin/tour-metadata";
+import {
+  portalDocumentLink,
+  portalInvoiceLink,
+  portalMatterportLink,
+  portalReportLink,
+  portalTimelineLink,
+} from "@/lib/portal/notification-links";
 
 export type UploadCategory =
   | "matterport"
@@ -40,6 +47,7 @@ export type UploadResult = {
   tourId?: string;
   reportId?: string;
   documentId?: string;
+  invoiceId?: string;
   eventId?: string;
   issueId?: string;
 };
@@ -174,7 +182,7 @@ export async function uploadMatterportWithAutomation(data: {
         title: "New Matterport scan available",
         message: `${parsed.data.name} has been uploaded to your project timeline.`,
         type: "project_update",
-        link: `/dashboard/projects/${parsed.data.project_id}`,
+        link: portalMatterportLink(parsed.data.project_id, tour.id),
       });
     }
   } catch (err) {
@@ -235,9 +243,9 @@ export async function uploadReportWithAutomation(data: {
     if (await isNotificationRuleEnabled("onUpload")) {
       await notifyProjectClientUsers(data.project_id, {
         title: "New report uploaded",
-        message: `${data.title} is now available in your project portal.`,
+        message: `${data.title} is now available in Reports.`,
         type: "project_update",
-        link: `/dashboard/projects/${data.project_id}`,
+        link: portalReportLink(data.project_id, reportId),
       });
     }
   } catch (err) {
@@ -295,9 +303,9 @@ export async function uploadDocumentWithAutomation(data: {
     if (await isNotificationRuleEnabled("onUpload")) {
       await notifyProjectClientUsers(data.project_id, {
         title: "New document uploaded",
-        message: `${data.name} is now available in your project documents.`,
+        message: `${data.name} is now available in Documents.`,
         type: "project_update",
-        link: `/dashboard/projects/${data.project_id}`,
+        link: portalDocumentLink(data.project_id, documentId),
       });
     }
   } catch (err) {
@@ -306,6 +314,87 @@ export async function uploadDocumentWithAutomation(data: {
 
   revalidatePaths(data.project_id);
   return { documentId, eventId };
+}
+
+/** Create invoice row first so the client can upload the PDF to the invoice path. */
+export async function beginInvoiceUploadWithAutomation(data: {
+  project_id: string;
+  client_id: string;
+  invoice_number: string;
+  amount?: number;
+  currency?: string;
+  description?: string;
+}): Promise<{ invoiceId: string }> {
+  const invoiceNumber = data.invoice_number.trim();
+  if (!invoiceNumber) throw new Error("Invoice number is required.");
+  if (!data.client_id) throw new Error("Client is required for invoice upload.");
+
+  const invoiceId = await createInvoice({
+    client_id: data.client_id,
+    project_id: data.project_id,
+    invoice_number: invoiceNumber,
+    amount: data.amount ?? 0,
+    currency: data.currency ?? "USD",
+    status: "sent",
+    description: data.description,
+  });
+
+  return { invoiceId };
+}
+
+/** Attach PDF, timeline, activity, and notify clients → Invoices tab. */
+export async function finalizeInvoiceUploadWithAutomation(data: {
+  invoice_id: string;
+  project_id: string;
+  invoice_number: string;
+  storage_path: string;
+  description?: string;
+  event_date?: string;
+}): Promise<UploadResult> {
+  await attachInvoicePdf(data.invoice_id, { storage_path: data.storage_path });
+
+  const eventDate = data.event_date ?? new Date().toISOString().split("T")[0];
+
+  try {
+    await createTimelineEvent({
+      project_id: data.project_id,
+      event_date: eventDate,
+      title: `Invoice uploaded — ${data.invoice_number}`,
+      progress_note: data.description ?? "Invoice PDF added to project billing.",
+      skipClientNotify: true,
+    });
+  } catch (err) {
+    console.error("[finalizeInvoiceUploadWithAutomation] timeline failed:", err);
+  }
+
+  try {
+    await logActivity(
+      data.project_id,
+      `Invoice uploaded: ${data.invoice_number}`,
+      "invoice",
+      data.invoice_id
+    );
+  } catch (err) {
+    console.error("[finalizeInvoiceUploadWithAutomation] activity log failed:", err);
+  }
+
+  try {
+    if (await isNotificationRuleEnabled("onUpload")) {
+      await notifyProjectClientUsers(data.project_id, {
+        title: "New invoice available",
+        message: `Invoice ${data.invoice_number} is ready in Invoices.`,
+        type: "invoice_update",
+        link: portalInvoiceLink(data.project_id, data.invoice_id),
+      });
+    }
+  } catch (err) {
+    console.error("[finalizeInvoiceUploadWithAutomation] notify failed:", err);
+  }
+
+  revalidatePaths(data.project_id);
+  revalidatePath("/admin/invoices");
+  revalidatePath("/dashboard/invoices");
+  return { invoiceId: data.invoice_id };
 }
 
 export async function uploadTimelineUpdateWithAutomation(data: {
@@ -345,7 +434,7 @@ export async function uploadTimelineUpdateWithAutomation(data: {
         title: "Timeline updated",
         message: data.title,
         type: "project_update",
-        link: `/dashboard/projects/${data.project_id}?tab=timeline`,
+        link: portalTimelineLink(data.project_id),
       });
     }
   } catch (err) {
@@ -391,7 +480,7 @@ export async function attachSitePhotosWithAutomation(data: {
         title: "New site photos uploaded",
         message: `${data.title} — ${data.photos.length} photo${data.photos.length === 1 ? "" : "s"} added.`,
         type: "project_update",
-        link: `/dashboard/projects/${data.project_id}?tab=timeline`,
+        link: portalTimelineLink(data.project_id),
       });
     }
   } catch (err) {
@@ -523,4 +612,7 @@ function revalidatePaths(projectId: string) {
   revalidatePath(`/dashboard/projects/${projectId}`);
   revalidatePath("/dashboard/reports");
   revalidatePath("/dashboard/documents");
+  revalidatePath("/dashboard/invoices");
+  revalidatePath("/dashboard/timeline");
+  revalidatePath("/dashboard/issues");
 }

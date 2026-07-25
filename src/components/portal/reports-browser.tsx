@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PdfPreview } from "@/components/projects/pdf-preview";
+import { HighlightAnchor } from "@/components/portal/highlight-anchor";
 import { formatDate, formatStatus } from "@/lib/utils";
 import type { Report, ReportType } from "@/lib/types";
 
@@ -23,7 +24,13 @@ const REPORT_TYPES: ReportType[] = [
   "safety_report",
 ];
 
-export function ReportsBrowser({ reports }: { reports: ReportRow[] }) {
+export function ReportsBrowser({
+  reports,
+  highlightId,
+}: {
+  reports: ReportRow[];
+  highlightId?: string | null;
+}) {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
 
@@ -72,27 +79,30 @@ export function ReportsBrowser({ reports }: { reports: ReportRow[] }) {
       ) : (
         <div className="space-y-2">
           {filtered.map((report) => (
-            <div
+            <HighlightAnchor
               key={report.id}
-              className="portal-card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
+              id={`report-${report.id}`}
+              highlightId={highlightId ? `report-${highlightId}` : null}
             >
-              <div className="min-w-0 flex-1">
-                <p className="font-medium text-slate-900 dark:text-white">{report.title}</p>
-                <p className="mt-1 text-sm text-slate-500">
-                  {report.projectName} · {formatDate(report.report_date)}
-                </p>
-                {report.description && (
-                  <p className="mt-1 line-clamp-2 text-sm text-slate-400">{report.description}</p>
-                )}
+              <div className="portal-card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-slate-900 dark:text-white">{report.title}</p>
+                  <p className="mt-1 text-sm text-slate-500">
+                    {report.projectName} · {formatDate(report.report_date)}
+                  </p>
+                  {report.description && (
+                    <p className="mt-1 line-clamp-2 text-sm text-slate-400">{report.description}</p>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <PdfPreview
+                    reportId={report.id}
+                    fileName={report.file_name}
+                    title={report.title}
+                  />
+                </div>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <PdfPreview
-                  reportId={report.id}
-                  fileName={report.file_name}
-                  title={report.title}
-                />
-              </div>
-            </div>
+            </HighlightAnchor>
           ))}
         </div>
       )}

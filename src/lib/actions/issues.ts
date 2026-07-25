@@ -19,6 +19,7 @@ import type {
 } from "@/lib/types";
 import { STORAGE_BUCKETS } from "@/lib/types";
 import { resolveSpatialForWrite } from "@/lib/admin/spatial-resolve";
+import { portalIssuesLink } from "@/lib/portal/notification-links";
 
 function revalidateIssuePaths(projectId: string) {
   revalidatePath("/admin/issues");
@@ -129,7 +130,7 @@ export async function createIssue(data: {
     title: "New issue reported",
     message: validated.title,
     type: "issue_update",
-    link: `/dashboard/projects/${validated.project_id}?tab=issues`,
+    link: portalIssuesLink(validated.project_id, issue.id),
   });
 
   revalidateIssuePaths(validated.project_id);
@@ -199,7 +200,7 @@ export async function updateIssue(data: {
       title: nextStatus === "resolved" ? "Issue resolved" : "Issue closed",
       message: existing.title,
       type: "issue_update",
-      link: `/dashboard/projects/${existing.project_id}?tab=issues`,
+      link: portalIssuesLink(existing.project_id, validation.data.id),
     });
   }
 
@@ -246,7 +247,7 @@ export async function updateIssueStatus(issueId: string, status: string) {
       title: nextStatus === "resolved" ? "Issue resolved" : "Issue closed",
       message: existing.title,
       type: "issue_update",
-      link: `/dashboard/projects/${existing.project_id}?tab=issues`,
+      link: portalIssuesLink(existing.project_id, issueId),
     });
   }
 

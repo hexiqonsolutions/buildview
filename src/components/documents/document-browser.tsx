@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { FolderOpen, File, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DocumentCard } from "@/components/documents/document-card";
 import { EmptyState } from "@/components/dashboard/empty-state";
+import { HighlightAnchor } from "@/components/portal/highlight-anchor";
 import { cn } from "@/lib/utils";
 import type { Document, DocumentFolder } from "@/lib/types";
 
@@ -36,14 +37,20 @@ interface DocumentBrowserProps {
   folders: DocumentFolder[];
   documents: Document[];
   projectName?: string;
+  highlightId?: string | null;
 }
 
 export function DocumentBrowser({
   folders,
   documents,
   projectName,
+  highlightId,
 }: DocumentBrowserProps) {
   const [selectedFolder, setSelectedFolder] = useState<FolderFilter>("all");
+
+  useEffect(() => {
+    if (highlightId) setSelectedFolder("all");
+  }, [highlightId]);
 
   const folderTree = useMemo(() => buildFolderTree(folders), [folders]);
 
@@ -207,14 +214,19 @@ export function DocumentBrowser({
         ) : (
           <div className="space-y-3">
             {filteredDocuments.map((doc) => (
-              <DocumentCard
+              <HighlightAnchor
                 key={doc.id}
-                document={doc}
-                projectName={projectName}
-                folderName={
-                  doc.folder_id ? folderNameMap.get(doc.folder_id) : undefined
-                }
-              />
+                id={`document-${doc.id}`}
+                highlightId={highlightId ? `document-${highlightId}` : null}
+              >
+                <DocumentCard
+                  document={doc}
+                  projectName={projectName}
+                  folderName={
+                    doc.folder_id ? folderNameMap.get(doc.folder_id) : undefined
+                  }
+                />
+              </HighlightAnchor>
             ))}
           </div>
         )}

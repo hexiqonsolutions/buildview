@@ -2,7 +2,7 @@
 -- Project cover / thumbnail images — public bucket for cover_image_url
 -- =============================================================================
 -- Path: project-covers/{project_id}/{timestamp}-{filename}
--- Run in Supabase SQL Editor if not applied via migrations.
+-- Uses is_super_admin() (always present) for staff write access.
 -- =============================================================================
 
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
@@ -10,7 +10,7 @@ VALUES (
   'project-covers',
   'project-covers',
   TRUE,
-  5242880, -- 5 MB
+  5242880,
   ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif']::text[]
 )
 ON CONFLICT (id) DO UPDATE SET
@@ -31,9 +31,9 @@ CREATE POLICY "storage_project_covers_staff_all"
   TO authenticated
   USING (
     bucket_id = 'project-covers'
-    AND public.is_buildview_staff()
+    AND public.is_super_admin()
   )
   WITH CHECK (
     bucket_id = 'project-covers'
-    AND public.is_buildview_staff()
+    AND public.is_super_admin()
   );

@@ -6,6 +6,7 @@ import {
   parsePortalWorkspaceScopeFromParams,
 } from "@/lib/portal/scope-server";
 import { DocumentBrowser } from "@/components/documents/document-browser";
+import { firstSearchParam } from "@/lib/portal/search-params";
 import { IntelPage } from "@/components/intel/pages/intel-page";
 import { EmptyState } from "@/components/patterns/page-states";
 import { FolderOpen } from "lucide-react";
@@ -20,6 +21,7 @@ export default async function DocumentsPage({
   const params = await searchParams;
   const scope = await parsePortalWorkspaceScopeFromParams(params);
   const listScope = broadPortalListScope(scope);
+  const highlightDocumentId = firstSearchParam(params.document);
 
   const [projects, documents, folders] = await Promise.all([
     getPortalScopedProjects(listScope),
@@ -64,6 +66,7 @@ export default async function DocumentsPage({
                     folders={projectFolders}
                     documents={projectDocs}
                     projectName={project.name}
+                    highlightId={highlightDocumentId}
                   />
                 </div>
               </section>
