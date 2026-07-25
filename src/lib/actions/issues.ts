@@ -17,11 +17,13 @@ import type {
   IssueInsert,
   IssueStatus,
   IssueUpdate,
+  UserRole,
 } from "@/lib/types";
 import { STORAGE_BUCKETS } from "@/lib/types";
 import { resolveSpatialForWrite } from "@/lib/admin/spatial-resolve";
 import { formatUploadNotifyMessage, portalIssuesLink } from "@/lib/portal/notification-links";
 import { isBuildViewStaffRole } from "@/lib/auth/roles";
+import { can } from "@/lib/auth/permissions";
 
 function revalidateIssuePaths(projectId: string) {
   revalidatePath("/admin/issues");
@@ -317,6 +319,17 @@ export async function updateIssueStatus(issueId: string, status: string) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  if (!user) throw new Error("You must be signed in");
+
+  const { data: me } = await supabase
+    .from("users")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (!me?.role || !can(me.role as UserRole, "update", "issues")) {
+    throw new Error("You do not have permission to update issue status.");
+  }
 
   const { data: existing, error: fetchError } = await supabase
     .from("issues")
@@ -332,7 +345,7 @@ export async function updateIssueStatus(issueId: string, status: string) {
     .update({
       status: validation.data.status,
       resolved_at: resolvedAtForStatus(validation.data.status),
-      updated_by: user?.id ?? null,
+      updated_by: user.id,
     })
     .eq("id", issueId);
 
@@ -343,12 +356,16 @@ export async function updateIssueStatus(issueId: string, status: string) {
     nextStatus !== existing.status &&
     (nextStatus === "resolved" || nextStatus === "closed")
   ) {
-    await notifyClientsIfEnabled("onIssueUpdate", existing.project_id, {
-      title: nextStatus === "resolved" ? "Issue resolved" : "Issue closed",
-      message: existing.title,
-      type: "issue_update",
-      link: portalIssuesLink(existing.project_id, issueId),
-    });
+    try {
+      await notifyClientsIfEnabled("onIssueUpdate", existing.project_id, {
+        title: nextStatus === "resolved" ? "Issue resolved" : "Issue closed",
+        message: existing.title,
+        type: "issue_update",
+        link: portalIssuesLink(existing.project_id, issueId),
+      });
+    } catch (err) {
+      console.error("[updateIssueStatus] notify failed:", err);
+    }
   }
 
   revalidateIssuePaths(existing.project_id);

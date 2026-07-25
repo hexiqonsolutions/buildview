@@ -30,6 +30,7 @@ export default async function ProjectDetailPage({
   const latestTour = detail.tours[0];
   const latestScanDate = latestTour?.capture_date ?? latestTour?.created_at ?? null;
   const canUploadMatterport = user ? can(user.role, "upload", "matterport") : false;
+  const allowIssueStatusUpdate = user ? can(user.role, "update", "issues") : false;
 
   return (
     <div className="space-y-6">
@@ -56,6 +57,7 @@ export default async function ProjectDetailPage({
           timeline={detail.timeline}
           invoices={invoices}
           canUploadMatterport={canUploadMatterport}
+          allowIssueStatusUpdate={allowIssueStatusUpdate}
         />
       </div>
     </div>

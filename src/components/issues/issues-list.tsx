@@ -16,6 +16,7 @@ interface IssuesListProps {
   issues: Array<IssueWithRelations & { projectName?: string }>;
   showProject?: boolean;
   highlightId?: string | null;
+  allowStatusUpdate?: boolean;
 }
 
 const ALL = "all" as const;
@@ -24,6 +25,7 @@ export function IssuesList({
   issues,
   showProject = true,
   highlightId,
+  allowStatusUpdate = false,
 }: IssuesListProps) {
   const [statusFilter, setStatusFilter] = useState<IssueStatus | typeof ALL>(ALL);
   const [priorityFilter, setPriorityFilter] = useState<IssuePriority | typeof ALL>(
@@ -96,6 +98,7 @@ export function IssuesList({
               <IssueCard
                 issue={issue}
                 showProject={showProject}
+                allowStatusUpdate={allowStatusUpdate}
                 projectHref={
                   issue.project_id
                     ? `/dashboard/projects/${issue.project_id}`

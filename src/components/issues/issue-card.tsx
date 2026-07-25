@@ -2,10 +2,12 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { IssueImageGallery } from "@/components/issues/issue-image-gallery";
-import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
+import { UpdateIssueStatusSelect } from "@/components/admin/update-issue-status";
+import { formatDate, getStatusColor } from "@/lib/utils";
 import {
   ISSUE_PRIORITY_LABELS,
   ISSUE_STATUS_LABELS,
+  type IssueStatus,
   type IssueWithRelations,
 } from "@/lib/types";
 
@@ -13,12 +15,15 @@ interface IssueCardProps {
   issue: IssueWithRelations & { projectName?: string };
   showProject?: boolean;
   projectHref?: string;
+  /** When true, show a status dropdown (admin + client portal). */
+  allowStatusUpdate?: boolean;
 }
 
 export function IssueCard({
   issue,
   showProject = false,
   projectHref,
+  allowStatusUpdate = false,
 }: IssueCardProps) {
   const activeImages =
     issue.issue_images?.filter((image) => !image.deleted_at) ?? [];
@@ -57,9 +62,16 @@ export function IssueCard({
               <Badge className={getStatusColor(issue.priority)}>
                 {ISSUE_PRIORITY_LABELS[issue.priority]}
               </Badge>
-              <Badge className={getStatusColor(issue.status)}>
-                {ISSUE_STATUS_LABELS[issue.status]}
-              </Badge>
+              {allowStatusUpdate ? (
+                <UpdateIssueStatusSelect
+                  issueId={issue.id}
+                  currentStatus={issue.status as IssueStatus}
+                />
+              ) : (
+                <Badge className={getStatusColor(issue.status)}>
+                  {ISSUE_STATUS_LABELS[issue.status]}
+                </Badge>
+              )}
               {issue.location && (
                 <span className="text-xs text-slate-500">{issue.location}</span>
               )}

@@ -3,7 +3,13 @@ import { EmptyState } from "@/components/dashboard/empty-state";
 import { AlertTriangle } from "lucide-react";
 import type { IssueWithRelations } from "@/lib/types";
 
-export function ProjectIssuesSection({ issues }: { issues: IssueWithRelations[] }) {
+export function ProjectIssuesSection({
+  issues,
+  allowStatusUpdate = false,
+}: {
+  issues: IssueWithRelations[];
+  allowStatusUpdate?: boolean;
+}) {
   if (issues.length === 0) {
     return (
       <EmptyState
@@ -17,7 +23,11 @@ export function ProjectIssuesSection({ issues }: { issues: IssueWithRelations[] 
   return (
     <div className="space-y-3">
       {issues.map((issue) => (
-        <IssueCard key={issue.id} issue={issue} />
+        <IssueCard
+          key={issue.id}
+          issue={issue}
+          allowStatusUpdate={allowStatusUpdate}
+        />
       ))}
     </div>
   );

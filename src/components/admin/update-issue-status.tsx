@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Loader2 } from "lucide-react";
 import { updateIssueStatus } from "@/lib/actions/issues";
 import {
@@ -28,6 +28,10 @@ export function UpdateIssueStatusSelect({
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  useEffect(() => {
+    setStatus(currentStatus);
+  }, [currentStatus]);
+
   function handleChange(next: IssueStatus) {
     setStatus(next);
     setError(null);
@@ -43,7 +47,7 @@ export function UpdateIssueStatusSelect({
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <Select value={status} onValueChange={(v) => handleChange(v as IssueStatus)}>
         <SelectTrigger className="h-8 w-36 text-xs">
           <SelectValue />

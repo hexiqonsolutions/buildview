@@ -8,6 +8,8 @@ import { IssuesList } from "@/components/issues/issues-list";
 import { IntelPage } from "@/components/intel/pages/intel-page";
 import { EmptyState } from "@/components/patterns/page-states";
 import { firstSearchParam } from "@/lib/portal/search-params";
+import { getCurrentUser } from "@/lib/actions/auth";
+import { can } from "@/lib/auth/permissions";
 import { AlertTriangle } from "lucide-react";
 import type { IssueWithRelations } from "@/lib/types";
 
@@ -23,10 +25,13 @@ export default async function IssuesPage({
   const listScope = broadPortalListScope(scope);
   const highlightIssueId = firstSearchParam(params.issue);
 
-  const [projects, issues] = await Promise.all([
+  const [user, projects, issues] = await Promise.all([
+    getCurrentUser(),
     getPortalScopedProjects(listScope),
     getPortalScopedIssues(listScope),
   ]);
+
+  const allowStatusUpdate = user ? can(user.role, "update", "issues") : false;
 
   const projectNames = new Map(projects.map((p) => [p.id, p.name]));
 
@@ -42,7 +47,7 @@ export default async function IssuesPage({
   return (
     <IntelPage
       title="Issues"
-      description="View-only tracking of construction issues and defects."
+      description="Track construction issues and update their status as work progresses."
       icon={AlertTriangle}
       eyebrow="Site Quality"
     >
@@ -60,6 +65,7 @@ export default async function IssuesPage({
               issues={issuesWithProject}
               showProject={projects.length > 1}
               highlightId={highlightIssueId}
+              allowStatusUpdate={allowStatusUpdate}
             />
           </div>
         )}

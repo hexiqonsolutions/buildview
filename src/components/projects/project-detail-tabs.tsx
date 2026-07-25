@@ -34,6 +34,8 @@ interface ProjectDetailTabsProps {
   spatialHierarchy?: SpatialHierarchy;
   /** Admin can add Matterport URLs directly on the project */
   canUploadMatterport?: boolean;
+  /** Client/admin can change issue status */
+  allowIssueStatusUpdate?: boolean;
 }
 
 export function ProjectDetailTabs({
@@ -48,6 +50,7 @@ export function ProjectDetailTabs({
   projectId,
   spatialHierarchy,
   canUploadMatterport = false,
+  allowIssueStatusUpdate = false,
 }: ProjectDetailTabsProps) {
   const portal = useOptionalPortalWorkspace();
   const isPortfolioIntel = variant === "intel" && portal?.dashboardType === "portfolio";
@@ -123,7 +126,10 @@ export function ProjectDetailTabs({
       {showConstructionTabs && (
         <>
           <TabPanel value="issues" className="mt-6">
-            <ProjectIssuesSection issues={issues} />
+            <ProjectIssuesSection
+              issues={issues}
+              allowStatusUpdate={allowIssueStatusUpdate}
+            />
           </TabPanel>
 
           <TabPanel value="invoices" className="mt-6">
