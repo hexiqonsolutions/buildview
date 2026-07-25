@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search, Download, Eye } from "lucide-react";
+import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { PdfPreview } from "@/components/projects/pdf-preview";
 import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
 import type { Report, ReportType } from "@/lib/types";
 
@@ -90,18 +90,11 @@ export function ReportsBrowser({ reports }: { reports: ReportRow[] }) {
                 <Badge className={getStatusColor(report.report_type)}>
                   {formatStatus(report.report_type)}
                 </Badge>
-                <Button variant="outline" size="sm" asChild>
-                  <a href={report.file_url} target="_blank" rel="noopener noreferrer">
-                    <Eye className="mr-1.5 h-4 w-4" />
-                    Preview
-                  </a>
-                </Button>
-                <Button variant="default" size="sm" className="bg-slate-900 hover:bg-slate-800" asChild>
-                  <a href={report.file_url} download target="_blank" rel="noopener noreferrer">
-                    <Download className="mr-1.5 h-4 w-4" />
-                    Download
-                  </a>
-                </Button>
+                <PdfPreview
+                  reportId={report.id}
+                  fileName={report.file_name}
+                  title={report.title}
+                />
               </div>
             </div>
           ))}

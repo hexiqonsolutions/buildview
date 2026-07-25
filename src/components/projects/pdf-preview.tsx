@@ -78,13 +78,19 @@ export function PdfPreview({ reportId, fileName, title }: PdfPreviewProps) {
           Preview
         </Button>
         <Button
-          variant="ghost"
+          variant="default"
           size="sm"
+          className="bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
           onClick={handleDownload}
           disabled={loading}
           aria-label={`Download ${fileName}`}
         >
-          <Download className="h-4 w-4" />
+          {loading ? (
+            <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+          ) : (
+            <Download className="mr-1.5 h-4 w-4" />
+          )}
+          Download
         </Button>
       </div>
 
