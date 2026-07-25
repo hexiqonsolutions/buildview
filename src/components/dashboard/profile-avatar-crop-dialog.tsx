@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Cropper, { type Area } from "react-easy-crop";
-import { Loader2 } from "lucide-react";
+import { Loader2, Minus, Plus } from "lucide-react";
 import { getCroppedAvatarBlob } from "@/lib/avatar-crop";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,18 +32,20 @@ export function ProfileAvatarCropDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!open) return;
+    setCrop({ x: 0, y: 0 });
+    setZoom(1);
+    setCroppedAreaPixels(null);
+    setError(null);
+  }, [open, imageSrc]);
+
   const onCropComplete = useCallback((_area: Area, pixels: Area) => {
     setCroppedAreaPixels(pixels);
   }, []);
 
   function handleOpenChange(next: boolean) {
     if (busy) return;
-    if (!next) {
-      setCrop({ x: 0, y: 0 });
-      setZoom(1);
-      setCroppedAreaPixels(null);
-      setError(null);
-    }
     onOpenChange(next);
   }
 
@@ -67,38 +69,46 @@ export function ProfileAvatarCropDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-md gap-0 overflow-hidden p-0 sm:rounded-xl">
-        <DialogHeader className="space-y-1 px-5 pb-3 pt-5">
-          <DialogTitle>Adjust profile photo</DialogTitle>
-          <DialogDescription>
-            Drag to reposition and use the slider to zoom so your photo fits the circle.
+      <DialogContent className="max-w-[420px] gap-0 overflow-hidden p-0 sm:rounded-2xl">
+        <DialogHeader className="space-y-1 border-b border-slate-100 px-6 py-5 pr-12 text-left dark:border-slate-800">
+          <DialogTitle className="text-base">Adjust photo</DialogTitle>
+          <DialogDescription className="text-sm">
+            Drag to reposition. Zoom until it fits the circle.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="relative mx-5 h-72 overflow-hidden rounded-xl bg-slate-950">
-          {imageSrc && (
-            <Cropper
-              image={imageSrc}
-              crop={crop}
-              zoom={zoom}
-              aspect={1}
-              cropShape="round"
-              showGrid={false}
-              onCropChange={setCrop}
-              onZoomChange={setZoom}
-              onCropComplete={onCropComplete}
-            />
-          )}
+        <div className="bg-slate-950 px-0 py-0">
+          <div className="relative mx-auto aspect-square w-full max-w-[420px]">
+            {imageSrc && (
+              <Cropper
+                image={imageSrc}
+                crop={crop}
+                zoom={zoom}
+                aspect={1}
+                cropShape="round"
+                showGrid={false}
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                onCropComplete={onCropComplete}
+                classes={{
+                  containerClassName: "rounded-none",
+                }}
+              />
+            )}
+          </div>
         </div>
 
-        <div className="space-y-4 px-5 py-4">
-          <div className="space-y-2">
-            <label
-              htmlFor="avatar-zoom"
-              className="text-xs font-medium text-slate-500"
+        <div className="space-y-4 border-t border-slate-100 px-6 py-5 dark:border-slate-800">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              aria-label="Zoom out"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+              onClick={() => setZoom((z) => Math.max(1, Number((z - 0.1).toFixed(2))))}
+              disabled={zoom <= 1 || busy}
             >
-              Zoom
-            </label>
+              <Minus className="h-3.5 w-3.5" />
+            </button>
             <input
               id="avatar-zoom"
               type="range"
@@ -107,13 +117,25 @@ export function ProfileAvatarCropDialog({
               step={0.05}
               value={zoom}
               onChange={(e) => setZoom(Number(e.target.value))}
-              className="w-full accent-slate-900 dark:accent-white"
+              className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-slate-200 accent-slate-900 dark:bg-slate-700 dark:accent-white"
+              aria-label="Zoom"
             />
+            <button
+              type="button"
+              aria-label="Zoom in"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+              onClick={() => setZoom((z) => Math.min(3, Number((z + 0.1).toFixed(2))))}
+              disabled={zoom >= 3 || busy}
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
           </div>
 
-          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+          {error && (
+            <p className="text-center text-sm text-red-600 dark:text-red-400">{error}</p>
+          )}
 
-          <div className="flex justify-end gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <Button
               type="button"
               variant="outline"
@@ -122,9 +144,13 @@ export function ProfileAvatarCropDialog({
             >
               Cancel
             </Button>
-            <Button type="button" onClick={handleApply} disabled={busy || !croppedAreaPixels}>
+            <Button
+              type="button"
+              onClick={handleApply}
+              disabled={busy || !croppedAreaPixels}
+            >
               {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Use photo
+              Save photo
             </Button>
           </div>
         </div>

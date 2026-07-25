@@ -122,71 +122,99 @@ export function ProfileAvatarEditor({ user }: { user: User }) {
 
   return (
     <>
-      <div className="portal-card flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-4">
-          <Avatar className="h-20 w-20 border border-slate-200 dark:border-slate-700">
-            <AvatarImage src={previewUrl || undefined} alt={user.full_name} />
-            <AvatarFallback className="bg-slate-900 text-lg font-semibold text-white">
-              {initials(user.full_name, user.email)}
-            </AvatarFallback>
-          </Avatar>
-          <div>
-            <p className="font-display text-base font-semibold text-slate-900 dark:text-white">
-              Profile photo
-            </p>
-            <p className="mt-1 text-sm text-slate-500">
-              Shown in the header and anywhere your name appears. Crop to a circle before
-              saving — JPEG, PNG, WebP, or GIF, max 5 MB.
-            </p>
-          </div>
+      <section className="portal-card overflow-hidden">
+        <div className="border-b border-slate-100 px-6 py-4 dark:border-slate-800">
+          <h2 className="font-display text-base font-semibold text-slate-900 dark:text-white">
+            Profile photo
+          </h2>
+          <p className="mt-0.5 text-sm text-slate-500">
+            Used in the header and across BuildView. Max 5 MB.
+          </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <input
-            ref={inputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
-            className="hidden"
-            onChange={(e) => handleFileChange(e.target.files)}
-          />
-          <Button
+        <div className="flex flex-col items-center gap-5 px-6 py-6 sm:flex-row sm:items-center sm:gap-6">
+          <button
             type="button"
-            variant="outline"
-            size="sm"
             onClick={handlePick}
             disabled={isPending}
+            className="group relative shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2"
+            aria-label={previewUrl ? "Change profile photo" : "Upload profile photo"}
           >
-            {isPending ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Camera className="mr-2 h-4 w-4" />
-            )}
-            {previewUrl ? "Change photo" : "Upload photo"}
-          </Button>
-          {previewUrl && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={handleRemove}
-              disabled={isPending}
-              className="text-slate-500"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Remove
-            </Button>
-          )}
-        </div>
+            <Avatar className="h-24 w-24 ring-1 ring-slate-200 dark:ring-slate-700">
+              <AvatarImage src={previewUrl || undefined} alt={user.full_name} />
+              <AvatarFallback className="bg-slate-900 text-xl font-semibold text-white">
+                {initials(user.full_name, user.email)}
+              </AvatarFallback>
+            </Avatar>
+            <span className="absolute inset-0 flex items-center justify-center rounded-full bg-slate-950/50 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+              {isPending ? (
+                <Loader2 className="h-5 w-5 animate-spin text-white" />
+              ) : (
+                <Camera className="h-5 w-5 text-white" />
+              )}
+            </span>
+          </button>
 
-        {(error || success) && (
-          <div className="w-full sm:basis-full">
-            {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-            {success && (
-              <p className="text-sm text-green-600 dark:text-green-400">{success}</p>
+          <div className="min-w-0 flex-1 text-center sm:text-left">
+            <p className="truncate text-sm font-medium text-slate-900 dark:text-white">
+              {user.full_name || user.email}
+            </p>
+            <p className="mt-1 text-sm text-slate-500">
+              Click the photo to upload, then adjust the crop to fit the circle.
+            </p>
+
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+              <input
+                ref={inputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="hidden"
+                onChange={(e) => handleFileChange(e.target.files)}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handlePick}
+                disabled={isPending}
+                className="min-w-[8.5rem]"
+              >
+                {isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Camera className="mr-2 h-4 w-4" />
+                )}
+                {previewUrl ? "Change photo" : "Upload photo"}
+              </Button>
+              {previewUrl && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRemove}
+                  disabled={isPending}
+                  className="text-slate-500 hover:text-rose-600"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Remove
+                </Button>
+              )}
+            </div>
+
+            {(error || success) && (
+              <p
+                className={`mt-3 text-sm ${
+                  error
+                    ? "text-red-600 dark:text-red-400"
+                    : "text-emerald-600 dark:text-emerald-400"
+                }`}
+              >
+                {error || success}
+              </p>
             )}
           </div>
-        )}
-      </div>
+        </div>
+      </section>
 
       <ProfileAvatarCropDialog
         open={cropOpen}
