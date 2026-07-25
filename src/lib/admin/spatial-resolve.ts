@@ -127,9 +127,19 @@ export async function resolveSpatialForWrite(
     floor_id?: string | null;
   }
 ): Promise<SpatialRefs> {
-  if (input.building_id || input.floor_id) {
-    return resolveSpatialRefsByIds(supabase, input.building_id, input.floor_id);
-  }
+  try {
+    if (input.building_id || input.floor_id) {
+      return await resolveSpatialRefsByIds(supabase, input.building_id, input.floor_id);
+    }
 
-  return resolveSpatialRefs(supabase, projectId, input.building, input.floor);
+    return await resolveSpatialRefs(supabase, projectId, input.building, input.floor);
+  } catch {
+    // buildings/floors tables may be missing on older databases
+    return {
+      building: input.building?.trim() || null,
+      floor: input.floor?.trim() || null,
+      building_id: null,
+      floor_id: null,
+    };
+  }
 }

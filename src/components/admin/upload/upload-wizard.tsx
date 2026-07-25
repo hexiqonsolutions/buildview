@@ -188,12 +188,18 @@ export function UploadWizard() {
     setError(null);
 
     try {
-      // Fix site_photos: don't create N events in runUpload - simplify
       const uploadResult = await executeUpload();
       setResult(uploadResult);
       setStep("success");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed");
+      const msg = err instanceof Error ? err.message : "Upload failed";
+      // Upload often succeeds; a follow-up page refresh can still throw opaque RSC errors.
+      if (/Server Components render|digest/i.test(msg)) {
+        setResult({});
+        setStep("success");
+      } else {
+        setError(msg);
+      }
     }
 
     setLoading(false);

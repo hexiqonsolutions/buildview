@@ -318,7 +318,47 @@ export async function createReport(data: {
     .insert(payload)
     .select("id")
     .single();
-  if (error || !report) throw new Error(error?.message ?? "Failed to create report");
+
+  if (error || !report) {
+    const msg = (error?.message ?? "").toLowerCase();
+    const missingSpatial =
+      (msg.includes("building") || msg.includes("floor") || msg.includes("schema cache")) &&
+      (msg.includes("column") || msg.includes("could not find") || msg.includes("schema cache"));
+
+    if (missingSpatial) {
+      const {
+        building: _b,
+        floor: _f,
+        building_id: _bi,
+        floor_id: _fi,
+        ...basePayload
+      } = payload;
+      const { data: retryReport, error: retryError } = await supabase
+        .from("reports")
+        .insert(basePayload)
+        .select("id")
+        .single();
+      if (retryError || !retryReport) {
+        throw new Error(retryError?.message ?? "Failed to create report");
+      }
+
+      if (!data.skipClientNotify) {
+        await notifyClientsIfEnabled("onUpload", validated.project_id, {
+          title: "New report uploaded",
+          message: `${validated.title} is now available in your project portal.`,
+          type: "project_update",
+          link: `/dashboard/projects/${validated.project_id}`,
+        });
+      }
+
+      revalidatePath("/admin/reports");
+      revalidatePath("/dashboard/reports");
+      revalidatePath(`/dashboard/projects/${validated.project_id}`);
+      return retryReport.id;
+    }
+
+    throw new Error(error?.message ?? "Failed to create report");
+  }
 
   if (!data.skipClientNotify) {
     await notifyClientsIfEnabled("onUpload", validated.project_id, {

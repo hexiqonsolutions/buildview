@@ -206,26 +206,38 @@ export async function uploadReportWithAutomation(data: {
     skipClientNotify: true,
   });
 
-  await createTimelineEvent({
-    project_id: data.project_id,
-    event_date: data.report_date,
-    title: `Report uploaded — ${data.title}`,
-    progress_note: data.description ?? `New ${data.report_type.replace(/_/g, " ")} added to project.`,
-    report_id: reportId,
-    building: data.building ?? null,
-    floor: data.floor ?? null,
-    skipClientNotify: true,
-  });
-
-  await logActivity(data.project_id, `Report uploaded: ${data.title}`, "report", reportId);
-
-  if (await isNotificationRuleEnabled("onUpload")) {
-    await notifyProjectClientUsers(data.project_id, {
-      title: "New report uploaded",
-      message: `${data.title} is now available in your project portal.`,
-      type: "project_update",
-      link: `/dashboard/projects/${data.project_id}`,
+  try {
+    await createTimelineEvent({
+      project_id: data.project_id,
+      event_date: data.report_date,
+      title: `Report uploaded — ${data.title}`,
+      progress_note: data.description ?? `New ${data.report_type.replace(/_/g, " ")} added to project.`,
+      report_id: reportId,
+      building: data.building ?? null,
+      floor: data.floor ?? null,
+      skipClientNotify: true,
     });
+  } catch (err) {
+    console.error("[uploadReportWithAutomation] timeline failed:", err);
+  }
+
+  try {
+    await logActivity(data.project_id, `Report uploaded: ${data.title}`, "report", reportId);
+  } catch (err) {
+    console.error("[uploadReportWithAutomation] activity log failed:", err);
+  }
+
+  try {
+    if (await isNotificationRuleEnabled("onUpload")) {
+      await notifyProjectClientUsers(data.project_id, {
+        title: "New report uploaded",
+        message: `${data.title} is now available in your project portal.`,
+        type: "project_update",
+        link: `/dashboard/projects/${data.project_id}`,
+      });
+    }
+  } catch (err) {
+    console.error("[uploadReportWithAutomation] notify failed:", err);
   }
 
   revalidatePaths(data.project_id);
@@ -464,8 +476,7 @@ export async function uploadIssueWithAutomation(data: {
 }
 
 function revalidatePaths(projectId: string) {
-  revalidatePath("/admin");
-  revalidatePath("/admin/upload");
+  // Avoid revalidating /admin/upload — refreshing the wizard mid-flow surfaces opaque RSC errors.
   revalidatePath("/admin/tours");
   revalidatePath("/admin/timeline");
   revalidatePath("/admin/reports");
@@ -475,4 +486,6 @@ function revalidatePaths(projectId: string) {
   revalidatePath("/admin/activity");
   revalidatePath(`/admin/projects/${projectId}`);
   revalidatePath(`/dashboard/projects/${projectId}`);
+  revalidatePath("/dashboard/reports");
+  revalidatePath("/dashboard/documents");
 }

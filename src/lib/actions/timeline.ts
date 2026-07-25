@@ -21,7 +21,6 @@ function revalidateTimelinePaths(projectId: string) {
   revalidatePath("/admin/timeline");
   revalidatePath(`/dashboard/projects/${projectId}`);
   revalidatePath("/dashboard/projects");
-  revalidatePath("/admin");
 }
 
 export async function createTimelineEvent(data: {
@@ -93,6 +92,53 @@ export async function createTimelineEvent(data: {
     .single();
 
   if (error || !event) {
+    const msg = (error?.message ?? "").toLowerCase();
+    const missingCols =
+      msg.includes("column") ||
+      msg.includes("schema cache") ||
+      msg.includes("could not find");
+
+    if (missingCols) {
+      const {
+        status: _s,
+        progress_percent: _p,
+        trades: _t,
+        whats_new: _w,
+        author_name: _a,
+        building: _b,
+        floor: _f,
+        building_id: _bi,
+        floor_id: _fi,
+        ...basePayload
+      } = payload;
+
+      const { data: retryEvent, error: retryError } = await supabase
+        .from("timeline_events")
+        .insert(basePayload)
+        .select("id")
+        .single();
+
+      if (retryError || !retryEvent) {
+        throw new Error(retryError?.message ?? "Failed to create timeline event");
+      }
+
+      if (data.photos && data.photos.length > 0) {
+        await insertTimelinePhotos(retryEvent.id, data.photos, user?.id ?? null);
+      }
+
+      if (!data.skipClientNotify) {
+        await notifyClientsIfEnabled("onTimeline", validated.project_id, {
+          title: "Timeline updated",
+          message: validated.title,
+          type: "project_update",
+          link: `/dashboard/projects/${validated.project_id}?tab=timeline`,
+        });
+      }
+
+      revalidateTimelinePaths(validated.project_id);
+      return retryEvent.id;
+    }
+
     throw new Error(error?.message ?? "Failed to create timeline event");
   }
 
