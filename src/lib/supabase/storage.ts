@@ -226,7 +226,7 @@ export function buildAvatarStoragePath(userId: string, fileName: string): string
   return `${userId}/${Date.now()}-${sanitizeFileName(fileName)}`;
 }
 
-export const MAX_AVATAR_SIZE = 2 * 1024 * 1024; // 2 MB
+export const MAX_AVATAR_SIZE = 5 * 1024 * 1024; // 5 MB
 export const AVATAR_MIME_TYPES = [
   "image/jpeg",
   "image/png",
@@ -241,7 +241,7 @@ export function validateAvatarFile(file: File): string | null {
     return "Photo must be a JPEG, PNG, WebP, or GIF image.";
   }
   if (file.size > MAX_AVATAR_SIZE) {
-    return "Photo must be 2 MB or smaller.";
+    return "Photo must be 5 MB or smaller.";
   }
   return null;
 }
