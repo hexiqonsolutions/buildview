@@ -3,6 +3,7 @@
 import { useEffect, useState, useActionState } from "react";
 import { Loader2, Moon, Sun, Building2, Bell } from "lucide-react";
 import { updateProfile, type ProfileActionState } from "@/lib/actions/profile";
+import { ProfileAvatarEditor } from "@/components/dashboard/profile-avatar-editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,6 +36,8 @@ export function ProfileForm({ user, client }: ProfileFormProps) {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
+      <ProfileAvatarEditor user={user} />
+
       <Tabs defaultValue="contact" className="w-full">
         <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 bg-slate-100 p-1 dark:bg-slate-800">
           <TabsTrigger value="company">Company</TabsTrigger>

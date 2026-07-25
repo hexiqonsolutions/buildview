@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Loader2, MessageSquare, ShieldCheck, Trash2, CheckCircle2, RotateCcw } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -129,6 +129,10 @@ export function ProjectCommentsSection({
             return (
               <div key={comment.id} className="surface-card flex gap-3 p-4">
                 <Avatar className="h-9 w-9 shrink-0">
+                  <AvatarImage
+                    src={comment.author?.avatar_url || undefined}
+                    alt={comment.author?.full_name || "User"}
+                  />
                   <AvatarFallback
                     className={cn(
                       "text-xs font-semibold",

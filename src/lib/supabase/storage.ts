@@ -220,3 +220,42 @@ export function validateProjectCoverFile(file: File): string | null {
   }
   return null;
 }
+
+/** Build avatar path: {userId}/{timestamp}-{filename} (matches storage_user_id RLS). */
+export function buildAvatarStoragePath(userId: string, fileName: string): string {
+  return `${userId}/${Date.now()}-${sanitizeFileName(fileName)}`;
+}
+
+export const MAX_AVATAR_SIZE = 2 * 1024 * 1024; // 2 MB
+export const AVATAR_MIME_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+] as const;
+
+export function validateAvatarFile(file: File): string | null {
+  if (
+    !AVATAR_MIME_TYPES.includes(file.type as (typeof AVATAR_MIME_TYPES)[number])
+  ) {
+    return "Photo must be a JPEG, PNG, WebP, or GIF image.";
+  }
+  if (file.size > MAX_AVATAR_SIZE) {
+    return "Photo must be 2 MB or smaller.";
+  }
+  return null;
+}
+
+/** Upload a profile photo to the public avatars bucket. */
+export async function uploadAvatarFile(
+  userId: string,
+  file: File
+): Promise<UploadResult & { publicUrl: string }> {
+  const path = buildAvatarStoragePath(userId, file.name);
+  const result = await uploadFileToStorage(STORAGE_BUCKETS.AVATARS, path, file);
+  const supabase = createClient();
+  const { data } = supabase.storage.from(STORAGE_BUCKETS.AVATARS).getPublicUrl(path);
+  // Cache-bust so header avatars refresh immediately after replace.
+  const publicUrl = `${data.publicUrl}?v=${Date.now()}`;
+  return { ...result, publicUrl };
+}
