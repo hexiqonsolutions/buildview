@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { createSignedStorageUrl } from "@/lib/supabase/storage-server";
 import { resolveIssueImageStoragePath } from "@/lib/supabase/storage";
 import { notifyClientsIfEnabled, notifySuperAdmins, getProjectNameForNotify } from "@/lib/actions/notifications";
@@ -20,6 +21,7 @@ import type {
 import { STORAGE_BUCKETS } from "@/lib/types";
 import { resolveSpatialForWrite } from "@/lib/admin/spatial-resolve";
 import { formatUploadNotifyMessage, portalIssuesLink } from "@/lib/portal/notification-links";
+import { isBuildViewStaffRole } from "@/lib/auth/roles";
 
 function revalidateIssuePaths(projectId: string) {
   revalidatePath("/admin/issues");
@@ -50,6 +52,8 @@ export async function createIssue(data: {
     caption?: string;
     sort_order?: number;
   }>;
+  /** When true, caller already notifies clients (e.g. upload orchestrator). */
+  skipClientNotify?: boolean;
 }) {
   const validation = createIssueSchema.safeParse(data);
   if (!validation.success) {
@@ -87,17 +91,93 @@ export async function createIssue(data: {
     updated_by: null,
   };
 
+  let issueId: string | undefined;
+
   const { data: issue, error } = await supabase
     .from("issues")
     .insert(payload)
     .select("id")
     .single();
 
-  if (error || !issue) throw new Error(error?.message ?? "Failed to create issue");
+  if (!error && issue) {
+    issueId = issue.id;
+  } else {
+    const msg = (error?.message ?? "").toLowerCase();
+    const missingSpatial =
+      (msg.includes("building") || msg.includes("floor") || msg.includes("schema cache")) &&
+      (msg.includes("column") || msg.includes("could not find") || msg.includes("schema cache"));
+
+    if (missingSpatial) {
+      const {
+        building: _b,
+        floor: _f,
+        building_id: _bi,
+        floor_id: _fi,
+        ...basePayload
+      } = payload;
+
+      const { data: retryIssue, error: retryError } = await supabase
+        .from("issues")
+        .insert(basePayload)
+        .select("id")
+        .single();
+
+      if (!retryError && retryIssue) {
+        issueId = retryIssue.id;
+      } else {
+        const retryMsg = (retryError?.message ?? "").toLowerCase();
+        if (
+          !retryMsg.includes("row-level") &&
+          !retryMsg.includes("permission denied") &&
+          !msg.includes("row-level")
+        ) {
+          throw new Error(retryError?.message ?? error?.message ?? "Failed to create issue");
+        }
+      }
+    }
+
+    if (!issueId) {
+      // Staff upload may fail when RLS only allows is_super_admin().
+      const { data: me } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", user?.id ?? "")
+        .maybeSingle();
+
+      if (!me || !isBuildViewStaffRole(me.role)) {
+        throw new Error(error?.message ?? "Failed to create issue");
+      }
+
+      const admin = createServiceRoleClient();
+      const staffPayload = missingSpatial
+        ? (() => {
+            const {
+              building: _b,
+              floor: _f,
+              building_id: _bi,
+              floor_id: _fi,
+              ...base
+            } = payload;
+            return base;
+          })()
+        : payload;
+
+      const { data: staffIssue, error: staffError } = await admin
+        .from("issues")
+        .insert(staffPayload)
+        .select("id")
+        .single();
+
+      if (staffError || !staffIssue) {
+        throw new Error(staffError?.message ?? error?.message ?? "Failed to create issue");
+      }
+      issueId = staffIssue.id;
+    }
+  }
 
   if (data.images && data.images.length > 0) {
     const imageRows: IssueImageInsert[] = data.images.map((img, index) => ({
-      issue_id: issue.id,
+      issue_id: issueId,
       image_url: img.storage_path,
       storage_path: img.storage_path,
       caption: img.caption ?? null,
@@ -107,7 +187,20 @@ export async function createIssue(data: {
     }));
 
     const { error: imageError } = await supabase.from("issue_images").insert(imageRows);
-    if (imageError) throw new Error(imageError.message);
+    if (imageError) {
+      const { data: me } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", user?.id ?? "")
+        .maybeSingle();
+      if (me && isBuildViewStaffRole(me.role)) {
+        const admin = createServiceRoleClient();
+        const { error: staffImageError } = await admin.from("issue_images").insert(imageRows);
+        if (staffImageError) throw new Error(staffImageError.message);
+      } else {
+        throw new Error(imageError.message);
+      }
+    }
   }
 
   if (
@@ -126,17 +219,23 @@ export async function createIssue(data: {
     }
   }
 
-  const projectName = await getProjectNameForNotify(validated.project_id);
-  await notifyClientsIfEnabled("onIssueUpdate", validated.project_id, {
-    title: "New issue reported",
-    message: formatUploadNotifyMessage(validated.title, projectName, "Issues"),
-    type: "issue_update",
-    link: portalIssuesLink(validated.project_id, issue.id),
-  });
+  if (!data.skipClientNotify) {
+    try {
+      const projectName = await getProjectNameForNotify(validated.project_id);
+      await notifyClientsIfEnabled("onIssueUpdate", validated.project_id, {
+        title: "New issue reported",
+        message: formatUploadNotifyMessage(validated.title, projectName, "Issues"),
+        type: "issue_update",
+        link: portalIssuesLink(validated.project_id, issueId),
+      });
+    } catch (err) {
+      console.error("[createIssue] client notify failed:", err);
+    }
+  }
 
   revalidateIssuePaths(validated.project_id);
   revalidatePath("/admin/notifications");
-  return issue.id;
+  return issueId;
 }
 
 export async function updateIssue(data: {

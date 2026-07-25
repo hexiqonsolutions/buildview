@@ -25,6 +25,7 @@ import {
   formatUploadNotifyMessage,
   portalDocumentLink,
   portalInvoiceLink,
+  portalIssuesLink,
   portalMatterportLink,
   portalReportLink,
   portalTimelineLink,
@@ -591,6 +592,7 @@ export async function uploadIssueWithAutomation(data: {
     building: data.building,
     floor: data.floor,
     images: data.images,
+    skipClientNotify: true,
   });
 
   const eventDate = data.event_date ?? new Date().toISOString().split("T")[0];
@@ -605,10 +607,29 @@ export async function uploadIssueWithAutomation(data: {
     skipClientNotify: true,
   });
 
-  await logActivity(data.project_id, `Issue reported: ${data.title}`, "issue", issueId, {
-    priority: data.priority,
-    location: data.location,
-  });
+  try {
+    await logActivity(data.project_id, `Issue reported: ${data.title}`, "issue", issueId, {
+      priority: data.priority,
+      location: data.location,
+    });
+  } catch (err) {
+    console.error("[uploadIssueWithAutomation] activity log failed:", err);
+  }
+
+  // Notify clients on upload (same path as reports/documents) so Issues reach the portal inbox.
+  try {
+    if (await isNotificationRuleEnabled("onUpload")) {
+      const projectName = await getProjectNameForNotify(data.project_id);
+      await notifyProjectClientUsers(data.project_id, {
+        title: "New issue reported",
+        message: formatUploadNotifyMessage(data.title, projectName, "Issues"),
+        type: "issue_update",
+        link: portalIssuesLink(data.project_id, issueId),
+      });
+    }
+  } catch (err) {
+    console.error("[uploadIssueWithAutomation] notify failed:", err);
+  }
 
   revalidatePaths(data.project_id);
   return { issueId, eventId };

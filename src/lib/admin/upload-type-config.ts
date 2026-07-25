@@ -102,7 +102,7 @@ export function getAutomationPreview(category: UploadCategory): AutomationPrevie
         label: "Issue",
         timeline: true,
         activity: true,
-        clientNotify: false,
+        clientNotify: true,
         adminNotify: true,
       };
     default:
