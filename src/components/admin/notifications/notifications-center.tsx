@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   Bell,
   CheckCheck,
@@ -16,6 +17,7 @@ import {
   markNotificationRead,
 } from "@/lib/actions/notifications";
 import { notifyNotificationsChanged } from "@/components/admin/notifications/notification-bell";
+import { resolveNotificationHref } from "@/lib/portal/notification-links";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn, formatRelativeTime } from "@/lib/utils";
@@ -53,6 +55,8 @@ export function NotificationsCenter({
   const [items, setItems] = useState(notifications);
   const [filter, setFilter] = useState<Filter>("all");
   const [isPending, startTransition] = useTransition();
+  const pathname = usePathname();
+  const preferAdmin = Boolean(pathname?.startsWith("/admin"));
 
   // Opening the inbox marks everything read and clears the header badge.
   useEffect(() => {
@@ -159,6 +163,15 @@ export function NotificationsCenter({
         ) : (
           filtered.map((notification) => {
             const Icon = TYPE_ICONS[notification.type];
+            const href = resolveNotificationHref(
+              notification.link,
+              {
+                title: notification.title,
+                message: notification.message,
+                type: notification.type,
+              },
+              { preferAdmin }
+            );
             return (
               <div
                 key={notification.id}
@@ -177,9 +190,18 @@ export function NotificationsCenter({
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-medium text-slate-900 dark:text-white">
-                      {notification.title}
-                    </p>
+                    {href ? (
+                      <Link
+                        href={href}
+                        className="text-sm font-medium text-slate-900 hover:text-brand-accent dark:text-white dark:hover:text-brand-accent"
+                      >
+                        {notification.title}
+                      </Link>
+                    ) : (
+                      <p className="text-sm font-medium text-slate-900 dark:text-white">
+                        {notification.title}
+                      </p>
+                    )}
                     {!notification.is_read && (
                       <Badge variant="secondary" className="h-5 text-[10px]">
                         New
@@ -193,9 +215,9 @@ export function NotificationsCenter({
                     {formatRelativeTime(notification.created_at)}
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {notification.link && (
+                    {href && (
                       <Button variant="outline" size="sm" asChild>
-                        <Link href={notification.link}>View</Link>
+                        <Link href={href}>View</Link>
                       </Button>
                     )}
                     {!notification.is_read && (
