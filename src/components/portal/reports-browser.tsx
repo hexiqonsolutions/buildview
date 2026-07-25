@@ -10,9 +10,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { PdfPreview } from "@/components/projects/pdf-preview";
-import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
+import { formatDate, formatStatus } from "@/lib/utils";
 import type { Report, ReportType } from "@/lib/types";
 
 type ReportRow = Report & { projectName: string };
@@ -87,9 +86,6 @@ export function ReportsBrowser({ reports }: { reports: ReportRow[] }) {
                 )}
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <Badge className={getStatusColor(report.report_type)}>
-                  {formatStatus(report.report_type)}
-                </Badge>
                 <PdfPreview
                   reportId={report.id}
                   fileName={report.file_name}
