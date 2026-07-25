@@ -23,12 +23,18 @@ import {
 
 interface ExecutiveOverviewProps {
   firstName: string;
+  fullName?: string | null;
+  email?: string | null;
+  avatarUrl?: string | null;
   data: ClientDashboardData;
   workspaceQuery?: string;
 }
 
 export function ExecutiveOverview({
   firstName,
+  fullName,
+  email,
+  avatarUrl,
   data,
   workspaceQuery = "",
 }: ExecutiveOverviewProps) {
@@ -37,7 +43,12 @@ export function ExecutiveOverview({
 
   return (
     <div className="dashboard-page">
-      <PortalWelcomeBanner firstName={firstName} />
+      <PortalWelcomeBanner
+        firstName={firstName}
+        fullName={fullName}
+        email={email}
+        avatarUrl={avatarUrl}
+      />
 
       <div className="grid grid-cols-2 gap-5 lg:grid-cols-4">
         <PortalMetricCard

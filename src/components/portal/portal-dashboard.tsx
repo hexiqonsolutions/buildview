@@ -8,6 +8,17 @@ import {
 } from "lucide-react";
 import { typography } from "@/design-system/typography";
 import { withPortalWorkspaceQuery } from "@/lib/portal/nav";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
+function welcomeInitials(name?: string | null, email?: string | null) {
+  const source = name?.trim() || email?.trim() || "?";
+  return source
+    .split(/\s+/)
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
 
 const actions = [
   { href: "/dashboard/projects", label: "Open Matterport", icon: Camera },
@@ -35,16 +46,42 @@ export function PortalQuickActions({ workspaceQuery = "" }: { workspaceQuery?: s
   );
 }
 
-export function PortalWelcomeBanner({ firstName }: { firstName: string }) {
+export function PortalWelcomeBanner({
+  firstName,
+  fullName,
+  email,
+  avatarUrl,
+  profileHref = "/dashboard/profile",
+}: {
+  firstName: string;
+  fullName?: string | null;
+  email?: string | null;
+  avatarUrl?: string | null;
+  profileHref?: string;
+}) {
   return (
     <div className="intel-hero-strip flex flex-col gap-6 overflow-hidden sm:flex-row sm:items-center sm:justify-between">
-      <div className="relative z-10 max-w-xl">
-        <p className={typography.eyebrow}>Executive Overview</p>
-        <h1 className={`mt-1 ${typography.intelHeroTitle}`}>Welcome Back, {firstName}</h1>
-        <p className="mt-2 text-sm text-slate-500">
-          Track construction progress, 3D tours, reports, and milestones across your active
-          projects.
-        </p>
+      <div className="relative z-10 flex max-w-xl items-start gap-4 sm:gap-5">
+        <Link
+          href={profileHref}
+          className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2"
+          aria-label="Open profile"
+        >
+          <Avatar className="h-14 w-14 ring-2 ring-white shadow-md dark:ring-slate-800 sm:h-16 sm:w-16">
+            <AvatarImage src={avatarUrl || undefined} alt={fullName || firstName} />
+            <AvatarFallback className="bg-slate-900 text-base font-semibold text-white sm:text-lg">
+              {welcomeInitials(fullName || firstName, email)}
+            </AvatarFallback>
+          </Avatar>
+        </Link>
+        <div className="min-w-0 pt-0.5">
+          <p className={typography.eyebrow}>Executive Overview</p>
+          <h1 className={`mt-1 ${typography.intelHeroTitle}`}>Welcome Back, {firstName}</h1>
+          <p className="mt-2 text-sm text-slate-500">
+            Track construction progress, 3D tours, reports, and milestones across your active
+            projects.
+          </p>
+        </div>
       </div>
       <div className="relative flex shrink-0 items-center justify-center">
         <div className="pointer-events-none absolute h-32 w-32 rounded-full bg-brand-accent/15 blur-2xl" />

@@ -7,16 +7,28 @@ import { usePortalWorkspace } from "@/components/portal/workspace/portal-workspa
 
 interface ExecutiveOverviewShellProps {
   firstName: string;
+  fullName?: string | null;
+  email?: string | null;
+  avatarUrl?: string | null;
   data: ClientDashboardData;
 }
 
-export function ExecutiveOverviewShell({ firstName, data }: ExecutiveOverviewShellProps) {
+export function ExecutiveOverviewShell({
+  firstName,
+  fullName,
+  email,
+  avatarUrl,
+  data,
+}: ExecutiveOverviewShellProps) {
   const { hydrated, scope } = usePortalWorkspace();
   const workspaceQuery = hydrated ? scopeToPortalQueryString(scope) : "";
 
   return (
     <ExecutiveOverview
       firstName={firstName}
+      fullName={fullName}
+      email={email}
+      avatarUrl={avatarUrl}
       data={data}
       workspaceQuery={workspaceQuery}
     />

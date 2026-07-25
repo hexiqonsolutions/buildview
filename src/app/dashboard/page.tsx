@@ -31,8 +31,24 @@ export default async function DashboardPage({
     "there";
 
   if (isPortfolio && portfolioData) {
-    return <PortfolioShowcaseShell data={portfolioData} />;
+    return (
+      <PortfolioShowcaseShell
+        data={portfolioData}
+        firstName={firstName}
+        fullName={user?.full_name}
+        email={user?.email}
+        avatarUrl={user?.avatar_url}
+      />
+    );
   }
 
-  return <ExecutiveOverviewShell firstName={firstName} data={data!} />;
+  return (
+    <ExecutiveOverviewShell
+      firstName={firstName}
+      fullName={user?.full_name}
+      email={user?.email}
+      avatarUrl={user?.avatar_url}
+      data={data!}
+    />
+  );
 }

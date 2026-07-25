@@ -8,6 +8,7 @@ import type { PortfolioDashboardData, PortfolioProjectItem } from "@/lib/portal/
 import { scopeToPortalQueryString } from "@/lib/admin/scope";
 import { usePortalWorkspace } from "@/components/portal/workspace/portal-workspace-provider";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -20,6 +21,15 @@ import {
   type PortfolioCategory,
 } from "@/lib/types";
 
+function welcomeInitials(name?: string | null, email?: string | null) {
+  const source = name?.trim() || email?.trim() || "?";
+  return source
+    .split(/\s+/)
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
 function projectCover(project: PortfolioProjectItem): string | null {
   return project.cover_image_url || project.latestTour?.thumbnail_url || null;
 }
@@ -155,7 +165,19 @@ function PortfolioGridCard({
   );
 }
 
-export function PortfolioShowcaseShell({ data }: { data: PortfolioDashboardData }) {
+export function PortfolioShowcaseShell({
+  data,
+  firstName = "there",
+  fullName,
+  email,
+  avatarUrl,
+}: {
+  data: PortfolioDashboardData;
+  firstName?: string;
+  fullName?: string | null;
+  email?: string | null;
+  avatarUrl?: string | null;
+}) {
   const { hydrated, scope, clientName } = usePortalWorkspace();
   const workspaceQuery = hydrated ? scopeToPortalQueryString(scope) : "";
   const [tourOpen, setTourOpen] = useState(false);
@@ -178,6 +200,29 @@ export function PortfolioShowcaseShell({ data }: { data: PortfolioDashboardData 
 
   return (
     <div className="dashboard-page portfolio-dashboard">
+      <div className="flex items-center gap-4">
+        <Link
+          href="/dashboard/profile"
+          className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2"
+          aria-label="Open profile"
+        >
+          <Avatar className="h-12 w-12 ring-2 ring-white shadow-md dark:ring-slate-800 sm:h-14 sm:w-14">
+            <AvatarImage src={avatarUrl || undefined} alt={fullName || firstName} />
+            <AvatarFallback className="bg-slate-900 text-sm font-semibold text-white sm:text-base">
+              {welcomeInitials(fullName || firstName, email)}
+            </AvatarFallback>
+          </Avatar>
+        </Link>
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+            Portfolio
+          </p>
+          <h2 className="font-display text-xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-2xl">
+            Welcome Back, {firstName}
+          </h2>
+        </div>
+      </div>
+
       <section
         id="featured"
         className="group relative min-h-[320px] overflow-hidden rounded-2xl bg-slate-950 shadow-[0_24px_48px_-24px_rgba(15,23,42,0.5)] md:min-h-[400px]"
