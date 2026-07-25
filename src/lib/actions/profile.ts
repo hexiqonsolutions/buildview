@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient, getUserProfile } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { updateProfileSchema } from "@/lib/validations/profile";
 
 export type ProfileActionState = {
@@ -66,9 +67,10 @@ export async function updateProfile(
   return { success: "Profile updated successfully." };
 }
 
+/** Persist avatar_url for the signed-in user (service role — client RLS can silently block). */
 export async function updateAvatarUrl(avatarUrl: string): Promise<{ error?: string }> {
   const url = avatarUrl.trim();
-  if (!url || url.length > 2000) {
+  if (!url || !/^https?:\/\//i.test(url) || url.length > 2000) {
     return { error: "Invalid photo URL." };
   }
 
@@ -81,18 +83,32 @@ export async function updateAvatarUrl(avatarUrl: string): Promise<{ error?: stri
     return { error: "You must be signed in to update your photo." };
   }
 
-  const { error } = await supabase
-    .from("users")
-    .update({
-      avatar_url: url,
-      updated_by: user.id,
-    })
-    .eq("id", user.id)
-    .is("deleted_at", null);
+  try {
+    const admin = createServiceRoleClient();
+    const { data, error } = await admin
+      .from("users")
+      .update({
+        avatar_url: url,
+        updated_by: user.id,
+      })
+      .eq("id", user.id)
+      .is("deleted_at", null)
+      .select("id")
+      .maybeSingle();
 
-  if (error) {
-    console.error("[updateAvatarUrl] failed:", error.message);
-    return { error: "Could not save your profile photo. Please try again." };
+    if (error) {
+      console.error("[updateAvatarUrl] failed:", error.message);
+      return { error: `Could not save your profile photo: ${error.message}` };
+    }
+    if (!data) {
+      console.error("[updateAvatarUrl] no row updated for", user.id);
+      return { error: "Could not save your profile photo. Please try again." };
+    }
+  } catch (err) {
+    console.error("[updateAvatarUrl] exception:", err);
+    return {
+      error: err instanceof Error ? err.message : "Could not save your profile photo.",
+    };
   }
 
   revalidateProfileSurfaces();
@@ -109,18 +125,31 @@ export async function removeAvatarUrl(): Promise<{ error?: string }> {
     return { error: "You must be signed in to remove your photo." };
   }
 
-  const { error } = await supabase
-    .from("users")
-    .update({
-      avatar_url: null,
-      updated_by: user.id,
-    })
-    .eq("id", user.id)
-    .is("deleted_at", null);
+  try {
+    const admin = createServiceRoleClient();
+    const { data, error } = await admin
+      .from("users")
+      .update({
+        avatar_url: null,
+        updated_by: user.id,
+      })
+      .eq("id", user.id)
+      .is("deleted_at", null)
+      .select("id")
+      .maybeSingle();
 
-  if (error) {
-    console.error("[removeAvatarUrl] failed:", error.message);
-    return { error: "Could not remove your profile photo. Please try again." };
+    if (error) {
+      console.error("[removeAvatarUrl] failed:", error.message);
+      return { error: `Could not remove your profile photo: ${error.message}` };
+    }
+    if (!data) {
+      return { error: "Could not remove your profile photo. Please try again." };
+    }
+  } catch (err) {
+    console.error("[removeAvatarUrl] exception:", err);
+    return {
+      error: err instanceof Error ? err.message : "Could not remove your profile photo.",
+    };
   }
 
   revalidateProfileSurfaces();

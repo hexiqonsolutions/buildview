@@ -255,7 +255,6 @@ export async function uploadAvatarFile(
   const result = await uploadFileToStorage(STORAGE_BUCKETS.AVATARS, path, file);
   const supabase = createClient();
   const { data } = supabase.storage.from(STORAGE_BUCKETS.AVATARS).getPublicUrl(path);
-  // Cache-bust so header avatars refresh immediately after replace.
-  const publicUrl = `${data.publicUrl}?v=${Date.now()}`;
-  return { ...result, publicUrl };
+  // Persist a clean public URL; callers can cache-bust for display.
+  return { ...result, publicUrl: data.publicUrl };
 }

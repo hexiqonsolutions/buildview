@@ -65,17 +65,23 @@ export function ProfileAvatarEditor({ user }: { user: User }) {
     revokeObjectUrl(cropSrc);
     const objectUrl = URL.createObjectURL(file);
     setCropSrc(objectUrl);
-    setCropOpen(true);
     setError(null);
     setSuccess(null);
     if (inputRef.current) inputRef.current.value = "";
+
+    // Defer open so the file-picker focus release does not immediately close the dialog.
+    window.setTimeout(() => setCropOpen(true), 120);
   }
 
   function handleCropDialogChange(open: boolean) {
     setCropOpen(open);
     if (!open) {
-      revokeObjectUrl(cropSrc);
-      setCropSrc(null);
+      // Keep blob URL briefly so the dialog can unmount cleanly.
+      const url = cropSrc;
+      window.setTimeout(() => {
+        revokeObjectUrl(url);
+        setCropSrc((current) => (current === url ? null : current));
+      }, 250);
     }
   }
 
@@ -90,7 +96,8 @@ export function ProfileAvatarEditor({ user }: { user: User }) {
           setError(result.error);
           return;
         }
-        setPreviewUrl(upload.publicUrl);
+        // Cache-bust preview so the header/avatar refresh immediately.
+        setPreviewUrl(`${upload.publicUrl}?v=${Date.now()}`);
         setSuccess("Profile photo updated.");
         router.refresh();
       } catch (err) {

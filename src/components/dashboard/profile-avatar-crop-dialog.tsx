@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 
 interface ProfileAvatarCropDialogProps {
   open: boolean;
@@ -50,7 +51,10 @@ export function ProfileAvatarCropDialog({
   }
 
   async function handleApply() {
-    if (!imageSrc || !croppedAreaPixels) return;
+    if (!imageSrc || !croppedAreaPixels) {
+      setError("Adjust the crop first, then save.");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -68,37 +72,41 @@ export function ProfileAvatarCropDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-[420px] gap-0 overflow-hidden p-0 sm:rounded-2xl">
-        <DialogHeader className="space-y-1 border-b border-slate-100 px-6 py-5 pr-12 text-left dark:border-slate-800">
+    <Dialog open={open && Boolean(imageSrc)} onOpenChange={handleOpenChange}>
+      <DialogContent
+        className={cn(
+          "!flex max-h-[92vh] w-[min(100vw-1.5rem,420px)] max-w-[420px] flex-col gap-0 overflow-hidden p-0 sm:rounded-2xl"
+        )}
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+      >
+        <DialogHeader className="shrink-0 space-y-1 border-b border-slate-100 px-5 py-4 pr-12 text-left dark:border-slate-800">
           <DialogTitle className="text-base">Adjust photo</DialogTitle>
           <DialogDescription className="text-sm">
-            Drag to reposition. Zoom until it fits the circle.
+            Drag to move. Use zoom so your face fits inside the circle.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="bg-slate-950 px-0 py-0">
-          <div className="relative mx-auto aspect-square w-full max-w-[420px]">
-            {imageSrc && (
-              <Cropper
-                image={imageSrc}
-                crop={crop}
-                zoom={zoom}
-                aspect={1}
-                cropShape="round"
-                showGrid={false}
-                onCropChange={setCrop}
-                onZoomChange={setZoom}
-                onCropComplete={onCropComplete}
-                classes={{
-                  containerClassName: "rounded-none",
-                }}
-              />
-            )}
-          </div>
+        <div className="relative h-[min(58vw,300px)] w-full shrink-0 bg-slate-950">
+          {imageSrc ? (
+            <Cropper
+              image={imageSrc}
+              crop={crop}
+              zoom={zoom}
+              minZoom={1}
+              maxZoom={3}
+              aspect={1}
+              cropShape="round"
+              showGrid={false}
+              objectFit="horizontal-cover"
+              onCropChange={setCrop}
+              onZoomChange={setZoom}
+              onCropComplete={onCropComplete}
+            />
+          ) : null}
         </div>
 
-        <div className="space-y-4 border-t border-slate-100 px-6 py-5 dark:border-slate-800">
+        <div className="shrink-0 space-y-4 border-t border-slate-100 px-5 py-4 dark:border-slate-800">
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -144,11 +152,7 @@ export function ProfileAvatarCropDialog({
             >
               Cancel
             </Button>
-            <Button
-              type="button"
-              onClick={handleApply}
-              disabled={busy || !croppedAreaPixels}
-            >
+            <Button type="button" onClick={handleApply} disabled={busy}>
               {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Save photo
             </Button>
