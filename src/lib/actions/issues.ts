@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createSignedStorageUrl } from "@/lib/supabase/storage-server";
 import { resolveIssueImageStoragePath } from "@/lib/supabase/storage";
-import { notifyClientsIfEnabled, notifySuperAdmins } from "@/lib/actions/notifications";
+import { notifyClientsIfEnabled, notifySuperAdmins, getProjectNameForNotify } from "@/lib/actions/notifications";
 import { isNotificationRuleEnabled } from "@/lib/actions/platform-settings";
 import {
   createIssueSchema,
@@ -19,7 +19,7 @@ import type {
 } from "@/lib/types";
 import { STORAGE_BUCKETS } from "@/lib/types";
 import { resolveSpatialForWrite } from "@/lib/admin/spatial-resolve";
-import { portalIssuesLink } from "@/lib/portal/notification-links";
+import { formatUploadNotifyMessage, portalIssuesLink } from "@/lib/portal/notification-links";
 
 function revalidateIssuePaths(projectId: string) {
   revalidatePath("/admin/issues");
@@ -126,9 +126,10 @@ export async function createIssue(data: {
     }
   }
 
+  const projectName = await getProjectNameForNotify(validated.project_id);
   await notifyClientsIfEnabled("onIssueUpdate", validated.project_id, {
     title: "New issue reported",
-    message: validated.title,
+    message: formatUploadNotifyMessage(validated.title, projectName, "Issues"),
     type: "issue_update",
     link: portalIssuesLink(validated.project_id, issue.id),
   });

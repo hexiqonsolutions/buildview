@@ -32,7 +32,21 @@ export function portalMatterportLink(projectId: string, tourId?: string): string
   return tourId ? `${base}?tour=${tourId}` : base;
 }
 
-const PROJECT_LINK_RE = /\/dashboard\/projects\/([0-9a-f-]{36})/i;
+/** Clear client-facing copy: what was uploaded and for which project. */
+export function formatUploadNotifyMessage(
+  itemName: string,
+  projectName: string,
+  destination: "Reports" | "Documents" | "Invoices" | "Timeline" | "Issues" | "project"
+): string {
+  const item = itemName.trim() || "A file";
+  const project = projectName.trim() || "your project";
+  if (destination === "project") {
+    return `"${item}" was uploaded for ${project}.`;
+  }
+  return `"${item}" was uploaded for ${project}. Open ${destination} to view it.`;
+}
+
+const PROJECT_LINK_RE = /\/dashboard\/projects\/([0-9a-f-]{36})(?:\?[^#]*)?/i;
 
 function adminContentLink(portalHref: string): string {
   if (portalHref.startsWith("/dashboard/reports")) {
@@ -59,6 +73,23 @@ function adminContentLink(portalHref: string): string {
   return portalHref;
 }
 
+function isContentTabLink(href: string): boolean {
+  return (
+    href.startsWith("/dashboard/reports") ||
+    href.startsWith("/dashboard/documents") ||
+    href.startsWith("/dashboard/invoices") ||
+    href.startsWith("/dashboard/timeline") ||
+    href.startsWith("/dashboard/issues") ||
+    href.startsWith("/dashboard/matterport") ||
+    href.startsWith("/admin/reports") ||
+    href.startsWith("/admin/documents") ||
+    href.startsWith("/admin/invoices") ||
+    href.startsWith("/admin/timeline") ||
+    href.startsWith("/admin/issues") ||
+    href.startsWith("/admin/tours")
+  );
+}
+
 /**
  * Resolve a notification href to the correct Reports / Documents / Invoices / etc. tab.
  * Rewrites legacy `/dashboard/projects/{id}` links using title/message/type so older
@@ -72,41 +103,44 @@ export function resolveNotificationHref(
   if (!link) return null;
 
   let href = link;
+  const title = (meta.title ?? "").toLowerCase();
+  const message = (meta.message ?? "").toLowerCase();
+  const haystack = `${title} ${message}`;
+  const projectMatch = href.match(PROJECT_LINK_RE);
+  const projectId = projectMatch?.[1];
 
-  const alreadyScoped =
-    href.startsWith("/dashboard/reports") ||
-    href.startsWith("/dashboard/documents") ||
-    href.startsWith("/dashboard/invoices") ||
-    href.startsWith("/dashboard/timeline") ||
-    href.startsWith("/dashboard/issues") ||
-    href.startsWith("/dashboard/matterport") ||
-    href.startsWith("/admin/reports") ||
-    href.startsWith("/admin/documents") ||
-    href.startsWith("/admin/invoices") ||
-    href.startsWith("/admin/timeline") ||
-    href.startsWith("/admin/issues") ||
-    href.startsWith("/admin/tours");
-
-  if (!alreadyScoped) {
-    const projectMatch = href.match(PROJECT_LINK_RE);
-    if (projectMatch?.[1]) {
-      const projectId = projectMatch[1];
-      const haystack = `${meta.title ?? ""} ${meta.message ?? ""}`.toLowerCase();
-
-      if (/[?&]tab=timeline/i.test(href) || /timeline|site photo/.test(haystack)) {
-        href = portalTimelineLink(projectId);
-      } else if (/[?&]tab=issues/i.test(href) || meta.type === "issue_update" || /\bissue\b/.test(haystack)) {
-        href = portalIssuesLink(projectId);
-      } else if (meta.type === "invoice_update" || /invoice/.test(haystack)) {
-        href = portalInvoiceLink(projectId);
-      } else if (/report/.test(haystack)) {
-        href = portalReportLink(projectId);
-      } else if (/document|drawing|contract|\bboq\b/.test(haystack)) {
-        href = portalDocumentLink(projectId);
-      } else if (/matterport|scan/.test(haystack)) {
-        href = portalMatterportLink(projectId);
-      }
-      // else keep project overview for generic project updates
+  // Legacy project-overview links → content tabs (title takes priority).
+  if (projectId && !isContentTabLink(href)) {
+    if (
+      /document uploaded|new document/.test(title) ||
+      /available in (your )?project documents|open documents/.test(haystack) ||
+      (/document|drawing|contract|\bboq\b/.test(haystack) && !/report/.test(title))
+    ) {
+      href = portalDocumentLink(projectId);
+    } else if (
+      /report uploaded|new report/.test(title) ||
+      /available in reports|open reports/.test(haystack) ||
+      /\breport\b/.test(haystack)
+    ) {
+      href = portalReportLink(projectId);
+    } else if (
+      meta.type === "invoice_update" ||
+      /invoice/.test(haystack)
+    ) {
+      href = portalInvoiceLink(projectId);
+    } else if (
+      /[?&]tab=timeline/i.test(link) ||
+      /timeline updated|site photo|new site photos/.test(haystack)
+    ) {
+      href = portalTimelineLink(projectId);
+    } else if (
+      /[?&]tab=issues/i.test(link) ||
+      meta.type === "issue_update" ||
+      /\bissue\b/.test(haystack)
+    ) {
+      href = portalIssuesLink(projectId);
+    } else if (/matterport|scan/.test(haystack)) {
+      href = portalMatterportLink(projectId);
     }
   }
 

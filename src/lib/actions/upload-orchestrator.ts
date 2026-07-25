@@ -17,11 +17,12 @@ import type {
 import { createReport, createDocument, createInvoice, attachInvoicePdf } from "@/lib/actions/admin";
 import { addTimelinePhotos } from "@/lib/actions/timeline";
 import { createIssue } from "@/lib/actions/issues";
-import { notifyProjectClientUsers } from "@/lib/actions/notifications";
+import { notifyProjectClientUsers, getProjectNameForNotify } from "@/lib/actions/notifications";
 import { isNotificationRuleEnabled } from "@/lib/actions/platform-settings";
 import { resolveSpatialForWrite } from "@/lib/admin/spatial-resolve";
 import { buildTourDescription } from "@/lib/admin/tour-metadata";
 import {
+  formatUploadNotifyMessage,
   portalDocumentLink,
   portalInvoiceLink,
   portalMatterportLink,
@@ -178,9 +179,10 @@ export async function uploadMatterportWithAutomation(data: {
 
   try {
     if (await isNotificationRuleEnabled("onUpload")) {
+      const projectName = await getProjectNameForNotify(parsed.data.project_id);
       await notifyProjectClientUsers(parsed.data.project_id, {
         title: "New Matterport scan available",
-        message: `${parsed.data.name} has been uploaded to your project timeline.`,
+        message: formatUploadNotifyMessage(parsed.data.name, projectName, "project"),
         type: "project_update",
         link: portalMatterportLink(parsed.data.project_id, tour.id),
       });
@@ -241,9 +243,10 @@ export async function uploadReportWithAutomation(data: {
 
   try {
     if (await isNotificationRuleEnabled("onUpload")) {
+      const projectName = await getProjectNameForNotify(data.project_id);
       await notifyProjectClientUsers(data.project_id, {
         title: "New report uploaded",
-        message: `${data.title} is now available in Reports.`,
+        message: formatUploadNotifyMessage(data.title, projectName, "Reports"),
         type: "project_update",
         link: portalReportLink(data.project_id, reportId),
       });
@@ -301,9 +304,10 @@ export async function uploadDocumentWithAutomation(data: {
 
   try {
     if (await isNotificationRuleEnabled("onUpload")) {
+      const projectName = await getProjectNameForNotify(data.project_id);
       await notifyProjectClientUsers(data.project_id, {
         title: "New document uploaded",
-        message: `${data.name} is now available in Documents.`,
+        message: formatUploadNotifyMessage(data.name, projectName, "Documents"),
         type: "project_update",
         link: portalDocumentLink(data.project_id, documentId),
       });
@@ -380,9 +384,14 @@ export async function finalizeInvoiceUploadWithAutomation(data: {
 
   try {
     if (await isNotificationRuleEnabled("onUpload")) {
+      const projectName = await getProjectNameForNotify(data.project_id);
       await notifyProjectClientUsers(data.project_id, {
         title: "New invoice available",
-        message: `Invoice ${data.invoice_number} is ready in Invoices.`,
+        message: formatUploadNotifyMessage(
+          `Invoice ${data.invoice_number}`,
+          projectName,
+          "Invoices"
+        ),
         type: "invoice_update",
         link: portalInvoiceLink(data.project_id, data.invoice_id),
       });
@@ -430,9 +439,10 @@ export async function uploadTimelineUpdateWithAutomation(data: {
 
   try {
     if (await isNotificationRuleEnabled("onUpload")) {
+      const projectName = await getProjectNameForNotify(data.project_id);
       await notifyProjectClientUsers(data.project_id, {
         title: "Timeline updated",
-        message: data.title,
+        message: formatUploadNotifyMessage(data.title, projectName, "Timeline"),
         type: "project_update",
         link: portalTimelineLink(data.project_id),
       });
@@ -476,9 +486,14 @@ export async function attachSitePhotosWithAutomation(data: {
 
   try {
     if (await isNotificationRuleEnabled("onUpload")) {
+      const projectName = await getProjectNameForNotify(data.project_id);
       await notifyProjectClientUsers(data.project_id, {
         title: "New site photos uploaded",
-        message: `${data.title} — ${data.photos.length} photo${data.photos.length === 1 ? "" : "s"} added.`,
+        message: formatUploadNotifyMessage(
+          `${data.title} (${data.photos.length} photo${data.photos.length === 1 ? "" : "s"})`,
+          projectName,
+          "Timeline"
+        ),
         type: "project_update",
         link: portalTimelineLink(data.project_id),
       });

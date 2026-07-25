@@ -44,7 +44,9 @@ import {
   portalInvoiceLink,
   portalMatterportLink,
   portalReportLink,
+  formatUploadNotifyMessage,
 } from "@/lib/portal/notification-links";
+import { getProjectNameForNotify } from "@/lib/actions/notifications";
 
 export async function createClientRecord(data: {
   name: string;
@@ -255,9 +257,10 @@ export async function createTour(data: {
   const { error } = await supabase.from("project_tours").insert(payload);
   if (error) throw new Error(error.message);
 
+  const projectName = await getProjectNameForNotify(parsed.data.project_id);
   await notifyClientsIfEnabled("onUpload", parsed.data.project_id, {
     title: "New Matterport scan available",
-    message: `${parsed.data.name} has been uploaded to your project.`,
+    message: formatUploadNotifyMessage(parsed.data.name, projectName, "project"),
     type: "project_update",
     link: portalMatterportLink(parsed.data.project_id),
   });
@@ -349,9 +352,10 @@ export async function createReport(data: {
       }
 
       if (!data.skipClientNotify) {
+        const projectName = await getProjectNameForNotify(validated.project_id);
         await notifyClientsIfEnabled("onUpload", validated.project_id, {
           title: "New report uploaded",
-          message: `${validated.title} is now available in Reports.`,
+          message: formatUploadNotifyMessage(validated.title, projectName, "Reports"),
           type: "project_update",
           link: portalReportLink(validated.project_id, retryReport.id),
         });
@@ -367,9 +371,10 @@ export async function createReport(data: {
   }
 
   if (!data.skipClientNotify) {
+    const projectName = await getProjectNameForNotify(validated.project_id);
     await notifyClientsIfEnabled("onUpload", validated.project_id, {
       title: "New report uploaded",
-      message: `${validated.title} is now available in Reports.`,
+      message: formatUploadNotifyMessage(validated.title, projectName, "Reports"),
       type: "project_update",
       link: portalReportLink(validated.project_id, report.id),
     });
@@ -490,9 +495,10 @@ export async function createDocument(data: {
     const document = await insertDocumentRow(supabase, fullPayload, corePayload);
 
     if (!data.skipClientNotify) {
+      const projectName = await getProjectNameForNotify(validated.project_id);
       await notifyClientsIfEnabled("onUpload", validated.project_id, {
         title: "New document uploaded",
-        message: `${validated.name} is now available in Documents.`,
+        message: formatUploadNotifyMessage(validated.name, projectName, "Documents"),
         type: "project_update",
         link: portalDocumentLink(validated.project_id, document.id),
       });

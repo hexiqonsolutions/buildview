@@ -7,10 +7,23 @@ import { insertNotificationSystem, isNotificationRuleEnabled } from "@/lib/actio
 import { sendTransactionalEmail } from "@/lib/email/send";
 import type { NotificationRuleKey } from "@/lib/admin/platform-settings";
 import type { Notification, NotificationType } from "@/lib/types";
+import { resolveNotificationHref } from "@/lib/portal/notification-links";
 
 function revalidateNotificationPaths() {
   revalidatePath("/admin/notifications");
   revalidatePath("/dashboard/notifications");
+}
+
+/** Rewrite legacy project-overview links so View opens the right tab. */
+function withResolvedLinks(notifications: Notification[]): Notification[] {
+  return notifications.map((n) => {
+    const link = resolveNotificationHref(n.link, {
+      title: n.title,
+      message: n.message,
+      type: n.type,
+    });
+    return link && link !== n.link ? { ...n, link } : n;
+  });
 }
 
 export async function getNotifications(limit = 50): Promise<Notification[]> {
@@ -28,7 +41,18 @@ export async function getNotifications(limit = 50): Promise<Notification[]> {
     .order("created_at", { ascending: false })
     .limit(limit);
 
-  return data ?? [];
+  return withResolvedLinks(data ?? []);
+}
+
+/** Project name for clear upload notification copy. */
+export async function getProjectNameForNotify(projectId: string): Promise<string> {
+  const admin = createServiceRoleClient();
+  const { data } = await admin
+    .from("projects")
+    .select("name")
+    .eq("id", projectId)
+    .maybeSingle();
+  return data?.name?.trim() || "your project";
 }
 
 export async function getUnreadNotificationCount(): Promise<number> {
