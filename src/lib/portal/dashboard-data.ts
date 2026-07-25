@@ -17,10 +17,9 @@ import {
 } from "@/lib/actions/data";
 import type { ProjectTour } from "@/lib/types";
 
-function isNarrowWorkspaceScope(scope: WorkspaceScope): boolean {
+function hasSpatialWorkspaceFilter(scope: WorkspaceScope): boolean {
   return Boolean(
-    scope.projectId ||
-      scope.building !== "all" ||
+    scope.building !== "all" ||
       scope.floor !== "all" ||
       scope.buildingId ||
       scope.floorId
@@ -31,6 +30,13 @@ function scopedTrendLabel(): { text: string; tone: "neutral" } {
   return { text: "Scoped to active workspace", tone: "neutral" };
 }
 
+/**
+ * Construction portal home.
+ * Always shows every project the client can access — header `?project=` is for
+ * navigating into a project, not for hiding the rest on the dashboard (same as
+ * portfolio home + Projects list).
+ * Building/floor filters still narrow tours, reports, issues, and documents.
+ */
 export async function getPortalScopedDashboardData(
   scope: WorkspaceScope
 ): Promise<ClientDashboardData> {
@@ -40,12 +46,17 @@ export async function getPortalScopedDashboardData(
     clientId: scope.clientId ?? bootstrap.clientId,
   });
 
-  if (!isNarrowWorkspaceScope(normalized)) {
+  const spatialScope: WorkspaceScope = {
+    ...normalized,
+    projectId: null,
+  };
+
+  if (!hasSpatialWorkspaceFilter(spatialScope)) {
     return getClientDashboardData();
   }
 
   const base = await getClientDashboardData();
-  const projects = filterDashboardProjects(base.projects, normalized);
+  const projects = filterDashboardProjects(base.projects, spatialScope);
   const projectIds = new Set(projects.map((p) => p.id));
 
   const [toursRaw, allDocs, allReports, allTimeline] = await Promise.all([
@@ -57,20 +68,20 @@ export async function getPortalScopedDashboardData(
 
   const scopedTours = filterToursByScope(
     toursRaw as ProjectTour[],
-    normalized,
+    spatialScope,
     projectIds
   );
 
-  const openIssuesList = filterBySpatialScope(base.openIssuesList, normalized, projectIds);
+  const openIssuesList = filterBySpatialScope(base.openIssuesList, spatialScope, projectIds);
   const upcomingMilestones = filterBySpatialScope(
     base.upcomingMilestones,
-    normalized,
+    spatialScope,
     projectIds
   );
 
   const scopedDocs = filterBySpatialScope(
     allDocs.filter((d) => d.is_current !== false),
-    normalized,
+    spatialScope,
     projectIds
   );
 
@@ -107,7 +118,7 @@ export async function getPortalScopedDashboardData(
     .toISOString()
     .split("T")[0];
 
-  const scopedReports = filterBySpatialScope(allReports, normalized, projectIds);
+  const scopedReports = filterBySpatialScope(allReports, spatialScope, projectIds);
   const reportsThisMonth = scopedReports.filter((r) => r.report_date >= startOfMonth).length;
 
   const activeProjects = projects.filter((p) => p.status !== "completed").length;
@@ -123,7 +134,7 @@ export async function getPortalScopedDashboardData(
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
   sixMonthsAgo.setDate(1);
 
-  const scopedTimeline = filterBySpatialScope(allTimeline, normalized, projectIds).filter(
+  const scopedTimeline = filterBySpatialScope(allTimeline, spatialScope, projectIds).filter(
     (e) => e.event_date >= sixMonthsAgo.toISOString().split("T")[0]
   );
 
@@ -147,7 +158,7 @@ export async function getPortalScopedDashboardData(
     stats: {
       ...base.stats,
       openIssues,
-      latestReports: filterBySpatialScope(base.stats.latestReports, normalized, projectIds).slice(
+      latestReports: filterBySpatialScope(base.stats.latestReports, spatialScope, projectIds).slice(
         0,
         5
       ),
@@ -187,9 +198,7 @@ function filterDashboardProjects(
   if (scope.clientId) {
     list = list.filter((p) => p.client_id === scope.clientId);
   }
-  if (scope.projectId) {
-    list = list.filter((p) => p.id === scope.projectId);
-  }
+  // Intentionally ignore scope.projectId — dashboard lists all client projects.
   return list;
 }
 
