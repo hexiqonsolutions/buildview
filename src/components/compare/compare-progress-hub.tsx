@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { fetchComparisonSnapshot, saveComparison, deleteSavedComparison } from "@/lib/actions/comparison";
 import type { ComparisonProjectsData, ComparisonSnapshot, SavedComparison } from "@/lib/comparison/types";
-import { buildShellComparisonSnapshot } from "@/lib/comparison/analytics";
+import { buildShellComparisonSnapshot, buildBlankComparisonSnapshot, isBlankComparisonSnapshot } from "@/lib/comparison/analytics";
 import { SyncedViewerPair } from "@/components/compare/synced-viewer-pair";
 import {
   CompareKpiRow,
@@ -79,7 +79,6 @@ export function CompareProgressHub({
   const urlParams = useMemo(() => parseCompareUrlParams(searchParams), [searchParams]);
 
   const { projects, tours: allTours } = initialData;
-  const hasProjects = projects.length > 0;
   const hasTours = allTours.length > 0;
 
   const clients = useMemo(() => {
@@ -243,18 +242,28 @@ export function CompareProgressHub({
   }, [projectTours, scanAId, scanBId]);
 
   const shellSnapshot = useMemo(() => {
-    if (!projectId || projectTours.length === 0) return null;
-    const project = projects.find((p) => p.id === projectId);
-    if (!project) return null;
+    const project =
+      projects.find((p) => p.id === projectId) ??
+      clientProjects[0] ??
+      projects[0] ??
+      null;
+
+    if (projectTours.length === 0) {
+      return buildBlankComparisonSnapshot(project);
+    }
+
+    if (!project) return buildBlankComparisonSnapshot(null);
+
     const a = projectTours.find((t) => t.id === scanAId) ?? projectTours[0];
     const b =
       projectTours.find((t) => t.id === scanBId && t.id !== a.id) ??
       projectTours.find((t) => t.id !== a.id) ??
       a;
     return buildShellComparisonSnapshot(project, a, b);
-  }, [projects, projectId, projectTours, scanAId, scanBId]);
+  }, [projects, clientProjects, projectId, projectTours, scanAId, scanBId]);
 
   const displaySnapshot = snapshot ?? shellSnapshot;
+  const isBlankUi = isBlankComparisonSnapshot(displaySnapshot);
 
   const runCompare = useCallback(() => {
     if (!scanAId || !scanBId || scanAId === scanBId) return;
@@ -325,27 +334,6 @@ export function CompareProgressHub({
     });
   };
 
-  if (!hasProjects) {
-    return (
-      <div className="compare-card flex flex-col items-center py-20 text-center">
-        <Columns2 className="mb-4 h-14 w-14 text-slate-200" />
-        <p className="font-display text-lg font-semibold text-slate-900 dark:text-white">
-          No projects available
-        </p>
-        <p className="mt-2 max-w-md text-sm text-slate-500">
-          {isAdmin
-            ? "Create a project and upload site visits to start comparing progress."
-            : "Your projects will appear here once they are set up by your BuildView team."}
-        </p>
-        {isAdmin && (
-          <Button asChild className="mt-6 bg-slate-900 hover:bg-slate-800">
-            <Link href="/admin/tours">Upload tours</Link>
-          </Button>
-        )}
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       {!hasTours && (
@@ -357,7 +345,7 @@ export function CompareProgressHub({
                 No site visits yet
               </p>
               <p className="mt-0.5 text-sm text-slate-500">
-                Upload Matterport scans to compare progress between captures.
+                Layout is ready — values will fill in after Matterport scans are uploaded.
               </p>
             </div>
           </div>
@@ -376,17 +364,28 @@ export function CompareProgressHub({
             {isAdmin && (
               <FilterSelect
                 label="Client"
-                value={clientId}
-                onChange={setClientId}
-                options={clients.map((c) => ({ value: c.id, label: c.name }))}
+                value={clientId || "_none"}
+                onChange={(v) => setClientId(v === "_none" ? "" : v)}
+                options={
+                  clients.length > 0
+                    ? clients.map((c) => ({ value: c.id, label: c.name }))
+                    : [{ value: "_none", label: "—" }]
+                }
                 width="w-[140px]"
               />
             )}
             <FilterSelect
               label="Project"
-              value={projectId}
-              onChange={handleProjectChange}
-              options={clientProjects.map((p) => ({ value: p.id, label: p.name }))}
+              value={projectId || "_none"}
+              onChange={(v) => {
+                if (v === "_none") return;
+                handleProjectChange(v);
+              }}
+              options={
+                clientProjects.length > 0
+                  ? clientProjects.map((p) => ({ value: p.id, label: p.name }))
+                  : [{ value: "_none", label: "—" }]
+              }
               width="w-[160px]"
             />
             <FilterSelect
@@ -411,26 +410,34 @@ export function CompareProgressHub({
             />
             <FilterSelect
               label="Scan A"
-              value={scanAId}
-              onChange={setScanAId}
-              options={projectTours
-                .filter((t) => t.id !== scanBId)
-                .map((t) => ({
-                  value: t.id,
-                  label: formatDate(t.capture_date ?? t.created_at),
-                }))}
+              value={scanAId || "_none"}
+              onChange={(v) => setScanAId(v === "_none" ? "" : v)}
+              options={
+                projectTours.filter((t) => t.id !== scanBId).length > 0
+                  ? projectTours
+                      .filter((t) => t.id !== scanBId)
+                      .map((t) => ({
+                        value: t.id,
+                        label: formatDate(t.capture_date ?? t.created_at),
+                      }))
+                  : [{ value: "_none", label: "—" }]
+              }
               width="w-[130px]"
             />
             <FilterSelect
               label="Scan B"
-              value={scanBId}
-              onChange={setScanBId}
-              options={projectTours
-                .filter((t) => t.id !== scanAId)
-                .map((t) => ({
-                  value: t.id,
-                  label: formatDate(t.capture_date ?? t.created_at),
-                }))}
+              value={scanBId || "_none"}
+              onChange={(v) => setScanBId(v === "_none" ? "" : v)}
+              options={
+                projectTours.filter((t) => t.id !== scanAId).length > 0
+                  ? projectTours
+                      .filter((t) => t.id !== scanAId)
+                      .map((t) => ({
+                        value: t.id,
+                        label: formatDate(t.capture_date ?? t.created_at),
+                      }))
+                  : [{ value: "_none", label: "—" }]
+              }
               width="w-[130px]"
             />
           </div>
@@ -473,7 +480,7 @@ export function CompareProgressHub({
               variant="outline"
               size="sm"
               onClick={() => window.print()}
-              disabled={!displaySnapshot}
+              disabled={isBlankUi || !snapshot}
             >
               <Download className="mr-1.5 h-4 w-4" />
               Export Report
@@ -497,14 +504,13 @@ export function CompareProgressHub({
         </div>
       </div>
 
-      {isPending && !displaySnapshot && (
-        <div className="flex justify-center py-24">
-          <Loader2 className="h-10 w-10 animate-spin text-slate-300" />
+      {isPending && isBlankUi && (
+        <div className="flex justify-center py-6">
+          <Loader2 className="h-8 w-8 animate-spin text-slate-300" />
         </div>
       )}
 
-      {displaySnapshot && (
-        <div className="space-y-6">
+      <div className="space-y-6">
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-2.5 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-300">
             <CalendarRange className="h-4 w-4 text-slate-400" />
             <span>
@@ -525,11 +531,13 @@ export function CompareProgressHub({
                 label="Scan A"
                 date={displaySnapshot.scanA.capture_date ?? displaySnapshot.scanA.created_at}
                 engineer={displaySnapshot.scanA.metadata.engineer}
+                blank={isBlankUi}
               />
               <ScanHeader
                 label="Scan B"
                 date={displaySnapshot.scanB.capture_date ?? displaySnapshot.scanB.created_at}
                 engineer={displaySnapshot.scanB.metadata.engineer}
+                blank={isBlankUi}
                 className="lg:border-l lg:border-slate-100 dark:lg:border-slate-800"
               />
             </div>
@@ -539,12 +547,12 @@ export function CompareProgressHub({
               rightUrl={displaySnapshot.scanB.matterport_url}
               leftTitle={displaySnapshot.scanA.name}
               rightTitle={displaySnapshot.scanB.name}
-              syncEnabled
+              syncEnabled={!isBlankUi}
               immersive
             />
           </div>
 
-          <CompareKpiRow snapshot={displaySnapshot} />
+          <CompareKpiRow snapshot={displaySnapshot} blank={isBlankUi} />
 
           <CompareProgressSummary snapshot={displaySnapshot} />
 
@@ -572,7 +580,6 @@ export function CompareProgressHub({
             <CompareAiSummary snapshot={displaySnapshot} />
           </div>
         </div>
-      )}
 
       <Dialog open={saveOpen} onOpenChange={setSaveOpen}>
         <DialogContent>
@@ -679,19 +686,21 @@ function ScanHeader({
   label,
   date,
   engineer,
+  blank = false,
   className,
 }: {
   label: string;
   date: string;
   engineer: string;
+  blank?: boolean;
   className?: string;
 }) {
   return (
     <div className={cn("px-4 py-3", className)}>
       <p className="text-xs font-semibold text-slate-900 dark:text-white">
-        {label} — {formatDate(date)}
+        {label} — {blank || !date ? "—" : formatDate(date)}
       </p>
-      <p className="text-[11px] text-slate-500">{engineer}</p>
+      <p className="text-[11px] text-slate-500">{blank ? "—" : engineer || "—"}</p>
     </div>
   );
 }

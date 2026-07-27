@@ -49,8 +49,13 @@ function ViewerPane({
 
   if (!valid) {
     return (
-      <div className="flex aspect-video items-center justify-center bg-slate-900 text-sm text-slate-400">
-        Invalid tour URL
+      <div
+        className={cn(
+          "flex w-full items-center justify-center bg-slate-900 text-sm text-slate-500",
+          tall || immersive ? "h-[min(72vh,820px)] min-h-[420px]" : "aspect-video"
+        )}
+      >
+        {url ? "Invalid tour URL" : "No tour uploaded"}
       </div>
     );
   }

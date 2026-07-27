@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDate, formatStatus } from "@/lib/utils";
 import type { ComparisonSnapshot } from "@/lib/comparison/types";
-import { buildTimelineNodes } from "@/lib/comparison/analytics";
+import { buildTimelineNodes, isBlankComparisonSnapshot } from "@/lib/comparison/analytics";
 import { documentAppearedAfterScanA, getComparisonWindow } from "@/lib/comparison/date-window";
 import {
   CheckCircle2,
@@ -204,7 +204,13 @@ export function CompareProgressSummary({ snapshot }: { snapshot: ComparisonSnaps
   );
 }
 
-export function CompareKpiRow({ snapshot }: { snapshot: ComparisonSnapshot }) {
+export function CompareKpiRow({
+  snapshot,
+  blank = false,
+}: {
+  snapshot: ComparisonSnapshot;
+  blank?: boolean;
+}) {
   const { kpis } = snapshot;
   const openTotal =
     snapshot.pendingIssues.length + snapshot.newIssues.length + snapshot.criticalIssues.length;
@@ -213,44 +219,62 @@ export function CompareKpiRow({ snapshot }: { snapshot: ComparisonSnapshot }) {
   const cards = [
     {
       label: "Overall Progress",
-      value: `${kpis.currentProgress}%`,
-      sub: `from ${kpis.previousProgress}%`,
+      value: blank ? "—" : `${kpis.currentProgress}%`,
+      sub: blank ? "awaiting scans" : `from ${kpis.previousProgress}%`,
       icon: TrendingUp,
       tone: "text-emerald-600 bg-emerald-50",
-      ring: true,
+      ring: !blank,
     },
     {
       label: "Schedule Status",
-      value: kpis.scheduleStatus === "on_track" ? "On Track" : kpis.scheduleStatus === "at_risk" ? "At Risk" : "Delayed",
+      value: blank
+        ? "—"
+        : kpis.scheduleStatus === "on_track"
+          ? "On Track"
+          : kpis.scheduleStatus === "at_risk"
+            ? "At Risk"
+            : "Delayed",
       sub: "vs planned timeline",
       icon: Calendar,
       tone: "text-emerald-600 bg-emerald-50",
     },
     {
       label: "Quality Status",
-      value: kpis.qualityStatus === "good" ? "Good" : kpis.qualityStatus === "review" ? "Review" : "Concern",
-      sub: "No major issues",
+      value: blank
+        ? "—"
+        : kpis.qualityStatus === "good"
+          ? "Good"
+          : kpis.qualityStatus === "review"
+            ? "Review"
+            : "Concern",
+      sub: blank ? "awaiting data" : "No major issues",
       icon: ShieldCheck,
       tone: "text-emerald-600 bg-emerald-50",
     },
     {
       label: "Safety Status",
-      value: kpis.safetyStatus === "clear" ? "Good" : kpis.safetyStatus === "watch" ? "Watch" : "Alert",
-      sub: "Zero incidents",
+      value: blank
+        ? "—"
+        : kpis.safetyStatus === "clear"
+          ? "Good"
+          : kpis.safetyStatus === "watch"
+            ? "Watch"
+            : "Alert",
+      sub: blank ? "awaiting data" : "Zero incidents",
       icon: HardHat,
       tone: "text-emerald-600 bg-emerald-50",
     },
     {
       label: "Open Issues",
-      value: String(openTotal),
-      sub: newIssues > 0 ? `+${newIssues} new` : "no new issues",
+      value: blank ? "—" : String(openTotal),
+      sub: blank ? "awaiting data" : newIssues > 0 ? `+${newIssues} new` : "no new issues",
       icon: AlertTriangle,
       tone: "text-amber-600 bg-amber-50",
-      alert: newIssues > 0,
+      alert: !blank && newIssues > 0,
     },
     {
       label: "Project Health Score",
-      value: `${Math.round(kpis.healthScore)}`,
+      value: blank ? "—" : `${Math.round(kpis.healthScore)}`,
       sub: "/ 100",
       icon: TrendingUp,
       tone: "text-slate-700 bg-slate-100",
@@ -267,7 +291,7 @@ export function CompareKpiRow({ snapshot }: { snapshot: ComparisonSnapshot }) {
             </p>
             <p className="mt-1 font-display text-2xl font-bold text-slate-900 dark:text-white">
               {card.value}
-              {card.label === "Project Health Score" && (
+              {card.label === "Project Health Score" && !blank && (
                 <span className="text-sm font-normal text-slate-400">/100</span>
               )}
             </p>
@@ -531,6 +555,7 @@ export function ComparePhotoCarousel({ snapshot }: { snapshot: ComparisonSnapsho
 
 export function CompareHorizontalTimeline({ snapshot }: { snapshot: ComparisonSnapshot }) {
   const nodes = buildTimelineNodes(snapshot);
+  const blank = isBlankComparisonSnapshot(snapshot);
 
   return (
     <WidgetCard title="Timeline of Changes">
@@ -549,9 +574,9 @@ export function CompareHorizontalTimeline({ snapshot }: { snapshot: ComparisonSn
             <p className="mt-2 line-clamp-2 text-[10px] font-medium text-slate-700 dark:text-slate-300">
               {node.label}
             </p>
-            {node.date && (
-              <p className="text-[9px] text-slate-400">{formatDate(node.date)}</p>
-            )}
+            <p className="text-[9px] text-slate-400">
+              {blank || !node.date ? "—" : formatDate(node.date)}
+            </p>
           </div>
         ))}
       </div>

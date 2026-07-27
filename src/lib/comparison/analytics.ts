@@ -350,3 +350,128 @@ export function buildShellComparisonSnapshot(
     aiPlaceholder: buildAiPlaceholder(kpis, tradeProgress, []),
   };
 }
+
+export const BLANK_SCAN_A_ID = "blank-scan-a";
+export const BLANK_SCAN_B_ID = "blank-scan-b";
+
+function blankEnrichedTour(
+  id: string,
+  name: string,
+  project: ComparisonSnapshot["project"] | null,
+  captureDate: string
+): EnrichedTour {
+  return {
+    id,
+    project_id: project?.id ?? "blank-project",
+    name,
+    matterport_url: "",
+    capture_date: captureDate,
+    description: null,
+    thumbnail_url: null,
+    sort_order: 0,
+    created_at: captureDate,
+    updated_at: captureDate,
+    created_by: null,
+    updated_by: null,
+    deleted_at: null,
+    deleted_by: null,
+    building_id: null,
+    floor_id: null,
+    metadata: {
+      building: "",
+      floor: "",
+      engineer: "—",
+      version: "",
+      weather: "",
+      projectStage: "",
+      progressPercent: 0,
+      notes: "",
+    },
+    project: project
+      ? { id: project.id, name: project.name, client_name: project.client_name }
+      : null,
+  };
+}
+
+/** Full blank UI (same layout as live compare) with empty values until tours exist. */
+export function buildBlankComparisonSnapshot(
+  project: ComparisonSnapshot["project"] | null
+): ComparisonSnapshot {
+  const fallbackProject: ComparisonSnapshot["project"] = project ?? {
+    id: "blank-project",
+    name: "—",
+    client_id: "blank-client",
+    client_name: "—",
+    location: "",
+    description: null,
+    status: "planning",
+    start_date: null,
+    completion_date: null,
+    cover_image_url: null,
+    created_at: "",
+    updated_at: "",
+    created_by: null,
+    updated_by: null,
+    deleted_at: null,
+    deleted_by: null,
+  };
+
+  const scanA = blankEnrichedTour(BLANK_SCAN_A_ID, "Scan A", fallbackProject, "1970-01-01");
+  const scanB = blankEnrichedTour(BLANK_SCAN_B_ID, "Scan B", fallbackProject, "1970-01-02");
+
+  return {
+    project: fallbackProject,
+    scanA,
+    scanB,
+    dateWindowLabel: "— → —",
+    kpis: {
+      previousProgress: 0,
+      currentProgress: 0,
+      difference: 0,
+      scheduleStatus: "on_track",
+      qualityStatus: "good",
+      safetyStatus: "clear",
+      healthScore: 0,
+    },
+    tradeProgress: DEFAULT_TRADES.map((trade) => ({
+      trade,
+      status: "pending" as const,
+      delta: 0,
+    })),
+    visualChanges: [
+      { id: "completed", label: "Completed Work", count: 0, tone: "success" },
+      { id: "new", label: "New Areas", count: 0, tone: "info" },
+      { id: "pending", label: "Pending Areas", count: 0, tone: "warning" },
+      { id: "delayed", label: "Delayed Work", count: 0, tone: "danger" },
+      { id: "critical", label: "Critical Observations", count: 0, tone: "danger" },
+    ],
+    documentsBetween: [],
+    reportsBetween: [],
+    newReports: [],
+    resolvedIssues: [],
+    newIssues: [],
+    pendingIssues: [],
+    criticalIssues: [],
+    timelineEvents: [],
+    photosA: [],
+    photosB: [],
+    activities: [],
+    engineerNotesA: "",
+    engineerNotesB: "",
+    aiPlaceholder: {
+      overallProgress: "Upload site visits to generate an AI summary of progress between captures.",
+      keyChanges: [],
+      pendingActivities: [],
+      criticalRisks: [],
+      recommendedActions: [
+        "Upload Matterport scans for this project",
+        "Add progress reports and site notes",
+        "Compare two captures once available",
+      ],
+    },
+  };
+}
+
+export function isBlankComparisonSnapshot(snapshot: ComparisonSnapshot): boolean {
+  return snapshot.scanA.id === BLANK_SCAN_A_ID || snapshot.scanB.id === BLANK_SCAN_B_ID;
+}
