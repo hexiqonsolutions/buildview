@@ -8,7 +8,13 @@ import { scopeToPortalQueryString } from "@/lib/admin/scope";
 import type { ProjectWithMeta } from "@/lib/actions/data";
 import { usePortalWorkspace } from "@/components/portal/workspace/portal-workspace-provider";
 
-export function ClientProjectsGallery({ projects }: { projects: ProjectWithMeta[] }) {
+export function ClientProjectsGallery({
+  projects,
+  canUpdateStatus = false,
+}: {
+  projects: ProjectWithMeta[];
+  canUpdateStatus?: boolean;
+}) {
   const { hydrated, scope, dashboardType } = usePortalWorkspace();
   const workspaceQuery = hydrated ? scopeToPortalQueryString(scope) : "";
   const isPortfolio = dashboardType === "portfolio";
@@ -55,6 +61,7 @@ export function ClientProjectsGallery({ projects }: { projects: ProjectWithMeta[
                   key={project.id}
                   project={project}
                   workspaceQuery={workspaceQuery}
+                  canUpdateStatus={canUpdateStatus}
                 />
               ))}
             </div>
@@ -72,6 +79,7 @@ export function ClientProjectsGallery({ projects }: { projects: ProjectWithMeta[
                       key={project.id}
                       project={project}
                       workspaceQuery={workspaceQuery}
+                      canUpdateStatus={canUpdateStatus}
                     />
                   ))}
                 </div>
@@ -89,6 +97,7 @@ export function ClientProjectsGallery({ projects }: { projects: ProjectWithMeta[
                       key={project.id}
                       project={project}
                       workspaceQuery={workspaceQuery}
+                      canUpdateStatus={canUpdateStatus}
                     />
                   ))}
                 </div>

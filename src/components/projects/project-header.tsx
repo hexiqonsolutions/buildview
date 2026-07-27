@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, MapPin, Calendar, Building2, Mail, Play, Camera, Ruler } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { UpdateProjectStatusSelect } from "@/components/shared/update-project-status-select";
 import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
 import type { Project, Client, ProjectTour } from "@/lib/types";
 import { PORTFOLIO_CATEGORY_LABELS } from "@/lib/types";
@@ -15,6 +16,8 @@ interface ProjectHeaderProps {
   backHref?: string;
   backLabel?: string;
   latestTour?: ProjectTour | null;
+  canUpdateStatus?: boolean;
+  allowStaffStatuses?: boolean;
 }
 
 export function ProjectHeader({
@@ -23,6 +26,8 @@ export function ProjectHeader({
   backHref = "/dashboard/projects",
   backLabel = "Back to Projects",
   latestTour = null,
+  canUpdateStatus = false,
+  allowStaffStatuses = false,
 }: ProjectHeaderProps) {
   const portal = useOptionalPortalWorkspace();
   const isPortfolio = portal?.dashboardType === "portfolio";
@@ -63,9 +68,18 @@ export function ProjectHeader({
 
           <div className="relative flex min-h-[220px] flex-col justify-end p-5 md:min-h-[280px] md:p-6">
             <div className="mb-2 flex flex-wrap items-center gap-1.5">
-              <span className="rounded-full bg-brand-accent/95 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-slate-950">
-                {formatStatus(project.status)}
-              </span>
+              {canUpdateStatus ? (
+                <UpdateProjectStatusSelect
+                  projectId={project.id}
+                  currentStatus={project.status}
+                  allowStaffStatuses={allowStaffStatuses}
+                  triggerClassName="h-7 w-[7.75rem] border-white/20 bg-white/95 text-[11px] shadow-sm"
+                />
+              ) : (
+                <span className="rounded-full bg-brand-accent/95 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-slate-950">
+                  {formatStatus(project.status)}
+                </span>
+              )}
               {category && (
                 <span className="rounded-full bg-white/15 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white backdrop-blur-sm">
                   {category}
@@ -144,9 +158,17 @@ export function ProjectHeader({
               <h1 className="text-2xl font-bold text-brand-primary dark:text-white">
                 {project.name}
               </h1>
-              <Badge className={getStatusColor(project.status)}>
-                {formatStatus(project.status)}
-              </Badge>
+              {canUpdateStatus ? (
+                <UpdateProjectStatusSelect
+                  projectId={project.id}
+                  currentStatus={project.status}
+                  allowStaffStatuses={allowStaffStatuses}
+                />
+              ) : (
+                <Badge className={getStatusColor(project.status)}>
+                  {formatStatus(project.status)}
+                </Badge>
+              )}
             </div>
 
             <div className="mb-3 flex items-center gap-2 text-slate-600 dark:text-slate-400">

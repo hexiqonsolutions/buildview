@@ -65,6 +65,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { formatDate, formatRelativeTime, formatStatus } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { UpdateProjectStatusSelect } from "@/components/shared/update-project-status-select";
 
 type ViewMode = "list" | "grid";
 
@@ -640,9 +641,11 @@ function ProjectTableRow({
       </TableCell>
       <TableCell className="text-sm text-slate-600">{project.location}</TableCell>
       <TableCell>
-        <Badge className={cn("font-medium", projectStatusClass(project.status))}>
-          {formatStatus(project.status)}
-        </Badge>
+        <UpdateProjectStatusSelect
+          projectId={project.id}
+          currentStatus={project.status}
+          allowStaffStatuses={isAdmin}
+        />
       </TableCell>
       <TableCell>
         <div className="space-y-1">
@@ -728,9 +731,14 @@ function ProjectGridCard({
             </span>
           </div>
         )}
-        <Badge className={cn("absolute right-3 top-3", projectStatusClass(project.status))}>
-          {formatStatus(project.status)}
-        </Badge>
+        <div className="absolute right-3 top-3 z-10">
+          <UpdateProjectStatusSelect
+            projectId={project.id}
+            currentStatus={project.status}
+            allowStaffStatuses={isAdmin}
+            triggerClassName="h-7 w-[7.75rem] text-[11px]"
+          />
+        </div>
       </div>
       <div className="p-4">
         <div className="flex items-start justify-between gap-2">

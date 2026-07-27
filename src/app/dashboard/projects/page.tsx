@@ -7,6 +7,8 @@ import type { ProjectWithMeta } from "@/lib/actions/data";
 import { getProjectProgressPercent, getProjectStageLabel } from "@/lib/utils";
 import { ClientProjectsGallery } from "@/components/intel/projects/client-projects-gallery";
 import type { ProjectTour } from "@/lib/types";
+import { getCurrentUser } from "@/lib/actions/auth";
+import { can } from "@/lib/auth/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -19,11 +21,13 @@ export default async function ProjectsPage({
   const scope = await parsePortalWorkspaceScopeFromParams(params);
 
   // Project list always shows every assigned project (workspace project filter is for detail pages).
-  const [projects, tours] = await Promise.all([
+  const [projects, tours, user] = await Promise.all([
     getProjects(),
     getPortalScopedAccessibleTours({ ...scope, projectId: null }),
+    getCurrentUser(),
   ]);
 
+  const canUpdateStatus = user ? can(user.role, "update", "projects") : false;
   const latestTourByProject = new Map<string, ProjectTour>();
   const tourCountByProject = new Map<string, number>();
 
@@ -60,5 +64,5 @@ export default async function ProjectsPage({
     };
   });
 
-  return <ClientProjectsGallery projects={projectsWithMeta} />;
+  return <ClientProjectsGallery projects={projectsWithMeta} canUpdateStatus={canUpdateStatus} />;
 }

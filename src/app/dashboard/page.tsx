@@ -5,6 +5,7 @@ import { getPortfolioDashboardData } from "@/lib/portal/portfolio-data";
 import { getPortalWorkspaceBootstrap } from "@/lib/actions/data";
 import { ExecutiveOverviewShell } from "@/components/intel/dashboard/executive-overview-shell";
 import { PortfolioShowcaseShell } from "@/components/intel/dashboard/portfolio-showcase-shell";
+import { can } from "@/lib/auth/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,7 @@ export default async function DashboardPage({
     user?.full_name?.trim().split(" ")[0] ||
     user?.email?.split("@")[0] ||
     "there";
+  const canUpdateStatus = user ? can(user.role, "update", "projects") : false;
 
   if (isPortfolio && portfolioData) {
     return (
@@ -49,6 +51,7 @@ export default async function DashboardPage({
       email={user?.email}
       avatarUrl={user?.avatar_url}
       data={data!}
+      canUpdateStatus={canUpdateStatus}
     />
   );
 }

@@ -11,6 +11,7 @@ interface ExecutiveOverviewShellProps {
   email?: string | null;
   avatarUrl?: string | null;
   data: ClientDashboardData;
+  canUpdateStatus?: boolean;
 }
 
 export function ExecutiveOverviewShell({
@@ -19,6 +20,7 @@ export function ExecutiveOverviewShell({
   email,
   avatarUrl,
   data,
+  canUpdateStatus = false,
 }: ExecutiveOverviewShellProps) {
   const { hydrated, scope } = usePortalWorkspace();
   const workspaceQuery = hydrated ? scopeToPortalQueryString(scope) : "";
@@ -31,6 +33,7 @@ export function ExecutiveOverviewShell({
       avatarUrl={avatarUrl}
       data={data}
       workspaceQuery={workspaceQuery}
+      canUpdateStatus={canUpdateStatus}
     />
   );
 }

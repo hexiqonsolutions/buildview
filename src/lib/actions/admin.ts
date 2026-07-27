@@ -30,6 +30,7 @@ import type {
   ProjectTourInsert,
   ProjectUpdate,
   ReportInsert,
+  UserRole,
   UserUpdate,
 } from "@/lib/types";
 import {
@@ -39,6 +40,7 @@ import {
   updateUserSchema,
 } from "@/lib/validations/admin";
 import { isBuildViewStaffRole, isClientPortalRole } from "@/lib/auth/roles";
+import { can } from "@/lib/auth/permissions";
 import {
   portalDocumentLink,
   portalInvoiceLink,
@@ -47,6 +49,101 @@ import {
   formatUploadNotifyMessage,
 } from "@/lib/portal/notification-links";
 import { getProjectNameForNotify } from "@/lib/actions/notifications";
+import { isProjectVisibleInClientPortal } from "@/lib/portal/project-visibility";
+
+const CLIENT_EDITABLE_STATUSES: ProjectStatus[] = [
+  "planning",
+  "in_progress",
+  "on_hold",
+  "completed",
+];
+
+const STAFF_EDITABLE_STATUSES: ProjectStatus[] = [
+  ...CLIENT_EDITABLE_STATUSES,
+  "suspended",
+];
+
+/** Update only project status — available to staff and client portal users with access. */
+export async function updateProjectStatus(projectId: string, status: string) {
+  const nextStatus = status as ProjectStatus;
+  if (!STAFF_EDITABLE_STATUSES.includes(nextStatus)) {
+    throw new Error("Invalid project status.");
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("You must be signed in");
+
+  const { data: me } = await supabase
+    .from("users")
+    .select("role, client_id")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (!me?.role || !can(me.role as UserRole, "update", "projects")) {
+    throw new Error("You do not have permission to update project status.");
+  }
+
+  const role = me.role as UserRole;
+  const isStaff = isBuildViewStaffRole(role);
+
+  if (!isStaff && !CLIENT_EDITABLE_STATUSES.includes(nextStatus)) {
+    throw new Error("Clients can only set Planning, In Progress, On Hold, or Completed.");
+  }
+
+  const admin = createServiceRoleClient();
+  const { data: project, error: fetchError } = await admin
+    .from("projects")
+    .select("id, name, client_id, status, deleted_at")
+    .eq("id", projectId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (fetchError || !project) throw new Error("Project not found");
+
+  if (isClientPortalRole(role)) {
+    if (!isProjectVisibleInClientPortal(project)) {
+      throw new Error("This project is not available in your portal.");
+    }
+
+    let hasAccess = Boolean(me.client_id && project.client_id === me.client_id);
+    if (!hasAccess) {
+      const { data: assignment } = await admin
+        .from("project_assignments")
+        .select("id")
+        .eq("project_id", projectId)
+        .eq("user_id", user.id)
+        .is("deleted_at", null)
+        .maybeSingle();
+      hasAccess = Boolean(assignment);
+    }
+    if (!hasAccess) {
+      throw new Error("You do not have access to this project.");
+    }
+  }
+
+  if (project.status === nextStatus) return;
+
+  const { error } = await admin
+    .from("projects")
+    .update({
+      status: nextStatus,
+      updated_by: user.id,
+    })
+    .eq("id", projectId)
+    .is("deleted_at", null);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/admin/projects");
+  revalidatePath("/dashboard/projects");
+  revalidatePath(`/dashboard/projects/${projectId}`);
+  revalidatePath(`/admin/projects/${projectId}`);
+  revalidatePath("/dashboard");
+  revalidatePath("/admin");
+}
 
 export async function createClientRecord(data: {
   name: string;

@@ -31,6 +31,7 @@ export default async function ProjectDetailPage({
   const latestScanDate = latestTour?.capture_date ?? latestTour?.created_at ?? null;
   const canUploadMatterport = user ? can(user.role, "upload", "matterport") : false;
   const allowIssueStatusUpdate = user ? can(user.role, "update", "issues") : false;
+  const canUpdateStatus = user ? can(user.role, "update", "projects") : false;
 
   return (
     <div className="space-y-6">
@@ -44,6 +45,7 @@ export default async function ProjectDetailPage({
         project={project}
         client={client}
         latestTour={detail.tours[0] ?? null}
+        canUpdateStatus={canUpdateStatus}
       />
       <div id="project-walkthrough">
         <ProjectHubTabs

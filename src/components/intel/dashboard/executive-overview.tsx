@@ -28,6 +28,7 @@ interface ExecutiveOverviewProps {
   avatarUrl?: string | null;
   data: ClientDashboardData;
   workspaceQuery?: string;
+  canUpdateStatus?: boolean;
 }
 
 export function ExecutiveOverview({
@@ -37,6 +38,7 @@ export function ExecutiveOverview({
   avatarUrl,
   data,
   workspaceQuery = "",
+  canUpdateStatus = false,
 }: ExecutiveOverviewProps) {
   const displayProjects = data.projects.filter((p) => p.status !== "completed").slice(0, 3);
   const q = workspaceQuery || "";
@@ -106,7 +108,11 @@ export function ExecutiveOverview({
           ) : (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-1">
               {displayProjects.map((project) => (
-                <PortalProjectCard key={project.id} project={project} />
+                <PortalProjectCard
+                  key={project.id}
+                  project={project}
+                  canUpdateStatus={canUpdateStatus}
+                />
               ))}
             </div>
           )}

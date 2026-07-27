@@ -2,24 +2,36 @@
 
 import Link from "next/link";
 import { MapPin, Camera, ArrowRight } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MatterportViewer } from "@/components/projects/MatterportViewer";
-import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
+import { UpdateProjectStatusSelect } from "@/components/shared/update-project-status-select";
+import { formatDate } from "@/lib/utils";
 import type { ProjectWithMeta } from "@/lib/actions/data";
 import { useOptionalPortalWorkspace } from "@/components/portal/workspace/portal-workspace-provider";
 
 export function PortalProjectCard({
   project,
   workspaceQuery = "",
+  canUpdateStatus = false,
 }: {
   project: ProjectWithMeta;
   workspaceQuery?: string;
+  canUpdateStatus?: boolean;
 }) {
   const portal = useOptionalPortalWorkspace();
   const isPortfolio = portal?.dashboardType === "portfolio";
   const openHref = `/dashboard/projects/${project.id}${workspaceQuery}`;
   const tour = project.latestTour;
+
+  const statusControl = canUpdateStatus ? (
+    <div className="absolute right-3 top-3 z-10">
+      <UpdateProjectStatusSelect
+        projectId={project.id}
+        currentStatus={project.status}
+        triggerClassName="h-7 w-[7.75rem] bg-white/95 text-[11px] shadow-sm backdrop-blur dark:bg-slate-950/90"
+      />
+    </div>
+  ) : null;
 
   return (
     <div className="intel-card dashboard-card-hover overflow-hidden">
@@ -32,9 +44,7 @@ export function PortalProjectCard({
             showToolbar={false}
             className="rounded-none"
           />
-          <Badge className={`absolute right-3 top-3 z-10 ${getStatusColor(project.status)}`}>
-            {formatStatus(project.status)}
-          </Badge>
+          {statusControl}
         </div>
       ) : (
         <div className="relative h-40 bg-gradient-to-br from-slate-800 to-slate-900">
@@ -52,9 +62,7 @@ export function PortalProjectCard({
               </span>
             </div>
           )}
-          <Badge className={`absolute right-3 top-3 ${getStatusColor(project.status)}`}>
-            {formatStatus(project.status)}
-          </Badge>
+          {statusControl}
         </div>
       )}
 

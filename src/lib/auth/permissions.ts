@@ -107,7 +107,7 @@ const PERMISSIONS: Record<UserRole, RolePermissions> = {
     activity: ["read"],
   },
   client_admin: {
-    projects: ["read"],
+    projects: ["read", "update"],
     matterport: ["read"],
     reports: ["read"],
     documents: ["read"],
@@ -117,7 +117,7 @@ const PERMISSIONS: Record<UserRole, RolePermissions> = {
     notifications: ["read"],
   },
   client_user: {
-    projects: ["read"],
+    projects: ["read", "update"],
     matterport: ["read"],
     reports: ["read"],
     documents: ["read"],
@@ -126,7 +126,7 @@ const PERMISSIONS: Record<UserRole, RolePermissions> = {
     notifications: ["read"],
   },
   client: {
-    projects: ["read"],
+    projects: ["read", "update"],
     matterport: ["read"],
     reports: ["read"],
     documents: ["read"],
