@@ -22,10 +22,11 @@ import {
   ArchiveRestore,
   Trash2,
   Loader2,
+  Ban,
 } from "lucide-react";
 import type { AdminProjectRow, AdminProjectsListData } from "@/lib/actions/data";
 import type { Client, ProjectStatus } from "@/lib/types";
-import { softDeleteProject, archiveProject, restoreProject } from "@/lib/actions/admin";
+import { softDeleteProject, archiveProject, restoreProject, suspendProject } from "@/lib/actions/admin";
 import { AdminMetricCard } from "@/components/admin/admin-metric-card";
 import { CreateProjectForm } from "@/components/admin/create-project-form";
 import { Badge } from "@/components/ui/badge";
@@ -80,6 +81,7 @@ const STATUS_OPTIONS: { value: ProjectStatus | "all"; label: string }[] = [
   { value: "on_hold", label: "On Hold" },
   { value: "completed", label: "Completed" },
   { value: "archived", label: "Archived" },
+  { value: "suspended", label: "Suspended" },
 ];
 
 function projectStatusClass(status: ProjectStatus): string {
@@ -89,6 +91,7 @@ function projectStatusClass(status: ProjectStatus): string {
     completed: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
     planning: "bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300",
     archived: "bg-slate-100 text-slate-500 dark:bg-slate-800/60 dark:text-slate-400",
+    suspended: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
   };
   return map[status] ?? "bg-gray-100 text-gray-800";
 }
@@ -438,9 +441,13 @@ function ProjectActionsMenu({
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [confirmAction, setConfirmAction] = useState<"archive" | "restore" | "delete" | null>(null);
+  const [confirmAction, setConfirmAction] = useState<
+    "archive" | "restore" | "delete" | "suspend" | null
+  >(null);
 
   const isArchived = project.status === "archived";
+  const isSuspended = project.status === "suspended";
+  const isHiddenFromClients = isArchived || isSuspended;
 
   function handleConfirm() {
     if (!confirmAction) return;
@@ -450,6 +457,8 @@ function ProjectActionsMenu({
           await softDeleteProject(project.id);
         } else if (confirmAction === "archive") {
           await archiveProject(project.id);
+        } else if (confirmAction === "suspend") {
+          await suspendProject(project.id);
         } else if (confirmAction === "restore") {
           await restoreProject(project.id);
         }
@@ -465,19 +474,25 @@ function ProjectActionsMenu({
   const dialogConfig = {
     archive: {
       title: "Archive project?",
-      description: `"${project.name}" will be moved to Archived status. Clients will no longer see it. You can restore it later.`,
+      description: `"${project.name}" will be archived and removed from the client portal. Clients will be notified. You can restore it later.`,
       action: "Archive",
       className: "",
     },
+    suspend: {
+      title: "Suspend project?",
+      description: `"${project.name}" will be suspended and hidden from the client portal until you restore it. Clients will be notified.`,
+      action: "Suspend",
+      className: "bg-amber-600 text-white hover:bg-amber-700 focus:ring-amber-600",
+    },
     restore: {
       title: "Restore project?",
-      description: `"${project.name}" will be moved back to On Hold status and become visible to clients again.`,
+      description: `"${project.name}" will be moved back to On Hold and become visible to clients again.`,
       action: "Restore",
       className: "",
     },
     delete: {
       title: "Delete project?",
-      description: `"${project.name}" will be permanently removed from all views. This cannot be undone. All tours, reports, documents, and issues linked to this project will also be hidden.`,
+      description: `"${project.name}" will be permanently removed from all views. Clients will be notified. This cannot be undone.`,
       action: "Delete",
       className: "bg-red-600 text-white hover:bg-red-700 focus:ring-red-600",
     },
@@ -515,16 +530,22 @@ function ProjectActionsMenu({
           {isAdmin && (
             <>
               <DropdownMenuSeparator />
-              {isArchived ? (
+              {isHiddenFromClients ? (
                 <DropdownMenuItem onSelect={() => setConfirmAction("restore")}>
                   <ArchiveRestore className="mr-2 h-4 w-4" />
                   Restore Project
                 </DropdownMenuItem>
               ) : (
-                <DropdownMenuItem onSelect={() => setConfirmAction("archive")}>
-                  <Archive className="mr-2 h-4 w-4" />
-                  Archive Project
-                </DropdownMenuItem>
+                <>
+                  <DropdownMenuItem onSelect={() => setConfirmAction("suspend")}>
+                    <Ban className="mr-2 h-4 w-4" />
+                    Suspend Project
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setConfirmAction("archive")}>
+                    <Archive className="mr-2 h-4 w-4" />
+                    Archive Project
+                  </DropdownMenuItem>
+                </>
               )}
               <DropdownMenuItem
                 onSelect={() => setConfirmAction("delete")}

@@ -5,7 +5,8 @@ export type NotificationRuleKey =
   | "onInvoicePaid"
   | "onTimeline"
   | "onIssueUpdate"
-  | "onProjectAssigned";
+  | "onProjectAssigned"
+  | "onProjectRemoved";
 
 export type PlatformSettings = {
   companyName: string;
@@ -28,5 +29,6 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
     onTimeline: true,
     onIssueUpdate: true,
     onProjectAssigned: true,
+    onProjectRemoved: true,
   },
 };

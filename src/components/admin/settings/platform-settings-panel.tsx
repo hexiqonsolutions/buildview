@@ -221,6 +221,16 @@ export function PlatformSettingsPanel({
               })
             }
           />
+          <ToggleRow
+            label="Notify clients when project is removed"
+            description="Alerts when a project is deleted, archived, or suspended and removed from their portal."
+            checked={settings.notifications.onProjectRemoved}
+            onChange={(onProjectRemoved) =>
+              updateSettings({
+                notifications: { ...settings.notifications, onProjectRemoved },
+              })
+            }
+          />
         </div>
       </div>
 

@@ -11,7 +11,14 @@ const userRoles = [
   "read_only_client",
   "consultant",
 ] as const;
-const projectStatuses = ["planning", "in_progress", "completed", "on_hold"] as const;
+const projectStatuses = [
+  "planning",
+  "in_progress",
+  "completed",
+  "on_hold",
+  "archived",
+  "suspended",
+] as const;
 const subscriptionStatuses = ["active", "inactive", "trial", "cancelled"] as const;
 const invoiceStatuses = ["draft", "sent", "paid", "overdue", "cancelled"] as const;
 

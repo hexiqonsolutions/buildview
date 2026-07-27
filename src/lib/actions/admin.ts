@@ -985,11 +985,69 @@ export async function updateProjectRecord(data: {
   revalidatePath("/dashboard");
 }
 
+function revalidateProjectPaths(projectId?: string) {
+  revalidatePath("/admin/projects");
+  revalidatePath("/dashboard/projects");
+  revalidatePath("/admin");
+  revalidatePath("/dashboard");
+  if (projectId) {
+    revalidatePath(`/dashboard/projects/${projectId}`);
+    revalidatePath(`/admin/projects/${projectId}`);
+  }
+}
+
+type ProjectRemovalNotice = "deleted" | "archived" | "suspended";
+
+async function notifyProjectRemovedFromPortal(
+  projectId: string,
+  projectName: string,
+  action: ProjectRemovalNotice
+) {
+  const copy: Record<ProjectRemovalNotice, { title: string; message: string }> = {
+    deleted: {
+      title: "Project removed",
+      message: `"${projectName}" has been removed from your BuildView portal.`,
+    },
+    archived: {
+      title: "Project archived",
+      message: `"${projectName}" has been archived and is no longer available in your portal.`,
+    },
+    suspended: {
+      title: "Project suspended",
+      message: `"${projectName}" has been suspended and is temporarily unavailable in your portal.`,
+    },
+  };
+
+  const { title, message } = copy[action];
+  await notifyClientsIfEnabled("onProjectRemoved", projectId, {
+    title,
+    message,
+    type: "project_update",
+    link: "/dashboard/projects",
+  });
+}
+
+async function getActiveProjectSummary(projectId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("projects")
+    .select("id, name, client_id, status")
+    .eq("id", projectId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("Project not found");
+  return data;
+}
+
 export async function softDeleteProject(projectId: string) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  const project = await getActiveProjectSummary(projectId);
 
   const { error } = await supabase
     .from("projects")
@@ -1003,9 +1061,8 @@ export async function softDeleteProject(projectId: string) {
 
   if (error) throw new Error(error.message);
 
-  revalidatePath("/admin/projects");
-  revalidatePath("/dashboard/projects");
-  revalidatePath("/admin");
+  await notifyProjectRemovedFromPortal(projectId, project.name, "deleted");
+  revalidateProjectPaths(projectId);
 }
 
 export async function archiveProject(projectId: string) {
@@ -1013,6 +1070,8 @@ export async function archiveProject(projectId: string) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  const project = await getActiveProjectSummary(projectId);
 
   const { error } = await supabase
     .from("projects")
@@ -1025,11 +1084,34 @@ export async function archiveProject(projectId: string) {
 
   if (error) throw new Error(error.message);
 
-  revalidatePath("/admin/projects");
-  revalidatePath("/dashboard/projects");
-  revalidatePath("/admin");
+  await notifyProjectRemovedFromPortal(projectId, project.name, "archived");
+  revalidateProjectPaths(projectId);
 }
 
+export async function suspendProject(projectId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const project = await getActiveProjectSummary(projectId);
+
+  const { error } = await supabase
+    .from("projects")
+    .update({
+      status: "suspended" as ProjectStatus,
+      updated_by: user?.id ?? null,
+    })
+    .eq("id", projectId)
+    .is("deleted_at", null);
+
+  if (error) throw new Error(error.message);
+
+  await notifyProjectRemovedFromPortal(projectId, project.name, "suspended");
+  revalidateProjectPaths(projectId);
+}
+
+/** Restore archived or suspended projects back to On Hold. */
 export async function restoreProject(projectId: string) {
   const supabase = await createClient();
   const {
@@ -1047,9 +1129,7 @@ export async function restoreProject(projectId: string) {
 
   if (error) throw new Error(error.message);
 
-  revalidatePath("/admin/projects");
-  revalidatePath("/dashboard/projects");
-  revalidatePath("/admin");
+  revalidateProjectPaths(projectId);
 }
 
 export async function softDeleteClient(clientId: string) {

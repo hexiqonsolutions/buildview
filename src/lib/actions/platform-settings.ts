@@ -44,6 +44,9 @@ function rowToSettings(row: SettingsRow): PlatformSettings {
       onProjectAssigned:
         row.notification_rules?.onProjectAssigned ??
         DEFAULT_PLATFORM_SETTINGS.notifications.onProjectAssigned,
+      onProjectRemoved:
+        row.notification_rules?.onProjectRemoved ??
+        DEFAULT_PLATFORM_SETTINGS.notifications.onProjectRemoved,
     },
   };
 }

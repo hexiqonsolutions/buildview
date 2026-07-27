@@ -35,7 +35,8 @@ export type ProjectStatus =
   | "in_progress"
   | "completed"
   | "on_hold"
-  | "archived";
+  | "archived"
+  | "suspended";
 
 export type ReportType =
   | "progress_report"
@@ -1366,6 +1367,7 @@ export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
   completed: "Completed",
   on_hold: "On Hold",
   archived: "Archived",
+  suspended: "Suspended",
 };
 
 export const ISSUE_PRIORITY_LABELS: Record<IssuePriority, string> = {

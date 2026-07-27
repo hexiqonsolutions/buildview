@@ -23,6 +23,7 @@ import type { AdminWorkspaceBootstrap } from "@/lib/admin/workspace";
 import { parseTourWorkspaceMeta } from "@/lib/admin/tour-metadata";
 import type { PortalWorkspaceBootstrap } from "@/lib/portal/workspace";
 import { resolveClientDashboardType } from "@/lib/portal/dashboard-type";
+import { filterClientVisibleProjects, isProjectVisibleInClientPortal } from "@/lib/portal/project-visibility";
 import { getCurrentUser } from "@/lib/actions/auth";
 
 export type AdminDashboardStats = {
@@ -839,25 +840,58 @@ export async function getProjects(): Promise<Project[]> {
     if (p?.id && !p.deleted_at) byId.set(p.id, p);
   }
 
-  return Array.from(byId.values()).sort(
+  const projects = Array.from(byId.values()).sort(
     (a, b) =>
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
+
+  if (role && isClientPortalRole(role)) {
+    return filterClientVisibleProjects(projects);
+  }
+
+  return projects;
 }
 
 export async function getProject(id: string) {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   const { data } = await supabase
     .from("projects")
     .select("*")
     .eq("id", id)
     .is("deleted_at", null)
     .single();
+
+  if (!data) return null;
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from("users")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    if (
+      profile?.role &&
+      isClientPortalRole(profile.role as UserRole) &&
+      !isProjectVisibleInClientPortal(data as Project)
+    ) {
+      return null;
+    }
+  }
+
   return data;
 }
 
 export async function getProjectWithClient(id: string) {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   const { data } = await supabase
     .from("projects")
     .select("*, client:clients(id, name, company_name, email)")
@@ -866,6 +900,28 @@ export async function getProjectWithClient(id: string) {
     .single();
 
   if (!data) return null;
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from("users")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    const { client, ...project } = data as typeof data & {
+      client: { id: string; name: string; company_name: string | null; email: string } | null;
+    };
+
+    if (
+      profile?.role &&
+      isClientPortalRole(profile.role as UserRole) &&
+      !isProjectVisibleInClientPortal(project as Project)
+    ) {
+      return null;
+    }
+
+    return { project, client };
+  }
 
   const { client, ...project } = data as typeof data & {
     client: { id: string; name: string; company_name: string | null; email: string } | null;
@@ -922,7 +978,7 @@ export async function getAccessibleTours() {
 
   const query = supabase
     .from("project_tours")
-    .select("*, project:projects(id, name, client_name)")
+    .select("*, project:projects(id, name, client_name, status)")
     .is("deleted_at", null)
     .order("capture_date", { ascending: false })
     .order("created_at", { ascending: false });
@@ -942,7 +998,16 @@ export async function getAccessibleTours() {
   if (projectIds.length === 0) return [];
 
   const { data } = await query.in("project_id", projectIds);
-  return data || [];
+  const tours = data || [];
+
+  if (profile?.role && isClientPortalRole(profile.role as UserRole)) {
+    return tours.filter((tour) => {
+      const project = tour.project as Project | null;
+      return project ? isProjectVisibleInClientPortal(project) : false;
+    });
+  }
+
+  return tours;
 }
 
 export async function getProjectReports(projectId: string) {
