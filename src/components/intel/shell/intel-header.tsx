@@ -85,7 +85,7 @@ export function IntelHeader({
     .slice(0, 2);
 
   return (
-    <header className="intel-header border-b border-slate-200/40 dark:border-slate-800/40">
+    <header className="intel-header">
       <div className="flex h-14 items-center gap-2 px-3 lg:gap-3 lg:px-8">
         <div className="flex min-w-0 shrink-0 items-center gap-1 lg:hidden">
           <Button

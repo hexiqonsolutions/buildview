@@ -52,7 +52,7 @@ export function ExecutiveOverview({
         avatarUrl={avatarUrl}
       />
 
-      <div className="grid grid-cols-2 gap-5 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <PortalMetricCard
           label="Active Projects"
           value={data.kpis.activeProjects}

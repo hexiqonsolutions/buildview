@@ -13,27 +13,27 @@ interface IntelPageProps {
 /** Client intelligence page chrome — distinct from OpsWorkspacePage. */
 export function IntelPage({ title, description, icon: Icon, eyebrow, children }: IntelPageProps) {
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <FadeIn>
-        <div className="intel-hero-strip">
-          {eyebrow && <p className={typography.eyebrow}>{eyebrow}</p>}
-          {!eyebrow && <p className={typography.eyebrow}>Executive Overview</p>}
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{description}</p>
-        </div>
-      </FadeIn>
-
-      <FadeIn delay={0.05}>
-        <div className="flex items-start gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-white dark:bg-white dark:text-slate-900">
+        <div className="intel-hero-strip flex items-start gap-4">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white shadow-soft dark:bg-white dark:text-slate-900">
             <Icon className="h-5 w-5" strokeWidth={1.75} />
           </div>
-          <div>
-            <h1 className={typography.intelPageTitle}>{title}</h1>
+          <div className="min-w-0">
+            {eyebrow ? (
+              <p className={typography.eyebrow}>{eyebrow}</p>
+            ) : (
+              <p className={typography.eyebrow}>Executive Overview</p>
+            )}
+            <h1 className={`${typography.intelPageTitle} mt-1`}>{title}</h1>
+            <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+              {description}
+            </p>
           </div>
         </div>
       </FadeIn>
 
-      <FadeIn delay={0.1}>{children}</FadeIn>
+      <FadeIn delay={0.06}>{children}</FadeIn>
     </div>
   );
 }

@@ -1,40 +1,56 @@
 /**
  * BuildView Design System — shared tokens (Admin Ops + Client Intel)
+ * Portal modernization: denser dashboard rhythm, glass depth, lime brand preserved.
  * Imported first in globals.css (before @tailwind directives).
  */
 
 :root {
-    /* Brand */
-    --bv-canvas: 210 40% 98%;
-    --bv-surface: 0 0% 100%;
-    --bv-foreground: 222 47% 11%;
-    --bv-muted: 215 16% 47%;
-    --bv-border: 214 32% 91%;
-    --bv-accent: 74 62% 50%;
-    --bv-accent-dark: 94 61% 44%;
+  /* Brand — lime accent kept (BuildView identity; not generic orange) */
+  --bv-canvas: 210 40% 97%;
+  --bv-surface: 0 0% 100%;
+  --bv-foreground: 222 47% 11%;
+  --bv-muted: 215 16% 46%;
+  --bv-border: 214 32% 91%;
+  --bv-accent: 74 62% 50%;
+  --bv-accent-dark: 94 61% 44%;
+  --bv-accent-soft: 74 62% 50% / 0.12;
 
-    /* Layout */
-    --bv-sidebar-width: 260px;
-    --bv-intel-sidebar-width: 248px;
-    --bv-radius-card: 1rem;
-    --bv-radius-control: 0.75rem;
+  /* Layout */
+  --bv-sidebar-width: 260px;
+  --bv-intel-sidebar-width: 256px;
+  --bv-radius-card: 0.875rem;
+  --bv-radius-control: 0.625rem;
 
-    /* Shadows */
-    --bv-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
-    --bv-shadow-md: 0 8px 24px rgba(15, 23, 42, 0.06);
-    --bv-shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.08);
+  /* Dense dashboard spacing (density 8) */
+  --bv-space-xs: 0.125rem;
+  --bv-space-sm: 0.25rem;
+  --bv-space-md: 0.5rem;
+  --bv-space-lg: 0.75rem;
+  --bv-space-xl: 1rem;
+  --bv-space-2xl: 1.5rem;
+  --bv-space-3xl: 2rem;
 
-    /* Motion */
-    --bv-duration-fast: 150ms;
-    --bv-duration-normal: 250ms;
-    --bv-duration-slow: 400ms;
+  /* Shadows — layered, soft industrial */
+  --bv-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --bv-shadow-md: 0 4px 16px rgba(15, 23, 42, 0.06), 0 1px 0 rgba(15, 23, 42, 0.03);
+  --bv-shadow-lg: 0 12px 40px -12px rgba(15, 23, 42, 0.14), 0 4px 12px rgba(15, 23, 42, 0.04);
+  --bv-shadow-nav: 0 8px 24px -8px rgba(15, 23, 42, 0.2);
+
+  /* Motion */
+  --bv-duration-fast: 150ms;
+  --bv-duration-normal: 220ms;
+  --bv-duration-slow: 350ms;
   --bv-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .dark {
-    --bv-canvas: 222 47% 4%;
-    --bv-surface: 222 47% 6%;
-    --bv-foreground: 210 40% 98%;
-    --bv-muted: 215 16% 57%;
-  --bv-border: 217 33% 17%;
+  --bv-canvas: 222 47% 5%;
+  --bv-surface: 222 47% 7%;
+  --bv-foreground: 210 40% 98%;
+  --bv-muted: 215 16% 60%;
+  --bv-border: 217 33% 16%;
+  --bv-accent-soft: 74 62% 50% / 0.18;
+  --bv-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --bv-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.25);
+  --bv-shadow-lg: 0 16px 48px -12px rgba(0, 0, 0, 0.45);
 }

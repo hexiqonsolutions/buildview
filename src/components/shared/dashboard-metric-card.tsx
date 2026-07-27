@@ -28,7 +28,7 @@ export function DashboardMetricCard({
         : "text-emerald-600";
 
   return (
-    <div className={cn("intel-card dashboard-card-hover p-5", className)}>
+    <div className={cn("intel-card dashboard-card-hover p-4 sm:p-5", className)}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="dashboard-metric-label">{label}</p>
@@ -39,8 +39,8 @@ export function DashboardMetricCard({
             <p className={cn("mt-1 text-xs font-medium", trendClass)}>{trend}</p>
           )}
         </div>
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800">
-          <Icon className="h-4 w-4 text-slate-600 dark:text-slate-300" strokeWidth={1.75} />
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+          <Icon className="h-4 w-4" strokeWidth={1.75} />
         </div>
       </div>
     </div>

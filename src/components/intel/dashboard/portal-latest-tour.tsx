@@ -34,10 +34,10 @@ export function PortalLatestTourCard({ tour }: { tour: LatestTour | null }) {
     <div className="intel-card overflow-hidden">
       <div className="flex flex-col gap-4 border-b border-slate-100 p-5 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+          <p className="dashboard-section-eyebrow">
             Latest Matterport Tour
           </p>
-          <h2 className="mt-1 font-display text-lg font-semibold text-slate-900 dark:text-white">
+          <h2 className="mt-1 font-display text-lg font-semibold tracking-tight text-slate-900 dark:text-white">
             {tour.name}
           </h2>
           <p className="mt-0.5 text-sm text-slate-500">

@@ -37,10 +37,10 @@ export function IntelSidebar({ mobileOpen, onMobileClose }: IntelSidebarProps) {
 
   const content = (
     <>
-      <div className="flex min-h-[72px] items-start justify-between border-b border-slate-200/50 px-5 pb-4 pt-5 dark:border-slate-800/60">
+      <div className="flex min-h-[64px] items-start justify-between border-b border-slate-200/40 px-4 pb-3 pt-4 dark:border-slate-800/50">
         <div className="min-w-0">
           <BrandLogo href={homeHref} size="md" className="max-w-[9rem]" />
-          <p className="mt-1.5 text-[10px] font-medium uppercase tracking-[0.2em] text-slate-400">
+          <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-accent-dark/80 dark:text-brand-accent/90">
             {getPortalSidebarTagline(dashboardType)}
           </p>
         </div>
@@ -48,7 +48,7 @@ export function IntelSidebar({ mobileOpen, onMobileClose }: IntelSidebarProps) {
           <button
             type="button"
             onClick={onMobileClose}
-            className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 lg:hidden"
+            className="cursor-pointer rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800 lg:hidden"
             aria-label="Close menu"
           >
             <X className="h-5 w-5" />
@@ -56,7 +56,7 @@ export function IntelSidebar({ mobileOpen, onMobileClose }: IntelSidebarProps) {
         )}
       </div>
 
-      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-5" aria-label="Client portal">
+      <nav className="flex-1 space-y-0.5 overflow-y-auto px-2.5 py-4" aria-label="Client portal">
         {navItems.map((item) => {
           const active = isActive(pathname, item.href, item.exact);
           const href = withPortalWorkspaceQuery(item.href, workspaceQuery);

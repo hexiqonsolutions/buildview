@@ -92,7 +92,7 @@
   }
 
   .surface-card {
-    @apply rounded-2xl border border-slate-200/70 bg-white/90 shadow-[0_1px_2px_rgba(5,5,5,0.04),0_8px_24px_rgba(5,5,5,0.06)] backdrop-blur-sm dark:border-slate-800/80 dark:bg-slate-900/70;
+    @apply rounded-[var(--bv-radius-card)] border border-slate-200/60 bg-white/90 shadow-soft backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-900/75;
   }
 
   .glass {
@@ -212,11 +212,11 @@
 
   /* Shared dashboard shell — portfolio showcase baseline */
   .ops-shell {
-    @apply min-h-screen bg-[#FAFBFC] dark:bg-slate-950;
+    @apply min-h-screen bg-[hsl(var(--bv-canvas))] dark:bg-slate-950;
   }
 
   .ops-sidebar {
-    @apply fixed inset-y-0 left-0 w-[260px] flex-col border-r border-slate-200/90 bg-white dark:border-slate-800 dark:bg-slate-950;
+    @apply fixed inset-y-0 left-0 w-[260px] flex-col border-r border-slate-200/80 bg-white/95 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/95;
   }
 
   .ops-main {
@@ -224,20 +224,37 @@
   }
 
   .ops-header-stack {
-    @apply sticky top-0 z-30 border-b border-slate-200/90 bg-white/95 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/95;
+    @apply sticky top-0 z-30 border-b border-slate-200/70 bg-white/90 backdrop-blur-2xl dark:border-slate-800 dark:bg-slate-950/90;
   }
 
-  /* Client Intelligence Platform — distinct from Ops */
+  /* Client Intelligence Platform — modern glass + dense rhythm */
   .intel-shell {
-    @apply min-h-screen bg-[#FAFBFC] dark:bg-slate-950;
+    @apply relative min-h-screen bg-[hsl(var(--bv-canvas))] dark:bg-slate-950;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 0% -20%, rgba(164, 207, 48, 0.07), transparent 55%),
+      radial-gradient(ellipse 60% 40% at 100% 0%, rgba(100, 116, 139, 0.06), transparent 50%);
+  }
+
+  .dark .intel-shell {
+    background-image:
+      radial-gradient(ellipse 80% 50% at 0% -20%, rgba(164, 207, 48, 0.05), transparent 55%),
+      radial-gradient(ellipse 60% 40% at 100% 0%, rgba(148, 163, 184, 0.04), transparent 50%);
   }
 
   .intel-sidebar {
-    @apply fixed inset-y-0 left-0 w-[248px] flex-col border-r border-slate-200/50 bg-white/90 backdrop-blur-xl dark:border-slate-800/60 dark:bg-slate-950/95;
+    width: var(--bv-intel-sidebar-width);
+    @apply fixed inset-y-0 left-0 flex-col border-r border-white/40 bg-white/70 shadow-[inset_-1px_0_0_rgba(15,23,42,0.04)] backdrop-blur-2xl dark:border-slate-800/50 dark:bg-slate-950/80 dark:shadow-none;
   }
 
   .intel-main {
-    @apply min-h-screen lg:pl-[248px];
+    min-height: 100vh;
+    padding-left: 0;
+  }
+
+  @media (min-width: 1024px) {
+    .intel-main {
+      padding-left: var(--bv-intel-sidebar-width);
+    }
   }
 
   .intel-header-stack {
@@ -245,31 +262,38 @@
   }
 
   .intel-header {
-    @apply border-b border-slate-200/40 bg-white/75 backdrop-blur-2xl dark:border-slate-800/40 dark:bg-slate-950/75;
+    @apply border-b border-slate-200/50 bg-white/70 backdrop-blur-2xl dark:border-slate-800/50 dark:bg-slate-950/70;
   }
 
   .intel-quick-access {
-    @apply border-b border-slate-100/80 bg-gradient-to-r from-slate-50/60 to-white/40 dark:border-slate-800/50 dark:from-slate-900/40 dark:to-slate-950/40;
+    @apply border-b border-slate-100/80 bg-gradient-to-r from-slate-50/80 via-white/50 to-transparent dark:border-slate-800/50 dark:from-slate-900/50 dark:via-slate-950/30 dark:to-transparent;
   }
 
   .intel-context-bar {
-    @apply border-b border-slate-100/60 bg-slate-50/40 dark:border-slate-800/40 dark:bg-slate-900/20;
+    @apply border-b border-slate-100/70 bg-slate-50/50 dark:border-slate-800/40 dark:bg-slate-900/30;
   }
 
   .intel-content {
-    @apply px-5 py-8 lg:px-10 lg:py-10;
+    @apply px-4 py-6 lg:px-8 lg:py-8;
   }
 
   .intel-card {
-    @apply rounded-2xl border border-slate-200/80 bg-white shadow-[0_1px_0_rgba(15,23,42,0.04)] dark:border-slate-800 dark:bg-slate-950;
+    border-radius: var(--bv-radius-card);
+    box-shadow: var(--bv-shadow-sm);
+    @apply border border-slate-200/70 bg-white/90 backdrop-blur-sm transition-[box-shadow,transform,border-color] duration-[var(--bv-duration-normal)] ease-[var(--bv-ease-out)] dark:border-slate-800/80 dark:bg-slate-950/90;
+  }
+
+  .intel-card:hover {
+    box-shadow: var(--bv-shadow-md);
+    @apply border-slate-300/80 dark:border-slate-700;
   }
 
   .dashboard-page {
-    @apply space-y-8 pb-10;
+    @apply space-y-6 pb-8;
   }
 
   .dashboard-section-eyebrow {
-    @apply text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400;
+    @apply text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-accent-dark dark:text-brand-accent;
   }
 
   .dashboard-section-title {
@@ -277,19 +301,23 @@
   }
 
   .dashboard-card-hover {
-    @apply transition duration-500 hover:-translate-y-0.5 hover:shadow-[0_20px_40px_-20px_rgba(15,23,42,0.12)];
+    @apply transition duration-[var(--bv-duration-normal)] ease-[var(--bv-ease-out)] hover:-translate-y-0.5;
+  }
+
+  .dashboard-card-hover:hover {
+    box-shadow: var(--bv-shadow-lg);
   }
 
   .dashboard-tabs-list {
-    @apply flex h-auto flex-wrap justify-start gap-1 rounded-2xl border border-slate-200/80 bg-white p-1 shadow-[0_1px_0_rgba(15,23,42,0.04)] dark:border-slate-800 dark:bg-slate-950;
+    @apply flex h-auto flex-wrap justify-start gap-1 rounded-xl border border-slate-200/80 bg-white/90 p-1 shadow-[0_1px_0_rgba(15,23,42,0.04)] backdrop-blur-sm dark:border-slate-800 dark:bg-slate-950;
   }
 
   .dashboard-tabs-trigger {
-    @apply rounded-xl px-3 py-1.5 text-xs font-medium text-slate-600 transition-all data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-sm dark:text-slate-300 dark:data-[state=active]:bg-slate-100 dark:data-[state=active]:text-slate-950 sm:text-sm;
+    @apply rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 transition-all duration-[var(--bv-duration-fast)] data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-sm dark:text-slate-300 dark:data-[state=active]:bg-slate-100 dark:data-[state=active]:text-slate-950 sm:text-sm;
   }
 
   .dashboard-list-row {
-    @apply rounded-xl bg-slate-50 px-3 py-2.5 transition-colors hover:bg-slate-100/80 dark:bg-slate-900/50 dark:hover:bg-slate-800/50;
+    @apply rounded-lg bg-slate-50/90 px-3 py-2 transition-colors duration-[var(--bv-duration-fast)] hover:bg-slate-100 dark:bg-slate-900/50 dark:hover:bg-slate-800/60;
   }
 
   .dashboard-ghost-link {
@@ -297,15 +325,23 @@
   }
 
   .intel-nav-item {
-    @apply flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-[13px] font-medium text-slate-500 transition-all hover:bg-slate-100/80 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900/50 dark:hover:text-white;
+    @apply relative flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium text-slate-500 transition-all duration-[var(--bv-duration-fast)] ease-[var(--bv-ease-out)] hover:bg-slate-100/90 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900/60 dark:hover:text-white;
   }
 
   .intel-nav-item-active {
-    @apply bg-slate-900 text-white shadow-lg shadow-slate-900/10 hover:bg-slate-800 hover:text-white dark:bg-white dark:text-slate-900 dark:shadow-none dark:hover:bg-slate-100 dark:hover:text-slate-900;
+    box-shadow: var(--bv-shadow-nav);
+    @apply bg-slate-900 text-white hover:bg-slate-800 hover:text-white dark:bg-white dark:text-slate-900 dark:shadow-none dark:hover:bg-slate-100 dark:hover:text-slate-900;
+  }
+
+  .intel-nav-item-active::before {
+    content: "";
+    @apply absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-brand-accent;
   }
 
   .intel-hero-strip {
-    @apply rounded-2xl border border-slate-200/80 bg-white px-5 py-5 shadow-[0_1px_0_rgba(15,23,42,0.04)] dark:border-slate-800 dark:bg-slate-950 md:px-6;
+    border-radius: var(--bv-radius-card);
+    box-shadow: var(--bv-shadow-sm);
+    @apply border border-slate-200/70 bg-white/90 px-5 py-4 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-950/90 md:px-6 md:py-5;
   }
 
   /* Legacy portal aliases → intel (backward compat) */
@@ -326,7 +362,11 @@
   }
 
   .portal-card {
-    @apply intel-card transition-shadow hover:shadow-[0_12px_40px_rgba(15,23,42,0.08)];
+    @apply intel-card;
+  }
+
+  .portal-card:hover {
+    box-shadow: var(--bv-shadow-lg);
   }
 
   .portal-nav-item {
@@ -433,11 +473,13 @@
   }
 
   .compare-card {
-    @apply rounded-xl border border-slate-200/70 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_rgba(15,23,42,0.06)] dark:border-slate-800 dark:bg-slate-900;
+    border-radius: var(--bv-radius-card);
+    box-shadow: var(--bv-shadow-md);
+    @apply border border-slate-200/60 bg-white/95 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/95;
   }
 
   .compare-kpi {
-    @apply compare-card p-4 transition-all hover:shadow-[0_12px_32px_rgba(15,23,42,0.1)];
+    @apply compare-card p-4 transition-all duration-[var(--bv-duration-normal)] hover:-translate-y-0.5 hover:shadow-lift;
   }
 
   .compare-scan-thumb {
@@ -467,6 +509,23 @@
     .intel-main,
     .portal-main {
       padding-left: 0 !important;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .intel-card,
+    .portal-card,
+    .dashboard-card-hover,
+    .compare-kpi,
+    .intel-nav-item,
+    .portal-nav-item {
+      transition: none !important;
+      transform: none !important;
+    }
+
+    .dashboard-card-hover:hover,
+    .compare-kpi:hover {
+      transform: none !important;
     }
   }
 }

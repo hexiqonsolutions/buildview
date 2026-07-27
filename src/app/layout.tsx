@@ -1,14 +1,19 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Plus_Jakarta_Sans } from "next/font/google";
+import { Open_Sans, Poppins } from "next/font/google";
 import { SiteAnalytics } from "@/components/integrations/site-analytics";
 import { defaultMetadata } from "@/lib/seo";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
-const display = Plus_Jakarta_Sans({
+const body = Open_Sans({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  weight: ["400", "500", "600", "700"],
+});
+
+const display = Poppins({
   subsets: ["latin"],
   variable: "--font-display",
-  weight: ["500", "600", "700", "800"],
+  weight: ["500", "600", "700"],
 });
 
 export const metadata: Metadata = defaultMetadata;
@@ -28,7 +33,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${inter.variable} ${display.variable} font-sans`}
+        className={`${body.variable} ${display.variable} font-sans`}
         suppressHydrationWarning
       >
         {children}

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { IntelSidebar } from "@/components/intel/shell/intel-sidebar";
 import { IntelHeader } from "@/components/intel/shell/intel-header";
 
@@ -27,6 +27,7 @@ interface IntelShellProps {
 export function IntelShell({ user, unreadNotifications = 0, children }: IntelShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
     setMobileOpen(false);
@@ -50,16 +51,20 @@ export function IntelShell({ user, unreadNotifications = 0, children }: IntelShe
               <IntelContextBar />
             </div>
             <main className="intel-content">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key="intel-page"
-                  initial="hidden"
-                  animate="visible"
-                  variants={pageVariants}
-                >
-                  {children}
-                </motion.div>
-              </AnimatePresence>
+              {reduceMotion ? (
+                children
+              ) : (
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key="intel-page"
+                    initial="hidden"
+                    animate="visible"
+                    variants={pageVariants}
+                  >
+                    {children}
+                  </motion.div>
+                </AnimatePresence>
+              )}
             </main>
           </div>
         </div>

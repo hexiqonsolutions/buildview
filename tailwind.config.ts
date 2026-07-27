@@ -56,8 +56,9 @@ const config: Config = {
         display: ["var(--font-display)", "var(--font-inter)", "system-ui", "sans-serif"],
       },
       boxShadow: {
-        soft: "0 2px 8px rgba(5, 5, 5, 0.04), 0 12px 32px rgba(5, 5, 5, 0.08)",
-        glow: "0 0 40px rgba(164, 207, 48, 0.15)",
+        soft: "0 4px 16px rgba(15, 23, 42, 0.06), 0 1px 0 rgba(15, 23, 42, 0.03)",
+        glow: "0 0 40px rgba(164, 207, 48, 0.18)",
+        lift: "0 12px 40px -12px rgba(15, 23, 42, 0.14)",
       },
       borderRadius: {
         lg: "var(--radius)",
