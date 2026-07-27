@@ -155,13 +155,13 @@ export function EditProjectDialog({ project, clients, users }: EditProjectDialog
   }
 
   async function handleDelete() {
-    if (!confirm(`Archive project "${project.name}"?`)) return;
+    if (!confirm(`Delete project "${project.name}"? This cannot be undone.`)) return;
     setLoading(true);
     try {
       await softDeleteProject(project.id);
       setOpen(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to archive project");
+      setError(err instanceof Error ? err.message : "Failed to delete project");
     }
     setLoading(false);
   }
@@ -353,7 +353,9 @@ export function EditProjectDialog({ project, clients, users }: EditProjectDialog
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(PROJECT_STATUS_LABELS).map(([value, label]) => (
+                    {Object.entries(PROJECT_STATUS_LABELS)
+                      .filter(([value]) => value !== "archived")
+                      .map(([value, label]) => (
                       <SelectItem key={value} value={value}>
                         {label}
                       </SelectItem>
@@ -383,7 +385,7 @@ export function EditProjectDialog({ project, clients, users }: EditProjectDialog
                   disabled={loading}
                   onClick={handleDelete}
                 >
-                  Archive
+                  Delete
                 </Button>
               </div>
             </form>

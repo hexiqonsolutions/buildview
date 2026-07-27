@@ -996,7 +996,7 @@ function revalidateProjectPaths(projectId?: string) {
   }
 }
 
-type ProjectRemovalNotice = "deleted" | "archived" | "suspended";
+type ProjectRemovalNotice = "deleted" | "suspended";
 
 async function notifyProjectRemovedFromPortal(
   projectId: string,
@@ -1007,10 +1007,6 @@ async function notifyProjectRemovedFromPortal(
     deleted: {
       title: "Project removed",
       message: `"${projectName}" has been removed from your BuildView portal.`,
-    },
-    archived: {
-      title: "Project archived",
-      message: `"${projectName}" has been archived and is no longer available in your portal.`,
     },
     suspended: {
       title: "Project suspended",
@@ -1065,29 +1061,6 @@ export async function softDeleteProject(projectId: string) {
   revalidateProjectPaths(projectId);
 }
 
-export async function archiveProject(projectId: string) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const project = await getActiveProjectSummary(projectId);
-
-  const { error } = await supabase
-    .from("projects")
-    .update({
-      status: "archived" as ProjectStatus,
-      updated_by: user?.id ?? null,
-    })
-    .eq("id", projectId)
-    .is("deleted_at", null);
-
-  if (error) throw new Error(error.message);
-
-  await notifyProjectRemovedFromPortal(projectId, project.name, "archived");
-  revalidateProjectPaths(projectId);
-}
-
 export async function suspendProject(projectId: string) {
   const supabase = await createClient();
   const {
@@ -1111,7 +1084,7 @@ export async function suspendProject(projectId: string) {
   revalidateProjectPaths(projectId);
 }
 
-/** Restore archived or suspended projects back to On Hold. */
+/** Restore suspended projects back to On Hold. */
 export async function restoreProject(projectId: string) {
   const supabase = await createClient();
   const {

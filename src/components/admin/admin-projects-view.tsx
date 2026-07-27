@@ -19,7 +19,6 @@ import {
   MapPin,
   MoreHorizontal,
   ExternalLink,
-  Archive,
   ArchiveRestore,
   Trash2,
   Loader2,
@@ -27,7 +26,7 @@ import {
 } from "lucide-react";
 import type { AdminProjectRow, AdminProjectsListData } from "@/lib/actions/data";
 import type { Client, ProjectStatus } from "@/lib/types";
-import { softDeleteProject, archiveProject, restoreProject, suspendProject } from "@/lib/actions/admin";
+import { softDeleteProject, restoreProject, suspendProject } from "@/lib/actions/admin";
 import { AdminMetricCard } from "@/components/admin/admin-metric-card";
 import { CreateProjectForm } from "@/components/admin/create-project-form";
 import { Badge } from "@/components/ui/badge";
@@ -81,7 +80,6 @@ const STATUS_OPTIONS: { value: ProjectStatus | "all"; label: string }[] = [
   { value: "planning", label: "Planning" },
   { value: "on_hold", label: "On Hold" },
   { value: "completed", label: "Completed" },
-  { value: "archived", label: "Archived" },
   { value: "suspended", label: "Suspended" },
 ];
 
@@ -443,15 +441,15 @@ function ProjectActionsMenu({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [confirmAction, setConfirmAction] = useState<
-    "archive" | "restore" | "delete" | "suspend" | null
+    "restore" | "delete" | "suspend" | null
   >(null);
   const [error, setError] = useState<string | null>(null);
 
-  const isArchived = project.status === "archived";
   const isSuspended = project.status === "suspended";
-  const isHiddenFromClients = isArchived || isSuspended;
+  const isHiddenFromClients =
+    isSuspended || project.status === "archived";
 
-  function openConfirm(action: "archive" | "restore" | "delete" | "suspend") {
+  function openConfirm(action: "restore" | "delete" | "suspend") {
     setError(null);
     // Let the dropdown fully close first so Radix pointer-events unlock.
     window.setTimeout(() => setConfirmAction(action), 0);
@@ -475,8 +473,6 @@ function ProjectActionsMenu({
     try {
       if (action === "delete") {
         await softDeleteProject(project.id);
-      } else if (action === "archive") {
-        await archiveProject(project.id);
       } else if (action === "suspend") {
         await suspendProject(project.id);
       } else if (action === "restore") {
@@ -495,12 +491,6 @@ function ProjectActionsMenu({
   }
 
   const dialogConfig = {
-    archive: {
-      title: "Archive project?",
-      description: `"${project.name}" will be archived and removed from the client portal. Clients will be notified. You can restore it later.`,
-      action: "Archive",
-      className: "",
-    },
     suspend: {
       title: "Suspend project?",
       description: `"${project.name}" will be suspended and hidden from the client portal until you restore it. Clients will be notified.`,
@@ -559,16 +549,10 @@ function ProjectActionsMenu({
                   Restore Project
                 </DropdownMenuItem>
               ) : (
-                <>
-                  <DropdownMenuItem onSelect={() => openConfirm("suspend")}>
-                    <Ban className="mr-2 h-4 w-4" />
-                    Suspend Project
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => openConfirm("archive")}>
-                    <Archive className="mr-2 h-4 w-4" />
-                    Archive Project
-                  </DropdownMenuItem>
-                </>
+                <DropdownMenuItem onSelect={() => openConfirm("suspend")}>
+                  <Ban className="mr-2 h-4 w-4" />
+                  Suspend Project
+                </DropdownMenuItem>
               )}
               <DropdownMenuItem
                 onSelect={() => openConfirm("delete")}
