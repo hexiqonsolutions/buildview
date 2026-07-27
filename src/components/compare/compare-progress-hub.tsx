@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { fetchComparisonSnapshot, saveComparison, deleteSavedComparison } from "@/lib/actions/comparison";
 import type { ComparisonProjectsData, ComparisonSnapshot, SavedComparison } from "@/lib/comparison/types";
+import { buildShellComparisonSnapshot } from "@/lib/comparison/analytics";
 import { SyncedViewerPair } from "@/components/compare/synced-viewer-pair";
 import {
   CompareKpiRow,
@@ -198,6 +199,7 @@ export function CompareProgressHub({
     setFloorId(null);
     setScanAId("");
     setScanBId("");
+    setSnapshot(null);
   };
 
   const handleBuildingChange = (value: string) => {
@@ -240,6 +242,20 @@ export function CompareProgressHub({
     if (projectTours.length >= 2 && !scanBId) setScanBId(projectTours[1].id);
   }, [projectTours, scanAId, scanBId]);
 
+  const shellSnapshot = useMemo(() => {
+    if (!projectId || projectTours.length === 0) return null;
+    const project = projects.find((p) => p.id === projectId);
+    if (!project) return null;
+    const a = projectTours.find((t) => t.id === scanAId) ?? projectTours[0];
+    const b =
+      projectTours.find((t) => t.id === scanBId && t.id !== a.id) ??
+      projectTours.find((t) => t.id !== a.id) ??
+      a;
+    return buildShellComparisonSnapshot(project, a, b);
+  }, [projects, projectId, projectTours, scanAId, scanBId]);
+
+  const displaySnapshot = snapshot ?? shellSnapshot;
+
   const runCompare = useCallback(() => {
     if (!scanAId || !scanBId || scanAId === scanBId) return;
     startTransition(async () => {
@@ -248,17 +264,14 @@ export function CompareProgressHub({
     });
   }, [scanAId, scanBId]);
 
+  // Auto-load full comparison (timeline, docs, etc.) when two scans are selected.
   useEffect(() => {
-    const a = urlParams.scanAId;
-    const b = urlParams.scanBId;
-    if (a && b && a !== b) {
-      startTransition(async () => {
-        const result = await fetchComparisonSnapshot(a, b);
-        setSnapshot(result);
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (!scanAId || !scanBId || scanAId === scanBId) return;
+    startTransition(async () => {
+      const result = await fetchComparisonSnapshot(scanAId, scanBId);
+      setSnapshot(result);
+    });
+  }, [scanAId, scanBId]);
 
   const resetAll = () => {
     setSnapshot(null);
@@ -460,7 +473,7 @@ export function CompareProgressHub({
               variant="outline"
               size="sm"
               onClick={() => window.print()}
-              disabled={!snapshot}
+              disabled={!displaySnapshot}
             >
               <Download className="mr-1.5 h-4 w-4" />
               Export Report
@@ -484,33 +497,18 @@ export function CompareProgressHub({
         </div>
       </div>
 
-      {!snapshot && !isPending && hasTours && (
-        <div className="compare-card flex flex-col items-center py-20 text-center">
-          <Columns2 className="mb-4 h-14 w-14 text-slate-200" />
-          <p className="font-display text-lg font-semibold text-slate-900 dark:text-white">
-            Select two site visits and click Compare
-          </p>
-          <p className="mt-2 max-w-md text-sm text-slate-500">
-            Instantly understand progress, documents, reports, and issues between captures.
-          </p>
-          <Button className="mt-6 bg-slate-900 hover:bg-slate-800" onClick={runCompare} disabled={!scanAId || !scanBId}>
-            Run Comparison
-          </Button>
-        </div>
-      )}
-
-      {isPending && !snapshot && (
+      {isPending && !displaySnapshot && (
         <div className="flex justify-center py-24">
           <Loader2 className="h-10 w-10 animate-spin text-slate-300" />
         </div>
       )}
 
-      {snapshot && (
+      {displaySnapshot && (
         <div className="space-y-6">
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-2.5 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-800/40 dark:text-slate-300">
             <CalendarRange className="h-4 w-4 text-slate-400" />
             <span>
-              Comparing changes between <strong>{snapshot.dateWindowLabel}</strong>
+              Comparing changes between <strong>{displaySnapshot.dateWindowLabel}</strong>
             </span>
             {saved.length > 0 && (
               <span className="ml-auto flex items-center gap-1 text-xs text-slate-400">
@@ -525,53 +523,53 @@ export function CompareProgressHub({
             <div className="grid grid-cols-1 border-b border-slate-100 dark:border-slate-800 lg:grid-cols-2">
               <ScanHeader
                 label="Scan A"
-                date={snapshot.scanA.capture_date ?? snapshot.scanA.created_at}
-                engineer={snapshot.scanA.metadata.engineer}
+                date={displaySnapshot.scanA.capture_date ?? displaySnapshot.scanA.created_at}
+                engineer={displaySnapshot.scanA.metadata.engineer}
               />
               <ScanHeader
                 label="Scan B"
-                date={snapshot.scanB.capture_date ?? snapshot.scanB.created_at}
-                engineer={snapshot.scanB.metadata.engineer}
+                date={displaySnapshot.scanB.capture_date ?? displaySnapshot.scanB.created_at}
+                engineer={displaySnapshot.scanB.metadata.engineer}
                 className="lg:border-l lg:border-slate-100 dark:lg:border-slate-800"
               />
             </div>
 
             <SyncedViewerPair
-              leftUrl={snapshot.scanA.matterport_url}
-              rightUrl={snapshot.scanB.matterport_url}
-              leftTitle={snapshot.scanA.name}
-              rightTitle={snapshot.scanB.name}
+              leftUrl={displaySnapshot.scanA.matterport_url}
+              rightUrl={displaySnapshot.scanB.matterport_url}
+              leftTitle={displaySnapshot.scanA.name}
+              rightTitle={displaySnapshot.scanB.name}
               syncEnabled
               immersive
             />
           </div>
 
-          <CompareKpiRow snapshot={snapshot} />
+          <CompareKpiRow snapshot={displaySnapshot} />
 
-          <CompareProgressSummary snapshot={snapshot} />
+          <CompareProgressSummary snapshot={displaySnapshot} />
 
           {/* Dashboard grid */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <CompareChangesOverview snapshot={snapshot} />
-            <CompareDocumentsMatrix snapshot={snapshot} />
-            <CompareIssuesStats snapshot={snapshot} />
+            <CompareChangesOverview snapshot={displaySnapshot} />
+            <CompareDocumentsMatrix snapshot={displaySnapshot} />
+            <CompareIssuesStats snapshot={displaySnapshot} />
           </div>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <CompareReportsTable snapshot={snapshot} />
-            <ComparePhotoCarousel snapshot={snapshot} />
+            <CompareReportsTable snapshot={displaySnapshot} />
+            <ComparePhotoCarousel snapshot={displaySnapshot} />
           </div>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <CompareEngineerNotes snapshot={snapshot} />
-            <CompareActivityFeed snapshot={snapshot} />
+            <CompareEngineerNotes snapshot={displaySnapshot} />
+            <CompareActivityFeed snapshot={displaySnapshot} />
           </div>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <div className="lg:col-span-2">
-              <CompareHorizontalTimeline snapshot={snapshot} />
+              <CompareHorizontalTimeline snapshot={displaySnapshot} />
             </div>
-            <CompareAiSummary snapshot={snapshot} />
+            <CompareAiSummary snapshot={displaySnapshot} />
           </div>
         </div>
       )}

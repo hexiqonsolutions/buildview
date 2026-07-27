@@ -313,3 +313,40 @@ export function buildAiPlaceholder(
     ],
   };
 }
+
+/** Empty-but-visible dashboard shell so timeline/KPIs stay on screen before data loads. */
+export function buildShellComparisonSnapshot(
+  project: ComparisonSnapshot["project"],
+  scanA: EnrichedTour,
+  scanB: EnrichedTour
+): ComparisonSnapshot {
+  const [orderedA, orderedB] = orderScans(scanA, scanB);
+  const kpis = buildKpis(orderedA, orderedB, []);
+  const tradeProgress = buildTradeProgress(orderedA, orderedB, [], []);
+  const visualChanges = buildVisualChanges([], [], []);
+  const activities = buildActivityLog(orderedA, orderedB, [], [], [], []);
+
+  return {
+    project,
+    scanA: orderedA,
+    scanB: orderedB,
+    dateWindowLabel: `${new Date(orderedA.capture_date ?? orderedA.created_at).toLocaleDateString()} → ${new Date(orderedB.capture_date ?? orderedB.created_at).toLocaleDateString()}`,
+    kpis,
+    tradeProgress,
+    visualChanges,
+    documentsBetween: [],
+    reportsBetween: [],
+    newReports: [],
+    resolvedIssues: [],
+    newIssues: [],
+    pendingIssues: [],
+    criticalIssues: [],
+    timelineEvents: [],
+    photosA: [],
+    photosB: [],
+    activities,
+    engineerNotesA: orderedA.metadata.notes,
+    engineerNotesB: orderedB.metadata.notes,
+    aiPlaceholder: buildAiPlaceholder(kpis, tradeProgress, []),
+  };
+}

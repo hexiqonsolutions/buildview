@@ -343,13 +343,6 @@ export function CompareChangesOverview({ snapshot }: { snapshot: ComparisonSnaps
 
 export function CompareDocumentsMatrix({ snapshot }: { snapshot: ComparisonSnapshot }) {
   const docs = snapshot.documentsBetween.slice(0, 6);
-  if (docs.length === 0) {
-    return (
-      <WidgetCard title="Document Comparison">
-        <p className="text-sm text-slate-500">No documents between these scans.</p>
-      </WidgetCard>
-    );
-  }
 
   return (
     <WidgetCard title="Document Comparison">
@@ -362,28 +355,36 @@ export function CompareDocumentsMatrix({ snapshot }: { snapshot: ComparisonSnaps
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-          {docs.map((doc) => {
-            const window = getComparisonWindow(snapshot.scanA, snapshot.scanB);
-            const inB = documentAppearedAfterScanA(doc, window);
-            return (
-              <tr key={doc.id}>
-                <td className="py-2.5 pr-2">
-                  <p className="font-medium text-slate-900 dark:text-white">{doc.name}</p>
-                  <p className="text-xs capitalize text-slate-400">{formatStatus(doc.category)}</p>
-                </td>
-                <td className="py-2.5 text-center">
-                  {!inB ? (
+          {docs.length === 0 ? (
+            <tr>
+              <td colSpan={3} className="py-6 text-center text-sm text-slate-500">
+                No documents between these scans.
+              </td>
+            </tr>
+          ) : (
+            docs.map((doc) => {
+              const window = getComparisonWindow(snapshot.scanA, snapshot.scanB);
+              const inB = documentAppearedAfterScanA(doc, window);
+              return (
+                <tr key={doc.id}>
+                  <td className="py-2.5 pr-2">
+                    <p className="font-medium text-slate-900 dark:text-white">{doc.name}</p>
+                    <p className="text-xs capitalize text-slate-400">{formatStatus(doc.category)}</p>
+                  </td>
+                  <td className="py-2.5 text-center">
+                    {!inB ? (
+                      <Check className="mx-auto h-4 w-4 text-emerald-500" />
+                    ) : (
+                      <X className="mx-auto h-4 w-4 text-slate-300" />
+                    )}
+                  </td>
+                  <td className="py-2.5 text-center">
                     <Check className="mx-auto h-4 w-4 text-emerald-500" />
-                  ) : (
-                    <X className="mx-auto h-4 w-4 text-slate-300" />
-                  )}
-                </td>
-                <td className="py-2.5 text-center">
-                  <Check className="mx-auto h-4 w-4 text-emerald-500" />
-                </td>
-              </tr>
-            );
-          })}
+                  </td>
+                </tr>
+              );
+            })
+          )}
         </tbody>
       </table>
     </WidgetCard>
@@ -467,8 +468,16 @@ export function CompareReportsTable({ snapshot }: { snapshot: ComparisonSnapshot
   );
 }
 
+function PhotoPlaceholder({ label }: { label: string }) {
+  return (
+    <div className="flex aspect-square items-center justify-center rounded-lg border border-slate-700 bg-slate-900 text-[10px] text-slate-400">
+      {label}
+    </div>
+  );
+}
+
 export function ComparePhotoCarousel({ snapshot }: { snapshot: ComparisonSnapshot }) {
-  const pairs = Math.max(snapshot.photosA.length, snapshot.photosB.length, 1);
+  const pairs = Math.max(snapshot.photosA.length, snapshot.photosB.length, 3);
 
   return (
     <WidgetCard title="Photo Comparison">
@@ -487,32 +496,28 @@ export function ComparePhotoCarousel({ snapshot }: { snapshot: ComparisonSnapsho
             <div className="grid grid-cols-2 gap-1.5">
               <div>
                 <p className="mb-1 text-[10px] uppercase text-slate-400">Before</p>
-                {snapshot.photosA[i] ? (
+                {photoA ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={snapshot.photosA[i].url}
+                    src={photoA.url}
                     alt="Before"
                     className="aspect-square w-full rounded-lg object-cover"
                   />
                 ) : (
-                  <div className="flex aspect-square items-center justify-center rounded-lg bg-slate-100 text-[10px] text-slate-400">
-                    N/A
-                  </div>
+                  <PhotoPlaceholder label="No photo" />
                 )}
               </div>
               <div>
                 <p className="mb-1 text-[10px] uppercase text-slate-400">After</p>
-                {snapshot.photosB[i] ? (
+                {photoB ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={snapshot.photosB[i].url}
+                    src={photoB.url}
                     alt="After"
                     className="aspect-square w-full rounded-lg object-cover ring-2 ring-emerald-500/30"
                   />
                 ) : (
-                  <div className="flex aspect-square items-center justify-center rounded-lg bg-slate-100 text-[10px] text-slate-400">
-                    N/A
-                  </div>
+                  <PhotoPlaceholder label="No photo" />
                 )}
               </div>
             </div>
@@ -566,7 +571,9 @@ export function CompareActivityFeed({ snapshot }: { snapshot: ComparisonSnapshot
   return (
     <WidgetCard title="Activity Log">
       {snapshot.activities.length === 0 ? (
-        <p className="text-sm text-slate-500">No activity between these scans.</p>
+        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-8 text-center dark:border-slate-700 dark:bg-slate-900/40">
+          <p className="text-sm text-slate-500">No activity between these scans yet.</p>
+        </div>
       ) : (
         <ul className="max-h-80 space-y-3 overflow-y-auto pr-1">
           {snapshot.activities.map((activity) => {
@@ -590,32 +597,26 @@ export function CompareActivityFeed({ snapshot }: { snapshot: ComparisonSnapshot
 }
 
 export function CompareEngineerNotes({ snapshot }: { snapshot: ComparisonSnapshot }) {
-  const hasNotes = snapshot.engineerNotesA || snapshot.engineerNotesB;
-
   return (
     <WidgetCard title="Engineer Notes">
-      {!hasNotes ? (
-        <p className="text-sm text-slate-500">No engineer notes recorded for these scans.</p>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-900/40">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-              Scan A — {formatDate(snapshot.scanA.capture_date ?? snapshot.scanA.created_at)}
-            </p>
-            <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-              {snapshot.engineerNotesA || "No notes recorded."}
-            </p>
-          </div>
-          <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/20">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600">
-              Scan B — {formatDate(snapshot.scanB.capture_date ?? snapshot.scanB.created_at)}
-            </p>
-            <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-              {snapshot.engineerNotesB || "No notes recorded."}
-            </p>
-          </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-900/40">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+            Scan A — {formatDate(snapshot.scanA.capture_date ?? snapshot.scanA.created_at)}
+          </p>
+          <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+            {snapshot.engineerNotesA || "No notes recorded."}
+          </p>
         </div>
-      )}
+        <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600">
+            Scan B — {formatDate(snapshot.scanB.capture_date ?? snapshot.scanB.created_at)}
+          </p>
+          <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+            {snapshot.engineerNotesB || "No notes recorded."}
+          </p>
+        </div>
+      </div>
     </WidgetCard>
   );
 }
