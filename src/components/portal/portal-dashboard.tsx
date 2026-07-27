@@ -36,7 +36,7 @@ export function PortalQuickActions({ workspaceQuery = "" }: { workspaceQuery?: s
           href={withPortalWorkspaceQuery(action.href, workspaceQuery)}
           className="intel-card group dashboard-card-hover flex flex-col items-center justify-center gap-2.5 p-4 text-center sm:p-5"
         >
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 transition-colors duration-[var(--bv-duration-fast)] group-hover:bg-brand-accent/20 dark:bg-slate-800">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 transition-colors duration-150 group-hover:bg-brand-accent/20 dark:bg-slate-800">
             <action.icon
               className="h-5 w-5 text-slate-700 transition-colors group-hover:text-slate-900 dark:text-slate-300 dark:group-hover:text-white"
               strokeWidth={1.75}
