@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState } from "react";
+import type { MouseEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -440,35 +441,57 @@ function ProjectActionsMenu({
   isAdmin: boolean;
 }) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [busy, setBusy] = useState(false);
   const [confirmAction, setConfirmAction] = useState<
     "archive" | "restore" | "delete" | "suspend" | null
   >(null);
+  const [error, setError] = useState<string | null>(null);
 
   const isArchived = project.status === "archived";
   const isSuspended = project.status === "suspended";
   const isHiddenFromClients = isArchived || isSuspended;
 
-  function handleConfirm() {
-    if (!confirmAction) return;
-    startTransition(async () => {
-      try {
-        if (confirmAction === "delete") {
-          await softDeleteProject(project.id);
-        } else if (confirmAction === "archive") {
-          await archiveProject(project.id);
-        } else if (confirmAction === "suspend") {
-          await suspendProject(project.id);
-        } else if (confirmAction === "restore") {
-          await restoreProject(project.id);
-        }
-        router.refresh();
-      } catch {
-        // Swallow — revalidation handles the UI
-      } finally {
-        setConfirmAction(null);
+  function openConfirm(action: "archive" | "restore" | "delete" | "suspend") {
+    setError(null);
+    // Let the dropdown fully close first so Radix pointer-events unlock.
+    window.setTimeout(() => setConfirmAction(action), 0);
+  }
+
+  async function handleConfirm(e: MouseEvent) {
+    // Keep AlertDialogAction from auto-closing before we control teardown.
+    e.preventDefault();
+    if (!confirmAction || busy) return;
+
+    const action = confirmAction;
+    setBusy(true);
+    setError(null);
+
+    // Close the dialog BEFORE the server action. revalidatePath() can
+    // unmount this row while the overlay is still open and freeze the page.
+    setConfirmAction(null);
+    document.body.style.pointerEvents = "";
+    document.body.style.overflow = "";
+
+    try {
+      if (action === "delete") {
+        await softDeleteProject(project.id);
+      } else if (action === "archive") {
+        await archiveProject(project.id);
+      } else if (action === "suspend") {
+        await suspendProject(project.id);
+      } else if (action === "restore") {
+        await restoreProject(project.id);
       }
-    });
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Action failed. Please try again.");
+      // Re-open so the user can retry / see the error.
+      setConfirmAction(action);
+    } finally {
+      setBusy(false);
+      document.body.style.pointerEvents = "";
+      document.body.style.overflow = "";
+    }
   }
 
   const dialogConfig = {
@@ -504,8 +527,8 @@ function ProjectActionsMenu({
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" disabled={isPending}>
-            {isPending ? (
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" disabled={busy}>
+            {busy ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <MoreHorizontal className="h-4 w-4" />
@@ -531,24 +554,24 @@ function ProjectActionsMenu({
             <>
               <DropdownMenuSeparator />
               {isHiddenFromClients ? (
-                <DropdownMenuItem onSelect={() => setConfirmAction("restore")}>
+                <DropdownMenuItem onSelect={() => openConfirm("restore")}>
                   <ArchiveRestore className="mr-2 h-4 w-4" />
                   Restore Project
                 </DropdownMenuItem>
               ) : (
                 <>
-                  <DropdownMenuItem onSelect={() => setConfirmAction("suspend")}>
+                  <DropdownMenuItem onSelect={() => openConfirm("suspend")}>
                     <Ban className="mr-2 h-4 w-4" />
                     Suspend Project
                   </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setConfirmAction("archive")}>
+                  <DropdownMenuItem onSelect={() => openConfirm("archive")}>
                     <Archive className="mr-2 h-4 w-4" />
                     Archive Project
                   </DropdownMenuItem>
                 </>
               )}
               <DropdownMenuItem
-                onSelect={() => setConfirmAction("delete")}
+                onSelect={() => openConfirm("delete")}
                 className="text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400"
               >
                 <Trash2 className="mr-2 h-4 w-4" />
@@ -559,20 +582,38 @@ function ProjectActionsMenu({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <AlertDialog open={!!confirmAction} onOpenChange={(open) => !open && setConfirmAction(null)}>
-        <AlertDialogContent>
+      <AlertDialog
+        open={!!confirmAction}
+        onOpenChange={(open) => {
+          if (busy) return;
+          if (!open) {
+            setConfirmAction(null);
+            setError(null);
+            document.body.style.pointerEvents = "";
+            document.body.style.overflow = "";
+          }
+        }}
+      >
+        <AlertDialogContent
+          onCloseAutoFocus={(e) => {
+            e.preventDefault();
+            document.body.style.pointerEvents = "";
+            document.body.style.overflow = "";
+          }}
+        >
           <AlertDialogHeader>
             <AlertDialogTitle>{config?.title}</AlertDialogTitle>
             <AlertDialogDescription>{config?.description}</AlertDialogDescription>
           </AlertDialogHeader>
+          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirm}
-              disabled={isPending}
+              disabled={busy}
               className={config?.className}
             >
-              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {config?.action}
             </AlertDialogAction>
           </AlertDialogFooter>
