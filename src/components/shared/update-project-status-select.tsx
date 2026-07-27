@@ -85,6 +85,7 @@ export function UpdateProjectStatusSelect({
     startTransition(async () => {
       try {
         await updateProjectStatus(projectId, nextStatus);
+        router.refresh();
       } catch (err) {
         setStatus(currentStatus);
         setError(err instanceof Error ? err.message : "Failed to update status");

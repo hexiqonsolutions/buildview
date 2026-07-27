@@ -46,7 +46,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import Link from "next/link";
-import { getDemoComparisonSnapshot, DEMO_PROJECTS_DATA } from "@/lib/comparison/demo-snapshot";
 import { tourMatchesCompareFilters } from "@/lib/comparison/spatial";
 import {
   parseCompareUrlParams,
@@ -78,9 +77,9 @@ export function CompareProgressHub({
 
   const urlParams = useMemo(() => parseCompareUrlParams(searchParams), [searchParams]);
 
-  const hasRealTours = initialData.tours.length > 0;
-  const isDemo = !hasRealTours;
-  const { projects, tours: allTours } = isDemo ? DEMO_PROJECTS_DATA : initialData;
+  const { projects, tours: allTours } = initialData;
+  const hasProjects = projects.length > 0;
+  const hasTours = allTours.length > 0;
 
   const clients = useMemo(() => {
     const map = new Map<string, string>();
@@ -134,21 +133,25 @@ export function CompareProgressHub({
     [clientId, projectId, building, floor, buildingId, floorId]
   );
 
+  useEffect(() => {
+    if (!isAdmin && clients.length === 1) {
+      setClientId(clients[0].id);
+    }
+  }, [isAdmin, clients]);
+
   const syncCompareUrl = useCallback(
     (nextScanA = scanAId, nextScanB = scanBId) => {
-      if (isDemo) return;
       const qs = scopeToCompareQueryString(compareScope, nextScanA, nextScanB, {
         includeClient: isAdmin,
       });
       router.replace(`${pathname}${qs}`, { scroll: false });
     },
-    [compareScope, scanAId, scanBId, isDemo, isAdmin, pathname, router]
+    [compareScope, scanAId, scanBId, isAdmin, pathname, router]
   );
 
   useEffect(() => {
-    if (isDemo) return;
     syncCompareUrl();
-  }, [compareScope, scanAId, scanBId, isDemo, syncCompareUrl]);
+  }, [compareScope, scanAId, scanBId, syncCompareUrl]);
 
   const clientProjects = useMemo(
     () => projects.filter((p) => !clientId || p.client_id === clientId),
@@ -239,25 +242,13 @@ export function CompareProgressHub({
 
   const runCompare = useCallback(() => {
     if (!scanAId || !scanBId || scanAId === scanBId) return;
-    if (isDemo) {
-      setSnapshot(getDemoComparisonSnapshot());
-      return;
-    }
     startTransition(async () => {
       const result = await fetchComparisonSnapshot(scanAId, scanBId);
       setSnapshot(result);
     });
-  }, [scanAId, scanBId, isDemo]);
+  }, [scanAId, scanBId]);
 
   useEffect(() => {
-    if (isDemo) {
-      setSnapshot(getDemoComparisonSnapshot());
-      setScanAId(DEMO_PROJECTS_DATA.tours[0]?.id ?? "");
-      setScanBId(DEMO_PROJECTS_DATA.tours[1]?.id ?? "");
-      setProjectId(DEMO_PROJECTS_DATA.projects[0]?.id ?? "");
-      setClientId("demo-client");
-      return;
-    }
     const a = urlParams.scanAId;
     const b = urlParams.scanBId;
     if (a && b && a !== b) {
@@ -267,7 +258,7 @@ export function CompareProgressHub({
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDemo]);
+  }, []);
 
   const resetAll = () => {
     setSnapshot(null);
@@ -276,7 +267,7 @@ export function CompareProgressHub({
   };
 
   const handleSave = () => {
-    if (!saveName.trim() || !projectId || !scanAId || !scanBId || isDemo) return;
+    if (!saveName.trim() || !projectId || !scanAId || !scanBId) return;
 
     startTransition(async () => {
       const result = await saveComparison({
@@ -307,10 +298,6 @@ export function CompareProgressHub({
     setFloorId(entry.floorId ?? null);
     setScanAId(entry.tourAId);
     setScanBId(entry.tourBId);
-    if (isDemo) {
-      setSnapshot(getDemoComparisonSnapshot());
-      return;
-    }
     startTransition(async () => {
       const result = await fetchComparisonSnapshot(entry.tourAId, entry.tourBId);
       setSnapshot(result);
@@ -325,19 +312,39 @@ export function CompareProgressHub({
     });
   };
 
+  if (!hasProjects) {
+    return (
+      <div className="compare-card flex flex-col items-center py-20 text-center">
+        <Columns2 className="mb-4 h-14 w-14 text-slate-200" />
+        <p className="font-display text-lg font-semibold text-slate-900 dark:text-white">
+          No projects available
+        </p>
+        <p className="mt-2 max-w-md text-sm text-slate-500">
+          {isAdmin
+            ? "Create a project and upload site visits to start comparing progress."
+            : "Your projects will appear here once they are set up by your BuildView team."}
+        </p>
+        {isAdmin && (
+          <Button asChild className="mt-6 bg-slate-900 hover:bg-slate-800">
+            <Link href="/admin/tours">Upload tours</Link>
+          </Button>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      {isDemo && (
-        <div className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-amber-900/50 dark:bg-amber-950/30">
+      {!hasTours && (
+        <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-slate-700 dark:bg-slate-800/40">
           <div className="flex items-start gap-3">
-            <Camera className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+            <Camera className="mt-0.5 h-5 w-5 shrink-0 text-slate-500" />
             <div>
-              <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">
-                Demo preview — no site visits in your account yet
+              <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                No site visits yet
               </p>
-              <p className="mt-0.5 text-sm text-amber-800/80 dark:text-amber-200/70">
-                This layout uses sample data. Upload Matterport scans in the admin portal to compare real
-                project progress.
+              <p className="mt-0.5 text-sm text-slate-500">
+                Upload Matterport scans to compare progress between captures.
               </p>
             </div>
           </div>
@@ -353,13 +360,15 @@ export function CompareProgressHub({
       <div className="compare-card p-3">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex flex-wrap items-center gap-2">
-            <FilterSelect
-              label="Client"
-              value={clientId}
-              onChange={setClientId}
-              options={clients.map((c) => ({ value: c.id, label: c.name }))}
-              width="w-[140px]"
-            />
+            {isAdmin && (
+              <FilterSelect
+                label="Client"
+                value={clientId}
+                onChange={setClientId}
+                options={clients.map((c) => ({ value: c.id, label: c.name }))}
+                width="w-[140px]"
+              />
+            )}
             <FilterSelect
               label="Project"
               value={projectId}
@@ -475,7 +484,7 @@ export function CompareProgressHub({
         </div>
       </div>
 
-      {!snapshot && !isPending && !isDemo && (
+      {!snapshot && !isPending && hasTours && (
         <div className="compare-card flex flex-col items-center py-20 text-center">
           <Columns2 className="mb-4 h-14 w-14 text-slate-200" />
           <p className="font-display text-lg font-semibold text-slate-900 dark:text-white">
