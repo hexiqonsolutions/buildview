@@ -66,6 +66,7 @@ export function getStatusColor(status: string): string {
     in_progress: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
     completed: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
     on_hold: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300",
+    archived: "bg-slate-100 text-slate-500 dark:bg-slate-800/60 dark:text-slate-400",
     open: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
     resolved: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
     closed: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300",
@@ -88,6 +89,7 @@ export function getProjectProgressPercent(status: string): number {
     in_progress: 62,
     on_hold: 45,
     completed: 100,
+    archived: 100,
   };
   return map[status] ?? 20;
 }
@@ -98,6 +100,7 @@ export function getProjectStageLabel(status: string): string {
     in_progress: "Active Construction",
     on_hold: "On Hold",
     completed: "Handover",
+    archived: "Archived",
   };
   return map[status] ?? formatStatus(status);
 }

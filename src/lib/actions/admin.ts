@@ -1008,6 +1008,50 @@ export async function softDeleteProject(projectId: string) {
   revalidatePath("/admin");
 }
 
+export async function archiveProject(projectId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { error } = await supabase
+    .from("projects")
+    .update({
+      status: "archived" as ProjectStatus,
+      updated_by: user?.id ?? null,
+    })
+    .eq("id", projectId)
+    .is("deleted_at", null);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/admin/projects");
+  revalidatePath("/dashboard/projects");
+  revalidatePath("/admin");
+}
+
+export async function restoreProject(projectId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { error } = await supabase
+    .from("projects")
+    .update({
+      status: "on_hold" as ProjectStatus,
+      updated_by: user?.id ?? null,
+    })
+    .eq("id", projectId)
+    .is("deleted_at", null);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/admin/projects");
+  revalidatePath("/dashboard/projects");
+  revalidatePath("/admin");
+}
+
 export async function softDeleteClient(clientId: string) {
   const supabase = await createClient();
   const {

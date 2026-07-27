@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   LayoutGrid,
   List,
@@ -17,9 +18,14 @@ import {
   MapPin,
   MoreHorizontal,
   ExternalLink,
+  Archive,
+  ArchiveRestore,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 import type { AdminProjectRow, AdminProjectsListData } from "@/lib/actions/data";
 import type { Client, ProjectStatus } from "@/lib/types";
+import { softDeleteProject, archiveProject, restoreProject } from "@/lib/actions/admin";
 import { AdminMetricCard } from "@/components/admin/admin-metric-card";
 import { CreateProjectForm } from "@/components/admin/create-project-form";
 import { Badge } from "@/components/ui/badge";
@@ -43,8 +49,19 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { formatDate, formatRelativeTime, formatStatus } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
@@ -62,6 +79,7 @@ const STATUS_OPTIONS: { value: ProjectStatus | "all"; label: string }[] = [
   { value: "planning", label: "Planning" },
   { value: "on_hold", label: "On Hold" },
   { value: "completed", label: "Completed" },
+  { value: "archived", label: "Archived" },
 ];
 
 function projectStatusClass(status: ProjectStatus): string {
@@ -70,8 +88,9 @@ function projectStatusClass(status: ProjectStatus): string {
     on_hold: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
     completed: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
     planning: "bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300",
+    archived: "bg-slate-100 text-slate-500 dark:bg-slate-800/60 dark:text-slate-400",
   };
-  return map[status];
+  return map[status] ?? "bg-gray-100 text-gray-800";
 }
 
 function issueCountClass(count: number): string {
@@ -417,30 +436,128 @@ function ProjectActionsMenu({
   projectBase: string;
   isAdmin: boolean;
 }) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [confirmAction, setConfirmAction] = useState<"archive" | "restore" | "delete" | null>(null);
+
+  const isArchived = project.status === "archived";
+
+  function handleConfirm() {
+    if (!confirmAction) return;
+    startTransition(async () => {
+      try {
+        if (confirmAction === "delete") {
+          await softDeleteProject(project.id);
+        } else if (confirmAction === "archive") {
+          await archiveProject(project.id);
+        } else if (confirmAction === "restore") {
+          await restoreProject(project.id);
+        }
+        router.refresh();
+      } catch {
+        // Swallow — revalidation handles the UI
+      } finally {
+        setConfirmAction(null);
+      }
+    });
+  }
+
+  const dialogConfig = {
+    archive: {
+      title: "Archive project?",
+      description: `"${project.name}" will be moved to Archived status. Clients will no longer see it. You can restore it later.`,
+      action: "Archive",
+      className: "",
+    },
+    restore: {
+      title: "Restore project?",
+      description: `"${project.name}" will be moved back to On Hold status and become visible to clients again.`,
+      action: "Restore",
+      className: "",
+    },
+    delete: {
+      title: "Delete project?",
+      description: `"${project.name}" will be permanently removed from all views. This cannot be undone. All tours, reports, documents, and issues linked to this project will also be hidden.`,
+      action: "Delete",
+      className: "bg-red-600 text-white hover:bg-red-700 focus:ring-red-600",
+    },
+  };
+
+  const config = confirmAction ? dialogConfig[confirmAction] : null;
+
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-          <MoreHorizontal className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem asChild>
-          <Link href={`${projectBase}/${project.id}`}>
-            <ExternalLink className="mr-2 h-4 w-4" />
-            Open Project
-          </Link>
-        </DropdownMenuItem>
-        {isAdmin && (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" disabled={isPending}>
+            {isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <MoreHorizontal className="h-4 w-4" />
+            )}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
           <DropdownMenuItem asChild>
-            <Link href={`/admin/tours?project=${project.id}`}>
-              <Camera className="mr-2 h-4 w-4" />
-              View Tours
+            <Link href={`${projectBase}/${project.id}`}>
+              <ExternalLink className="mr-2 h-4 w-4" />
+              Open Project
             </Link>
           </DropdownMenuItem>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+          {isAdmin && (
+            <DropdownMenuItem asChild>
+              <Link href={`/admin/tours?project=${project.id}`}>
+                <Camera className="mr-2 h-4 w-4" />
+                View Tours
+              </Link>
+            </DropdownMenuItem>
+          )}
+          {isAdmin && (
+            <>
+              <DropdownMenuSeparator />
+              {isArchived ? (
+                <DropdownMenuItem onSelect={() => setConfirmAction("restore")}>
+                  <ArchiveRestore className="mr-2 h-4 w-4" />
+                  Restore Project
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem onSelect={() => setConfirmAction("archive")}>
+                  <Archive className="mr-2 h-4 w-4" />
+                  Archive Project
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem
+                onSelect={() => setConfirmAction("delete")}
+                className="text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete Project
+              </DropdownMenuItem>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <AlertDialog open={!!confirmAction} onOpenChange={(open) => !open && setConfirmAction(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{config?.title}</AlertDialogTitle>
+            <AlertDialogDescription>{config?.description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirm}
+              disabled={isPending}
+              className={config?.className}
+            >
+              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {config?.action}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
