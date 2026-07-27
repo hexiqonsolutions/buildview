@@ -1,9 +1,11 @@
 import type { UserRole } from "@/lib/types";
 import {
   BUILDVIEW_STAFF_ROLES,
+  canAssignRoles as canAssignRolesHelper,
+  canCommentOnProject as canCommentOnProjectHelper,
+  canManageClientUploads as canManageClientUploadsHelper,
   isBuildViewStaffRole,
   isClientPortalRole,
-  normalizeClientRole,
 } from "@/lib/auth/roles";
 
 export type PermissionAction =
@@ -46,6 +48,44 @@ const STAFF_FULL: PermissionAction[] = [
 
 const STAFF_READ_UPLOAD: PermissionAction[] = ["read", "upload", "update"];
 
+const CLIENT_UPLOAD_ACTIONS: PermissionAction[] = [
+  "create",
+  "read",
+  "update",
+  "upload",
+];
+
+const CLIENT_VIEW: PermissionAction[] = ["read"];
+
+/** Shared ops matrix for Admin + Operations Manager (full dashboard control). */
+const ADMIN_OPS_MATRIX: RolePermissions = {
+  clients: STAFF_FULL,
+  projects: STAFF_FULL,
+  upload: STAFF_FULL,
+  matterport: STAFF_FULL,
+  reports: STAFF_FULL,
+  documents: STAFF_FULL,
+  issues: STAFF_FULL,
+  invoices: STAFF_FULL,
+  users: ["read"],
+  analytics: STAFF_FULL,
+  storage: STAFF_FULL,
+  notifications: STAFF_FULL,
+  activity: STAFF_FULL,
+};
+
+/** Client Admin / Site Supervisor — upload & manage project content. */
+const CLIENT_MANAGER_MATRIX: RolePermissions = {
+  projects: ["read", "update"],
+  upload: CLIENT_UPLOAD_ACTIONS,
+  matterport: CLIENT_UPLOAD_ACTIONS,
+  reports: CLIENT_UPLOAD_ACTIONS,
+  documents: CLIENT_UPLOAD_ACTIONS,
+  issues: CLIENT_UPLOAD_ACTIONS,
+  invoices: CLIENT_VIEW,
+  notifications: CLIENT_VIEW,
+};
+
 /** App-layer permission matrix (UI + server action guards) */
 const PERMISSIONS: Record<UserRole, RolePermissions> = {
   super_admin: {
@@ -64,36 +104,8 @@ const PERMISSIONS: Record<UserRole, RolePermissions> = {
     notifications: STAFF_FULL,
     activity: STAFF_FULL,
   },
-  admin: {
-    clients: STAFF_FULL,
-    projects: STAFF_FULL,
-    upload: STAFF_FULL,
-    matterport: STAFF_FULL,
-    reports: STAFF_FULL,
-    documents: STAFF_FULL,
-    issues: STAFF_FULL,
-    invoices: STAFF_FULL,
-    users: ["read", "update"],
-    analytics: ["read"],
-    storage: ["read"],
-    notifications: STAFF_FULL,
-    activity: ["read"],
-  },
-  operations_manager: {
-    clients: ["read", "update"],
-    projects: STAFF_FULL,
-    upload: STAFF_FULL,
-    matterport: STAFF_FULL,
-    reports: STAFF_FULL,
-    documents: STAFF_FULL,
-    issues: STAFF_FULL,
-    invoices: ["read", "update"],
-    users: ["read"],
-    analytics: ["read"],
-    storage: ["read"],
-    notifications: STAFF_FULL,
-    activity: ["read"],
-  },
+  admin: { ...ADMIN_OPS_MATRIX },
+  operations_manager: { ...ADMIN_OPS_MATRIX },
   site_engineer: {
     clients: ["read"],
     projects: ["read"],
@@ -107,47 +119,46 @@ const PERMISSIONS: Record<UserRole, RolePermissions> = {
     activity: ["read"],
   },
   client_admin: {
-    projects: ["read", "update"],
-    matterport: ["read"],
-    reports: ["read"],
-    documents: ["read"],
-    issues: ["read", "update"],
-    invoices: ["read"],
+    ...CLIENT_MANAGER_MATRIX,
     users: ["read", "update"],
-    notifications: ["read"],
   },
-  client_user: {
-    projects: ["read", "update"],
-    matterport: ["read"],
-    reports: ["read"],
-    documents: ["read"],
-    issues: ["read", "update"],
-    invoices: ["read"],
-    notifications: ["read"],
+  site_supervisor: {
+    ...CLIENT_MANAGER_MATRIX,
   },
+  /** Client: view + update project status/issues + comments (no upload). */
   client: {
     projects: ["read", "update"],
-    matterport: ["read"],
-    reports: ["read"],
-    documents: ["read"],
+    matterport: CLIENT_VIEW,
+    reports: CLIENT_VIEW,
+    documents: CLIENT_VIEW,
     issues: ["read", "update"],
-    invoices: ["read"],
-    notifications: ["read"],
+    invoices: CLIENT_VIEW,
+    notifications: CLIENT_VIEW,
+  },
+  /** Client User: view + comments only. */
+  client_user: {
+    projects: CLIENT_VIEW,
+    matterport: CLIENT_VIEW,
+    reports: CLIENT_VIEW,
+    documents: CLIENT_VIEW,
+    issues: CLIENT_VIEW,
+    invoices: CLIENT_VIEW,
+    notifications: CLIENT_VIEW,
   },
   read_only_client: {
-    projects: ["read"],
-    matterport: ["read"],
-    reports: ["read"],
-    documents: ["read"],
-    issues: ["read"],
-    invoices: ["read"],
+    projects: CLIENT_VIEW,
+    matterport: CLIENT_VIEW,
+    reports: CLIENT_VIEW,
+    documents: CLIENT_VIEW,
+    issues: CLIENT_VIEW,
+    invoices: CLIENT_VIEW,
   },
   consultant: {
-    projects: ["read"],
-    matterport: ["read"],
-    reports: ["read"],
-    documents: ["read"],
-    issues: ["read"],
+    projects: CLIENT_VIEW,
+    matterport: CLIENT_VIEW,
+    reports: CLIENT_VIEW,
+    documents: CLIENT_VIEW,
+    issues: CLIENT_VIEW,
   },
 };
 
@@ -164,13 +175,24 @@ export function can(
   action: PermissionAction,
   resource: PermissionResource
 ): boolean {
-  const normalized = isClientPortalRole(role) ? normalizeClientRole(role) : role;
-  const allowed = PERMISSIONS[normalized]?.[resource] ?? [];
+  const allowed = PERMISSIONS[role]?.[resource] ?? [];
   return allowed.includes(action);
 }
 
 export function canImpersonate(role: UserRole): boolean {
   return can(role, "impersonate", "users");
+}
+
+export function canManageClientUploads(role: UserRole): boolean {
+  return canManageClientUploadsHelper(role);
+}
+
+export function canAssignRoles(role: UserRole): boolean {
+  return canAssignRolesHelper(role);
+}
+
+export function canCommentOnProject(role: UserRole): boolean {
+  return canCommentOnProjectHelper(role);
 }
 
 export function staffRoles(): UserRole[] {

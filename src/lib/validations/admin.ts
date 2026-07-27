@@ -7,6 +7,7 @@ const userRoles = [
   "site_engineer",
   "client",
   "client_admin",
+  "site_supervisor",
   "client_user",
   "read_only_client",
   "consultant",

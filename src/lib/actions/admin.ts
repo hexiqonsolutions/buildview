@@ -39,8 +39,9 @@ import {
   updateProjectSchema,
   updateUserSchema,
 } from "@/lib/validations/admin";
-import { isBuildViewStaffRole, isClientPortalRole } from "@/lib/auth/roles";
+import { isBuildViewStaffRole, isClientPortalRole, canAssignRoles } from "@/lib/auth/roles";
 import { can } from "@/lib/auth/permissions";
+import { assertCanUploadToProject } from "@/lib/auth/upload-access";
 import {
   portalDocumentLink,
   portalInvoiceLink,
@@ -313,6 +314,8 @@ export async function createTour(data: {
   building_id?: string;
   floor_id?: string;
 }) {
+  await assertCanUploadToProject(data.project_id, "matterport");
+
   const parsed = createTourSchema.safeParse(data);
   if (!parsed.success) {
     throw new Error(parsed.error.errors[0]?.message ?? "Invalid tour data");
@@ -890,6 +893,28 @@ export async function updateUserProfile(data: {
   }
 
   const validated = validation.data;
+  const actorRole = me.role as UserRole;
+
+  // Load current profile so we can detect role / dashboard changes.
+  const { data: existing } = await supabase
+    .from("users")
+    .select("role, client_id, dashboard_type, is_active")
+    .eq("id", validated.id)
+    .maybeSingle();
+
+  if (!existing) throw new Error("User not found");
+
+  const roleChanging = existing.role !== validated.role;
+  const nextDashboard = isClientPortalRole(validated.role)
+    ? (validated.client_dashboard_type ?? validated.dashboard_type ?? null)
+    : null;
+  const dashboardChanging =
+    (existing.dashboard_type ?? null) !== (nextDashboard ?? null) ||
+    Boolean(validated.client_dashboard_type);
+
+  if ((roleChanging || dashboardChanging) && !canAssignRoles(actorRole)) {
+    throw new Error("Only Super Admin can assign roles and dashboards");
+  }
 
   if (isClientPortalRole(validated.role) && !validated.client_id) {
     throw new Error("Client users must be linked to a client organization.");
@@ -897,8 +922,9 @@ export async function updateUserProfile(data: {
 
   const admin = createServiceRoleClient();
 
-  // Apply dashboard to the client org when the column exists.
+  // Apply dashboard to the client org when the column exists (Super Admin only path above).
   if (
+    canAssignRoles(actorRole) &&
     isClientPortalRole(validated.role) &&
     validated.client_id &&
     validated.client_dashboard_type
@@ -970,8 +996,35 @@ export async function updateClientRecord(data: {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  if (!user) throw new Error("You must be signed in");
+
+  const { data: me } = await supabase
+    .from("users")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (!me || !isBuildViewStaffRole(me.role as UserRole)) {
+    throw new Error("Only BuildView staff can update clients");
+  }
 
   const validated = validation.data;
+
+  if (validated.dashboard_type !== undefined && !canAssignRoles(me.role as UserRole)) {
+    // Staff can edit client details; only Super Admin changes dashboard type.
+    const { data: existingClient } = await supabase
+      .from("clients")
+      .select("dashboard_type")
+      .eq("id", validated.id)
+      .maybeSingle();
+    if (
+      existingClient &&
+      (existingClient.dashboard_type ?? "construction") !==
+        (validated.dashboard_type ?? "construction")
+    ) {
+      throw new Error("Only Super Admin can assign client dashboards");
+    }
+  }
 
   const payload: ClientUpdate = {
     name: validated.name,
@@ -981,8 +1034,10 @@ export async function updateClientRecord(data: {
     address: validated.address ?? null,
     subscription_status: validated.subscription_status as ClientUpdate["subscription_status"],
     is_active: validated.is_active,
-    dashboard_type: validated.dashboard_type ?? "construction",
-    updated_by: user?.id ?? null,
+    ...(canAssignRoles(me.role as UserRole)
+      ? { dashboard_type: validated.dashboard_type ?? "construction" }
+      : {}),
+    updated_by: user.id,
   };
 
   const admin = createServiceRoleClient();

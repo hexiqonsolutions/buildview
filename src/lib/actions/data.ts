@@ -793,9 +793,14 @@ export async function getProjects(): Promise<Project[]> {
 
   const byId = new Map<string, Project>();
 
-  // Client portal users see every project under their company, plus any
-  // extra assignments (e.g. consultants added to specific projects).
-  if (role && isClientPortalRole(role) && profile?.client_id) {
+  // Client Admin / Client / Client User see every project under their company.
+  // Site Supervisor is assignment-scoped only (below).
+  if (
+    role &&
+    isClientPortalRole(role) &&
+    role !== "site_supervisor" &&
+    profile?.client_id
+  ) {
     // Prefer service role so org-wide listing works even before the
     // has_project_access SQL fix is applied (RLS previously required Team rows).
     let loadedOrg = false;
@@ -1255,7 +1260,14 @@ export async function getClientsWithStats() {
       .from("users")
       .select("id, client_id, updated_at, role")
       .is("deleted_at", null)
-      .in("role", ["client", "client_admin", "client_user", "read_only_client", "consultant"]),
+      .in("role", [
+        "client",
+        "client_admin",
+        "site_supervisor",
+        "client_user",
+        "read_only_client",
+        "consultant",
+      ]),
     supabase.from("documents").select("project_id, file_size").is("deleted_at", null),
     supabase.from("reports").select("project_id, file_size").is("deleted_at", null),
   ]);

@@ -6,6 +6,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import {
   addProjectComment,
@@ -13,13 +21,15 @@ import {
   updateCommentStatus,
 } from "@/lib/actions/comments";
 import { cn, formatRelativeTime, getStatusColor } from "@/lib/utils";
-import type { ProjectCommentWithUser } from "@/lib/types";
+import type { Document, ProjectCommentWithUser, Report } from "@/lib/types";
 
 interface ProjectCommentsSectionProps {
   projectId: string;
   comments: ProjectCommentWithUser[];
   currentUserId?: string;
   isAdmin?: boolean;
+  reports?: Report[];
+  documents?: Document[];
 }
 
 function initials(name?: string | null, email?: string | null) {
@@ -37,8 +47,12 @@ export function ProjectCommentsSection({
   comments,
   currentUserId,
   isAdmin = false,
+  reports = [],
+  documents = [],
 }: ProjectCommentsSectionProps) {
   const [message, setMessage] = useState("");
+  const [contextType, setContextType] = useState<"project" | "report" | "document">("project");
+  const [contextId, setContextId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -47,10 +61,34 @@ export function ProjectCommentsSection({
     e.preventDefault();
     if (!message.trim()) return;
     setError(null);
+
+    let context_label: string | undefined;
+    if (contextType === "report") {
+      context_label = reports.find((r) => r.id === contextId)?.title;
+      if (!context_label) {
+        setError("Select a report to comment on.");
+        return;
+      }
+    }
+    if (contextType === "document") {
+      context_label = documents.find((d) => d.id === contextId)?.name;
+      if (!context_label) {
+        setError("Select a document to comment on.");
+        return;
+      }
+    }
+
     startTransition(async () => {
       try {
-        await addProjectComment({ project_id: projectId, message: message.trim() });
+        await addProjectComment({
+          project_id: projectId,
+          message: message.trim(),
+          context_type: contextType,
+          context_label,
+        });
         setMessage("");
+        setContextType("project");
+        setContextId("");
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to post comment");
       }
@@ -94,10 +132,77 @@ export function ProjectCommentsSection({
           </h3>
         </div>
         <form onSubmit={handleSubmit} className="space-y-3">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label className="text-xs text-slate-500">Comment on</Label>
+              <Select
+                value={contextType}
+                onValueChange={(v) => {
+                  setContextType(v as "project" | "report" | "document");
+                  setContextId("");
+                }}
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="project">Project</SelectItem>
+                  <SelectItem value="report">Report</SelectItem>
+                  <SelectItem value="document">Document</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {contextType === "report" && (
+              <div className="space-y-1">
+                <Label className="text-xs text-slate-500">Report</Label>
+                <Select value={contextId || undefined} onValueChange={setContextId}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Select report" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {reports.length === 0 ? (
+                      <SelectItem value="_none" disabled>
+                        No reports yet
+                      </SelectItem>
+                    ) : (
+                      reports.map((r) => (
+                        <SelectItem key={r.id} value={r.id}>
+                          {r.title}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {contextType === "document" && (
+              <div className="space-y-1">
+                <Label className="text-xs text-slate-500">Document</Label>
+                <Select value={contextId || undefined} onValueChange={setContextId}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Select document" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {documents.length === 0 ? (
+                      <SelectItem value="_none" disabled>
+                        No documents yet
+                      </SelectItem>
+                    ) : (
+                      documents.map((d) => (
+                        <SelectItem key={d.id} value={d.id}>
+                          {d.name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
           <Textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder="Tell the team about changes you'd like, questions, or feedback on this project…"
+            placeholder="Tell the team about changes you'd like, questions, or feedback…"
             rows={3}
             maxLength={4000}
             disabled={isPending}

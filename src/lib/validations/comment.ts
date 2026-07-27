@@ -7,6 +7,9 @@ export const createCommentSchema = z.object({
     .trim()
     .min(1, "Comment cannot be empty")
     .max(4000, "Comment is too long (max 4000 characters)"),
+  /** Optional note context — prefixed into the message for visibility */
+  context_type: z.enum(["project", "report", "document"]).optional(),
+  context_label: z.string().trim().max(200).optional(),
 });
 
 export type CreateCommentInput = z.infer<typeof createCommentSchema>;

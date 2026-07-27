@@ -1,4 +1,5 @@
 import { getAllUsers, getClients, getProjects } from "@/lib/actions/data";
+import { getCurrentUser } from "@/lib/actions/auth";
 import { AdminTable } from "@/components/admin/admin-table";
 import { ManageUserDialog } from "@/components/admin/manage-user-dialog";
 import { SyncUsersFromAuthButton } from "@/components/admin/sync-users-from-auth-button";
@@ -10,17 +11,21 @@ import {
   CLIENT_DASHBOARD_TYPE_LABELS,
   resolveClientDashboardType,
 } from "@/lib/portal/dashboard-type";
+import { canAssignRoles } from "@/lib/auth/roles";
 import { syncUserProfilesFromAuthDetailed } from "@/lib/supabase/provision-user";
 import { Users } from "lucide-react";
 
 export default async function AdminUsersPage() {
   const syncResult = await syncUserProfilesFromAuthDetailed();
 
-  const [users, clients, projects] = await Promise.all([
+  const [users, clients, projects, currentUser] = await Promise.all([
     getAllUsers(),
     getClients(),
     getProjects(),
+    getCurrentUser(),
   ]);
+
+  const allowAssignRoles = currentUser ? canAssignRoles(currentUser.role) : false;
 
   const syncedTotal = syncResult.inserted + syncResult.restored;
 
@@ -174,6 +179,7 @@ export default async function AdminUsersPage() {
                   }
                   clients={clients}
                   projects={projects}
+                  canAssignRoles={allowAssignRoles}
                 />
               ),
             },

@@ -6,7 +6,8 @@ import {
   createCommentSchema,
   updateCommentStatusSchema,
 } from "@/lib/validations/comment";
-import type { ProjectCommentInsert, ProjectCommentWithUser } from "@/lib/types";
+import type { ProjectCommentInsert, ProjectCommentWithUser, UserRole } from "@/lib/types";
+import { canCommentOnProject } from "@/lib/auth/roles";
 
 export async function getProjectComments(
   projectId: string
@@ -32,6 +33,8 @@ export async function getProjectComments(
 export async function addProjectComment(data: {
   project_id: string;
   message: string;
+  context_type?: "project" | "report" | "document";
+  context_label?: string;
 }) {
   const validation = createCommentSchema.safeParse(data);
   if (!validation.success) {
@@ -45,11 +48,30 @@ export async function addProjectComment(data: {
 
   if (!user) throw new Error("You must be signed in to comment.");
 
+  const { data: profile } = await supabase
+    .from("users")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (!profile || !canCommentOnProject(profile.role as UserRole)) {
+    throw new Error("You do not have permission to comment");
+  }
+
   const validated = validation.data;
+  let message = validated.message;
+  if (
+    validated.context_type &&
+    validated.context_type !== "project" &&
+    validated.context_label
+  ) {
+    const kind = validated.context_type === "report" ? "Report" : "Document";
+    message = `[${kind}: ${validated.context_label}] ${message}`;
+  }
 
   const payload: ProjectCommentInsert = {
     project_id: validated.project_id,
-    message: validated.message,
+    message,
     status: "open",
     created_by: user.id,
     updated_by: user.id,

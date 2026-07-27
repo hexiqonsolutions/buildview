@@ -19,7 +19,8 @@ import {
   ChevronLeft,
   Sparkles,
 } from "lucide-react";
-import { useAdminWorkspace } from "@/components/admin/workspace/admin-workspace-provider";
+import { useAdminWorkspace, useOptionalAdminWorkspace } from "@/components/admin/workspace/admin-workspace-provider";
+import { useOptionalPortalWorkspace } from "@/components/portal/workspace/portal-workspace-provider";
 import {
   attachSitePhotosWithAutomation,
   beginInvoiceUploadWithAutomation,
@@ -71,7 +72,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
-const CATEGORIES: {
+const ADMIN_CATEGORIES: {
   id: UploadCategory;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
@@ -91,26 +92,71 @@ const CATEGORIES: {
   { id: "other", label: "Other", icon: FolderOpen, description: "General document" },
 ];
 
-export function UploadWizard() {
+const PORTAL_CATEGORIES = ADMIN_CATEGORIES.filter((c) => c.id !== "invoices_doc");
+
+export type UploadWizardProps = {
+  /** Lock wizard to one project (client portal project upload). */
+  lockedProjectId?: string;
+  lockedProjectName?: string;
+  /** Where to send users after success (defaults to admin project page). */
+  projectHref?: string;
+  mode?: "admin" | "portal";
+};
+
+export function UploadWizard({
+  lockedProjectId,
+  lockedProjectName,
+  projectHref,
+  mode = "admin",
+}: UploadWizardProps = {}) {
   const searchParams = useSearchParams();
   const initialType = searchParams.get("type");
-  const {
-    hydrated,
-    client,
-    project,
-    clients,
-    scope,
-    clientProjects,
-    buildings,
-    floors,
-    setClientId,
-    setProjectId,
-    setBuilding,
-    setFloor,
-  } = useAdminWorkspace();
+  const adminWs = useOptionalAdminWorkspace();
+  const portalWs = useOptionalPortalWorkspace();
+
+  if (mode === "admin" && !lockedProjectId && !adminWs) {
+    throw new Error("UploadWizard requires AdminWorkspaceProvider");
+  }
+
+  const client = adminWs?.client ?? null;
+  const resolvedProject =
+    (lockedProjectId
+      ? adminWs?.project?.id === lockedProjectId
+        ? adminWs.project
+        : portalWs?.project?.id === lockedProjectId
+          ? portalWs.project
+          : portalWs?.projects.find((p) => p.id === lockedProjectId) ?? null
+      : adminWs?.project ?? portalWs?.project) ?? null;
+  const project =
+    resolvedProject ??
+    (lockedProjectId && lockedProjectName
+      ? ({ id: lockedProjectId, name: lockedProjectName } as NonNullable<typeof resolvedProject>)
+      : null);
+  const clients = adminWs?.clients ?? [];
+  const clientProjects = adminWs?.clientProjects ?? portalWs?.projects ?? [];
+  const buildings = adminWs?.buildings ?? portalWs?.buildings ?? [];
+  const floors = adminWs?.floors ?? portalWs?.floors ?? [];
+  const scope =
+    adminWs?.scope ??
+    portalWs?.scope ?? {
+      clientId: null,
+      projectId: lockedProjectId ?? null,
+      building: "all" as const,
+      floor: "all" as const,
+      buildingId: null,
+      floorId: null,
+    };
+  const setClientId = adminWs?.setClientId ?? (() => undefined);
+  const setProjectId = adminWs?.setProjectId ?? portalWs?.setProjectId ?? (() => undefined);
+  const setBuilding = adminWs?.setBuilding ?? portalWs?.setBuilding ?? (() => undefined);
+  const setFloor = adminWs?.setFloor ?? portalWs?.setFloor ?? (() => undefined);
+  const hydrated = adminWs?.hydrated ?? portalWs?.hydrated ?? true;
+
+  const categories = mode === "portal" ? PORTAL_CATEGORIES : ADMIN_CATEGORIES;
+  const isLocked = Boolean(lockedProjectId);
 
   const [step, setStep] = useState<UploadWizardStep>(() =>
-    client && project ? "category" : "workspace"
+    isLocked || (client && project) ? "category" : "workspace"
   );
   const [category, setCategory] = useState<UploadCategory>(() =>
     resolveUploadCategoryFromParam(initialType)
@@ -133,7 +179,7 @@ export function UploadWizard() {
   const [issueLocation, setIssueLocation] = useState("");
   const [invoiceAmount, setInvoiceAmount] = useState("");
 
-  const projectId = scope.projectId ?? "";
+  const projectId = lockedProjectId ?? scope.projectId ?? "";
   const building = scope.building !== "all" ? scope.building : "";
   const floor = scope.floor !== "all" ? scope.floor : "";
   const automation = useMemo(() => getAutomationPreview(category), [category]);
@@ -152,8 +198,8 @@ export function UploadWizard() {
     setInvoiceAmount("");
     setError(null);
     setResult(null);
-    setStep(client && project ? "category" : "workspace");
-  }, [client, project]);
+    setStep(isLocked || (client && project) ? "category" : "workspace");
+  }, [client, project, isLocked]);
 
   function validateDetails(): string | null {
     if (!projectId) return "Choose a client and project before uploading.";
@@ -437,8 +483,9 @@ export function UploadWizard() {
 
   function goBack() {
     setError(null);
-    if (step === "category") setStep("workspace");
-    else if (step === "details") setStep("category");
+    if (step === "category") {
+      if (!isLocked) setStep("workspace");
+    } else if (step === "details") setStep("category");
     else if (step === "review") setStep("details");
   }
 
@@ -477,7 +524,7 @@ export function UploadWizard() {
       </nav>
 
       <div className="ops-card p-6">
-        {step === "workspace" && (
+        {step === "workspace" && !isLocked && (
           <WorkspaceStep
             clients={clients}
             client={client}
@@ -495,7 +542,7 @@ export function UploadWizard() {
         )}
 
         {step === "category" && (
-          <CategoryStep category={category} onSelect={setCategory} />
+          <CategoryStep category={category} onSelect={setCategory} categories={categories} />
         )}
 
         {step === "details" && (
@@ -552,6 +599,9 @@ export function UploadWizard() {
             projectId={projectId}
             category={category}
             onReset={resetForm}
+            projectHref={projectHref ?? (mode === "portal" ? `/dashboard/projects/${projectId}` : `/admin/projects/${projectId}`)}
+            categories={categories}
+            portalMode={mode === "portal"}
           />
         )}
 
@@ -567,7 +617,7 @@ export function UploadWizard() {
               type="button"
               variant="ghost"
               onClick={goBack}
-              disabled={step === "workspace" || loading}
+              disabled={step === "workspace" || (isLocked && step === "category") || loading}
             >
               <ChevronLeft className="mr-1 h-4 w-4" />
               Back
@@ -779,13 +829,15 @@ function WorkspaceStep({
 function CategoryStep({
   category,
   onSelect,
+  categories,
 }: {
   category: UploadCategory;
   onSelect: (c: UploadCategory) => void;
+  categories: typeof ADMIN_CATEGORIES;
 }) {
   return (
     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-      {CATEGORIES.map((cat) => (
+      {categories.map((cat) => (
         <button
           key={cat.id}
           type="button"
@@ -1095,7 +1147,7 @@ function ReviewStep({
   floor: string;
   fileCount: number;
 }) {
-  const catLabel = CATEGORIES.find((c) => c.id === category)?.label ?? category;
+  const catLabel = ADMIN_CATEGORIES.find((c) => c.id === category)?.label ?? category;
 
   return (
     <div className="space-y-5">
@@ -1149,11 +1201,17 @@ function SuccessStep({
   projectId,
   category,
   onReset,
+  projectHref,
+  categories,
+  portalMode,
 }: {
   result: UploadResult | null;
   projectId: string;
   category: UploadCategory;
   onReset: () => void;
+  projectHref: string;
+  categories: typeof ADMIN_CATEGORIES;
+  portalMode?: boolean;
 }) {
   return (
     <div className="space-y-5 text-center">
@@ -1165,44 +1223,44 @@ function SuccessStep({
         </p>
       </div>
       <div className="flex flex-wrap justify-center gap-2">
-        {result?.tourId && (
+        {result?.tourId && !portalMode && (
           <Button variant="outline" size="sm" asChild>
             <Link href="/admin/tours">View tours</Link>
           </Button>
         )}
-        {result?.reportId && (
+        {result?.reportId && !portalMode && (
           <Button variant="outline" size="sm" asChild>
             <Link href="/admin/reports">View reports</Link>
           </Button>
         )}
-        {result?.documentId && (
+        {result?.documentId && !portalMode && (
           <Button variant="outline" size="sm" asChild>
             <Link href="/admin/documents">View documents</Link>
           </Button>
         )}
-        {result?.invoiceId && (
+        {result?.invoiceId && !portalMode && (
           <Button variant="outline" size="sm" asChild>
             <Link href="/admin/invoices">View invoices</Link>
           </Button>
         )}
-        {result?.eventId && (
+        {result?.eventId && !portalMode && (
           <Button variant="outline" size="sm" asChild>
             <Link href="/admin/timeline">View timeline</Link>
           </Button>
         )}
-        {result?.issueId && (
+        {result?.issueId && !portalMode && (
           <Button variant="outline" size="sm" asChild>
             <Link href="/admin/issues">View issues</Link>
           </Button>
         )}
         <Button variant="outline" size="sm" asChild>
-          <Link href={`/admin/projects/${projectId}`}>
+          <Link href={projectHref}>
             Project workspace
           </Link>
         </Button>
       </div>
       <Button type="button" className="ops-btn-primary" onClick={onReset}>
-        Upload another {CATEGORIES.find((c) => c.id === category)?.label.toLowerCase()}
+        Upload another {categories.find((c) => c.id === category)?.label.toLowerCase()}
       </Button>
     </div>
   );

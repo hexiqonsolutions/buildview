@@ -30,6 +30,8 @@ import {
   portalReportLink,
   portalTimelineLink,
 } from "@/lib/portal/notification-links";
+import { assertCanUploadToProject } from "@/lib/auth/upload-access";
+import { isBuildViewStaffRole } from "@/lib/auth/roles";
 
 export type UploadCategory =
   | "matterport"
@@ -99,6 +101,7 @@ export async function uploadMatterportWithAutomation(data: {
   engineer?: string;
   progress_note?: string;
 }): Promise<UploadResult> {
+  await assertCanUploadToProject(data.project_id, "matterport");
   const supabase = await createClient();
 
   const spatial = await resolveSpatialForWrite(supabase, data.project_id, {
@@ -209,6 +212,7 @@ export async function uploadReportWithAutomation(data: {
   building?: string;
   floor?: string;
 }): Promise<UploadResult> {
+  await assertCanUploadToProject(data.project_id, "reports");
   const validation = createReportSchema.safeParse(data);
   if (!validation.success) {
     throw new Error(validation.error.errors[0]?.message ?? "Invalid report data");
@@ -274,6 +278,7 @@ export async function uploadDocumentWithAutomation(data: {
   building?: string;
   floor?: string;
 }): Promise<UploadResult> {
+  await assertCanUploadToProject(data.project_id, "documents");
   const validation = createDocumentSchema.safeParse(data);
   if (!validation.success) {
     throw new Error(validation.error.errors[0]?.message ?? "Invalid document data");
@@ -330,6 +335,10 @@ export async function beginInvoiceUploadWithAutomation(data: {
   currency?: string;
   description?: string;
 }): Promise<{ invoiceId: string }> {
+  const auth = await assertCanUploadToProject(data.project_id, "invoices");
+  if (!isBuildViewStaffRole(auth.role)) {
+    throw new Error("Only BuildView staff can upload invoices");
+  }
   const invoiceNumber = data.invoice_number.trim();
   if (!invoiceNumber) throw new Error("Invoice number is required.");
   if (!data.client_id) throw new Error("Client is required for invoice upload.");
@@ -356,6 +365,10 @@ export async function finalizeInvoiceUploadWithAutomation(data: {
   description?: string;
   event_date?: string;
 }): Promise<UploadResult> {
+  const auth = await assertCanUploadToProject(data.project_id, "invoices");
+  if (!isBuildViewStaffRole(auth.role)) {
+    throw new Error("Only BuildView staff can upload invoices");
+  }
   await attachInvoicePdf(data.invoice_id, { storage_path: data.storage_path });
 
   const eventDate = data.event_date ?? new Date().toISOString().split("T")[0];
@@ -418,6 +431,7 @@ export async function uploadTimelineUpdateWithAutomation(data: {
   tour_id?: string;
   report_id?: string;
 }): Promise<UploadResult> {
+  await assertCanUploadToProject(data.project_id, "upload");
   const eventId = await createTimelineEvent({
     project_id: data.project_id,
     event_date: data.event_date,
@@ -464,6 +478,7 @@ export async function attachSitePhotosWithAutomation(data: {
   building?: string;
   floor?: string;
 }): Promise<UploadResult> {
+  await assertCanUploadToProject(data.project_id, "upload");
   if (data.photos.length === 0) {
     throw new Error("Select at least one photo.");
   }
@@ -516,6 +531,7 @@ export async function uploadSitePhotosWithAutomation(data: {
   building?: string;
   floor?: string;
 }): Promise<UploadResult> {
+  await assertCanUploadToProject(data.project_id, "upload");
   if (data.photos.length === 0) {
     throw new Error("Select at least one photo.");
   }
@@ -566,6 +582,7 @@ export async function uploadIssueWithAutomation(data: {
     sort_order?: number;
   }>;
 }): Promise<UploadResult> {
+  await assertCanUploadToProject(data.project_id, "issues");
   const validation = createIssueSchema.safeParse({
     project_id: data.project_id,
     title: data.title,

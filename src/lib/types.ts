@@ -26,6 +26,7 @@ export type UserRole =
   | "site_engineer"
   | "client"
   | "client_admin"
+  | "site_supervisor"
   | "client_user"
   | "read_only_client"
   | "consultant";
@@ -1415,6 +1416,7 @@ export const USER_ROLE_LABELS: Record<UserRole, string> = {
   site_engineer: "Site Engineer",
   client: "Client",
   client_admin: "Client Admin",
+  site_supervisor: "Site Supervisor",
   client_user: "Client User",
   read_only_client: "Read Only",
   consultant: "Consultant",

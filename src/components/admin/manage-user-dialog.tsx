@@ -44,6 +44,8 @@ interface ManageUserDialogProps {
   };
   clients: Client[];
   projects: Project[];
+  /** Super Admin only — role & dashboard assignment */
+  canAssignRoles?: boolean;
 }
 
 function initialDashboardType(
@@ -57,7 +59,12 @@ function initialDashboardType(
   return resolveClientDashboardType(user, linked);
 }
 
-export function ManageUserDialog({ user, clients, projects }: ManageUserDialogProps) {
+export function ManageUserDialog({
+  user,
+  clients,
+  projects,
+  canAssignRoles = false,
+}: ManageUserDialogProps) {
   const [open, setOpen] = useState(false);
   const [role, setRole] = useState<UserRole>(user.role);
   const [clientId, setClientId] = useState(user.client_id ?? "none");
@@ -211,7 +218,11 @@ export function ManageUserDialog({ user, clients, projects }: ManageUserDialogPr
         <div className="space-y-4">
           <div className="space-y-2">
             <Label>Role</Label>
-            <Select value={role} onValueChange={(v) => setRole(v as UserRole)}>
+            <Select
+              value={role}
+              onValueChange={(v) => setRole(v as UserRole)}
+              disabled={!canAssignRoles}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -223,6 +234,9 @@ export function ManageUserDialog({ user, clients, projects }: ManageUserDialogPr
                 ))}
               </SelectContent>
             </Select>
+            {!canAssignRoles && (
+              <p className="text-xs text-slate-500">Only Super Admin can change roles.</p>
+            )}
           </div>
 
           {isClientPortalRole(role) && (
@@ -250,7 +264,7 @@ export function ManageUserDialog({ user, clients, projects }: ManageUserDialogPr
               <Select
                 value={dashboardType}
                 onValueChange={(v) => setDashboardType(v as ClientDashboardType)}
-                disabled={clientId === "none"}
+                disabled={!canAssignRoles || clientId === "none"}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -268,9 +282,11 @@ export function ManageUserDialog({ user, clients, projects }: ManageUserDialogPr
                 {CLIENT_DASHBOARD_TYPE_DESCRIPTIONS[dashboardType]}
               </p>
               <p className="text-xs text-slate-400">
-                {clientId === "none"
-                  ? "Link a client organization first."
-                  : `Saves on ${selectedClient?.company_name || selectedClient?.name || "this client"} — all linked users get this portal.`}
+                {!canAssignRoles
+                  ? "Only Super Admin can change the client dashboard."
+                  : clientId === "none"
+                    ? "Link a client organization first."
+                    : `Saves on ${selectedClient?.company_name || selectedClient?.name || "this client"} — all linked users get this portal.`}
               </p>
             </div>
           )}
