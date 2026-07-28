@@ -698,7 +698,7 @@ export async function createInvoice(data: {
     project_id: data.project_id ?? null,
     invoice_number: data.invoice_number,
     amount: data.amount,
-    currency: data.currency ?? DEFAULT_CURRENCY,
+    currency: DEFAULT_CURRENCY,
     status: data.status as InvoiceStatus,
     due_date: data.due_date ?? null,
     description: data.description ?? null,

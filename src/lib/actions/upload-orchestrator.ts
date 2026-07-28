@@ -349,7 +349,7 @@ export async function beginInvoiceUploadWithAutomation(data: {
     project_id: data.project_id,
     invoice_number: invoiceNumber,
     amount: data.amount ?? 0,
-    currency: data.currency ?? DEFAULT_CURRENCY,
+    currency: DEFAULT_CURRENCY,
     status: "sent",
     description: data.description,
   });
