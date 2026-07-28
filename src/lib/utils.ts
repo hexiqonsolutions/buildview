@@ -1,6 +1,8 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
+export { DEFAULT_CURRENCY, formatCurrency } from "@/lib/currency";
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -39,13 +41,6 @@ export function formatRelativeTime(date: string | Date | null | undefined): stri
     }
   }
   return "just now";
-}
-
-export function formatCurrency(amount: number, currency = "USD"): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-  }).format(amount);
 }
 
 export function formatFileSize(bytes: number | null | undefined): string {

@@ -19,7 +19,7 @@ export type PlatformSettings = {
 export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   companyName: "BuildView",
   supportEmail: "ops@buildview.com",
-  defaultCurrency: "USD",
+  defaultCurrency: "INR",
   timezone: "Asia/Kolkata",
   notifications: {
     onUpload: true,

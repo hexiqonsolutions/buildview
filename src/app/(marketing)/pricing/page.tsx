@@ -21,7 +21,7 @@ const tiers: PricingTier[] = [
   {
     name: "Project",
     description: "For a single active build with remote stakeholder visibility.",
-    price: "$499",
+    price: "₹39,999",
     period: "/ month",
     features: [
       "1 active project",
@@ -37,7 +37,7 @@ const tiers: PricingTier[] = [
   {
     name: "Portfolio",
     description: "For developers and PMCs managing multiple sites at once.",
-    price: "$1,299",
+    price: "₹1,08,999",
     period: "/ month",
     features: [
       "Up to 5 active projects",
@@ -144,8 +144,8 @@ export default function PricingPage() {
           ))}
         </div>
         <p className="mt-8 text-center text-sm text-slate-500">
-          All prices in USD. Capture travel outside metro areas may incur a site visit fee — we&apos;ll
-          confirm before scheduling.
+          All prices in INR (₹). GST applicable as per Indian tax law. Capture travel outside metro
+          areas may incur a site visit fee — we&apos;ll confirm before scheduling.
         </p>
       </Section>
 

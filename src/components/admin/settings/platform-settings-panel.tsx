@@ -128,6 +128,7 @@ export function PlatformSettingsPanel({
                 id="defaultCurrency"
                 value={settings.defaultCurrency}
                 onChange={(e) => updateSettings({ defaultCurrency: e.target.value.toUpperCase() })}
+                placeholder="INR"
               />
             </div>
             <div className="space-y-2">

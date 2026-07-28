@@ -11,8 +11,8 @@ export function JsonLd() {
     url: siteConfig.url,
     offers: {
       "@type": "Offer",
-      price: "499",
-      priceCurrency: "USD",
+      price: "39999",
+      priceCurrency: "INR",
     },
     provider: {
       "@type": "Organization",

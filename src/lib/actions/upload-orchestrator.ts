@@ -8,6 +8,7 @@ import { createReportSchema } from "@/lib/validations/report";
 import { createDocumentSchema } from "@/lib/validations/document";
 import { createIssueSchema } from "@/lib/validations/issue";
 import { createTimelineEvent } from "@/lib/actions/timeline";
+import { DEFAULT_CURRENCY } from "@/lib/currency";
 import type {
   ActivityLogInsert,
   DocumentCategory,
@@ -348,7 +349,7 @@ export async function beginInvoiceUploadWithAutomation(data: {
     project_id: data.project_id,
     invoice_number: invoiceNumber,
     amount: data.amount ?? 0,
-    currency: data.currency ?? "USD",
+    currency: data.currency ?? DEFAULT_CURRENCY,
     status: "sent",
     description: data.description,
   });

@@ -4,11 +4,13 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { requireBuildViewStaff } from "@/lib/supabase/server";
+import { DEFAULT_CURRENCY } from "@/lib/currency";
 import {
   DEFAULT_PLATFORM_SETTINGS,
   type NotificationRuleKey,
   type PlatformSettings,
 } from "@/lib/admin/platform-settings";
+
 import type { NotificationType } from "@/lib/types";
 
 type SettingsRow = {
@@ -95,7 +97,7 @@ export async function updatePlatformSettings(
       .update({
         company_name: settings.companyName.trim() || DEFAULT_PLATFORM_SETTINGS.companyName,
         support_email: settings.supportEmail.trim() || DEFAULT_PLATFORM_SETTINGS.supportEmail,
-        default_currency: settings.defaultCurrency.trim().toUpperCase() || "USD",
+        default_currency: settings.defaultCurrency.trim().toUpperCase() || DEFAULT_CURRENCY,
         timezone: settings.timezone.trim() || DEFAULT_PLATFORM_SETTINGS.timezone,
         notification_rules: settings.notifications,
         updated_by: user?.id ?? null,
