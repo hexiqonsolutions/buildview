@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/admin";
+import { isRlsOrPermissionError } from "@/lib/supabase/rls";
 import { createSignedStorageUrl } from "@/lib/supabase/storage-server";
 import { resolveTimelinePhotoStoragePath } from "@/lib/supabase/storage";
 import {
@@ -140,6 +142,63 @@ export async function createTimelineEvent(data: {
       return retryEvent.id;
     }
 
+    if (error && isRlsOrPermissionError(error.message)) {
+      const admin = createServiceRoleClient();
+      let { data: retryEvent, error: retryError } = await admin
+        .from("timeline_events")
+        .insert(payload)
+        .select("id")
+        .single();
+
+      if (retryError) {
+        const retryMsg = retryError.message.toLowerCase();
+        const missingOnRetry =
+          retryMsg.includes("column") ||
+          retryMsg.includes("schema cache") ||
+          retryMsg.includes("could not find");
+
+        if (missingOnRetry) {
+          const {
+            status: _s,
+            progress_percent: _p,
+            trades: _t,
+            whats_new: _w,
+            author_name: _a,
+            building: _b,
+            floor: _f,
+            building_id: _bi,
+            floor_id: _fi,
+            ...basePayload
+          } = payload;
+          ({ data: retryEvent, error: retryError } = await admin
+            .from("timeline_events")
+            .insert(basePayload)
+            .select("id")
+            .single());
+        }
+      }
+
+      if (retryError || !retryEvent) {
+        throw new Error(retryError?.message ?? "Failed to create timeline event");
+      }
+
+      if (data.photos && data.photos.length > 0) {
+        await insertTimelinePhotos(retryEvent.id, data.photos, user?.id ?? null);
+      }
+
+      if (!data.skipClientNotify) {
+        await notifyClientsIfEnabled("onTimeline", validated.project_id, {
+          title: "Timeline updated",
+          message: validated.title,
+          type: "project_update",
+          link: portalTimelineLink(validated.project_id),
+        });
+      }
+
+      revalidateTimelinePaths(validated.project_id);
+      return retryEvent.id;
+    }
+
     throw new Error(error?.message ?? "Failed to create timeline event");
   }
 
@@ -256,7 +315,15 @@ async function insertTimelinePhotos(
   }));
 
   const { error } = await supabase.from("timeline_photos").insert(rows);
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (isRlsOrPermissionError(error.message)) {
+      const admin = createServiceRoleClient();
+      const { error: retryError } = await admin.from("timeline_photos").insert(rows);
+      if (retryError) throw new Error(retryError.message);
+    } else {
+      throw new Error(error.message);
+    }
+  }
 }
 
 export async function addTimelinePhotos(

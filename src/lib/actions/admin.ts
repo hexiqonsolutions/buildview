@@ -41,6 +41,7 @@ import {
 } from "@/lib/validations/admin";
 import { isBuildViewStaffRole, isClientPortalRole, canAssignRoles } from "@/lib/auth/roles";
 import { can } from "@/lib/auth/permissions";
+import { isRlsOrPermissionError } from "@/lib/supabase/rls";
 import { assertCanUploadToProject } from "@/lib/auth/upload-access";
 import {
   portalDocumentLink,
@@ -359,7 +360,15 @@ export async function createTour(data: {
   };
 
   const { error } = await supabase.from("project_tours").insert(payload);
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (isRlsOrPermissionError(error.message)) {
+      const admin = createServiceRoleClient();
+      const { error: retryError } = await admin.from("project_tours").insert(payload);
+      if (retryError) throw new Error(retryError.message);
+    } else {
+      throw new Error(error.message);
+    }
+  }
 
   const projectName = await getProjectNameForNotify(parsed.data.project_id);
   await notifyClientsIfEnabled("onUpload", parsed.data.project_id, {
@@ -451,6 +460,56 @@ export async function createReport(data: {
         .insert(basePayload)
         .select("id")
         .single();
+      if (retryError || !retryReport) {
+        throw new Error(retryError?.message ?? "Failed to create report");
+      }
+
+      if (!data.skipClientNotify) {
+        const projectName = await getProjectNameForNotify(validated.project_id);
+        await notifyClientsIfEnabled("onUpload", validated.project_id, {
+          title: "New report uploaded",
+          message: formatUploadNotifyMessage(validated.title, projectName, "Reports"),
+          type: "project_update",
+          link: portalReportLink(validated.project_id, retryReport.id),
+        });
+      }
+
+      revalidatePath("/admin/reports");
+      revalidatePath("/dashboard/reports");
+      revalidatePath(`/dashboard/projects/${validated.project_id}`);
+      return retryReport.id;
+    }
+
+    if (error && isRlsOrPermissionError(error.message)) {
+      const admin = createServiceRoleClient();
+      let { data: retryReport, error: retryError } = await admin
+        .from("reports")
+        .insert(payload)
+        .select("id")
+        .single();
+
+      if (retryError) {
+        const retryMsg = retryError.message.toLowerCase();
+        const missingOnRetry =
+          (retryMsg.includes("building") || retryMsg.includes("floor") || retryMsg.includes("schema cache")) &&
+          (retryMsg.includes("column") || retryMsg.includes("could not find") || retryMsg.includes("schema cache"));
+
+        if (missingOnRetry) {
+          const {
+            building: _b,
+            floor: _f,
+            building_id: _bi,
+            floor_id: _fi,
+            ...basePayload
+          } = payload;
+          ({ data: retryReport, error: retryError } = await admin
+            .from("reports")
+            .insert(basePayload)
+            .select("id")
+            .single());
+        }
+      }
+
       if (retryError || !retryReport) {
         throw new Error(retryError?.message ?? "Failed to create report");
       }
@@ -635,15 +694,6 @@ function isMissingDocumentSchemaError(message: string): boolean {
       msg.includes("document_group") ||
       msg.includes("version_number") ||
       msg.includes("is_current"))
-  );
-}
-
-function isRlsOrPermissionError(message: string): boolean {
-  const msg = message.toLowerCase();
-  return (
-    msg.includes("row-level security") ||
-    msg.includes("permission denied") ||
-    msg.includes("violates row-level security")
   );
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Loader2, MessageSquare, ShieldCheck, Trash2, CheckCircle2, RotateCcw } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -56,6 +56,19 @@ export function ProjectCommentsSection({
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const showReportOption = reports.length > 0;
+  const showDocumentOption = documents.length > 0;
+
+  useEffect(() => {
+    if (contextType === "report" && !showReportOption) {
+      setContextType("project");
+      setContextId("");
+    }
+    if (contextType === "document" && !showDocumentOption) {
+      setContextType("project");
+      setContextId("");
+    }
+  }, [contextType, showReportOption, showDocumentOption]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -147,8 +160,8 @@ export function ProjectCommentsSection({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="project">Project</SelectItem>
-                  <SelectItem value="report">Report</SelectItem>
-                  <SelectItem value="document">Document</SelectItem>
+                  {showReportOption && <SelectItem value="report">Report</SelectItem>}
+                  {showDocumentOption && <SelectItem value="document">Document</SelectItem>}
                 </SelectContent>
               </Select>
             </div>

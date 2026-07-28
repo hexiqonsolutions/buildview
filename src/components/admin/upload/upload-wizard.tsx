@@ -188,6 +188,7 @@ export function UploadWizard({
 
   const resetForm = useCallback(() => {
     setFiles([]);
+    if (fileRef.current) fileRef.current.value = "";
     setTourName("");
     setMatterportUrl("");
     setCaptureDate("");
@@ -459,6 +460,7 @@ export function UploadWizard({
 
     setError(null);
     setFiles(next);
+    if (fileRef.current) fileRef.current.value = "";
     if (!title && next[0]) setTitle(next[0].name.replace(/\.[^.]+$/, ""));
   }
 
