@@ -200,13 +200,13 @@ export function PortfolioShowcaseShell({
 
   return (
     <div className="dashboard-page portfolio-dashboard">
-      <div className="flex items-center gap-4 sm:gap-5">
+      <div className="intel-hero-strip flex items-center gap-4 sm:gap-5">
         <Link
           href="/dashboard/profile"
           className="shrink-0 self-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2"
           aria-label="Open profile"
         >
-          <Avatar className="h-16 w-16 ring-2 ring-white shadow-md dark:ring-slate-800 sm:h-20 sm:w-20">
+          <Avatar className="h-16 w-16 ring-2 ring-white shadow-soft dark:ring-slate-800 sm:h-20 sm:w-20">
             <AvatarImage
               src={avatarUrl || undefined}
               alt={fullName || firstName}
@@ -218,12 +218,15 @@ export function PortfolioShowcaseShell({
           </Avatar>
         </Link>
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-brand-accent">
             Portfolio
           </p>
-          <h2 className="truncate font-display text-xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-2xl">
+          <h2 className="mt-1 truncate font-display text-xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-2xl">
             Welcome Back, {firstName}
           </h2>
+          <p className="mt-1.5 max-w-md text-sm text-slate-500 dark:text-slate-400">
+            Browse curated walkthroughs and project highlights.
+          </p>
         </div>
       </div>
 
@@ -320,7 +323,7 @@ export function PortfolioShowcaseShell({
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_1px_0_rgba(15,23,42,0.04)] dark:border-slate-800 dark:bg-slate-950">
+      <section className="intel-card overflow-hidden">
         <div className="flex flex-col gap-4 border-b border-slate-100 px-5 py-4 dark:border-slate-800 md:flex-row md:items-center md:justify-between md:px-6">
           <div className="flex items-center gap-3">
             {data.clientLogoUrl ? (
@@ -336,9 +339,7 @@ export function PortfolioShowcaseShell({
               </div>
             )}
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                Your portfolio
-              </p>
+              <p className="dashboard-section-eyebrow">Your portfolio</p>
               <h2 className="mt-0.5 font-display text-lg font-semibold tracking-tight text-slate-900 dark:text-white">
                 {brand}
               </h2>
@@ -369,14 +370,10 @@ export function PortfolioShowcaseShell({
       <section className="space-y-4">
         <div className="flex items-end justify-between gap-4">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-              Selected work
-            </p>
-            <h2 className="mt-0.5 font-display text-lg font-semibold tracking-tight text-slate-900 dark:text-white md:text-xl">
-              All projects
-            </h2>
+            <p className="dashboard-section-eyebrow">Selected work</p>
+            <h2 className="dashboard-section-title mt-0.5">All projects</h2>
           </div>
-          <Button variant="ghost" size="sm" className="h-8 text-xs text-slate-600" asChild>
+          <Button variant="ghost" size="sm" className="dashboard-ghost-link" asChild>
             <Link href={`/dashboard/projects${workspaceQuery}`}>
               View all
               <ArrowRight className="ml-1 h-3.5 w-3.5" />
@@ -385,8 +382,8 @@ export function PortfolioShowcaseShell({
         </div>
 
         {gridProjects.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 py-16 text-center dark:border-slate-800 dark:bg-slate-900/40">
-            <Camera className="mx-auto mb-3 h-8 w-8 text-slate-300" />
+          <div className="intel-card flex flex-col items-center px-6 py-16 text-center">
+            <Camera className="mb-3 h-8 w-8 text-slate-300" />
             <p className="font-display text-base font-semibold text-slate-900 dark:text-white">
               No projects yet
             </p>

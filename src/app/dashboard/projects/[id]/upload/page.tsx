@@ -1,13 +1,12 @@
 import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
-import Link from "next/link";
-import { ArrowLeft, Upload } from "lucide-react";
+import { Upload } from "lucide-react";
 import { getProjectWithClient } from "@/lib/actions/data";
 import { getCurrentUser } from "@/lib/actions/auth";
 import { canManageClientUploads } from "@/lib/auth/roles";
 import { can } from "@/lib/auth/permissions";
 import { UploadWizard } from "@/components/admin/upload/upload-wizard";
-import { Button } from "@/components/ui/button";
+import { IntelPage } from "@/components/intel/pages/intel-page";
 
 export default async function PortalProjectUploadPage({
   params,
@@ -29,29 +28,16 @@ export default async function PortalProjectUploadPage({
   const { project } = projectData;
 
   return (
-    <div className="space-y-6">
-      <Button variant="ghost" size="sm" asChild className="-ml-2 text-slate-500">
-        <Link href={`/dashboard/projects/${id}`}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to {project.name}
-        </Link>
-      </Button>
-
-      <div>
-        <div className="flex items-center gap-2">
-          <Upload className="h-5 w-5 text-slate-500" />
-          <h1 className="font-display text-2xl font-bold text-slate-900 dark:text-white">
-            Upload to project
-          </h1>
-        </div>
-        <p className="mt-1 text-sm text-slate-500">
-          Add Matterport scans, reports, documents, photos, timeline updates, and issues for{" "}
-          <span className="font-medium text-slate-700 dark:text-slate-300">{project.name}</span>.
-        </p>
-      </div>
-
+    <IntelPage
+      title="Upload to project"
+      description={`Add Matterport scans, reports, documents, photos, timeline updates, and issues for ${project.name}.`}
+      icon={Upload}
+      eyebrow="Uploads"
+      backHref={`/dashboard/projects/${project.id}`}
+      backLabel={`Back to ${project.name}`}
+    >
       <Suspense
-        fallback={<div className="h-96 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />}
+        fallback={<div className="intel-card h-96 animate-pulse bg-slate-50 dark:bg-slate-900" />}
       >
         <UploadWizard
           mode="portal"
@@ -60,6 +46,6 @@ export default async function PortalProjectUploadPage({
           projectHref={`/dashboard/projects/${project.id}`}
         />
       </Suspense>
-    </div>
+    </IntelPage>
   );
 }

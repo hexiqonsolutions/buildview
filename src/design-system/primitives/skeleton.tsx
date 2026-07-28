@@ -60,13 +60,17 @@ export function SkeletonMetricGrid({
 
 export function PageLoadingSkeleton() {
   return (
-    <div className="space-y-8" role="status" aria-label="Loading">
-      <div className="space-y-3">
-        <Skeleton className="h-10 w-72 max-w-full" />
-        <Skeleton className="h-4 w-96 max-w-full" />
+    <div className="space-y-6" role="status" aria-label="Loading">
+      <div className="intel-hero-strip flex items-start gap-4">
+        <Skeleton className="h-11 w-11 shrink-0 rounded-xl" />
+        <div className="min-w-0 flex-1 space-y-2">
+          <Skeleton className="h-3 w-24" />
+          <Skeleton className="h-7 w-56 max-w-full" />
+          <Skeleton className="h-4 w-80 max-w-full" />
+        </div>
       </div>
       <SkeletonMetricGrid count={4} />
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <SkeletonCard />
         <SkeletonCard />
       </div>

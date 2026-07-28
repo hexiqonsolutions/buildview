@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo } from "react";
+import { Calendar } from "lucide-react";
 import { AdminTimelineView } from "@/components/admin/admin-timeline-view";
+import { IntelPage } from "@/components/intel/pages/intel-page";
 import { usePortalWorkspace } from "@/components/portal/workspace/portal-workspace-provider";
 import type { TimelinePageData } from "@/lib/timeline/page-data";
 
@@ -54,12 +56,19 @@ export function PortalTimelineShell({
   ]);
 
   return (
-    <AdminTimelineView
-      data={data}
-      mode="client"
-      isDemo={isDemo}
-      initialProjectId={initialProjectId}
-      workspaceFilters={workspaceFilters}
-    />
+    <IntelPage
+      title="Timeline"
+      description="Track construction milestones and site progress over time."
+      icon={Calendar}
+      eyebrow="Progress"
+    >
+      <AdminTimelineView
+        data={data}
+        mode="client"
+        isDemo={isDemo}
+        initialProjectId={initialProjectId}
+        workspaceFilters={workspaceFilters}
+      />
+    </IntelPage>
   );
 }

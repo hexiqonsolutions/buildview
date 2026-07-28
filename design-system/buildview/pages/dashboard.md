@@ -4,20 +4,24 @@
 
 ## Intent
 
-Dense executive monitoring surface. Glass shell + industrial slate + BuildView lime accents. No marketing hero clutter.
+**Minimal, modern, useful** — one chrome system across every client dashboard route.
+Clean white surfaces, slate hierarchy, BuildView lime accents only.
 
 ## Rules
 
-- **Accent:** `#A4CF30` (`brand-accent`) only — never orange CTAs
-- **Typography:** Poppins display / Open Sans body (via `--font-display` / `--font-inter`)
-- **Density:** Compact KPI grids (`gap-3`–`gap-4`), page rhythm `space-y-6`
-- **Surfaces:** `.intel-card` / `.intel-hero-strip` with soft shadow + light blur
-- **Nav:** Active item dark pill + lime accent bar (`.intel-nav-item-active`)
-- **Motion:** 150–220ms ease-out; respect `prefers-reduced-motion` (shell skips Framer page transitions)
-- **Cards:** Project / metric / quick-action cards use lift hover (`-translate-y-0.5`) without layout shift on press
+- **Page chrome:** Every non-home route uses `IntelPage` (icon + title + optional eyebrow/actions/back)
+- **Home:** `intel-hero-strip` welcome (construction + portfolio) + content below — not a second design system
+- **Surfaces:** `.intel-card` only (aliases: `portal-card`, legacy empties, compare cards). No `ops-card` in client portal
+- **Accent:** `#A4CF30` (`brand-accent`) — never violet/orange CTAs
+- **Typography:** Poppins display / Open Sans body
+- **Density:** Standard–dense (`space-y-6`, card `p-4`–`p-6`)
+- **Motion:** Subtle (150–220ms); no hover translate; respect reduced-motion
+- **Empty/loading:** Design-system / legacy empties both render as `intel-card`; loading mimics `intel-hero-strip`
 
 ## Do not
 
-- Add purple gradients, cream editorial layouts, or orange safety CTAs
-- Stack secondary marketing widgets in the first viewport of the overview
+- Mix admin `ops-card` into client routes
+- Use purple/violet accent panels
+- Add decorative mesh/blur clutter on the shell
 - Use emoji as icons
+- Force “Executive Overview” eyebrow on unrelated pages

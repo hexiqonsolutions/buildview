@@ -9,7 +9,7 @@
 **Project:** BuildView
 **Generated:** 2026-07-27 23:33:45
 **Category:** SaaS (General)
-**Design Dials:** Variance 5/10 (Balanced / Modern) | Motion 4/10 (Standard) | Density 8/10 (Dense / Dashboard)
+**Design Dials:** Variance 3/10 (Minimal) | Motion 3/10 (Subtle) | Density 6/10 (Standard–dense)
 
 ---
 

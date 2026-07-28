@@ -39,7 +39,7 @@ export function ClientProjectsGallery({
           : "Executive view of every construction project — progress, latest scans, and quick access to Matterport tours."
       }
       icon={isPortfolio ? Sparkles : FolderKanban}
-      eyebrow={isPortfolio ? "Showcase" : "Portfolio"}
+      eyebrow={isPortfolio ? "Showcase" : "Projects"}
     >
       <div className="space-y-6">
         {projects.length === 0 ? (

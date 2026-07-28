@@ -147,7 +147,7 @@ export function NotificationsCenter({
         )}
       </div>
 
-      <div className="ops-card divide-y divide-slate-100 dark:divide-slate-800">
+      <div className="intel-card divide-y divide-slate-100 dark:divide-slate-800">
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center px-6 py-16 text-center">
             <Bell className="mb-3 h-10 w-10 text-slate-300" />

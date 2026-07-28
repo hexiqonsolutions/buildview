@@ -65,9 +65,8 @@ export function PortalWelcomeBanner({
   profileHref?: string;
 }) {
   return (
-    <div className="intel-hero-strip relative flex flex-col gap-4 overflow-hidden sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-      <div className="pointer-events-none absolute -right-8 -top-10 h-40 w-40 rounded-full bg-brand-accent/10 blur-3xl" />
-      <div className="relative z-10 flex min-w-0 flex-1 items-center gap-4 sm:gap-5">
+    <div className="intel-hero-strip flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+      <div className="flex min-w-0 flex-1 items-center gap-4 sm:gap-5">
         <Link
           href={profileHref}
           className="shrink-0 self-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2"
@@ -85,7 +84,7 @@ export function PortalWelcomeBanner({
           </Avatar>
         </Link>
         <div className="min-w-0 flex-1">
-          <p className={typography.eyebrow}>Executive Overview</p>
+          <p className={typography.eyebrow}>Overview</p>
           <h1 className={`mt-1 truncate ${typography.intelHeroTitle}`}>
             Welcome Back, {firstName}
           </h1>
@@ -95,10 +94,9 @@ export function PortalWelcomeBanner({
           </p>
         </div>
       </div>
-      <div className="relative hidden shrink-0 items-center justify-center sm:flex">
-        <div className="pointer-events-none absolute h-28 w-28 rounded-full bg-brand-accent/20 blur-2xl" />
-        <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-800 to-slate-950 shadow-lift lg:h-20 lg:w-20">
-          <Building2 className="h-8 w-8 text-brand-accent lg:h-10 lg:w-10" strokeWidth={1.25} />
+      <div className="hidden shrink-0 sm:flex">
+        <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-slate-900 dark:bg-white">
+          <Building2 className="h-8 w-8 text-brand-accent dark:text-brand-accent-dark" strokeWidth={1.25} />
         </div>
       </div>
     </div>

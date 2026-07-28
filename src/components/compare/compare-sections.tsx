@@ -649,12 +649,12 @@ export function CompareEngineerNotes({ snapshot }: { snapshot: ComparisonSnapsho
 export function CompareAiSummary({ snapshot }: { snapshot: ComparisonSnapshot }) {
   const { aiPlaceholder: ai } = snapshot;
   return (
-    <div className="compare-card overflow-hidden border-violet-200 bg-gradient-to-br from-violet-50 to-white dark:border-violet-900 dark:from-violet-950/30 dark:to-slate-900">
-      <div className="border-b border-violet-100 px-4 py-3 dark:border-violet-900/50">
+    <div className="compare-card overflow-hidden">
+      <div className="border-b border-slate-100 px-4 py-3 dark:border-slate-800">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-violet-600" />
+          <Sparkles className="h-4 w-4 text-brand-accent-dark" />
           <h3 className="text-sm font-semibold text-slate-900 dark:text-white">AI Summary</h3>
-          <Badge className="bg-violet-100 text-[10px] text-violet-700 dark:bg-violet-900/50 dark:text-violet-300">
+          <Badge className="bg-slate-100 text-[10px] text-slate-600 dark:bg-slate-800 dark:text-slate-300">
             BETA
           </Badge>
         </div>
@@ -673,7 +673,7 @@ export function CompareAiSummary({ snapshot }: { snapshot: ComparisonSnapshot })
         <Button
           variant="outline"
           size="sm"
-          className="mt-4 w-full border-violet-200 text-violet-700 hover:bg-violet-50 dark:border-violet-800 dark:text-violet-300"
+          className="mt-4 w-full"
           onClick={() => window.print()}
         >
           Generate Detailed Report

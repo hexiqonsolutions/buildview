@@ -12,11 +12,10 @@ import {
   Calendar,
   MoreHorizontal,
   X,
-  ChevronDown,
   TrendingUp,
 } from "lucide-react";
 import type { TimelinePageData } from "@/lib/timeline/page-data";
-import type { Project, ProjectTour, Report } from "@/lib/types";
+import type { Project, Report } from "@/lib/types";
 import {
   buildAdminTimelineMonths,
   formatMonthLabel,
@@ -97,15 +96,6 @@ function priorityClass(priority: string): string {
   return map[priority] ?? "bg-slate-100 text-slate-700";
 }
 
-function projectThumbnail(
-  project: Project,
-  tours: Array<ProjectTour & { project?: { name: string } | null }>
-): string | null {
-  if (project.cover_image_url) return project.cover_image_url;
-  const tour = tours.find((t) => t.project_id === project.id);
-  return tour?.thumbnail_url ?? null;
-}
-
 function MilestoneThumbnail({ month }: { month: AdminTimelineMonth }) {
   if (month.thumbnailUrl) {
     return (
@@ -133,7 +123,7 @@ export function AdminTimelineView({
 }: AdminTimelineViewProps) {
   const isAdmin = mode === "admin";
   const projectBase = isAdmin ? "/admin/projects" : "/dashboard/projects";
-  const cardClass = "ops-card";
+  const cardClass = isAdmin ? "ops-card" : "intel-card";
   const { projects, events, tours, reports, issues } = data;
   const resolvedInitialProjectId =
     workspaceFilters?.projectId ??
@@ -247,16 +237,6 @@ export function AdminTimelineView({
           <span className="font-semibold">Preview mode</span> — showing sample timeline data for Green
           Heights Tower. Assign projects to your account to see live milestones.
         </div>
-      )}
-      {!isAdmin && (
-        <TimelinePageHeader
-          project={project}
-          tours={tours}
-          projects={projects}
-          projectId={activeProjectId}
-          onProjectChange={handleProjectChange}
-          hydrated={hydrated}
-        />
       )}
 
       <div className={cn(cardClass, "flex flex-wrap items-end justify-between gap-4 p-4")}>
@@ -533,65 +513,6 @@ export function AdminTimelineView({
           triggerLabel="Edit Milestone"
         />
       )}
-    </div>
-  );
-}
-
-function TimelinePageHeader({
-  project,
-  tours,
-  projects,
-  projectId,
-  onProjectChange,
-  hydrated = true,
-}: {
-  project?: Project;
-  tours?: Array<ProjectTour & { project?: { name: string } | null }>;
-  projects?: Project[];
-  projectId?: string;
-  onProjectChange?: (id: string) => void;
-  hydrated?: boolean;
-}) {
-  const thumb = project && tours ? projectThumbnail(project, tours) : null;
-
-  return (
-    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-      <div className="min-w-0">
-        <h1 className="font-display text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-          Timeline
-        </h1>
-        <p className="mt-1 text-sm text-slate-500">Track construction progress over time.</p>
-      </div>
-
-      {project && projects && onProjectChange && projectId && hydrated ? (
-        <div className="flex items-center gap-3">
-          <Select value={projectId} onValueChange={onProjectChange}>
-            <SelectTrigger className="h-11 w-[min(100%,280px)] gap-2 border-slate-200 bg-white px-3 shadow-sm dark:border-slate-700 dark:bg-slate-900 [&>svg:last-child]:hidden">
-              <div className="flex min-w-0 flex-1 items-center gap-2">
-                {thumb ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={thumb} alt="" className="h-7 w-10 shrink-0 rounded object-cover" />
-                ) : (
-                  <div className="flex h-7 w-10 shrink-0 items-center justify-center rounded bg-slate-100 dark:bg-slate-800">
-                    <Calendar className="h-4 w-4 text-slate-400" />
-                  </div>
-                )}
-                <SelectValue />
-              </div>
-              <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />
-            </SelectTrigger>
-            <SelectContent>
-              {projects.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      ) : project ? (
-        <div className="h-11 w-[min(100%,280px)] animate-pulse rounded-md bg-slate-100 dark:bg-slate-800" />
-      ) : null}
     </div>
   );
 }

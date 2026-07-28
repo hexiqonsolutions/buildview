@@ -151,11 +151,11 @@ export function ProjectHeader({
         </Link>
       </Button>
 
-      <div className="intel-card rounded-xl p-6">
+      <div className="intel-card p-5 sm:p-6">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0 flex-1">
             <div className="mb-2 flex flex-wrap items-center gap-3">
-              <h1 className="text-2xl font-bold text-brand-primary dark:text-white">
+              <h1 className="font-display text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
                 {project.name}
               </h1>
               {canUpdateStatus ? (
