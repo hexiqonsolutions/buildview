@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Loader2, Settings2 } from "lucide-react";
 import {
   assignUserToProject,
@@ -16,6 +17,7 @@ import {
   CLIENT_DASHBOARD_TYPE_LABELS,
   resolveClientDashboardType,
 } from "@/lib/portal/dashboard-type";
+import { useOptionalAdminWorkspace } from "@/components/admin/workspace/admin-workspace-provider";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -48,6 +50,10 @@ interface ManageUserDialogProps {
   canAssignRoles?: boolean;
 }
 
+function isOpaqueRscError(message: string) {
+  return /Server Components render|digest/i.test(message);
+}
+
 function initialDashboardType(
   user: ManageUserDialogProps["user"],
   clients: Client[]
@@ -65,6 +71,8 @@ export function ManageUserDialog({
   projects,
   canAssignRoles = false,
 }: ManageUserDialogProps) {
+  const router = useRouter();
+  const workspace = useOptionalAdminWorkspace();
   const [open, setOpen] = useState(false);
   const [role, setRole] = useState<UserRole>(user.role);
   const [clientId, setClientId] = useState(user.client_id ?? "none");
@@ -84,9 +92,19 @@ export function ManageUserDialog({
   useEffect(() => {
     if (!open) return;
 
+    // Prefer existing user client; otherwise prefill from active workspace client.
+    const nextClientId = user.client_id ?? workspace?.scope.clientId ?? null;
+
     setRole(user.role);
-    setClientId(user.client_id ?? "none");
-    setDashboardType(initialDashboardType(user, clients));
+    setClientId(nextClientId ?? "none");
+    setDashboardType(
+      nextClientId
+        ? resolveClientDashboardType(
+            user,
+            clients.find((c) => c.id === nextClientId) ?? user.client ?? null
+          )
+        : initialDashboardType(user, clients)
+    );
     setIsActive(user.is_active);
     setError(null);
 
@@ -113,6 +131,11 @@ export function ManageUserDialog({
   const selectedClient =
     clientId === "none" ? null : clients.find((c) => c.id === clientId) ?? user.client ?? null;
 
+  const projectsForAssign =
+    clientId !== "none"
+      ? projects.filter((p) => p.client_id === clientId || assignedProjectIds.has(p.id))
+      : projects;
+
   function handleClientChange(nextClientId: string) {
     setClientId(nextClientId);
     if (nextClientId === "none") {
@@ -123,8 +146,21 @@ export function ManageUserDialog({
     setDashboardType(nextClient?.dashboard_type ?? "construction");
   }
 
+  function finishSaveSuccess() {
+    setOpen(false);
+    router.refresh();
+  }
+
   function handleSaveProfile() {
     setError(null);
+
+    if (isClientPortalRole(role) && clientId === "none") {
+      setError(
+        "Link a client organization before assigning Client Admin or other client portal roles."
+      );
+      return;
+    }
+
     startTransition(async () => {
       try {
         await updateUserProfile({
@@ -132,13 +168,18 @@ export function ManageUserDialog({
           role,
           client_id: clientId === "none" ? null : clientId,
           is_active: isActive,
-          // Apply to client org + this user so the portal reliably switches
           client_dashboard_type: isClientPortalRole(role) ? dashboardType : undefined,
           dashboard_type: isClientPortalRole(role) ? dashboardType : null,
         });
-        setOpen(false);
+        finishSaveSuccess();
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to update user");
+        const msg = err instanceof Error ? err.message : "Failed to update user";
+        // Mutation often succeeds; a follow-up RSC refresh can still throw opaque production errors.
+        if (isOpaqueRscError(msg)) {
+          finishSaveSuccess();
+          return;
+        }
+        setError(msg);
       }
     });
   }
@@ -156,8 +197,7 @@ export function ManageUserDialog({
         setAddProjectId("");
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Failed to assign project";
-        // Assignment often succeeds; a follow-up refresh can still throw opaque RSC errors.
-        if (/Server Components render|digest/i.test(msg)) {
+        if (isOpaqueRscError(msg)) {
           try {
             const data = await getUserAssignments(user.id);
             setAssignments(
@@ -185,7 +225,7 @@ export function ManageUserDialog({
         );
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Failed to remove assignment";
-        if (/Server Components render|digest/i.test(msg)) {
+        if (isOpaqueRscError(msg)) {
           try {
             const data = await getUserAssignments(user.id);
             setAssignments(
@@ -243,7 +283,13 @@ export function ManageUserDialog({
             <div className="space-y-2">
               <Label>Client Organization</Label>
               <Select value={clientId} onValueChange={handleClientChange}>
-                <SelectTrigger>
+                <SelectTrigger
+                  className={
+                    clientId === "none"
+                      ? "border-amber-300 ring-1 ring-amber-200 dark:border-amber-700"
+                      : undefined
+                  }
+                >
                   <SelectValue placeholder="Select client" />
                 </SelectTrigger>
                 <SelectContent>
@@ -255,6 +301,11 @@ export function ManageUserDialog({
                   ))}
                 </SelectContent>
               </Select>
+              {clientId === "none" && (
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  Required for Client Admin and other client portal roles.
+                </p>
+              )}
             </div>
           )}
 
@@ -350,7 +401,7 @@ export function ManageUserDialog({
                     <SelectValue placeholder="Assign to project" />
                   </SelectTrigger>
                   <SelectContent>
-                    {projects
+                    {projectsForAssign
                       .filter((p) => !assignedProjectIds.has(p.id))
                       .map((project) => (
                         <SelectItem key={project.id} value={project.id}>
@@ -371,15 +422,22 @@ export function ManageUserDialog({
             </div>
           )}
 
-          {error && <p className="text-sm text-red-500">{error}</p>}
+          {error && <p className="text-sm text-red-600">{error}</p>}
 
           <Button
+            type="button"
             className="ops-btn-primary w-full"
             disabled={isPending}
             onClick={handleSaveProfile}
           >
-            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Save Changes
+            {isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              "Save Changes"
+            )}
           </Button>
         </div>
       </DialogContent>

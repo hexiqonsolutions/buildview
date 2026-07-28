@@ -870,7 +870,7 @@ export async function updateUserProfile(data: {
   is_active: boolean;
   dashboard_type?: ClientDashboardType | null;
   client_dashboard_type?: ClientDashboardType;
-}) {
+}): Promise<{ success: true }> {
   const validation = updateUserSchema.safeParse(data);
   if (!validation.success) {
     throw new Error(validation.error.errors[0]?.message ?? "Invalid user data");
@@ -917,7 +917,9 @@ export async function updateUserProfile(data: {
   }
 
   if (isClientPortalRole(validated.role) && !validated.client_id) {
-    throw new Error("Client users must be linked to a client organization.");
+    throw new Error(
+      "Link a client organization before assigning Client Admin or other client portal roles."
+    );
   }
 
   const admin = createServiceRoleClient();
@@ -967,13 +969,24 @@ export async function updateUserProfile(data: {
         "Database migration required. Paste and run supabase/migrations/017_client_dashboard_type.sql in the Supabase SQL Editor, then Save again."
       );
     }
+    if (msg.includes("invalid input value for enum") || msg.includes("user_role")) {
+      throw new Error(
+        `Role "${validated.role}" is not available in the database yet. Run the role migrations in Supabase, then try again.`
+      );
+    }
     throw new Error(error.message);
   }
 
-  revalidatePath("/admin/users");
-  revalidatePath("/admin/clients");
-  revalidatePath("/admin");
-  revalidatePath("/dashboard");
+  // Revalidate admin lists only — avoid cascading /dashboard RSC failures into the action result.
+  try {
+    revalidatePath("/admin/users");
+    revalidatePath("/admin/clients");
+    revalidatePath("/admin");
+  } catch (revalidateError) {
+    console.warn("[updateUserProfile] revalidatePath failed:", revalidateError);
+  }
+
+  return { success: true };
 }
 
 export async function updateClientRecord(data: {
