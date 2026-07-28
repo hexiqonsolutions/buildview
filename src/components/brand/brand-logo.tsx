@@ -10,8 +10,8 @@ interface BrandLogoProps {
   size?: "sm" | "md" | "lg" | "xl" | "2xl";
   className?: string;
   /**
-   * - default: dark logo for light backgrounds
-   * - onDark: white logo for dark backgrounds
+   * - default: wb-logo for light / white backgrounds
+   * - onDark: db-logo for dark backgrounds
    * - auto: switches with dark mode (default)
    */
   tone?: BrandLogoTone;

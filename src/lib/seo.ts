@@ -36,7 +36,7 @@ export const defaultMetadata: Metadata = {
     description: siteConfig.description,
     images: [
       {
-        url: "/logo.png",
+        url: siteConfig.brand.logo,
         width: 1200,
         height: 630,
         alt: `${siteConfig.name} — Matterport construction monitoring`,
@@ -47,7 +47,7 @@ export const defaultMetadata: Metadata = {
     card: "summary_large_image",
     title: `${siteConfig.name} — Construction Monitoring Platform`,
     description: siteConfig.description,
-    images: ["/logo.png"],
+    images: [siteConfig.brand.logo],
   },
   robots: {
     index: true,

@@ -1,8 +1,10 @@
 export const siteConfig = {
   name: "BuildView",
   brand: {
-    logo: "/logo.png",
-    logoOnDark: "/logo-white-01.png",
+    /** Logo for white / light backgrounds */
+    logo: "/wb-logo.png",
+    /** Logo for dark backgrounds */
+    logoOnDark: "/db-logo.png",
   },
   tagline: "Monitor construction progress from anywhere",
   description:
