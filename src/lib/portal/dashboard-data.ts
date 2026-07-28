@@ -6,6 +6,14 @@ import {
 import { normalizeWorkspaceScope } from "@/lib/admin/workspace-scope";
 import { portalToAdminBootstrap } from "@/lib/portal/workspace";
 import {
+  averageProgress,
+  buildLastSixMonthLabels,
+  buildProgressDistribution,
+  buildProgressTrendFromTimeline,
+  countTimelineEventsByMonth,
+  resolveProjectProgressValues,
+} from "@/lib/portal/progress-metrics";
+import {
   getClientDashboardData,
   getAccessibleTours,
   getAllDocuments,
@@ -124,32 +132,15 @@ export async function getPortalScopedDashboardData(
   const activeProjects = projects.filter((p) => p.status !== "completed").length;
   const totalTours = scopedTours.length;
   const openIssues = openIssuesList.length;
-
-  const overallProgressPercent =
-    projects.length > 0
-      ? Math.round(projects.reduce((sum, p) => sum + p.progress, 0) / projects.length)
-      : 0;
-
-  const sixMonthsAgo = new Date();
-  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
-  sixMonthsAgo.setDate(1);
-
-  const scopedTimeline = filterBySpatialScope(allTimeline, spatialScope, projectIds).filter(
-    (e) => e.event_date >= sixMonthsAgo.toISOString().split("T")[0]
-  );
-
-  const monthlyProgress = Array.from({ length: 6 }, (_, i) => {
-    const date = new Date();
-    date.setMonth(date.getMonth() - (5 - i));
-    const month = date.toLocaleString("en-US", { month: "short" });
-    const monthIndex = date.getMonth();
-    const year = date.getFullYear();
-    const count = scopedTimeline.filter((e) => {
-      const d = new Date(e.event_date);
-      return d.getMonth() === monthIndex && d.getFullYear() === year;
-    }).length;
-    return { month, count };
-  });
+  const scopedTimeline = filterBySpatialScope(allTimeline, spatialScope, projectIds);
+  const progressByProject = resolveProjectProgressValues(projects, scopedTimeline);
+  const overallProgressPercent = averageProgress(progressByProject);
+  const monthlyLabels = buildLastSixMonthLabels();
+  const monthlyProgress = countTimelineEventsByMonth(scopedTimeline, monthlyLabels);
+  const projectsWithResolvedProgress = projects.map((project) => ({
+    ...project,
+    progress: progressByProject.get(project.id) ?? project.progress,
+  }));
 
   const trend = scopedTrendLabel();
 
@@ -179,9 +170,13 @@ export async function getPortalScopedDashboardData(
       },
     },
     overallProgressPercent,
-    progressDistribution: buildProgressDistributionFromProjects(projects),
-    progressTrend: buildProgressTrendFromProjects(projects, monthlyProgress),
-    projects,
+    progressDistribution: buildProgressDistribution(projectsWithResolvedProgress),
+    progressTrend: buildProgressTrendFromTimeline(
+      projects.map((project) => project.id),
+      scopedTimeline,
+      monthlyLabels
+    ),
+    projects: projectsWithResolvedProgress,
     latestTour,
     latestDocuments,
     openIssuesList,
@@ -202,49 +197,3 @@ function filterDashboardProjects(
   return list;
 }
 
-function buildProgressDistributionFromProjects(projects: ProjectWithMeta[]) {
-  const categories = {
-    Completed: 0,
-    "In Progress": 0,
-    "On Hold": 0,
-    "Not Started": 0,
-  };
-
-  projects.forEach((project) => {
-    if (project.status === "completed") categories.Completed += 1;
-    else if (project.status === "in_progress") categories["In Progress"] += 1;
-    else if (project.status === "on_hold") categories["On Hold"] += 1;
-    else categories["Not Started"] += 1;
-  });
-
-  const total = projects.length || 1;
-  return Object.entries(categories).map(([name, value]) => ({
-    name,
-    value,
-    percent: projects.length > 0 ? Math.round((value / total) * 100) : 0,
-  }));
-}
-
-function buildProgressTrendFromProjects(
-  projects: ProjectWithMeta[],
-  monthlyProgress: { month: string; count: number }[]
-) {
-  const target =
-    projects.length > 0
-      ? Math.round(projects.reduce((sum, p) => sum + p.progress, 0) / projects.length)
-      : 0;
-
-  if (target === 0) {
-    return monthlyProgress.map((entry) => ({ month: entry.month, progress: 0 }));
-  }
-
-  const totalActivity = monthlyProgress.reduce((sum, entry) => sum + entry.count, 0) || 1;
-  let cumulative = 0;
-
-  return monthlyProgress.map((entry) => {
-    cumulative += entry.count;
-    const ratio = cumulative / totalActivity;
-    const progress = Math.max(5, Math.round(ratio * target));
-    return { month: entry.month, progress: Math.min(progress, target) };
-  });
-}

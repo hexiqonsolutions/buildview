@@ -173,6 +173,7 @@ export function UploadWizard({
   const [captureDate, setCaptureDate] = useState("");
   const [engineer, setEngineer] = useState("");
   const [progressNote, setProgressNote] = useState("");
+  const [progressPercent, setProgressPercent] = useState("");
   const [title, setTitle] = useState("");
   const [eventDate, setEventDate] = useState(new Date().toISOString().split("T")[0]);
   const [issuePriority, setIssuePriority] = useState<IssuePriority>("medium");
@@ -192,6 +193,7 @@ export function UploadWizard({
     setCaptureDate("");
     setEngineer("");
     setProgressNote("");
+    setProgressPercent("");
     setTitle("");
     setIssuePriority("medium");
     setIssueLocation("");
@@ -209,6 +211,12 @@ export function UploadWizard({
     }
     if (categoryIsTimelineOnly(category) && !title.trim()) {
       return "Milestone title is required.";
+    }
+    if (categoryIsTimelineOnly(category) && progressPercent.trim()) {
+      const value = Number(progressPercent);
+      if (!Number.isFinite(value) || value < 0 || value > 100) {
+        return "Overall progress must be between 0 and 100.";
+      }
     }
     if (categoryIsIssue(category) && !title.trim()) {
       return "Issue title is required.";
@@ -287,6 +295,7 @@ export function UploadWizard({
         title,
         event_date: eventDate,
         progress_note: progressNote || undefined,
+        progress_percent: progressPercent.trim() ? Number(progressPercent) : undefined,
         ...scopeMeta,
       });
     }
@@ -558,6 +567,8 @@ export function UploadWizard({
             setEngineer={setEngineer}
             progressNote={progressNote}
             setProgressNote={setProgressNote}
+            progressPercent={progressPercent}
+            setProgressPercent={setProgressPercent}
             title={title}
             setTitle={setTitle}
             eventDate={eventDate}
@@ -881,6 +892,8 @@ function DetailsStep(props: {
   setEngineer: (v: string) => void;
   progressNote: string;
   setProgressNote: (v: string) => void;
+  progressPercent: string;
+  setProgressPercent: (v: string) => void;
   title: string;
   setTitle: (v: string) => void;
   eventDate: string;
@@ -913,6 +926,8 @@ function DetailsStep(props: {
     setEngineer,
     progressNote,
     setProgressNote,
+    progressPercent,
+    setProgressPercent,
     title,
     setTitle,
     eventDate,
@@ -974,6 +989,16 @@ function DetailsStep(props: {
           </Field>
           <Field label="Event date" required>
             <Input type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} required />
+          </Field>
+          <Field label="Overall progress (%)">
+            <Input
+              type="number"
+              min="0"
+              max="100"
+              value={progressPercent}
+              onChange={(e) => setProgressPercent(e.target.value)}
+              placeholder="e.g. 30"
+            />
           </Field>
           <Field label="Engineer notes">
             <Textarea value={progressNote} onChange={(e) => setProgressNote(e.target.value)} rows={3} />

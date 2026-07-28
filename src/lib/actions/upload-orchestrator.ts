@@ -426,6 +426,7 @@ export async function uploadTimelineUpdateWithAutomation(data: {
   title: string;
   event_date: string;
   progress_note?: string;
+  progress_percent?: number;
   engineer?: string;
   building?: string;
   floor?: string;
@@ -438,6 +439,7 @@ export async function uploadTimelineUpdateWithAutomation(data: {
     event_date: data.event_date,
     title: data.title,
     progress_note: data.progress_note,
+    progress_percent: data.progress_percent ?? null,
     tour_id: data.tour_id,
     report_id: data.report_id,
     building: data.building ?? null,

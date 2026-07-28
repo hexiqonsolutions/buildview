@@ -24,6 +24,14 @@ import { parseTourWorkspaceMeta } from "@/lib/admin/tour-metadata";
 import type { PortalWorkspaceBootstrap } from "@/lib/portal/workspace";
 import { resolveClientDashboardType } from "@/lib/portal/dashboard-type";
 import { filterClientVisibleProjects, isProjectVisibleInClientPortal } from "@/lib/portal/project-visibility";
+import {
+  averageProgress,
+  buildLastSixMonthLabels,
+  buildProgressDistribution,
+  buildProgressTrendFromTimeline,
+  countTimelineEventsByMonth,
+  resolveProjectProgressValues,
+} from "@/lib/portal/progress-metrics";
 import { getCurrentUser } from "@/lib/actions/auth";
 
 export type AdminDashboardStats = {
@@ -411,53 +419,6 @@ function calcMonthTrend(
   return { text: "No change from last month", tone: "neutral" };
 }
 
-function buildProgressDistribution(projects: ProjectWithMeta[]): ProgressDistributionItem[] {
-  const categories = {
-    Completed: 0,
-    "In Progress": 0,
-    "On Hold": 0,
-    "Not Started": 0,
-  };
-
-  projects.forEach((project) => {
-    if (project.status === "completed") categories.Completed += 1;
-    else if (project.status === "in_progress") categories["In Progress"] += 1;
-    else if (project.status === "on_hold") categories["On Hold"] += 1;
-    else categories["Not Started"] += 1;
-  });
-
-  const total = projects.length || 1;
-  return Object.entries(categories).map(([name, value]) => ({
-    name,
-    value,
-    percent: projects.length > 0 ? Math.round((value / total) * 100) : 0,
-  }));
-}
-
-function buildProgressTrend(
-  projects: ProjectWithMeta[],
-  monthlyProgress: { month: string; count: number }[]
-): { month: string; progress: number }[] {
-  const target =
-    projects.length > 0
-      ? Math.round(projects.reduce((sum, p) => sum + p.progress, 0) / projects.length)
-      : 0;
-
-  if (target === 0) {
-    return monthlyProgress.map((entry) => ({ month: entry.month, progress: 0 }));
-  }
-
-  const totalActivity = monthlyProgress.reduce((sum, entry) => sum + entry.count, 0) || 1;
-  let cumulative = 0;
-
-  return monthlyProgress.map((entry) => {
-    cumulative += entry.count;
-    const ratio = cumulative / totalActivity;
-    const progress = Math.max(5, Math.round(ratio * target));
-    return { month: entry.month, progress: Math.min(progress, target) };
-  });
-}
-
 async function getAccessibleProjectIds(): Promise<string[]> {
   const supabase = await createClient();
   const {
@@ -538,11 +499,19 @@ export async function getClientDashboardData(): Promise<ClientDashboardData> {
     }
   });
 
+  const { data: timelineForChart } = await supabase
+    .from("timeline_events")
+    .select("project_id, event_date, progress_percent")
+    .in("project_id", ids)
+    .is("deleted_at", null);
+
+  const progressByProject = resolveProjectProgressValues(projects, timelineForChart ?? []);
+
   const projectsWithMeta: ProjectWithMeta[] = projects.map((p) => {
     const latest = latestTourByProject.get(p.id) ?? null;
     return {
       ...p,
-      progress: getProjectProgressPercent(p.status),
+      progress: progressByProject.get(p.id) ?? getProjectProgressPercent(p.status),
       stage: getProjectStageLabel(p.status),
       latestScanDate: latest ? latest.capture_date ?? latest.created_at : null,
       tourCount: tours.filter((t) => (t as ProjectTour).project_id === p.id).length,
@@ -575,30 +544,8 @@ export async function getClientDashboardData(): Promise<ClientDashboardData> {
       }
     : null;
 
-  const sixMonthsAgo = new Date();
-  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
-  sixMonthsAgo.setDate(1);
-
-  const { data: timelineForChart } = await supabase
-    .from("timeline_events")
-    .select("event_date")
-    .in("project_id", ids)
-    .is("deleted_at", null)
-    .gte("event_date", sixMonthsAgo.toISOString().split("T")[0]);
-
-  const monthlyProgress = Array.from({ length: 6 }, (_, i) => {
-    const date = new Date();
-    date.setMonth(date.getMonth() - (5 - i));
-    const month = date.toLocaleString("en-US", { month: "short" });
-    const monthIndex = date.getMonth();
-    const year = date.getFullYear();
-    const count =
-      timelineForChart?.filter((e) => {
-        const d = new Date(e.event_date);
-        return d.getMonth() === monthIndex && d.getFullYear() === year;
-      }).length ?? 0;
-    return { month, count };
-  });
+  const monthlyLabels = buildLastSixMonthLabels();
+  const monthlyProgress = countTimelineEventsByMonth(timelineForChart ?? [], monthlyLabels);
 
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -670,12 +617,7 @@ export async function getClientDashboardData(): Promise<ClientDashboardData> {
 
   const activeProjectsCount = projects.filter((p) => p.status !== "completed").length;
   const reportsThisMonth = reportsThisMonthRes.count ?? 0;
-  const overallProgressPercent =
-    projectsWithMeta.length > 0
-      ? Math.round(
-          projectsWithMeta.reduce((sum, p) => sum + p.progress, 0) / projectsWithMeta.length
-        )
-      : 0;
+  const overallProgressPercent = averageProgress(progressByProject);
 
   const kpis: ClientDashboardKpis = {
     activeProjects: activeProjectsCount,
@@ -701,7 +643,7 @@ export async function getClientDashboardData(): Promise<ClientDashboardData> {
     kpis,
     overallProgressPercent,
     progressDistribution: buildProgressDistribution(projectsWithMeta),
-    progressTrend: buildProgressTrend(projectsWithMeta, monthlyProgress),
+    progressTrend: buildProgressTrendFromTimeline(ids, timelineForChart ?? [], monthlyLabels),
     projects: projectsWithMeta,
     latestTour,
     latestDocuments:
