@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { createSignedStorageUrl } from "@/lib/supabase/storage-server";
 import { resolveInvoiceStoragePath } from "@/lib/supabase/storage";
-import { notifyClientUsers, notifyClientOrgIfEnabled, notifyClientsIfEnabled, notifyUsersIfEnabled } from "@/lib/actions/notifications";
+import { notifyClientOrgIfEnabled, notifyClientsIfEnabled, notifyInvoiceRecipients, notifyUsersIfEnabled } from "@/lib/actions/notifications";
 import { isNotificationRuleEnabled } from "@/lib/actions/platform-settings";
 import { normalizeMatterportUrl } from "@/lib/matterport";
 import { resolveSpatialForWrite } from "@/lib/admin/spatial-resolve";
@@ -44,13 +44,16 @@ import { can } from "@/lib/auth/permissions";
 import { assertCanUploadToProject } from "@/lib/auth/upload-access";
 import {
   portalDocumentLink,
-  portalInvoiceLink,
   portalMatterportLink,
   portalReportLink,
   formatUploadNotifyMessage,
 } from "@/lib/portal/notification-links";
 import { getProjectNameForNotify } from "@/lib/actions/notifications";
 import { isProjectVisibleInClientPortal } from "@/lib/portal/project-visibility";
+import {
+  buildInvoiceNotificationPayload,
+  type InvoiceNotificationKind,
+} from "@/lib/portal/invoice-notifications";
 
 const CLIENT_EDITABLE_STATUSES: ProjectStatus[] = [
   "planning",
@@ -706,10 +709,32 @@ export async function createInvoice(data: {
   const { data: created, error } = await supabase
     .from("invoices")
     .insert(payload)
-    .select("id")
+    .select("id, client_id, project_id, invoice_number, amount, currency, due_date, status")
     .single();
   if (error || !created) throw new Error(error?.message ?? "Failed to create invoice");
+
+  if (created.status === "sent" || created.status === "paid" || created.status === "overdue") {
+    const kind =
+      created.status === "sent"
+        ? "sent"
+        : created.status === "paid"
+          ? "paid"
+          : "overdue";
+    const rule =
+      kind === "paid" ? "onInvoicePaid" : ("onInvoiceSent" as const);
+
+    try {
+      if (await isNotificationRuleEnabled(rule)) {
+        await notifyInvoiceRecipients(created, buildInvoiceNotificationPayload(created, kind));
+      }
+    } catch (err) {
+      console.error("[createInvoice] notify", kind, err);
+    }
+  }
+
   revalidatePath("/admin/invoices");
+  revalidatePath("/dashboard/invoices");
+  revalidatePath("/admin/notifications");
   return created.id;
 }
 
@@ -1350,40 +1375,33 @@ export async function updateInvoiceStatus(invoiceId: string, status: string) {
 
   if (error) throw new Error(error.message);
 
-  if (validation.data.status === "sent" || validation.data.status === "paid") {
-    const { data: invoice } = await supabase
-      .from("invoices")
-      .select("client_id, invoice_number, amount, currency")
-      .eq("id", invoiceId)
-      .single();
+  const admin = createServiceRoleClient();
+  const { data: invoice } = await admin
+    .from("invoices")
+    .select("id, client_id, project_id, invoice_number, amount, currency, due_date, status")
+    .eq("id", invoiceId)
+    .maybeSingle();
 
-    if (invoice) {
-      if (validation.data.status === "sent") {
-        try {
-          if (await isNotificationRuleEnabled("onInvoiceSent")) {
-            await notifyClientUsers(invoice.client_id, {
-              title: `Invoice ${invoice.invoice_number} sent`,
-              message: `A new invoice for ${invoice.currency} ${invoice.amount} is ready to view.`,
-              type: "invoice_update",
-              link: portalInvoiceLink(null, invoiceId),
-            });
-          }
-        } catch (err) {
-          console.error("[updateInvoiceStatus] notify sent", err);
+  if (invoice) {
+  if (validation.data.status === "sent" || validation.data.status === "paid" || validation.data.status === "overdue") {
+      const kind =
+        validation.data.status === "sent"
+          ? "sent"
+          : validation.data.status === "paid"
+            ? "paid"
+            : "overdue";
+      const rule =
+        kind === "paid" ? "onInvoicePaid" : ("onInvoiceSent" as const);
+
+      try {
+        if (await isNotificationRuleEnabled(rule)) {
+          await notifyInvoiceRecipients(
+            invoice,
+            buildInvoiceNotificationPayload(invoice, kind)
+          );
         }
-      } else {
-        try {
-          if (await isNotificationRuleEnabled("onInvoicePaid")) {
-            await notifyClientUsers(invoice.client_id, {
-              title: `Invoice ${invoice.invoice_number} paid`,
-              message: `Payment recorded for ${invoice.currency} ${invoice.amount}.`,
-              type: "invoice_update",
-              link: portalInvoiceLink(null, invoiceId),
-            });
-          }
-        } catch (err) {
-          console.error("[updateInvoiceStatus] notify paid", err);
-        }
+      } catch (err) {
+        console.error("[updateInvoiceStatus] notify", kind, err);
       }
     }
   }
@@ -1391,5 +1409,60 @@ export async function updateInvoiceStatus(invoiceId: string, status: string) {
   revalidatePath("/admin/invoices");
   revalidatePath("/dashboard/invoices");
   revalidatePath("/admin/notifications");
+}
+
+export type { InvoiceNotificationKind };
+
+export async function sendInvoiceNotification(
+  invoiceId: string,
+  kind: InvoiceNotificationKind
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "You must be signed in" };
+
+  const { data: me } = await supabase
+    .from("users")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (!me || (me.role !== "super_admin" && me.role !== "admin")) {
+    return {
+      success: false,
+      error: "Only Super Admin and Admin can send invoice notifications",
+    };
+  }
+
+  const admin = createServiceRoleClient();
+  const { data: invoice, error } = await admin
+    .from("invoices")
+    .select("id, client_id, project_id, invoice_number, amount, currency, due_date, status")
+    .eq("id", invoiceId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error || !invoice) {
+    return { success: false, error: "Invoice not found" };
+  }
+
+  try {
+    await notifyInvoiceRecipients(
+      invoice,
+      buildInvoiceNotificationPayload(invoice, kind)
+    );
+    revalidatePath("/admin/invoices");
+    revalidatePath("/dashboard/invoices");
+    revalidatePath("/admin/notifications");
+    revalidatePath("/dashboard/notifications");
+    return { success: true };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Failed to send notification",
+    };
+  }
 }
 

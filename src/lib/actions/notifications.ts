@@ -8,6 +8,7 @@ import { sendTransactionalEmail } from "@/lib/email/send";
 import type { NotificationRuleKey } from "@/lib/admin/platform-settings";
 import type { Notification, NotificationType } from "@/lib/types";
 import { resolveNotificationHref } from "@/lib/portal/notification-links";
+import type { InvoiceNotifyFields, InvoiceNotifyPayload } from "@/lib/portal/invoice-notifications";
 
 function revalidateNotificationPaths() {
   revalidatePath("/admin/notifications");
@@ -200,6 +201,18 @@ export async function notifyUsers(
   }
 
   revalidateNotificationPaths();
+}
+
+/** Notify all client users tied to an invoice (project assignments + org users). */
+export async function notifyInvoiceRecipients(
+  invoice: InvoiceNotifyFields,
+  payload: InvoiceNotifyPayload
+) {
+  if (invoice.project_id) {
+    await notifyProjectClientUsers(invoice.project_id, payload);
+    return;
+  }
+  await notifyClientUsers(invoice.client_id, payload);
 }
 
 export async function notifyClientUsers(

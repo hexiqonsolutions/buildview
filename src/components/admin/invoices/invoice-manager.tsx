@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { Download, FileText, Loader2, Paperclip } from "lucide-react";
 import { useAdminWorkspace } from "@/components/admin/workspace/admin-workspace-provider";
 import { CreateInvoiceForm } from "@/components/admin/create-invoice-form";
+import { SendInvoiceNotificationMenu } from "@/components/admin/invoices/send-invoice-notification";
 import { UpdateInvoiceStatusSelect } from "@/components/admin/update-invoice-status";
 import { attachInvoicePdf, getInvoiceDownloadUrl } from "@/lib/actions/admin";
 import { uploadInvoiceFile } from "@/lib/supabase/storage";
@@ -129,7 +130,7 @@ export function InvoiceManager({ invoices, clients, projects }: InvoiceManagerPr
             <FileText className="mb-3 h-10 w-10 text-slate-300" />
             <p className="font-medium text-slate-900 dark:text-white">No invoices yet</p>
             <p className="mt-1 text-sm text-slate-500">
-              Create an invoice, attach a PDF, then mark it sent to notify the client.
+              Create an invoice, attach a PDF, then notify the client from the actions menu.
             </p>
             <div className="mt-4">
               <CreateInvoiceForm clients={scopedClients} projects={scopedProjects} />
@@ -183,6 +184,7 @@ export function InvoiceManager({ invoices, clients, projects }: InvoiceManagerPr
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
+                        <SendInvoiceNotificationMenu invoiceId={invoice.id} />
                         <Button
                           variant="outline"
                           size="sm"
