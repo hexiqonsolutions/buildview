@@ -111,16 +111,7 @@ const PERMISSIONS: Record<UserRole, RolePermissions> = {
     matterport: ["read", "update", "delete"],
   },
   site_engineer: {
-    clients: ["read"],
-    projects: ["read"],
-    upload: STAFF_READ_UPLOAD,
-    matterport: CLIENT_VIEW,
-    reports: STAFF_READ_UPLOAD,
-    documents: STAFF_READ_UPLOAD,
-    issues: STAFF_READ_UPLOAD,
-    invoices: ["read"],
-    notifications: ["read"],
-    activity: ["read"],
+    ...CLIENT_MANAGER_MATRIX,
   },
   client_admin: {
     ...CLIENT_MANAGER_MATRIX,

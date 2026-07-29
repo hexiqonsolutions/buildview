@@ -10,7 +10,7 @@ import {
 } from "@/lib/actions/admin";
 import { getUserAssignments } from "@/lib/actions/data";
 import type { Client, ClientDashboardType, Project, User, UserRole } from "@/lib/types";
-import { USER_ROLE_LABELS } from "@/lib/types";
+import { USER_ROLE_LABELS, USER_ROLE_GROUP_LABELS } from "@/lib/types";
 import { isClientPortalRole } from "@/lib/auth/roles";
 import {
   CLIENT_DASHBOARD_TYPE_DESCRIPTIONS,
@@ -23,7 +23,9 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -267,11 +269,22 @@ export function ManageUserDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {Object.entries(USER_ROLE_LABELS).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
+                <SelectGroup>
+                  <SelectLabel>BuildView Roles</SelectLabel>
+                  {Object.entries(USER_ROLE_LABELS)
+                    .filter(([v]) => USER_ROLE_GROUP_LABELS[v] === "BuildView")
+                    .map(([value, label]) => (
+                      <SelectItem key={value} value={value}>{label}</SelectItem>
+                    ))}
+                </SelectGroup>
+                <SelectGroup>
+                  <SelectLabel>Client Roles</SelectLabel>
+                  {Object.entries(USER_ROLE_LABELS)
+                    .filter(([v]) => USER_ROLE_GROUP_LABELS[v] === "Client")
+                    .map(([value, label]) => (
+                      <SelectItem key={value} value={value}>{label}</SelectItem>
+                    ))}
+                </SelectGroup>
               </SelectContent>
             </Select>
             {!canAssignRoles && (

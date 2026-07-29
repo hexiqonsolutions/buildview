@@ -1421,3 +1421,16 @@ export const USER_ROLE_LABELS: Record<UserRole, string> = {
   read_only_client: "Read Only",
   consultant: "Consultant",
 };
+
+export const USER_ROLE_GROUP_LABELS: Record<string, string> = {
+  super_admin: "BuildView",
+  admin: "BuildView",
+  operations_manager: "BuildView",
+  site_engineer: "Client",
+  client: "Client",
+  client_admin: "Client",
+  site_supervisor: "Client",
+  client_user: "Client",
+  read_only_client: "Client",
+  consultant: "Client",
+};

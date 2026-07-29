@@ -89,7 +89,7 @@ export async function assertCanUploadToProject(
     return { userId: user.id, role, clientId: profile.client_id };
   }
 
-  if (role === "site_supervisor") {
+  if (role === "site_supervisor" || role === "site_engineer") {
     const { data: assignment } = await supabase
       .from("project_assignments")
       .select("id")
@@ -99,6 +99,9 @@ export async function assertCanUploadToProject(
       .maybeSingle();
 
     if (!assignment) {
+      if (profile.client_id && profile.client_id === projectClientId) {
+        return { userId: user.id, role, clientId: profile.client_id };
+      }
       throw new Error("You can only upload to projects assigned to you");
     }
     return { userId: user.id, role, clientId: profile.client_id };
