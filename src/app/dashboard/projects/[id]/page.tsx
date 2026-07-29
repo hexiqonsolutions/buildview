@@ -12,6 +12,16 @@ import { Button } from "@/components/ui/button";
 import { Upload } from "lucide-react";
 import { ProjectCommentsSection } from "@/components/projects/project-comments-section";
 
+const EMPTY_DETAIL = {
+  tours: [],
+  reports: [],
+  folders: [],
+  documents: [],
+  issues: [],
+  timeline: [],
+  comments: [],
+} as Awaited<ReturnType<typeof getProjectDetail>>;
+
 export default async function ProjectDetailPage({
   params,
 }: {
@@ -19,22 +29,13 @@ export default async function ProjectDetailPage({
 }) {
   const { id } = await params;
 
-  const [projectData, detail, invoices, user, spatialHierarchyResult] = await Promise.all([
-    getProjectWithClient(id),
-    getProjectDetail(id).catch(() => ({
-      tours: [],
-      reports: [],
-      folders: [],
-      documents: [],
-      issues: [],
-      timeline: [],
-      comments: [],
-    })),
+  const [projectData, detail, invoices, user, spatialHierarchy] = await Promise.all([
+    getProjectWithClient(id).catch(() => null),
+    getProjectDetail(id).catch(() => EMPTY_DETAIL),
     getProjectInvoices(id).catch(() => []),
     getCurrentUser().catch(() => null),
-    getProjectSpatialHierarchy(id).catch(() => ({ buildings: [] })),
+    getProjectSpatialHierarchy(id).catch(() => ({ buildings: [] as never[] })),
   ]);
-  const spatialHierarchy = spatialHierarchyResult ?? { buildings: [] };
 
   if (!projectData) notFound();
 

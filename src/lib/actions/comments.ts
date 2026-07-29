@@ -58,11 +58,21 @@ export async function addProjectComment(data: {
 
   if (!user) throw new Error("You must be signed in to comment.");
 
-  const { data: profile } = await supabase
+  let { data: profile } = await supabase
     .from("users")
     .select("role")
     .eq("id", user.id)
     .maybeSingle();
+
+  if (!profile) {
+    const admin = createServiceRoleClient();
+    const { data: fallbackProfile } = await admin
+      .from("users")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+    profile = fallbackProfile;
+  }
 
   if (!profile || !canCommentOnProject(profile.role as UserRole)) {
     throw new Error("You do not have permission to comment");
