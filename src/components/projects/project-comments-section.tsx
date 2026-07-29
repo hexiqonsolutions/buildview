@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { Loader2, MessageSquare, ShieldCheck, Trash2, CheckCircle2, RotateCcw } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +18,7 @@ import { EmptyState } from "@/components/dashboard/empty-state";
 import {
   addProjectComment,
   deleteProjectComment,
+  getProjectComments,
   updateCommentStatus,
 } from "@/lib/actions/comments";
 import { cn, formatRelativeTime, getStatusColor } from "@/lib/utils";
@@ -51,7 +51,7 @@ export function ProjectCommentsSection({
   reports = [],
   documents = [],
 }: ProjectCommentsSectionProps) {
-  const router = useRouter();
+  const [items, setItems] = useState(comments);
   const [message, setMessage] = useState("");
   const [contextType, setContextType] = useState<"project" | "report" | "document">("project");
   const [contextId, setContextId] = useState("");
@@ -60,6 +60,10 @@ export function ProjectCommentsSection({
   const [pendingId, setPendingId] = useState<string | null>(null);
   const showReportOption = reports.length > 0;
   const showDocumentOption = documents.length > 0;
+
+  useEffect(() => {
+    setItems(comments);
+  }, [comments]);
 
   useEffect(() => {
     if (contextType === "report" && !showReportOption) {
@@ -94,34 +98,41 @@ export function ProjectCommentsSection({
     }
 
     startTransition(async () => {
-      try {
-        await addProjectComment({
-          project_id: projectId,
-          message: message.trim(),
-          context_type: contextType,
-          context_label,
-        });
-        setMessage("");
-        setContextType("project");
-        setContextId("");
-        router.refresh();
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to post comment");
+      const result = await addProjectComment({
+        project_id: projectId,
+        message: message.trim(),
+        context_type: contextType,
+        context_label,
+      });
+
+      if (!result.ok) {
+        setError(result.error);
+        return;
       }
+
+      setMessage("");
+      setContextType("project");
+      setContextId("");
+      setError(null);
+      const fresh = await getProjectComments(projectId);
+      setItems(fresh);
     });
   }
 
   function handleToggleStatus(comment: ProjectCommentWithUser) {
     setPendingId(comment.id);
     startTransition(async () => {
-      try {
-        await updateCommentStatus(
-          comment.id,
-          comment.status === "open" ? "resolved" : "open"
-        );
-        router.refresh();
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to update comment");
+      const result = await updateCommentStatus(
+        comment.id,
+        comment.status === "open" ? "resolved" : "open"
+      );
+
+      if (!result.ok) {
+        setError(result.error);
+      } else {
+        setError(null);
+        const fresh = await getProjectComments(projectId);
+        setItems(fresh);
       }
       setPendingId(null);
     });
@@ -130,11 +141,14 @@ export function ProjectCommentsSection({
   function handleDelete(commentId: string) {
     setPendingId(commentId);
     startTransition(async () => {
-      try {
-        await deleteProjectComment(commentId);
-        router.refresh();
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to delete comment");
+      const result = await deleteProjectComment(commentId);
+
+      if (!result.ok) {
+        setError(result.error);
+      } else {
+        setError(null);
+        const fresh = await getProjectComments(projectId);
+        setItems(fresh);
       }
       setPendingId(null);
     });
@@ -235,7 +249,7 @@ export function ProjectCommentsSection({
         </form>
       </div>
 
-      {comments.length === 0 ? (
+      {items.length === 0 ? (
         <EmptyState
           icon={MessageSquare}
           title="No comments yet"
@@ -243,7 +257,7 @@ export function ProjectCommentsSection({
         />
       ) : (
         <div className="space-y-4">
-          {comments.map((comment) => {
+          {items.map((comment) => {
             const authorIsAdmin = comment.author?.role === "super_admin";
             const isOwn = comment.created_by === currentUserId;
             const canManage = isAdmin || isOwn;
