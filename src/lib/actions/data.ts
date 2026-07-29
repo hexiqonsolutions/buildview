@@ -879,12 +879,12 @@ export async function getProjectWithClient(id: string) {
 
 export async function getProjectDetail(projectId: string) {
   const [tours, reports, documentsData, issues, timeline, comments] = await Promise.all([
-    getProjectTours(projectId),
-    getProjectReports(projectId),
-    getProjectDocuments(projectId),
-    getProjectIssues(projectId),
-    getProjectTimeline(projectId),
-    getProjectComments(projectId),
+    getProjectTours(projectId).catch(() => []),
+    getProjectReports(projectId).catch(() => []),
+    getProjectDocuments(projectId).catch(() => ({ folders: [], documents: [] })),
+    getProjectIssues(projectId).catch(() => []),
+    getProjectTimeline(projectId).catch(() => []),
+    getProjectComments(projectId).catch(() => []),
   ]);
 
   return {

@@ -21,9 +21,17 @@ export default async function ProjectDetailPage({
 
   const [projectData, detail, invoices, user, spatialHierarchyResult] = await Promise.all([
     getProjectWithClient(id),
-    getProjectDetail(id),
-    getProjectInvoices(id),
-    getCurrentUser(),
+    getProjectDetail(id).catch(() => ({
+      tours: [],
+      reports: [],
+      folders: [],
+      documents: [],
+      issues: [],
+      timeline: [],
+      comments: [],
+    })),
+    getProjectInvoices(id).catch(() => []),
+    getCurrentUser().catch(() => null),
     getProjectSpatialHierarchy(id).catch(() => ({ buildings: [] })),
   ]);
   const spatialHierarchy = spatialHierarchyResult ?? { buildings: [] };
