@@ -6,7 +6,7 @@ import { ProjectHeader } from "@/components/projects/project-header";
 import { ProjectHubTabs } from "@/components/intel/projects/project-hub-tabs";
 import { IntelProjectContextBridge } from "@/components/intel/shell/intel-project-context";
 import { getCurrentUser } from "@/lib/actions/auth";
-import { can, canManageClientUploads, canCommentOnProject } from "@/lib/auth/permissions";
+import { can, canManageClientUploads, canCommentOnProject, canUploadMatterport } from "@/lib/auth/permissions";
 import { getProjectProgressPercent } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Upload } from "lucide-react";
@@ -33,7 +33,7 @@ export default async function ProjectDetailPage({
   const { project, client } = projectData;
   const latestTour = detail.tours[0];
   const latestScanDate = latestTour?.capture_date ?? latestTour?.created_at ?? null;
-  const canUploadMatterport = user ? can(user.role, "upload", "matterport") : false;
+  const allowMatterportUpload = user ? canUploadMatterport(user.role) : false;
   const canManageUploads = user
     ? canManageClientUploads(user.role) || can(user.role, "upload", "upload")
     : false;
@@ -78,7 +78,7 @@ export default async function ProjectDetailPage({
           issues={detail.issues}
           timeline={detail.timeline}
           invoices={invoices}
-          canUploadMatterport={canUploadMatterport}
+          canUploadMatterport={allowMatterportUpload}
           allowIssueStatusUpdate={allowIssueStatusUpdate}
         />
       </div>

@@ -47,6 +47,11 @@ export function canManageClientUploads(role: UserRole): boolean {
   return (CLIENT_UPLOAD_ROLES as readonly string[]).includes(role);
 }
 
+/** Only BuildView Super Admin and Admin may add Matterport tour links. */
+export function canUploadMatterport(role: UserRole): boolean {
+  return role === "super_admin" || role === "admin";
+}
+
 export function canAssignRoles(role: UserRole): boolean {
   return role === "super_admin";
 }

@@ -13,7 +13,7 @@ AS $$
     WHERE id = auth.uid()
       AND is_active = true
       AND deleted_at IS NULL
-      AND role IN ('client_admin', 'site_supervisor')
+      AND role::text IN ('client_admin', 'site_supervisor')
   );
 $$;
 
@@ -25,7 +25,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  user_role public.user_role;
+  user_role_text TEXT;
   user_client_id UUID;
 BEGIN
   IF auth.uid() IS NULL OR NOT public.is_active_authenticated_user() THEN
@@ -36,18 +36,18 @@ BEGIN
     RETURN TRUE;
   END IF;
 
-  SELECT role, client_id
-  INTO user_role, user_client_id
+  SELECT role::text, client_id
+  INTO user_role_text, user_client_id
   FROM public.users
   WHERE id = auth.uid()
     AND is_active = true
     AND deleted_at IS NULL;
 
-  IF user_role IS NULL THEN
+  IF user_role_text IS NULL THEN
     RETURN FALSE;
   END IF;
 
-  IF user_role = 'client_admin' AND user_client_id IS NOT NULL THEN
+  IF user_role_text = 'client_admin' AND user_client_id IS NOT NULL THEN
     RETURN EXISTS (
       SELECT 1
       FROM public.projects p
@@ -57,7 +57,7 @@ BEGIN
     );
   END IF;
 
-  IF user_role = 'site_supervisor' THEN
+  IF user_role_text = 'site_supervisor' THEN
     RETURN EXISTS (
       SELECT 1
       FROM public.project_assignments pa

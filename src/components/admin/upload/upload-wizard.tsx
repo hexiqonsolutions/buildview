@@ -92,7 +92,9 @@ const ADMIN_CATEGORIES: {
   { id: "other", label: "Other", icon: FolderOpen, description: "General document" },
 ];
 
-const PORTAL_CATEGORIES = ADMIN_CATEGORIES.filter((c) => c.id !== "invoices_doc");
+const PORTAL_CATEGORIES = ADMIN_CATEGORIES.filter(
+  (c) => c.id !== "invoices_doc" && c.id !== "matterport"
+);
 
 export type UploadWizardProps = {
   /** Lock wizard to one project (client portal project upload). */
@@ -101,6 +103,8 @@ export type UploadWizardProps = {
   /** Where to send users after success (defaults to admin project page). */
   projectHref?: string;
   mode?: "admin" | "portal";
+  /** Super Admin / Admin only — show Matterport category in admin upload center. */
+  canUploadMatterport?: boolean;
 };
 
 export function UploadWizard({
@@ -108,6 +112,7 @@ export function UploadWizard({
   lockedProjectName,
   projectHref,
   mode = "admin",
+  canUploadMatterport = false,
 }: UploadWizardProps = {}) {
   const searchParams = useSearchParams();
   const initialType = searchParams.get("type");
@@ -152,15 +157,24 @@ export function UploadWizard({
   const setFloor = adminWs?.setFloor ?? portalWs?.setFloor ?? (() => undefined);
   const hydrated = adminWs?.hydrated ?? portalWs?.hydrated ?? true;
 
-  const categories = mode === "portal" ? PORTAL_CATEGORIES : ADMIN_CATEGORIES;
+  const categories = useMemo(() => {
+    const base = mode === "portal" ? PORTAL_CATEGORIES : ADMIN_CATEGORIES;
+    if (canUploadMatterport) return base;
+    return base.filter((c) => c.id !== "matterport");
+  }, [mode, canUploadMatterport]);
+
   const isLocked = Boolean(lockedProjectId);
 
   const [step, setStep] = useState<UploadWizardStep>(() =>
     isLocked || (client && project) ? "category" : "workspace"
   );
-  const [category, setCategory] = useState<UploadCategory>(() =>
-    resolveUploadCategoryFromParam(initialType)
-  );
+  const [category, setCategory] = useState<UploadCategory>(() => {
+    const resolved = resolveUploadCategoryFromParam(initialType);
+    if (resolved === "matterport" && !canUploadMatterport) {
+      return "progress_report";
+    }
+    return resolved;
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<UploadResult | null>(null);

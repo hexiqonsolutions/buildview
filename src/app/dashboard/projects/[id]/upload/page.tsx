@@ -30,7 +30,7 @@ export default async function PortalProjectUploadPage({
   return (
     <IntelPage
       title="Upload to project"
-      description={`Add Matterport scans, reports, documents, photos, timeline updates, and issues for ${project.name}.`}
+      description={`Add reports, documents, photos, timeline updates, and issues for ${project.name}.`}
       icon={Upload}
       eyebrow="Uploads"
       backHref={`/dashboard/projects/${project.id}`}

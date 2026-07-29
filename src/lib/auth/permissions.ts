@@ -4,6 +4,7 @@ import {
   canAssignRoles as canAssignRolesHelper,
   canCommentOnProject as canCommentOnProjectHelper,
   canManageClientUploads as canManageClientUploadsHelper,
+  canUploadMatterport as canUploadMatterportHelper,
   isBuildViewStaffRole,
   isClientPortalRole,
 } from "@/lib/auth/roles";
@@ -74,11 +75,11 @@ const ADMIN_OPS_MATRIX: RolePermissions = {
   activity: STAFF_FULL,
 };
 
-/** Client Admin / Site Supervisor — upload & manage project content. */
+/** Client Admin / Site Supervisor — upload & manage project content (not Matterport). */
 const CLIENT_MANAGER_MATRIX: RolePermissions = {
   projects: ["read", "update"],
   upload: CLIENT_UPLOAD_ACTIONS,
-  matterport: CLIENT_UPLOAD_ACTIONS,
+  matterport: CLIENT_VIEW,
   reports: CLIENT_UPLOAD_ACTIONS,
   documents: CLIENT_UPLOAD_ACTIONS,
   issues: CLIENT_UPLOAD_ACTIONS,
@@ -105,12 +106,15 @@ const PERMISSIONS: Record<UserRole, RolePermissions> = {
     activity: STAFF_FULL,
   },
   admin: { ...ADMIN_OPS_MATRIX },
-  operations_manager: { ...ADMIN_OPS_MATRIX },
+  operations_manager: {
+    ...ADMIN_OPS_MATRIX,
+    matterport: ["read", "update", "delete"],
+  },
   site_engineer: {
     clients: ["read"],
     projects: ["read"],
     upload: STAFF_READ_UPLOAD,
-    matterport: STAFF_READ_UPLOAD,
+    matterport: CLIENT_VIEW,
     reports: STAFF_READ_UPLOAD,
     documents: STAFF_READ_UPLOAD,
     issues: STAFF_READ_UPLOAD,
@@ -185,6 +189,10 @@ export function canImpersonate(role: UserRole): boolean {
 
 export function canManageClientUploads(role: UserRole): boolean {
   return canManageClientUploadsHelper(role);
+}
+
+export function canUploadMatterport(role: UserRole): boolean {
+  return canUploadMatterportHelper(role);
 }
 
 export function canAssignRoles(role: UserRole): boolean {

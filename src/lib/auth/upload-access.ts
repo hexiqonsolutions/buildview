@@ -3,6 +3,7 @@ import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { can, type PermissionResource } from "@/lib/auth/permissions";
 import {
   canManageClientUploads,
+  canUploadMatterport,
   isBuildViewStaffRole,
   isClientPortalRole,
 } from "@/lib/auth/roles";
@@ -36,6 +37,16 @@ export async function assertCanUploadToProject(
 
   if (!profile?.is_active) throw new Error("Account is inactive");
   const role = profile.role as UserRole;
+
+  if (resource === "matterport") {
+    if (!canUploadMatterport(role)) {
+      throw new Error("Only BuildView Super Admin and Admin can upload Matterport tours");
+    }
+    if (!isBuildViewStaffRole(role)) {
+      throw new Error("You do not have permission to upload Matterport tours");
+    }
+    return { userId: user.id, role, clientId: profile.client_id };
+  }
 
   if (!can(role, "upload", resource) && !canManageClientUploads(role)) {
     throw new Error("You do not have permission to upload");

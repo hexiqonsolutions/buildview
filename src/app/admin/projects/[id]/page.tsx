@@ -6,6 +6,8 @@ import {
   getProjectInvoices,
 } from "@/lib/actions/data";
 import { getProjectSpatialHierarchy } from "@/lib/actions/buildings";
+import { getCurrentUser } from "@/lib/actions/auth";
+import { canUploadMatterport } from "@/lib/auth/permissions";
 import { ProjectWorkspaceTabs } from "@/components/admin/projects/project-workspace-tabs";
 import { ProjectMatterportUploader } from "@/components/projects/project-matterport-uploader";
 import { ClientWorkspaceSync } from "@/components/admin/workspace/client-workspace-sync";
@@ -22,16 +24,18 @@ export default async function AdminProjectDetailPage({
 }) {
   const { id } = await params;
 
-  const [projectData, detail, invoices, spatialHierarchy] = await Promise.all([
+  const [projectData, detail, invoices, spatialHierarchy, currentUser] = await Promise.all([
     getProjectWithClient(id),
     getProjectDetail(id),
     getProjectInvoices(id),
     getProjectSpatialHierarchy(id),
+    getCurrentUser(),
   ]);
 
   if (!projectData) notFound();
 
   const { project, client } = projectData;
+  const allowMatterportUpload = currentUser ? canUploadMatterport(currentUser.role) : false;
 
   return (
     <div className="animate-fade-in space-y-6">
@@ -76,11 +80,13 @@ export default async function AdminProjectDetailPage({
                 <Link href={`/admin/clients/${client.id}`}>Client workspace</Link>
               </Button>
             )}
-            <ProjectMatterportUploader
-              projectId={project.id}
-              variant="default"
-              triggerClassName="ops-btn-primary h-9"
-            />
+            {allowMatterportUpload && (
+              <ProjectMatterportUploader
+                projectId={project.id}
+                variant="default"
+                triggerClassName="ops-btn-primary h-9"
+              />
+            )}
             <Button asChild size="sm" variant="outline" className="h-9">
               <Link href={`/admin/upload?project=${project.id}`}>
                 <Upload className="mr-1.5 h-4 w-4" />
@@ -101,7 +107,7 @@ export default async function AdminProjectDetailPage({
         issues={detail.issues}
         timeline={detail.timeline}
         invoices={invoices}
-        canUploadMatterport
+        canUploadMatterport={allowMatterportUpload}
       />
     </div>
   );

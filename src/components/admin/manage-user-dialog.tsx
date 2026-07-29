@@ -422,7 +422,19 @@ export function ManageUserDialog({
             </div>
           )}
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">
+              <p>{error}</p>
+              {(error.includes("not available in the database") ||
+                error.includes("migration required") ||
+                error.includes("invalid input value for enum")) && (
+                <p className="mt-2 text-xs">
+                  Run <code className="rounded bg-white/80 px-1 dark:bg-slate-900">supabase/FIX_user_roles_enum.sql</code>{" "}
+                  in Supabase SQL Editor, then try Save again.
+                </p>
+              )}
+            </div>
+          )}
 
           <Button
             type="button"
