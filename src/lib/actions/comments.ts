@@ -8,7 +8,7 @@ import {
   updateCommentStatusSchema,
 } from "@/lib/validations/comment";
 import type { ProjectCommentInsert, ProjectCommentWithUser, UserRole } from "@/lib/types";
-import { canCommentOnProject } from "@/lib/auth/roles";
+import { canCommentOnProject, isBuildViewStaffRole } from "@/lib/auth/roles";
 
 export async function getProjectComments(
   projectId: string
@@ -105,7 +105,9 @@ export async function addProjectComment(data: {
   }
 
   revalidatePath(`/dashboard/projects/${validated.project_id}`);
-  revalidatePath(`/admin/projects/${validated.project_id}`);
+  if (isBuildViewStaffRole(profile.role as UserRole)) {
+    revalidatePath(`/admin/projects/${validated.project_id}`);
+  }
 }
 
 export async function updateCommentStatus(id: string, status: "open" | "resolved") {
@@ -135,7 +137,6 @@ export async function updateCommentStatus(id: string, status: "open" | "resolved
   if (error) throw new Error(error.message);
 
   revalidatePath(`/dashboard/projects/${comment.project_id}`);
-  revalidatePath(`/admin/projects/${comment.project_id}`);
 }
 
 export async function deleteProjectComment(id: string) {
@@ -165,5 +166,4 @@ export async function deleteProjectComment(id: string) {
   if (error) throw new Error(error.message);
 
   revalidatePath(`/dashboard/projects/${comment.project_id}`);
-  revalidatePath(`/admin/projects/${comment.project_id}`);
 }
