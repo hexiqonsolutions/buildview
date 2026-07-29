@@ -1,5 +1,8 @@
 "use client";
 
+import Link from "next/link";
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { TabWorkspace, TabPanel } from "@/components/patterns/tab-workspace";
 import { ProjectOverview } from "@/components/projects/project-overview";
 import { ProjectMatterportPanel } from "@/components/projects/project-matterport-panel";
@@ -36,6 +39,8 @@ interface ProjectDetailTabsProps {
   canUploadMatterport?: boolean;
   /** Client/admin can change issue status */
   allowIssueStatusUpdate?: boolean;
+  /** Show upload actions inside individual tabs */
+  canUploadContent?: boolean;
 }
 
 export function ProjectDetailTabs({
@@ -51,6 +56,7 @@ export function ProjectDetailTabs({
   spatialHierarchy,
   canUploadMatterport = false,
   allowIssueStatusUpdate = false,
+  canUploadContent = false,
 }: ProjectDetailTabsProps) {
   const portal = useOptionalPortalWorkspace();
   const isPortfolioIntel = variant === "intel" && portal?.dashboardType === "portfolio";
@@ -79,6 +85,8 @@ export function ProjectDetailTabs({
         ]
       : []),
   ];
+
+  const uploadHref = projectId ? `/dashboard/projects/${projectId}/upload` : null;
 
   return (
     <TabWorkspace variant={variant} defaultTab="overview" tabs={tabs}>
@@ -110,22 +118,50 @@ export function ProjectDetailTabs({
       {showConstructionTabs && (
         <>
           <TabPanel value="timeline" className="mt-6">
+            <TabSectionHeader
+              title="Timeline"
+              description="Progress milestones, photos, and notes."
+              canUpload={canUploadContent}
+              uploadHref={uploadHref ? `${uploadHref}?type=timeline` : undefined}
+              uploadLabel="Add Update"
+            />
             <TimelineView events={timeline} />
           </TabPanel>
 
           <TabPanel value="reports" className="mt-6">
+            <TabSectionHeader
+              title="Reports"
+              description="Progress and inspection reports."
+              canUpload={canUploadContent}
+              uploadHref={uploadHref ? `${uploadHref}?type=report` : undefined}
+              uploadLabel="Upload Report"
+            />
             <ProjectReportsSection reports={reports} />
           </TabPanel>
         </>
       )}
 
       <TabPanel value="documents" className="mt-6">
+        <TabSectionHeader
+          title="Documents"
+          description="Drawings, contracts, and project files."
+          canUpload={canUploadContent}
+          uploadHref={uploadHref ? `${uploadHref}?type=drawing` : undefined}
+          uploadLabel="Upload Document"
+        />
         <ProjectDocumentsSection folders={folders} documents={documents} />
       </TabPanel>
 
       {showConstructionTabs && (
         <>
           <TabPanel value="issues" className="mt-6">
+            <TabSectionHeader
+              title="Issues"
+              description="Construction issues and defects."
+              canUpload={canUploadContent}
+              uploadHref={uploadHref ? `${uploadHref}?type=issue` : undefined}
+              uploadLabel="Report Issue"
+            />
             <ProjectIssuesSection
               issues={issues}
               allowStatusUpdate={allowIssueStatusUpdate}
@@ -138,5 +174,43 @@ export function ProjectDetailTabs({
         </>
       )}
     </TabWorkspace>
+  );
+}
+
+function TabSectionHeader({
+  title,
+  description,
+  canUpload,
+  uploadHref,
+  uploadLabel,
+}: {
+  title: string;
+  description: string;
+  canUpload: boolean;
+  uploadHref?: string;
+  uploadLabel: string;
+}) {
+  return (
+    <div className="mb-5 flex items-center justify-between gap-4">
+      <div className="min-w-0">
+        <h3 className="font-display text-base font-semibold text-slate-900 dark:text-white">
+          {title}
+        </h3>
+        <p className="text-sm text-slate-500">{description}</p>
+      </div>
+      {canUpload && uploadHref && (
+        <Button
+          asChild
+          size="sm"
+          variant="outline"
+          className="shrink-0 gap-1.5 border-slate-200 text-slate-700 transition-colors hover:border-brand-accent hover:bg-brand-accent/5 hover:text-brand-accent dark:border-slate-700 dark:text-slate-300 dark:hover:border-brand-accent"
+        >
+          <Link href={uploadHref}>
+            <Plus className="h-3.5 w-3.5" />
+            {uploadLabel}
+          </Link>
+        </Button>
+      )}
+    </div>
   );
 }

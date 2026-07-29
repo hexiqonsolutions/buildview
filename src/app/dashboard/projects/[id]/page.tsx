@@ -37,6 +37,9 @@ export default async function ProjectDetailPage({
   const canManageUploads = user
     ? canManageClientUploads(user.role) || can(user.role, "upload", "upload")
     : false;
+  const canUploadContent = user
+    ? can(user.role, "upload", "reports") || canManageClientUploads(user.role)
+    : false;
   const allowIssueStatusUpdate = user ? can(user.role, "update", "issues") : false;
   const canUpdateStatus = user ? can(user.role, "update", "projects") : false;
   const showComments = user ? canCommentOnProject(user.role) : false;
@@ -80,6 +83,7 @@ export default async function ProjectDetailPage({
           invoices={invoices}
           canUploadMatterport={allowMatterportUpload}
           allowIssueStatusUpdate={allowIssueStatusUpdate}
+          canUploadContent={canUploadContent}
         />
       </div>
       {showComments && (
