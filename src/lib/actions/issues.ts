@@ -22,7 +22,7 @@ import type {
 import { STORAGE_BUCKETS } from "@/lib/types";
 import { resolveSpatialForWrite } from "@/lib/admin/spatial-resolve";
 import { formatUploadNotifyMessage, portalIssuesLink } from "@/lib/portal/notification-links";
-import { isBuildViewStaffRole } from "@/lib/auth/roles";
+import { isBuildViewStaffRole, canManageClientUploads } from "@/lib/auth/roles";
 import { can } from "@/lib/auth/permissions";
 
 function revalidateIssuePaths(projectId: string) {
@@ -146,7 +146,8 @@ export async function createIssue(data: {
         .eq("id", user?.id ?? "")
         .maybeSingle();
 
-      if (!me || !isBuildViewStaffRole(me.role)) {
+      const canFallback = me && (isBuildViewStaffRole(me.role) || canManageClientUploads(me.role));
+      if (!canFallback) {
         throw new Error(error?.message ?? "Failed to create issue");
       }
 

@@ -3,6 +3,8 @@ export function isRlsOrPermissionError(message: string): boolean {
   return (
     msg.includes("row-level security") ||
     msg.includes("permission denied") ||
-    msg.includes("violates row-level security")
+    msg.includes("violates row-level security") ||
+    msg.includes("42883") ||
+    msg.includes("undefined function")
   );
 }

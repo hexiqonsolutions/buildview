@@ -33,6 +33,7 @@ import {
 } from "@/lib/portal/notification-links";
 import { assertCanUploadToProject } from "@/lib/auth/upload-access";
 import { isBuildViewStaffRole } from "@/lib/auth/roles";
+import { createServiceRoleClient } from "@/lib/supabase/admin";
 
 export type UploadCategory =
   | "matterport"
@@ -87,7 +88,11 @@ async function logActivity(
     user_agent: null,
   };
 
-  await supabase.from("activity_logs").insert(payload);
+  const { error } = await supabase.from("activity_logs").insert(payload);
+  if (error) {
+    const admin = createServiceRoleClient();
+    await admin.from("activity_logs").insert(payload);
+  }
 }
 
 export async function uploadMatterportWithAutomation(data: {
