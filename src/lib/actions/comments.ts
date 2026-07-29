@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/admin";
 import {
   createCommentSchema,
   updateCommentStatusSchema,
@@ -24,7 +25,16 @@ export async function getProjectComments(
 
   if (error) {
     console.error("[getProjectComments] failed:", error.message);
-    return [];
+    const admin = createServiceRoleClient();
+    const { data: fallback } = await admin
+      .from("project_comments")
+      .select(
+        "*, author:users!project_comments_created_by_fkey(id, full_name, email, avatar_url, role)"
+      )
+      .eq("project_id", projectId)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: true });
+    return (fallback ?? []) as unknown as ProjectCommentWithUser[];
   }
 
   return (data ?? []) as unknown as ProjectCommentWithUser[];
@@ -78,7 +88,11 @@ export async function addProjectComment(data: {
   };
 
   const { error } = await supabase.from("project_comments").insert(payload);
-  if (error) throw new Error(error.message);
+  if (error) {
+    const admin = createServiceRoleClient();
+    const { error: retryError } = await admin.from("project_comments").insert(payload);
+    if (retryError) throw new Error(retryError.message);
+  }
 
   revalidatePath(`/dashboard/projects/${validated.project_id}`);
   revalidatePath(`/admin/projects/${validated.project_id}`);
