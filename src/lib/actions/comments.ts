@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import {
@@ -8,7 +7,7 @@ import {
   updateCommentStatusSchema,
 } from "@/lib/validations/comment";
 import type { ProjectCommentInsert, ProjectCommentWithUser, UserRole } from "@/lib/types";
-import { canCommentOnProject, isBuildViewStaffRole } from "@/lib/auth/roles";
+import { canCommentOnProject } from "@/lib/auth/roles";
 
 export async function getProjectComments(
   projectId: string
@@ -104,10 +103,7 @@ export async function addProjectComment(data: {
     if (retryError) throw new Error(retryError.message);
   }
 
-  revalidatePath(`/dashboard/projects/${validated.project_id}`);
-  if (isBuildViewStaffRole(profile.role as UserRole)) {
-    revalidatePath(`/admin/projects/${validated.project_id}`);
-  }
+  return { ok: true };
 }
 
 export async function updateCommentStatus(id: string, status: "open" | "resolved") {
@@ -136,7 +132,7 @@ export async function updateCommentStatus(id: string, status: "open" | "resolved
 
   if (error) throw new Error(error.message);
 
-  revalidatePath(`/dashboard/projects/${comment.project_id}`);
+  return { ok: true, projectId: comment.project_id };
 }
 
 export async function deleteProjectComment(id: string) {
@@ -165,5 +161,5 @@ export async function deleteProjectComment(id: string) {
 
   if (error) throw new Error(error.message);
 
-  revalidatePath(`/dashboard/projects/${comment.project_id}`);
+  return { ok: true, projectId: comment.project_id };
 }

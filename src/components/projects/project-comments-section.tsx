@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Loader2, MessageSquare, ShieldCheck, Trash2, CheckCircle2, RotateCcw } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -50,6 +51,7 @@ export function ProjectCommentsSection({
   reports = [],
   documents = [],
 }: ProjectCommentsSectionProps) {
+  const router = useRouter();
   const [message, setMessage] = useState("");
   const [contextType, setContextType] = useState<"project" | "report" | "document">("project");
   const [contextId, setContextId] = useState("");
@@ -102,6 +104,7 @@ export function ProjectCommentsSection({
         setMessage("");
         setContextType("project");
         setContextId("");
+        router.refresh();
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to post comment");
       }
@@ -116,6 +119,7 @@ export function ProjectCommentsSection({
           comment.id,
           comment.status === "open" ? "resolved" : "open"
         );
+        router.refresh();
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to update comment");
       }
@@ -128,6 +132,7 @@ export function ProjectCommentsSection({
     startTransition(async () => {
       try {
         await deleteProjectComment(commentId);
+        router.refresh();
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to delete comment");
       }
