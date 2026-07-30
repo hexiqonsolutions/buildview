@@ -33,7 +33,7 @@ interface InvoiceManagerProps {
 }
 
 export function InvoiceManager({ invoices, clients, projects }: InvoiceManagerProps) {
-  const { hydrated, scope, clientProjects, client, project } = useAdminWorkspace();
+  const { hydrated, scope, client, project } = useAdminWorkspace();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -53,11 +53,11 @@ export function InvoiceManager({ invoices, clients, projects }: InvoiceManagerPr
   const scopedClients = scope.clientId
     ? clients.filter((c) => c.id === scope.clientId)
     : clients;
-  const scopedProjects = scope.projectId
-    ? projects.filter((p) => p.id === scope.projectId)
-    : scope.clientId
-      ? projects.filter((p) => clientProjects.some((cp) => cp.id === p.id))
-      : projects;
+  // Create form needs every project for the selected client — not just the
+  // workspace-scoped project (that filter only applies to the invoice list).
+  const formProjects = scope.clientId
+    ? projects.filter((p) => p.client_id === scope.clientId)
+    : projects;
 
   function openAttachDialog(invoiceId: string) {
     setAttachTargetId(invoiceId);
@@ -120,7 +120,7 @@ export function InvoiceManager({ invoices, clients, projects }: InvoiceManagerPr
           {project ? ` · ${project.name}` : client ? ` · ${client.company_name || client.name}` : ""}
         </p>
         {filtered.length > 0 && (
-          <CreateInvoiceForm clients={scopedClients} projects={scopedProjects} />
+          <CreateInvoiceForm clients={scopedClients} projects={formProjects} />
         )}
       </div>
 
@@ -133,7 +133,7 @@ export function InvoiceManager({ invoices, clients, projects }: InvoiceManagerPr
               Create an invoice, attach a PDF, then notify the client from the actions menu.
             </p>
             <div className="mt-4">
-              <CreateInvoiceForm clients={scopedClients} projects={scopedProjects} />
+              <CreateInvoiceForm clients={scopedClients} projects={formProjects} />
             </div>
           </div>
         ) : (
