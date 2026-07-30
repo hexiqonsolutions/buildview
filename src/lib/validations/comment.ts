@@ -10,6 +10,8 @@ export const createCommentSchema = z.object({
   /** Optional note context — prefixed into the message for visibility */
   context_type: z.enum(["project", "report", "document"]).optional(),
   context_label: z.string().trim().max(200).optional(),
+  /** Reply to another comment in the same project (normalized to root thread) */
+  parent_id: z.string().uuid().optional().nullable(),
 });
 
 export type CreateCommentInput = z.infer<typeof createCommentSchema>;

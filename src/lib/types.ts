@@ -818,6 +818,8 @@ export type ProjectComment = Timestamps &
     project_id: string;
     message: string;
     status: CommentStatus;
+    /** Root thread id when this row is a reply; null for top-level comments */
+    parent_id: string | null;
   };
 
 export type TimelineTradeJson = {
@@ -1068,10 +1070,11 @@ export type IssueInsert = Omit<
 
 export type ProjectCommentInsert = Omit<
   ProjectComment,
-  "id" | "created_at" | "updated_at" | "deleted_at" | "deleted_by"
+  "id" | "created_at" | "updated_at" | "deleted_at" | "deleted_by" | "parent_id"
 > & {
   id?: string;
   status?: CommentStatus;
+  parent_id?: string | null;
   created_by?: string | null;
   updated_by?: string | null;
 };

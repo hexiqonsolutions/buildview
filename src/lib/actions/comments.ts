@@ -111,6 +111,7 @@ export async function addProjectComment(data: {
   message: string;
   context_type?: "project" | "report" | "document";
   context_label?: string;
+  parent_id?: string | null;
 }): Promise<CommentActionResult> {
   const validation = createCommentSchema.safeParse(data);
   if (!validation.success) {
@@ -139,32 +140,62 @@ export async function addProjectComment(data: {
     return fail("You do not have access to comment on this project");
   }
 
+  let parentId: string | null = validation.data.parent_id ?? null;
   let message = validation.data.message;
-  if (
-    validation.data.context_type &&
-    validation.data.context_type !== "project" &&
-    validation.data.context_label
-  ) {
-    const kind = validation.data.context_type === "report" ? "Report" : "Document";
-    message = `[${kind}: ${validation.data.context_label}] ${message}`;
-  }
-
-  const payload: ProjectCommentInsert = {
-    project_id: validation.data.project_id,
-    message,
-    status: "open",
-    created_by: user.id,
-    updated_by: user.id,
-  };
 
   try {
     const admin = createServiceRoleClient();
+
+    if (parentId) {
+      const { data: parent, error: parentError } = await admin
+        .from("project_comments")
+        .select("id, project_id, parent_id, deleted_at")
+        .eq("id", parentId)
+        .maybeSingle();
+
+      if (parentError || !parent || parent.deleted_at) {
+        return fail("The comment you are replying to was not found.");
+      }
+      if (parent.project_id !== validation.data.project_id) {
+        return fail("Replies must stay on the same project.");
+      }
+      // Flatten to one reply level under the root thread
+      parentId = parent.parent_id ?? parent.id;
+    }
+
+    if (
+      !parentId &&
+      validation.data.context_type &&
+      validation.data.context_type !== "project" &&
+      validation.data.context_label
+    ) {
+      const kind = validation.data.context_type === "report" ? "Report" : "Document";
+      message = `[${kind}: ${validation.data.context_label}] ${message}`;
+    }
+
+    const payload: ProjectCommentInsert = {
+      project_id: validation.data.project_id,
+      message,
+      status: "open",
+      parent_id: parentId,
+      created_by: user.id,
+      updated_by: user.id,
+    };
+
     const { error } = await admin.from("project_comments").insert(payload);
     if (error) {
       console.error("[addProjectComment] insert failed:", error.message, error.code);
       if (error.code === "42P01") {
         return fail(
-          "Comments are not enabled in the database yet. Run supabase/migrations/004_project_comments.sql in Supabase."
+          "Comments are not enabled in the database yet. Run supabase/FIX_project_comments.sql in Supabase."
+        );
+      }
+      if (
+        error.message?.toLowerCase().includes("parent_id") ||
+        error.code === "42703"
+      ) {
+        return fail(
+          "Comment replies are not enabled yet. Run supabase/FIX_comment_replies.sql in Supabase."
         );
       }
       return fail(error.message || "Failed to post comment");
@@ -236,7 +267,7 @@ export async function deleteProjectComment(id: string): Promise<CommentActionRes
     const admin = createServiceRoleClient();
     const { data: comment, error: fetchError } = await admin
       .from("project_comments")
-      .select("id, created_by")
+      .select("id, created_by, parent_id")
       .eq("id", id)
       .is("deleted_at", null)
       .maybeSingle();
@@ -251,17 +282,29 @@ export async function deleteProjectComment(id: string): Promise<CommentActionRes
       return fail("You can only delete your own comments");
     }
 
+    const now = new Date().toISOString();
+    const softDelete = {
+      deleted_at: now,
+      deleted_by: user.id,
+      updated_by: user.id,
+    };
+
     const { error } = await admin
       .from("project_comments")
-      .update({
-        deleted_at: new Date().toISOString(),
-        deleted_by: user.id,
-        updated_by: user.id,
-      })
+      .update(softDelete)
       .eq("id", id)
       .is("deleted_at", null);
 
     if (error) return fail(error.message || "Failed to delete comment");
+
+    // Soft-delete nested replies when removing a root thread
+    if (!comment.parent_id) {
+      await admin
+        .from("project_comments")
+        .update(softDelete)
+        .eq("parent_id", id)
+        .is("deleted_at", null);
+    }
   } catch (err) {
     console.error("[deleteProjectComment] unexpected failure:", err);
     return fail("Failed to delete comment");

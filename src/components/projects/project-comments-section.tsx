@@ -12,6 +12,8 @@ import {
   FolderOpen,
   Building2,
   Send,
+  Reply,
+  X,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -45,6 +47,11 @@ interface ProjectCommentsSectionProps {
   documents?: Document[];
 }
 
+type CommentThread = {
+  root: ProjectCommentWithUser;
+  replies: ProjectCommentWithUser[];
+};
+
 function initials(name?: string | null, email?: string | null) {
   const source = name?.trim() || email?.trim() || "?";
   return source
@@ -72,6 +79,49 @@ function parseCommentMessage(message: string): {
   };
 }
 
+function buildThreads(items: ProjectCommentWithUser[]): CommentThread[] {
+  const byId = new Map(items.map((c) => [c.id, c]));
+  const replies = new Map<string, ProjectCommentWithUser[]>();
+
+  for (const item of items) {
+    if (!item.parent_id) continue;
+    const rootId = byId.get(item.parent_id)?.parent_id
+      ? byId.get(item.parent_id)!.parent_id!
+      : item.parent_id;
+    const list = replies.get(rootId) ?? [];
+    list.push(item);
+    replies.set(rootId, list);
+  }
+
+  return items
+    .filter((c) => !c.parent_id)
+    .map((root) => ({
+      root,
+      replies: (replies.get(root.id) ?? []).sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      ),
+    }));
+}
+
+function CommentAuthor({ comment }: { comment: ProjectCommentWithUser }) {
+  const authorRole = comment.author?.role as UserRole | undefined;
+  const authorIsStaff = authorRole ? isBuildViewStaffRole(authorRole) : false;
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-sm font-semibold text-slate-900 dark:text-white">
+        {comment.author?.full_name || comment.author?.email || "Unknown user"}
+      </span>
+      {authorIsStaff && (
+        <Badge className="gap-1 bg-slate-800 text-white hover:bg-slate-800 dark:bg-slate-200 dark:text-slate-900 dark:hover:bg-slate-200">
+          <ShieldCheck className="h-3 w-3" /> BuildView Team
+        </Badge>
+      )}
+      <span className="text-xs text-slate-400">{formatRelativeTime(comment.created_at)}</span>
+    </div>
+  );
+}
+
 export function ProjectCommentsSection({
   projectId,
   comments,
@@ -88,11 +138,14 @@ export function ProjectCommentsSection({
   const [success, setSuccess] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [replyToId, setReplyToId] = useState<string | null>(null);
+  const [replyMessage, setReplyMessage] = useState("");
   const showReportOption = reports.length > 0;
   const showDocumentOption = documents.length > 0;
 
+  const threads = useMemo(() => buildThreads(items), [items]);
   const openCount = useMemo(
-    () => items.filter((c) => c.status === "open").length,
+    () => items.filter((c) => !c.parent_id && c.status === "open").length,
     [items]
   );
 
@@ -110,6 +163,10 @@ export function ProjectCommentsSection({
       setContextId("");
     }
   }, [contextType, showReportOption, showDocumentOption]);
+
+  function refreshComments() {
+    return getProjectComments(projectId).then(setItems);
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -151,8 +208,35 @@ export function ProjectCommentsSection({
       setContextId("");
       setError(null);
       setSuccess("Comment posted");
-      const fresh = await getProjectComments(projectId);
-      setItems(fresh);
+      await refreshComments();
+      window.setTimeout(() => setSuccess(null), 2500);
+    });
+  }
+
+  function handleReplySubmit(parentId: string) {
+    if (!replyMessage.trim()) return;
+    setError(null);
+    setPendingId(parentId);
+
+    startTransition(async () => {
+      const result = await addProjectComment({
+        project_id: projectId,
+        message: replyMessage.trim(),
+        parent_id: parentId,
+      });
+
+      if (!result.ok) {
+        setError(result.error);
+        setPendingId(null);
+        return;
+      }
+
+      setReplyMessage("");
+      setReplyToId(null);
+      setError(null);
+      setSuccess("Reply posted");
+      await refreshComments();
+      setPendingId(null);
       window.setTimeout(() => setSuccess(null), 2500);
     });
   }
@@ -169,8 +253,7 @@ export function ProjectCommentsSection({
         setError(result.error);
       } else {
         setError(null);
-        const fresh = await getProjectComments(projectId);
-        setItems(fresh);
+        await refreshComments();
       }
       setPendingId(null);
     });
@@ -185,8 +268,11 @@ export function ProjectCommentsSection({
         setError(result.error);
       } else {
         setError(null);
-        const fresh = await getProjectComments(projectId);
-        setItems(fresh);
+        if (replyToId === commentId) {
+          setReplyToId(null);
+          setReplyMessage("");
+        }
+        await refreshComments();
       }
       setPendingId(null);
     });
@@ -194,7 +280,6 @@ export function ProjectCommentsSection({
 
   return (
     <section className="space-y-5" aria-label="Project comments">
-      {/* Composer */}
       <div
         className={cn(
           "relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white",
@@ -219,7 +304,7 @@ export function ProjectCommentsSection({
             {items.length > 0 && (
               <div className="flex items-center gap-2 text-xs text-slate-500">
                 <span className="rounded-full bg-slate-100 px-2.5 py-1 font-medium dark:bg-slate-800">
-                  {items.length} total
+                  {threads.length} thread{threads.length === 1 ? "" : "s"}
                 </span>
                 <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
                   {openCount} open
@@ -330,11 +415,7 @@ export function ProjectCommentsSection({
                 className="min-h-[96px] rounded-xl border-slate-200 bg-slate-50/60 text-sm leading-relaxed focus-visible:ring-slate-400/30 dark:border-slate-700 dark:bg-slate-900"
               />
               <div className="flex items-center justify-between gap-2 text-[11px] text-slate-400">
-                <span>
-                  {contextType === "project"
-                    ? "Visible on this project"
-                    : `Tagged to selected ${contextType}`}
-                </span>
+                <span>Teammates can reply in the thread below</span>
                 <span className="tabular-nums">{message.length}/4000</span>
               </div>
             </div>
@@ -375,8 +456,7 @@ export function ProjectCommentsSection({
         </div>
       </div>
 
-      {/* Thread */}
-      {items.length === 0 ? (
+      {threads.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 py-2 dark:border-slate-800 dark:bg-slate-900/30">
           <EmptyState
             icon={MessageSquare}
@@ -390,28 +470,25 @@ export function ProjectCommentsSection({
             <h4 className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
               Conversation
             </h4>
-            <span className="text-xs text-slate-400">Newest at the bottom</span>
+            <span className="text-xs text-slate-400">Reply to keep the thread going</span>
           </div>
 
           <ul className="space-y-3">
-            {items.map((comment, index) => {
-              const authorRole = comment.author?.role as UserRole | undefined;
-              const authorIsStaff = authorRole ? isBuildViewStaffRole(authorRole) : false;
-              const isOwn = comment.created_by === currentUserId;
+            {threads.map(({ root, replies }, index) => {
+              const isOwn = root.created_by === currentUserId;
               const canManage = isAdmin || isOwn;
-              const busy = pendingId === comment.id;
-              const isOpen = comment.status === "open";
-              const parsed = parseCommentMessage(comment.message);
+              const busy = pendingId === root.id;
+              const isOpen = root.status === "open";
+              const parsed = parseCommentMessage(root.message);
+              const isReplying = replyToId === root.id;
 
               return (
                 <li
-                  key={comment.id}
+                  key={root.id}
                   style={{ animationDelay: `${Math.min(index, 8) * 50}ms` }}
                   className={cn(
-                    "group relative overflow-hidden rounded-2xl border bg-white",
+                    "group overflow-hidden rounded-2xl border bg-white",
                     "shadow-[0_1px_2px_rgba(15,23,42,0.03),0_8px_20px_-12px_rgba(15,23,42,0.1)]",
-                    "transition-all duration-200 ease-out",
-                    "hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(15,23,42,0.05),0_14px_28px_-12px_rgba(15,23,42,0.12)]",
                     "dark:bg-slate-900/60 dark:shadow-none",
                     "motion-safe:animate-[fadeInUp_0.4s_ease-out_both]",
                     isOpen
@@ -422,26 +499,17 @@ export function ProjectCommentsSection({
                   <div className="flex gap-3 p-4 sm:p-5">
                     <Avatar className="mt-0.5 h-10 w-10 shrink-0 ring-2 ring-white dark:ring-slate-900">
                       <AvatarImage
-                        src={comment.author?.avatar_url || undefined}
-                        alt={comment.author?.full_name || "User"}
+                        src={root.author?.avatar_url || undefined}
+                        alt={root.author?.full_name || "User"}
                       />
                       <AvatarFallback className="bg-slate-100 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                        {initials(comment.author?.full_name, comment.author?.email)}
+                        {initials(root.author?.full_name, root.author?.email)}
                       </AvatarFallback>
                     </Avatar>
 
                     <div className="min-w-0 flex-1 space-y-2.5">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-sm font-semibold text-slate-900 dark:text-white">
-                          {comment.author?.full_name ||
-                            comment.author?.email ||
-                            "Unknown user"}
-                        </span>
-                        {authorIsStaff && (
-                          <Badge className="gap-1 bg-slate-800 text-white hover:bg-slate-800 dark:bg-slate-200 dark:text-slate-900 dark:hover:bg-slate-200">
-                            <ShieldCheck className="h-3 w-3" /> BuildView Team
-                          </Badge>
-                        )}
+                        <CommentAuthor comment={root} />
                         <Badge
                           className={cn(
                             "capitalize",
@@ -452,9 +520,6 @@ export function ProjectCommentsSection({
                         >
                           {isOpen ? "Open" : "Resolved"}
                         </Badge>
-                        <span className="text-xs text-slate-400">
-                          {formatRelativeTime(comment.created_at)}
-                        </span>
                       </div>
 
                       {parsed.contextKind && parsed.contextLabel && (
@@ -475,37 +540,62 @@ export function ProjectCommentsSection({
                         {parsed.body}
                       </p>
 
-                      {canManage && (
-                        <div className="flex flex-wrap gap-1.5 pt-0.5 opacity-100 transition-opacity sm:opacity-80 sm:group-hover:opacity-100">
-                          {isAdmin && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 cursor-pointer gap-1.5 rounded-lg px-2.5 text-xs text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
-                              disabled={busy}
-                              onClick={() => handleToggleStatus(comment)}
-                            >
-                              {isOpen ? (
-                                <>
-                                  <CheckCircle2 className="h-3.5 w-3.5 text-slate-700 dark:text-slate-300" />
-                                  Mark Resolved
-                                </>
-                              ) : (
-                                <>
-                                  <RotateCcw className="h-3.5 w-3.5" />
-                                  Reopen
-                                </>
-                              )}
-                            </Button>
+                      <div className="flex flex-wrap gap-1.5 pt-0.5">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 cursor-pointer gap-1.5 rounded-lg px-2.5 text-xs text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
+                          disabled={isPending}
+                          onClick={() => {
+                            setReplyToId(isReplying ? null : root.id);
+                            setReplyMessage("");
+                            setError(null);
+                          }}
+                        >
+                          {isReplying ? (
+                            <>
+                              <X className="h-3.5 w-3.5" />
+                              Cancel
+                            </>
+                          ) : (
+                            <>
+                              <Reply className="h-3.5 w-3.5" />
+                              Reply
+                              {replies.length > 0 ? ` (${replies.length})` : ""}
+                            </>
                           )}
+                        </Button>
+                        {canManage && isAdmin && (
                           <Button
                             type="button"
                             variant="ghost"
                             size="sm"
-                            className="h-8 cursor-pointer gap-1.5 rounded-lg px-2.5 text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                            className="h-8 cursor-pointer gap-1.5 rounded-lg px-2.5 text-xs text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
                             disabled={busy}
-                            onClick={() => handleDelete(comment.id)}
+                            onClick={() => handleToggleStatus(root)}
+                          >
+                            {isOpen ? (
+                              <>
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                Mark Resolved
+                              </>
+                            ) : (
+                              <>
+                                <RotateCcw className="h-3.5 w-3.5" />
+                                Reopen
+                              </>
+                            )}
+                          </Button>
+                        )}
+                        {canManage && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 cursor-pointer gap-1.5 rounded-lg px-2.5 text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800"
+                            disabled={busy}
+                            onClick={() => handleDelete(root.id)}
                           >
                             {busy ? (
                               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -514,10 +604,130 @@ export function ProjectCommentsSection({
                             )}
                             Delete
                           </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {(replies.length > 0 || isReplying) && (
+                    <div className="space-y-3 border-t border-slate-100 bg-slate-50/50 px-4 py-4 sm:px-5 dark:border-slate-800 dark:bg-slate-950/40">
+                      {replies.length > 0 && (
+                        <ul className="space-y-3 border-l border-slate-200 pl-4 dark:border-slate-700">
+                          {replies.map((reply) => {
+                            const replyOwn = reply.created_by === currentUserId;
+                            const replyManage = isAdmin || replyOwn;
+                            const replyBusy = pendingId === reply.id;
+
+                            return (
+                              <li key={reply.id} className="flex gap-3">
+                                <Avatar className="mt-0.5 h-8 w-8 shrink-0 ring-2 ring-white dark:ring-slate-900">
+                                  <AvatarImage
+                                    src={reply.author?.avatar_url || undefined}
+                                    alt={reply.author?.full_name || "User"}
+                                  />
+                                  <AvatarFallback className="bg-slate-200 text-[10px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                    {initials(reply.author?.full_name, reply.author?.email)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="min-w-0 flex-1 space-y-1.5">
+                                  <CommentAuthor comment={reply} />
+                                  <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                                    {reply.message}
+                                  </p>
+                                  <div className="flex flex-wrap gap-1">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 cursor-pointer gap-1 rounded-lg px-2 text-[11px] text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                                      disabled={isPending}
+                                      onClick={() => {
+                                        setReplyToId(root.id);
+                                        setReplyMessage("");
+                                        setError(null);
+                                      }}
+                                    >
+                                      <Reply className="h-3 w-3" />
+                                      Reply
+                                    </Button>
+                                    {replyManage && (
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 cursor-pointer gap-1 rounded-lg px-2 text-[11px] text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                                        disabled={replyBusy}
+                                        onClick={() => handleDelete(reply.id)}
+                                      >
+                                        {replyBusy ? (
+                                          <Loader2 className="h-3 w-3 animate-spin" />
+                                        ) : (
+                                          <Trash2 className="h-3 w-3" />
+                                        )}
+                                        Delete
+                                      </Button>
+                                    )}
+                                  </div>
+                                </div>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+
+                      {isReplying && (
+                        <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+                          <Label
+                            htmlFor={`reply-${root.id}`}
+                            className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400"
+                          >
+                            Reply to{" "}
+                            {root.author?.full_name || root.author?.email || "this comment"}
+                          </Label>
+                          <Textarea
+                            id={`reply-${root.id}`}
+                            value={replyMessage}
+                            onChange={(e) => setReplyMessage(e.target.value)}
+                            placeholder="Write a reply for the team…"
+                            rows={2}
+                            maxLength={4000}
+                            disabled={isPending}
+                            autoFocus
+                            className="min-h-[72px] rounded-lg border-slate-200 bg-slate-50/60 text-sm dark:border-slate-700 dark:bg-slate-950"
+                          />
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 rounded-lg"
+                              disabled={isPending}
+                              onClick={() => {
+                                setReplyToId(null);
+                                setReplyMessage("");
+                              }}
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              className="h-8 gap-1.5 rounded-lg px-3"
+                              disabled={isPending || !replyMessage.trim()}
+                              onClick={() => handleReplySubmit(root.id)}
+                            >
+                              {pendingId === root.id && isPending ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Send className="h-3.5 w-3.5" />
+                              )}
+                              Post Reply
+                            </Button>
+                          </div>
                         </div>
                       )}
                     </div>
-                  </div>
+                  )}
                 </li>
               );
             })}
