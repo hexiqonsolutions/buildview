@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getProjectWithClient, getProjectDetail, getProjectInvoices } from "@/lib/actions/data";
+import { getProjectWithClient, getProjectDetail, getProjectInvoices, getProjectTeam } from "@/lib/actions/data";
 import { getProjectSpatialHierarchy } from "@/lib/actions/buildings";
 import { ProjectHeader } from "@/components/projects/project-header";
 import { ProjectHubTabs } from "@/components/intel/projects/project-hub-tabs";
@@ -29,12 +29,13 @@ export default async function ProjectDetailPage({
 }) {
   const { id } = await params;
 
-  const [projectData, detail, invoices, user, spatialHierarchy] = await Promise.all([
+  const [projectData, detail, invoices, user, spatialHierarchy, team] = await Promise.all([
     getProjectWithClient(id).catch(() => null),
     getProjectDetail(id).catch(() => EMPTY_DETAIL),
     getProjectInvoices(id).catch(() => []),
     getCurrentUser().catch(() => null),
     getProjectSpatialHierarchy(id).catch(() => ({ buildings: [] as never[] })),
+    getProjectTeam(id).catch(() => []),
   ]);
 
   if (!projectData) notFound();
@@ -90,6 +91,7 @@ export default async function ProjectDetailPage({
           issues={detail.issues}
           timeline={detail.timeline}
           invoices={invoices}
+          team={team}
           canUploadMatterport={allowMatterportUpload}
           allowIssueStatusUpdate={allowIssueStatusUpdate}
           canUploadContent={canUploadContent}

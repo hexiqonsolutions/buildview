@@ -1427,6 +1427,15 @@ export async function getUserAssignments(userId: string) {
   }
 }
 
+export type ProjectTeamMember = {
+  assignmentId: string;
+  id: string;
+  full_name: string | null;
+  email: string;
+  role: UserRole;
+  avatar_url: string | null;
+};
+
 export async function getProjectAssignments(projectId: string) {
   const supabase = await createClient();
   const { data } = await supabase
@@ -1435,6 +1444,89 @@ export async function getProjectAssignments(projectId: string) {
     .eq("project_id", projectId)
     .is("deleted_at", null);
   return data || [];
+}
+
+/** Team members assigned to a project — name, email, role, avatar. */
+export async function getProjectTeam(projectId: string): Promise<ProjectTeamMember[]> {
+  const mapRows = (
+    rows: Array<{
+      id: string;
+      user:
+        | {
+            id: string;
+            full_name: string | null;
+            email: string;
+            role: UserRole;
+            avatar_url: string | null;
+          }
+        | null;
+    }>
+  ): ProjectTeamMember[] =>
+    rows
+      .filter((row) => row.user?.id)
+      .map((row) => ({
+        assignmentId: row.id,
+        id: row.user!.id,
+        full_name: row.user!.full_name,
+        email: row.user!.email,
+        role: row.user!.role,
+        avatar_url: row.user!.avatar_url,
+      }))
+      .sort((a, b) => {
+        const nameA = (a.full_name || a.email).toLowerCase();
+        const nameB = (b.full_name || b.email).toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
+
+  try {
+    const admin = createServiceRoleClient();
+    const { data, error } = await admin
+      .from("project_assignments")
+      .select(
+        "id, user:users!project_assignments_user_id_fkey(id, full_name, email, role, avatar_url)"
+      )
+      .eq("project_id", projectId)
+      .is("deleted_at", null);
+
+    if (!error && data) {
+      return mapRows(
+        data as Array<{
+          id: string;
+          user: {
+            id: string;
+            full_name: string | null;
+            email: string;
+            role: UserRole;
+            avatar_url: string | null;
+          } | null;
+        }>
+      );
+    }
+  } catch (err) {
+    console.error("[getProjectTeam] service-role failed:", err);
+  }
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("project_assignments")
+    .select(
+      "id, user:users!project_assignments_user_id_fkey(id, full_name, email, role, avatar_url)"
+    )
+    .eq("project_id", projectId)
+    .is("deleted_at", null);
+
+  return mapRows(
+    (data || []) as Array<{
+      id: string;
+      user: {
+        id: string;
+        full_name: string | null;
+        email: string;
+        role: UserRole;
+        avatar_url: string | null;
+      } | null;
+    }>
+  );
 }
 
 export async function getAllReports() {

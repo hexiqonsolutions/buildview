@@ -4,6 +4,7 @@ import {
   getProjectWithClient,
   getProjectDetail,
   getProjectInvoices,
+  getProjectTeam,
 } from "@/lib/actions/data";
 import { getProjectSpatialHierarchy } from "@/lib/actions/buildings";
 import { getCurrentUser } from "@/lib/actions/auth";
@@ -24,12 +25,13 @@ export default async function AdminProjectDetailPage({
 }) {
   const { id } = await params;
 
-  const [projectData, detail, invoices, spatialHierarchy, currentUser] = await Promise.all([
+  const [projectData, detail, invoices, spatialHierarchy, currentUser, team] = await Promise.all([
     getProjectWithClient(id),
     getProjectDetail(id),
     getProjectInvoices(id),
     getProjectSpatialHierarchy(id),
     getCurrentUser(),
+    getProjectTeam(id).catch(() => []),
   ]);
 
   if (!projectData) notFound();
@@ -107,6 +109,7 @@ export default async function AdminProjectDetailPage({
         issues={detail.issues}
         timeline={detail.timeline}
         invoices={invoices}
+        team={team}
         canUploadMatterport={allowMatterportUpload}
       />
     </div>

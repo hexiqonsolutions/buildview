@@ -12,8 +12,10 @@ import { ProjectIssuesSection } from "@/components/projects/project-issues-secti
 import { ProjectInvoicesSection } from "@/components/projects/project-invoices-section";
 import { TimelineView } from "@/components/projects/timeline-view";
 import { BuildingsFloorsManager } from "@/components/admin/projects/buildings-floors-manager";
+import { ProjectTeamSection } from "@/components/projects/project-team-section";
 import { useOptionalPortalWorkspace } from "@/components/portal/workspace/portal-workspace-provider";
 import type { SpatialHierarchy } from "@/lib/actions/buildings";
+import type { ProjectTeamMember } from "@/lib/actions/data";
 import type {
   ProjectTour,
   Report,
@@ -32,6 +34,7 @@ interface ProjectDetailTabsProps {
   issues: IssueWithRelations[];
   timeline: TimelineEventWithRelations[];
   invoices: Invoice[];
+  team?: ProjectTeamMember[];
   variant?: "ops" | "intel";
   projectId?: string;
   spatialHierarchy?: SpatialHierarchy;
@@ -51,6 +54,7 @@ export function ProjectDetailTabs({
   issues,
   timeline,
   invoices,
+  team = [],
   variant = "ops",
   projectId,
   spatialHierarchy,
@@ -78,6 +82,7 @@ export function ProjectDetailTabs({
         ]
       : []),
     { id: "documents", label: "Documents", badge: documents.length },
+    { id: "team", label: "Team", badge: team.length },
     ...(showConstructionTabs
       ? [
           { id: "issues", label: "Issues", badge: issues.length },
@@ -150,6 +155,16 @@ export function ProjectDetailTabs({
           uploadLabel="Upload Document"
         />
         <ProjectDocumentsSection folders={folders} documents={documents} />
+      </TabPanel>
+
+      <TabPanel value="team" className="mt-6">
+        <TabSectionHeader
+          title="Project Team"
+          description="People assigned to this project and their roles."
+          canUpload={false}
+          uploadLabel=""
+        />
+        <ProjectTeamSection members={team} />
       </TabPanel>
 
       {showConstructionTabs && (
