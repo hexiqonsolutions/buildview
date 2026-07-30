@@ -204,11 +204,7 @@ export function ProjectCommentsSection({
         )}
       >
         <div
-          className="pointer-events-none absolute inset-0 bg-gradient-to-br from-brand-accent/[0.06] via-transparent to-sky-500/[0.03]"
-          aria-hidden
-        />
-        <div
-          className="absolute inset-y-4 left-0 w-1 rounded-full bg-gradient-to-b from-brand-accent to-brand-accent/30"
+          className="absolute inset-y-4 left-0 w-1 rounded-full bg-slate-300 dark:bg-slate-700"
           aria-hidden
         />
 
@@ -219,7 +215,7 @@ export function ProjectCommentsSection({
                 Team discussion
               </p>
               <h3 className="mt-0.5 flex items-center gap-2 font-display text-base font-semibold text-slate-900 dark:text-white">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-accent/12 text-brand-accent ring-1 ring-brand-accent/15">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-slate-600 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700">
                   <MessageSquare className="h-3.5 w-3.5" />
                 </span>
                 Leave a comment for the team
@@ -230,7 +226,7 @@ export function ProjectCommentsSection({
                 <span className="rounded-full bg-slate-100 px-2.5 py-1 font-medium dark:bg-slate-800">
                   {items.length} total
                 </span>
-                <span className="rounded-full bg-amber-500/10 px-2.5 py-1 font-medium text-amber-700 dark:text-amber-300">
+                <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
                   {openCount} open
                 </span>
               </div>
@@ -263,7 +259,7 @@ export function ProjectCommentsSection({
                     {showReportOption && (
                       <SelectItem value="report">
                         <span className="inline-flex items-center gap-2">
-                          <FileText className="h-3.5 w-3.5 text-sky-600" />
+                          <FileText className="h-3.5 w-3.5 text-slate-500" />
                           Report
                         </span>
                       </SelectItem>
@@ -336,7 +332,7 @@ export function ProjectCommentsSection({
                 rows={3}
                 maxLength={4000}
                 disabled={isPending}
-                className="min-h-[96px] rounded-xl border-slate-200 bg-slate-50/60 text-sm leading-relaxed focus-visible:ring-brand-accent/30 dark:border-slate-700 dark:bg-slate-900"
+                className="min-h-[96px] rounded-xl border-slate-200 bg-slate-50/60 text-sm leading-relaxed focus-visible:ring-slate-400/30 dark:border-slate-700 dark:bg-slate-900"
               />
               <div className="flex items-center justify-between gap-2 text-[11px] text-slate-400">
                 <span>
@@ -359,7 +355,7 @@ export function ProjectCommentsSection({
             {success && (
               <p
                 role="status"
-                className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300"
+                className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
               >
                 {success}
               </p>
@@ -368,7 +364,6 @@ export function ProjectCommentsSection({
             <div className="flex justify-end">
               <Button
                 type="submit"
-                variant="accent"
                 size="sm"
                 disabled={isPending || !message.trim()}
                 className="h-9 gap-1.5 rounded-xl px-4"
@@ -426,15 +421,13 @@ export function ProjectCommentsSection({
                     "motion-safe:animate-[fadeInUp_0.4s_ease-out_both]",
                     isOpen
                       ? "border-slate-200/80 dark:border-slate-800"
-                      : "border-emerald-200/70 bg-emerald-50/20 dark:border-emerald-900/40 dark:bg-emerald-950/10"
+                      : "border-slate-300 bg-slate-50/60 dark:border-slate-700 dark:bg-slate-900/40"
                   )}
                 >
                   <div
                     className={cn(
                       "absolute inset-y-3 left-0 w-1 rounded-full",
-                      isOpen
-                        ? "bg-gradient-to-b from-amber-400 to-amber-400/30"
-                        : "bg-gradient-to-b from-emerald-500 to-emerald-400/30"
+                      isOpen ? "bg-slate-400 dark:bg-slate-500" : "bg-slate-700 dark:bg-slate-300"
                     )}
                     aria-hidden
                   />
@@ -445,14 +438,7 @@ export function ProjectCommentsSection({
                         src={comment.author?.avatar_url || undefined}
                         alt={comment.author?.full_name || "User"}
                       />
-                      <AvatarFallback
-                        className={cn(
-                          "text-xs font-semibold",
-                          authorIsStaff
-                            ? "bg-brand-accent/20 text-brand-accent"
-                            : "bg-sky-500/15 text-sky-700 dark:text-sky-300"
-                        )}
-                      >
+                      <AvatarFallback className="bg-slate-100 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                         {initials(comment.author?.full_name, comment.author?.email)}
                       </AvatarFallback>
                     </Avatar>
@@ -465,7 +451,7 @@ export function ProjectCommentsSection({
                             "Unknown user"}
                         </span>
                         {authorIsStaff && (
-                          <Badge className="gap-1 bg-brand-accent/15 text-brand-accent hover:bg-brand-accent/15">
+                          <Badge className="gap-1 bg-slate-800 text-white hover:bg-slate-800 dark:bg-slate-200 dark:text-slate-900 dark:hover:bg-slate-200">
                             <ShieldCheck className="h-3 w-3" /> BuildView Team
                           </Badge>
                         )}
@@ -473,8 +459,8 @@ export function ProjectCommentsSection({
                           className={cn(
                             "capitalize",
                             isOpen
-                              ? "bg-amber-500/10 text-amber-700 hover:bg-amber-500/10 dark:text-amber-300"
-                              : "bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-300"
+                              ? "bg-slate-100 text-slate-700 ring-1 ring-slate-200/80 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700"
+                              : "bg-slate-800 text-white hover:bg-slate-800 dark:bg-slate-200 dark:text-slate-900 dark:hover:bg-slate-200"
                           )}
                         >
                           {isOpen ? "Open" : "Resolved"}
@@ -485,14 +471,7 @@ export function ProjectCommentsSection({
                       </div>
 
                       {parsed.contextKind && parsed.contextLabel && (
-                        <div
-                          className={cn(
-                            "inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium",
-                            parsed.contextKind === "report"
-                              ? "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900/50 dark:bg-sky-950/40 dark:text-sky-300"
-                              : "border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                          )}
-                        >
+                        <div className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
                           {parsed.contextKind === "report" ? (
                             <FileText className="h-3 w-3 shrink-0" />
                           ) : (
@@ -522,7 +501,7 @@ export function ProjectCommentsSection({
                             >
                               {isOpen ? (
                                 <>
-                                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                                  <CheckCircle2 className="h-3.5 w-3.5 text-slate-700 dark:text-slate-300" />
                                   Mark Resolved
                                 </>
                               ) : (
@@ -537,7 +516,7 @@ export function ProjectCommentsSection({
                             type="button"
                             variant="ghost"
                             size="sm"
-                            className="h-8 cursor-pointer gap-1.5 rounded-lg px-2.5 text-xs text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
+                            className="h-8 cursor-pointer gap-1.5 rounded-lg px-2.5 text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                             disabled={busy}
                             onClick={() => handleDelete(comment.id)}
                           >

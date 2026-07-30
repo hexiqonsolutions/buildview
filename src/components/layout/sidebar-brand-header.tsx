@@ -31,25 +31,15 @@ export function SidebarBrandHeader({
       <div
         className={cn(
           "relative overflow-hidden border-b border-slate-200/80 dark:border-slate-800",
-          "bg-gradient-to-br from-white via-white to-slate-50/80",
-          "dark:from-slate-950 dark:via-slate-950 dark:to-slate-900/80"
+          "bg-white dark:bg-slate-950"
         )}
       >
-        <div
-          className="pointer-events-none absolute -right-6 -top-8 h-24 w-24 rounded-full bg-brand-accent/[0.07] blur-2xl"
-          aria-hidden
-        />
-        <div
-          className="absolute inset-y-3 left-0 w-1 rounded-full bg-gradient-to-b from-brand-accent to-brand-accent/25"
-          aria-hidden
-        />
-
-        <div className="relative flex items-start justify-between gap-2 px-4 py-4 pl-5 sm:px-5 sm:pl-6">
+        <div className="relative flex items-start justify-between gap-2 px-4 py-4 sm:px-5">
           <div className="min-w-0 space-y-1.5">
             <BrandLogo
               href={homeHref}
-              size="lg"
-              className="max-w-[13rem] overflow-hidden"
+              size="xl"
+              className="max-w-[15rem] overflow-hidden"
             />
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
               {tagline}

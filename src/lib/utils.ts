@@ -56,27 +56,28 @@ export function formatFileSize(bytes: number | null | undefined): string {
 }
 
 export function getStatusColor(status: string): string {
+  // Minimal slate system — differentiate by weight, not rainbow accents
   const colors: Record<string, string> = {
-    planning: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
-    in_progress: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
-    completed: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
-    on_hold: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300",
-    archived: "bg-slate-100 text-slate-500 dark:bg-slate-800/60 dark:text-slate-400",
-    suspended: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
-    open: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
-    resolved: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
-    closed: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300",
-    low: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
-    medium: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
-    high: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
-    critical: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
-    draft: "bg-gray-100 text-gray-700",
-    sent: "bg-blue-100 text-blue-800",
-    paid: "bg-green-100 text-green-800",
-    overdue: "bg-red-100 text-red-800",
-    cancelled: "bg-gray-100 text-gray-500",
+    planning: "bg-slate-100 text-slate-700 ring-1 ring-slate-200/80 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700",
+    in_progress: "bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900",
+    completed: "bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-100",
+    on_hold: "bg-slate-100 text-slate-600 ring-1 ring-dashed ring-slate-300 dark:bg-slate-800/80 dark:text-slate-400 dark:ring-slate-600",
+    archived: "bg-slate-50 text-slate-500 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-500 dark:ring-slate-800",
+    suspended: "bg-slate-100 text-slate-600 ring-1 ring-dashed ring-slate-300 dark:bg-slate-800/80 dark:text-slate-400 dark:ring-slate-600",
+    open: "bg-slate-100 text-slate-700 ring-1 ring-slate-200/80 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700",
+    resolved: "bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-100",
+    closed: "bg-slate-50 text-slate-500 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-500 dark:ring-slate-800",
+    low: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400",
+    medium: "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200",
+    high: "bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900",
+    critical: "bg-slate-950 text-white dark:bg-white dark:text-slate-950",
+    draft: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400",
+    sent: "bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-100",
+    paid: "bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900",
+    overdue: "bg-slate-950 text-white dark:bg-white dark:text-slate-950",
+    cancelled: "bg-slate-50 text-slate-500 dark:bg-slate-900 dark:text-slate-500",
   };
-  return colors[status] || "bg-gray-100 text-gray-800";
+  return colors[status] || "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
 }
 
 export function getProjectProgressPercent(status: string): number {

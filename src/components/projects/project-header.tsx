@@ -191,34 +191,17 @@ export function ProjectHeader({
   }
 
   const metaItems = [
-    location
-      ? { key: "location", label: "Location", value: location, icon: MapPin, tone: "brand" as const }
-      : null,
-    schedule
-      ? { key: "schedule", label: "Schedule", value: schedule, icon: Calendar, tone: "sky" as const }
-      : null,
+    location ? { key: "location", label: "Location", value: location, icon: MapPin } : null,
+    schedule ? { key: "schedule", label: "Schedule", value: schedule, icon: Calendar } : null,
     client?.email
-      ? {
-          key: "email",
-          label: "Contact",
-          value: client.email,
-          icon: Mail,
-          tone: "slate" as const,
-        }
+      ? { key: "email", label: "Contact", value: client.email, icon: Mail }
       : null,
   ].filter(Boolean) as Array<{
     key: string;
     label: string;
     value: string;
     icon: typeof MapPin;
-    tone: "brand" | "sky" | "slate";
   }>;
-
-  const toneStyles = {
-    brand: "bg-brand-accent/12 text-brand-accent ring-brand-accent/15",
-    sky: "bg-sky-500/12 text-sky-600 ring-sky-500/15 dark:text-sky-400",
-    slate: "bg-slate-500/12 text-slate-600 ring-slate-500/15 dark:text-slate-300",
-  };
 
   return (
     <div className="space-y-4">
@@ -243,11 +226,7 @@ export function ProjectHeader({
         )}
       >
         <div
-          className="pointer-events-none absolute inset-0 bg-gradient-to-br from-brand-accent/[0.07] via-transparent to-sky-500/[0.04]"
-          aria-hidden
-        />
-        <div
-          className="absolute inset-y-4 left-0 w-1 rounded-full bg-gradient-to-b from-brand-accent to-brand-accent/30"
+          className="absolute inset-y-4 left-0 w-1 rounded-full bg-slate-300 dark:bg-slate-700"
           aria-hidden
         />
 
@@ -281,7 +260,7 @@ export function ProjectHeader({
 
               {clientLabel && (
                 <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-slate-200/80 bg-slate-50/80 px-3 py-1.5 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-accent/15 text-brand-accent">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
                     <Building2 className="h-3.5 w-3.5" />
                   </span>
                   <span className="truncate font-medium">{clientLabel}</span>
@@ -304,7 +283,7 @@ export function ProjectHeader({
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-brand-accent to-brand-accent/70 transition-[width] duration-500 ease-out"
+                    className="h-full rounded-full bg-slate-800 transition-[width] duration-500 ease-out dark:bg-slate-200"
                     style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
                   />
                 </div>
@@ -316,14 +295,9 @@ export function ProjectHeader({
                 {metaItems.map((item) => (
                   <div
                     key={item.key}
-                    className="flex items-start gap-3 rounded-xl border border-slate-200/70 bg-white/80 px-3 py-2.5 transition-colors duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-slate-700"
+                    className="flex items-start gap-3 rounded-xl border border-slate-200/70 bg-slate-50/50 px-3 py-2.5 transition-colors duration-200 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900/50 dark:hover:border-slate-700"
                   >
-                    <span
-                      className={cn(
-                        "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ring-1",
-                        toneStyles[item.tone]
-                      )}
-                    >
+                    <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-slate-600 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700">
                       <item.icon className="h-4 w-4" aria-hidden />
                     </span>
                     <div className="min-w-0">
@@ -334,7 +308,7 @@ export function ProjectHeader({
                         {item.key === "email" ? (
                           <a
                             href={`mailto:${item.value}`}
-                            className="transition-colors hover:text-brand-accent"
+                            className="transition-colors hover:text-slate-950 dark:hover:text-white"
                           >
                             {item.value}
                           </a>

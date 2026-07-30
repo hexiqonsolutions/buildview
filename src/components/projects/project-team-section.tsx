@@ -19,12 +19,9 @@ function initials(name?: string | null, email?: string | null) {
 
 function roleBadgeClass(role: UserRole) {
   if (isBuildViewStaffRole(role)) {
-    return "bg-brand-accent/15 text-brand-accent hover:bg-brand-accent/15";
+    return "bg-slate-800 text-white hover:bg-slate-800 dark:bg-slate-200 dark:text-slate-900 dark:hover:bg-slate-200";
   }
-  if (role === "client_admin" || role === "site_supervisor" || role === "site_engineer") {
-    return "bg-blue-500/10 text-blue-700 dark:text-blue-300 hover:bg-blue-500/10";
-  }
-  return "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 hover:bg-slate-100";
+  return "bg-slate-100 text-slate-600 ring-1 ring-slate-200/80 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700";
 }
 
 export function ProjectTeamSection({ members }: { members: ProjectTeamMember[] }) {
@@ -54,14 +51,7 @@ export function ProjectTeamSection({ members }: { members: ProjectTeamMember[] }
                 src={member.avatar_url || undefined}
                 alt={member.full_name || member.email}
               />
-              <AvatarFallback
-                className={cn(
-                  "text-xs font-semibold",
-                  isBuildViewStaffRole(member.role)
-                    ? "bg-brand-accent/20 text-brand-accent"
-                    : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
-                )}
-              >
+              <AvatarFallback className="bg-slate-100 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                 {initials(member.full_name, member.email)}
               </AvatarFallback>
             </Avatar>
