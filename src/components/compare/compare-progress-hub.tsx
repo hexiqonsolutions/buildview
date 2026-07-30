@@ -374,89 +374,16 @@ export function CompareProgressHub({
         </div>
       )}
 
-      {/* Filter toolbar */}
-      <div className="compare-card p-3">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex flex-wrap items-center gap-2">
-            {isAdmin && (
-              <FilterSelect
-                label="Client"
-                value={clientId || "_none"}
-                onChange={(v) => setClientId(v === "_none" ? "" : v)}
-                options={
-                  clients.length > 0
-                    ? clients.map((c) => ({ value: c.id, label: c.name }))
-                    : [{ value: "_none", label: "—" }]
-                }
-                width="w-[140px]"
-              />
-            )}
-            <FilterSelect
-              label="Project"
-              value={projectId || "_none"}
-              onChange={(v) => {
-                if (v === "_none") return;
-                handleProjectChange(v);
-              }}
-              options={
-                clientProjects.length > 0
-                  ? clientProjects.map((p) => ({ value: p.id, label: p.name }))
-                  : [{ value: "_none", label: "—" }]
-              }
-              width="w-[160px]"
-            />
-            <FilterSelect
-              label="Building"
-              value={building}
-              onChange={handleBuildingChange}
-              options={[
-                { value: "all", label: "All Buildings" },
-                ...buildings.map((b) => ({ value: b, label: b })),
-              ]}
-              width="w-[130px]"
-            />
-            <FilterSelect
-              label="Floor"
-              value={floor}
-              onChange={handleFloorChange}
-              options={[
-                { value: "all", label: "All Floors" },
-                ...floors.map((f) => ({ value: f, label: f })),
-              ]}
-              width="w-[120px]"
-            />
-            <FilterSelect
-              label="Scan A"
-              value={scanAId || "_none"}
-              onChange={(v) => setScanAId(v === "_none" ? "" : v)}
-              options={
-                projectTours.filter((t) => t.id !== scanBId).length > 0
-                  ? projectTours
-                      .filter((t) => t.id !== scanBId)
-                      .map((t) => ({
-                        value: t.id,
-                        label: formatTourScanLabel(t),
-                      }))
-                  : [{ value: "_none", label: "No scans for this project" }]
-              }
-              width="w-[220px]"
-            />
-            <FilterSelect
-              label="Scan B"
-              value={scanBId || "_none"}
-              onChange={(v) => setScanBId(v === "_none" ? "" : v)}
-              options={
-                projectTours.filter((t) => t.id !== scanAId).length > 0
-                  ? projectTours
-                      .filter((t) => t.id !== scanAId)
-                      .map((t) => ({
-                        value: t.id,
-                        label: formatTourScanLabel(t),
-                      }))
-                  : [{ value: "_none", label: "No scans for this project" }]
-              }
-              width="w-[220px]"
-            />
+      {/* Filter toolbar — scoped rows, actions in header */}
+      <div className="compare-card overflow-hidden">
+        <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Comparison setup
+            </p>
+            <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
+              Choose project scope, then pick Scan A and Scan B
+            </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {saved.length > 0 && (
@@ -467,7 +394,7 @@ export function CompareProgressHub({
                     if (entry) restoreSaved(entry);
                   }}
                 >
-                  <SelectTrigger className="h-9 w-[150px] text-xs">
+                  <SelectTrigger className="h-9 w-[150px] cursor-pointer text-xs">
                     <SelectValue placeholder="Load saved…" />
                   </SelectTrigger>
                   <SelectContent>
@@ -482,14 +409,14 @@ export function CompareProgressHub({
                   variant="outline"
                   size="sm"
                   onClick={() => setManageOpen(true)}
-                  className="h-9"
+                  className="h-9 cursor-pointer"
                 >
                   <List className="mr-1.5 h-4 w-4" />
                   Manage
                 </Button>
               </>
             )}
-            <Button variant="ghost" size="sm" onClick={resetAll}>
+            <Button variant="ghost" size="sm" onClick={resetAll} className="h-9 cursor-pointer">
               <RotateCcw className="mr-1.5 h-4 w-4" />
               Reset
             </Button>
@@ -498,13 +425,14 @@ export function CompareProgressHub({
               size="sm"
               onClick={() => window.print()}
               disabled={isBlankUi || !snapshot}
+              className="h-9 cursor-pointer"
             >
               <Download className="mr-1.5 h-4 w-4" />
-              Export Report
+              Export
             </Button>
             <Button
               size="sm"
-              className="bg-slate-900 hover:bg-slate-800"
+              className="h-9 cursor-pointer bg-slate-900 hover:bg-slate-800"
               onClick={() => (snapshot ? setSaveOpen(true) : runCompare())}
               disabled={isPending || !scanAId || !scanBId || scanAId === scanBId}
             >
@@ -515,8 +443,106 @@ export function CompareProgressHub({
               ) : (
                 <Columns2 className="mr-1.5 h-4 w-4" />
               )}
-              {snapshot ? "Save Comparison" : "Compare"}
+              {snapshot ? "Save" : "Compare"}
             </Button>
+          </div>
+        </div>
+
+        <div className="space-y-5 p-4">
+          <div>
+            <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+              Scope
+            </p>
+            <div
+              className={cn(
+                "grid gap-3",
+                isAdmin
+                  ? "grid-cols-1 sm:grid-cols-2 xl:grid-cols-4"
+                  : "grid-cols-1 sm:grid-cols-3"
+              )}
+            >
+              {isAdmin && (
+                <FilterSelect
+                  label="Client"
+                  value={clientId || "_none"}
+                  onChange={(v) => setClientId(v === "_none" ? "" : v)}
+                  options={
+                    clients.length > 0
+                      ? clients.map((c) => ({ value: c.id, label: c.name }))
+                      : [{ value: "_none", label: "—" }]
+                  }
+                />
+              )}
+              <FilterSelect
+                label="Project"
+                value={projectId || "_none"}
+                onChange={(v) => {
+                  if (v === "_none") return;
+                  handleProjectChange(v);
+                }}
+                options={
+                  clientProjects.length > 0
+                    ? clientProjects.map((p) => ({ value: p.id, label: p.name }))
+                    : [{ value: "_none", label: "—" }]
+                }
+              />
+              <FilterSelect
+                label="Building"
+                value={building}
+                onChange={handleBuildingChange}
+                options={[
+                  { value: "all", label: "All Buildings" },
+                  ...buildings.map((b) => ({ value: b, label: b })),
+                ]}
+              />
+              <FilterSelect
+                label="Floor"
+                value={floor}
+                onChange={handleFloorChange}
+                options={[
+                  { value: "all", label: "All Floors" },
+                  ...floors.map((f) => ({ value: f, label: f })),
+                ]}
+              />
+            </div>
+          </div>
+
+          <div className="border-t border-slate-100 pt-4 dark:border-slate-800">
+            <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+              Scans to compare
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <FilterSelect
+                label="Scan A"
+                value={scanAId || "_none"}
+                onChange={(v) => setScanAId(v === "_none" ? "" : v)}
+                options={
+                  projectTours.filter((t) => t.id !== scanBId).length > 0
+                    ? projectTours
+                        .filter((t) => t.id !== scanBId)
+                        .map((t) => ({
+                          value: t.id,
+                          label: formatTourScanLabel(t),
+                        }))
+                    : [{ value: "_none", label: "No scans for this project" }]
+                }
+              />
+              <FilterSelect
+                label="Scan B"
+                value={scanBId || "_none"}
+                onChange={(v) => setScanBId(v === "_none" ? "" : v)}
+                options={
+                  projectTours.filter((t) => t.id !== scanAId).length > 0
+                    ? projectTours
+                        .filter((t) => t.id !== scanAId)
+                        .map((t) => ({
+                          value: t.id,
+                          label: formatTourScanLabel(t),
+                        }))
+                    : [{ value: "_none", label: "No scans for this project" }]
+                }
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -813,19 +839,21 @@ function FilterSelect({
   value,
   onChange,
   options,
-  width,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   options: { value: string; label: string }[];
-  width: string;
 }) {
+  const fieldId = `compare-filter-${label.toLowerCase().replace(/\s+/g, "-")}`;
+
   return (
-    <div className={cn("space-y-0.5", width)}>
-      <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">{label}</p>
+    <div className="min-w-0 space-y-1.5">
+      <label htmlFor={fieldId} className="text-[11px] font-medium text-slate-600 dark:text-slate-400">
+        {label}
+      </label>
       <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="h-9 text-xs">
+        <SelectTrigger id={fieldId} className="h-10 w-full cursor-pointer text-sm">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
