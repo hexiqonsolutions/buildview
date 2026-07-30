@@ -215,23 +215,28 @@ export default function HomePage() {
       <section className="relative -mt-[4.5rem] min-h-svh overflow-hidden text-white lg:-mt-20">
         <HeroCaptureVideo />
 
-        <div className="site-container relative flex min-h-svh flex-col justify-center pb-24 pt-28 lg:pb-28 lg:pt-32">
+        <div className="site-container relative z-10 flex min-h-svh flex-col justify-center pb-24 pt-28 lg:pb-28 lg:pt-32">
           <div className="max-w-3xl">
             <p className="font-display text-2xl font-semibold tracking-tight text-brand-accent motion-safe:animate-hero-rise md:text-3xl lg:text-4xl">
               BuildView
             </p>
-            <h1 className="mt-4 font-display text-4xl font-bold leading-[1.08] tracking-tight motion-safe:animate-hero-rise md:text-5xl lg:text-6xl lg:leading-[1.05] [animation-delay:80ms]">
+            <h1 className="mt-4 font-display text-4xl font-bold leading-[1.08] tracking-tight text-white motion-safe:animate-hero-rise md:text-5xl lg:text-6xl lg:leading-[1.05] [animation-delay:80ms]">
               See your site clearly.
-              <span className="mt-1 block text-white/95 sm:mt-0 sm:inline sm:before:content-['\00a0']">
+              <span className="mt-1 block text-white sm:mt-0 sm:inline sm:before:content-['\00a0']">
                 Decide faster.
               </span>
             </h1>
-            <p className="mt-6 max-w-xl text-lg leading-relaxed text-slate-200/90 motion-safe:animate-hero-rise md:text-xl [animation-delay:160ms]">
+            <p className="mt-6 max-w-xl text-lg leading-relaxed text-slate-100 motion-safe:animate-hero-rise md:text-xl [animation-delay:160ms]">
               Matterport virtual tours, progress reports, documents, and issue tracking — unified in
               one professional construction portal.
             </p>
             <div className="mt-9 flex flex-col gap-3 motion-safe:animate-hero-rise sm:flex-row sm:items-center [animation-delay:240ms]">
-              <Button variant="accent" size="lg" className="shadow-glow" asChild>
+              <Button
+                variant="accent"
+                size="lg"
+                className="shadow-glow text-brand-primary hover:text-brand-primary"
+                asChild
+              >
                 <Link href="/contact">
                   Book a Demo <ArrowRight className="h-5 w-5" />
                 </Link>
@@ -239,7 +244,7 @@ export default function HomePage() {
               <Button
                 size="lg"
                 variant="outline"
-                className="border-white/30 bg-white/5 text-white backdrop-blur-sm hover:bg-white/12 hover:text-white"
+                className="border-white/40 bg-white/10 text-white shadow-none backdrop-blur-sm hover:border-white/55 hover:bg-white/15 hover:text-white"
                 asChild
               >
                 <Link href="/projects">
@@ -249,7 +254,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="pointer-events-none absolute bottom-8 left-1/2 hidden -translate-x-1/2 flex-col items-center gap-2 text-white/50 motion-safe:animate-fade-in md:flex [animation-delay:700ms]">
+          <div className="pointer-events-none absolute bottom-8 left-1/2 z-10 hidden -translate-x-1/2 flex-col items-center gap-2 text-white/60 motion-safe:animate-fade-in md:flex [animation-delay:700ms]">
             <span className="text-[10px] font-semibold uppercase tracking-[0.22em]">Scroll</span>
             <span className="h-8 w-px bg-gradient-to-b from-brand-accent/80 to-transparent" />
           </div>
