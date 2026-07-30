@@ -814,19 +814,50 @@ export async function attachInvoicePdf(
 
 export async function getInvoiceDownloadUrl(invoiceId: string) {
   const supabase = await createClient();
-  const { data: invoice } = await supabase
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("You must be signed in");
+
+  // Table RLS: staff see all; client_admin see their org invoices only.
+  const { data: invoice, error } = await supabase
     .from("invoices")
     .select("storage_path, file_url, invoice_number")
     .eq("id", invoiceId)
+    .is("deleted_at", null)
     .single();
 
-  if (!invoice) throw new Error("Invoice not found");
+  if (error || !invoice) {
+    throw new Error("Invoice not found or you do not have access");
+  }
 
   const path = resolveInvoiceStoragePath(invoice.storage_path, invoice.file_url);
-  if (!path) throw new Error("No PDF attached to this invoice");
+  const fileName = `${invoice.invoice_number || "invoice"}.pdf`;
 
-  const url = await createSignedStorageUrl("documents", path);
-  return { url, fileName: `${invoice.invoice_number}.pdf` };
+  if (!path) {
+    if (invoice.file_url?.startsWith("http")) {
+      return { url: invoice.file_url, fileName };
+    }
+    throw new Error("No PDF attached to this invoice");
+  }
+
+  try {
+    const url = await createSignedStorageUrl("documents", path);
+    return { url, fileName };
+  } catch {
+    // Invoice paths are {clientId}/invoices/... — documents bucket SELECT is
+    // project-scoped, so client users need a service-role signed URL after RLS.
+    const admin = createServiceRoleClient();
+    const { data, error: signError } = await admin.storage
+      .from("documents")
+      .createSignedUrl(path, 3600);
+
+    if (signError || !data?.signedUrl) {
+      throw new Error(signError?.message ?? "Failed to generate download URL");
+    }
+
+    return { url: data.signedUrl, fileName };
+  }
 }
 
 export async function assignUserToProject(projectId: string, userId: string) {

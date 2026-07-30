@@ -8,11 +8,11 @@ import { HighlightAnchor } from "@/components/portal/highlight-anchor";
 import { IntelPage } from "@/components/intel/pages/intel-page";
 import { EmptyState } from "@/components/patterns/page-states";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Download, ReceiptIndianRupee } from "lucide-react";
+import { ReceiptIndianRupee } from "lucide-react";
 import { formatDate, formatStatus, getStatusColor, formatCurrency } from "@/lib/utils";
 import { getCurrentUser } from "@/lib/actions/auth";
 import { canViewClientInvoices } from "@/lib/auth/permissions";
+import { InvoiceDownloadButton } from "@/components/invoices/invoice-download-button";
 
 export const dynamic = "force-dynamic";
 
@@ -73,14 +73,10 @@ export default async function InvoicesPage({
                       <p className="mt-1 text-sm text-slate-500">{invoice.description}</p>
                     )}
                   </div>
-                  {invoice.file_url && (
-                    <Button variant="outline" size="sm" asChild className="shrink-0">
-                      <a href={invoice.file_url} download target="_blank" rel="noopener noreferrer">
-                        <Download className="mr-2 h-4 w-4" />
-                        Download
-                      </a>
-                    </Button>
-                  )}
+                  <InvoiceDownloadButton
+                    invoiceId={invoice.id}
+                    hasFile={Boolean(invoice.storage_path || invoice.file_url)}
+                  />
                 </div>
               </HighlightAnchor>
             ))}

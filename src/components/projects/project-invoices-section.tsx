@@ -1,7 +1,7 @@
-import { Download, ReceiptIndianRupee } from "lucide-react";
+import { ReceiptIndianRupee } from "lucide-react";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { InvoiceDownloadButton } from "@/components/invoices/invoice-download-button";
 import { formatCurrency, formatDate, formatStatus, getStatusColor } from "@/lib/utils";
 import type { Invoice } from "@/lib/types";
 
@@ -35,14 +35,10 @@ export function ProjectInvoicesSection({ invoices }: { invoices: Invoice[] }) {
               <span>Issued {formatDate(invoice.issued_date)}</span>
             </div>
           </div>
-          {invoice.file_url && (
-            <Button variant="outline" size="sm" asChild>
-              <a href={invoice.file_url} download target="_blank" rel="noopener noreferrer">
-                <Download className="mr-2 h-4 w-4" />
-                Download
-              </a>
-            </Button>
-          )}
+          <InvoiceDownloadButton
+            invoiceId={invoice.id}
+            hasFile={Boolean(invoice.storage_path || invoice.file_url)}
+          />
         </div>
       ))}
     </div>
