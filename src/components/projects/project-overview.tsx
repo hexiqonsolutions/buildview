@@ -111,12 +111,7 @@ export function ProjectOverview({
                 isAlert && "border-slate-300 dark:border-slate-600"
               )}
             >
-              <div
-                className="absolute inset-y-3 left-0 w-1 rounded-full bg-slate-300/80 transition-colors duration-200 group-hover:bg-slate-500 dark:bg-slate-700 dark:group-hover:bg-slate-500"
-                aria-hidden
-              />
-
-              <div className="relative flex items-start gap-3 p-4 pl-5 sm:p-5 sm:pl-6">
+              <div className="relative flex items-start gap-3 p-4 sm:p-5">
                 <div className="min-w-0 flex-1">
                   <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400">
                     {stat.label}

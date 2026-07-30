@@ -225,12 +225,7 @@ export function ProjectHeader({
           "motion-safe:animate-[fadeInUp_0.4s_ease-out_both]"
         )}
       >
-        <div
-          className="absolute inset-y-4 left-0 w-1 rounded-full bg-slate-300 dark:bg-slate-700"
-          aria-hidden
-        />
-
-        <div className="relative p-5 pl-6 sm:p-6 sm:pl-7">
+        <div className="relative p-5 sm:p-6">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
             <div className="min-w-0 flex-1 space-y-4">
               <div className="flex flex-wrap items-start justify-between gap-3">

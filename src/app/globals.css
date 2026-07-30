@@ -333,11 +333,6 @@
     @apply bg-slate-900 text-white hover:bg-slate-800 hover:text-white dark:bg-white dark:text-slate-900 dark:shadow-none dark:hover:bg-slate-100 dark:hover:text-slate-900;
   }
 
-  .intel-nav-item-active::before {
-    content: "";
-    @apply absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-brand-accent;
-  }
-
   .intel-hero-strip {
     border-radius: var(--bv-radius-card);
     box-shadow: var(--bv-shadow-sm);

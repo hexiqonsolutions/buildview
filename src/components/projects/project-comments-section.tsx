@@ -203,12 +203,7 @@ export function ProjectCommentsSection({
           "motion-safe:animate-[fadeInUp_0.4s_ease-out_both]"
         )}
       >
-        <div
-          className="absolute inset-y-4 left-0 w-1 rounded-full bg-slate-300 dark:bg-slate-700"
-          aria-hidden
-        />
-
-        <div className="relative space-y-4 p-5 pl-6 sm:p-6 sm:pl-7">
+        <div className="relative space-y-4 p-5 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
@@ -424,15 +419,7 @@ export function ProjectCommentsSection({
                       : "border-slate-300 bg-slate-50/60 dark:border-slate-700 dark:bg-slate-900/40"
                   )}
                 >
-                  <div
-                    className={cn(
-                      "absolute inset-y-3 left-0 w-1 rounded-full",
-                      isOpen ? "bg-slate-400 dark:bg-slate-500" : "bg-slate-700 dark:bg-slate-300"
-                    )}
-                    aria-hidden
-                  />
-
-                  <div className="flex gap-3 p-4 pl-5 sm:p-5 sm:pl-6">
+                  <div className="flex gap-3 p-4 sm:p-5">
                     <Avatar className="mt-0.5 h-10 w-10 shrink-0 ring-2 ring-white dark:ring-slate-900">
                       <AvatarImage
                         src={comment.author?.avatar_url || undefined}
