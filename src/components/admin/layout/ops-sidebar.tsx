@@ -18,13 +18,11 @@ import {
   Bell,
   Activity,
   Settings,
-  X,
   ExternalLink,
   BarChart3,
   UserCog,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { BrandLogo } from "@/components/brand/brand-logo";
 import {
   useAdminWorkspaceHref,
   useAdminWorkspaceQuery,
@@ -35,6 +33,7 @@ import { filterNavByRole } from "@/lib/auth/nav-permissions";
 import type { PermissionResource } from "@/lib/auth/permissions";
 import type { UserRole } from "@/lib/types";
 import { MobileNavDrawer } from "@/components/layout/mobile-nav-drawer";
+import { SidebarBrandHeader } from "@/components/layout/sidebar-brand-header";
 
 const navSections: Array<{
   label: string;
@@ -99,38 +98,19 @@ export function OpsSidebar({ userRole, mobileOpen, onMobileClose }: OpsSidebarPr
 
   const content = (
     <>
-      <div className="flex min-h-[68px] items-start justify-between border-b border-slate-200/80 px-4 pb-2.5 pt-3 dark:border-slate-800">
-        <div className="min-w-0">
-          <BrandLogo href={homeHref} size="md" className="mt-1 max-w-[10rem]" />
-          <p className="mt-0.5 text-[10px] font-medium uppercase tracking-widest text-slate-400">
-            Control Center
-          </p>
-        </div>
-        {onMobileClose && (
-          <button
-            type="button"
-            onClick={onMobileClose}
-            className="mt-1 rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 lg:hidden"
-            aria-label="Close menu"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        )}
-      </div>
-
-      {hydrated && client && (
-        <div className="border-b border-slate-200/80 px-4 py-3 dark:border-slate-800">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-            Active Workspace
-          </p>
-          <p className="mt-1 truncate text-sm font-semibold text-slate-900 dark:text-white">
-            {client.company_name || client.name}
-          </p>
-          {project && (
-            <p className="truncate text-xs text-slate-500">{project.name}</p>
-          )}
-        </div>
-      )}
+      <SidebarBrandHeader
+        homeHref={homeHref}
+        tagline="Control Center"
+        onMobileClose={onMobileClose}
+        workspace={
+          hydrated && client
+            ? {
+                title: client.company_name || client.name,
+                subtitle: project?.name ?? null,
+              }
+            : null
+        }
+      />
 
       <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-4">
         {navSections.map((section) => {

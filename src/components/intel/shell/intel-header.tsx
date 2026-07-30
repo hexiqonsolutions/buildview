@@ -98,7 +98,7 @@ export function IntelHeader({
           >
             {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
-          <BrandLogo href={homeHref} size="md" className="min-w-0 max-w-[7.5rem] shrink" />
+          <BrandLogo href={homeHref} size="lg" className="min-w-0 max-w-[10rem] shrink overflow-hidden" />
         </div>
 
         <div className="hidden min-w-0 flex-1 lg:block">
