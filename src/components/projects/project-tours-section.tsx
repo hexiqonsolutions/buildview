@@ -11,7 +11,6 @@ import {
   Camera,
   Building2,
   Layers,
-  ChevronDown,
 } from "lucide-react";
 import { MatterportViewer } from "@/components/projects/MatterportViewer";
 import { MatterportCompare } from "@/components/projects/matterport-compare";
@@ -57,28 +56,6 @@ function hasSpatialData(tours: ProjectTour[]): boolean {
     const f = getTourDisplayFields(t);
     return f.building || f.floor;
   });
-}
-
-function TourSpatialBadge({ tour }: { tour: ProjectTour }) {
-  const fields = getTourDisplayFields(tour);
-  if (!fields.building && !fields.floor) return null;
-
-  return (
-    <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400">
-      {fields.building && (
-        <span className="inline-flex items-center gap-0.5 rounded bg-slate-100 px-1.5 py-0.5 dark:bg-slate-800">
-          <Building2 className="h-2.5 w-2.5" />
-          {fields.building}
-        </span>
-      )}
-      {fields.floor && (
-        <span className="inline-flex items-center gap-0.5 rounded bg-slate-100 px-1.5 py-0.5 dark:bg-slate-800">
-          <Layers className="h-2.5 w-2.5" />
-          {fields.floor}
-        </span>
-      )}
-    </div>
-  );
 }
 
 export function ProjectToursSection({
@@ -144,7 +121,7 @@ export function ProjectToursSection({
                 setSelectedId(tours[0]?.id ?? "");
               }}
               className={cn(
-                "rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-all",
+                "cursor-pointer rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-all",
                 !filterGroup
                   ? "border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900"
                   : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
@@ -163,7 +140,7 @@ export function ProjectToursSection({
                     setSelectedId(g.tours[0]?.id ?? "");
                   }}
                   className={cn(
-                    "inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-all",
+                    "inline-flex cursor-pointer items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-all",
                     filterGroup === g.key
                       ? "border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900"
                       : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
@@ -172,6 +149,96 @@ export function ProjectToursSection({
                   {g.building && <Building2 className="h-3 w-3" />}
                   {g.floor && <Layers className="h-3 w-3" />}
                   {label} ({g.tours.length})
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {tours.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-end justify-between gap-2">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                {isPortfolio ? "Walkthrough library" : "Project scans"}
+              </p>
+              <h3 className="mt-0.5 font-display text-sm font-semibold text-slate-900 dark:text-white">
+                {isPortfolio
+                  ? `${tours.length} walkthrough${tours.length === 1 ? "" : "s"}`
+                  : `All scans (${tours.length})`}
+              </h3>
+            </div>
+            {filterGroup && (
+              <p className="text-xs text-slate-500">
+                Showing {visibleTours.length} of {tours.length}
+              </p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {visibleTours.map((tour) => {
+              const fields = getTourDisplayFields(tour);
+              const selected = tour.id === selectedTour.id;
+              return (
+                <button
+                  key={tour.id}
+                  type="button"
+                  onClick={() => setSelectedId(tour.id)}
+                  className={cn(
+                    "group overflow-hidden rounded-2xl border bg-white text-left transition-all duration-200",
+                    "hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md",
+                    "dark:bg-slate-900/60 dark:hover:border-slate-600",
+                    "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/40",
+                    selected
+                      ? "border-slate-900 ring-2 ring-slate-900/20 dark:border-white dark:ring-white/20"
+                      : "border-slate-200/80 dark:border-slate-800"
+                  )}
+                >
+                  <div className="relative aspect-[16/10] bg-slate-100 dark:bg-slate-800">
+                    {tour.thumbnail_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={tour.thumbnail_url}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center">
+                        <Camera className="h-8 w-8 text-slate-300 dark:text-slate-600" />
+                      </div>
+                    )}
+                    {selected && (
+                      <span className="absolute left-2 top-2 rounded-full bg-slate-900 px-2 py-0.5 text-[10px] font-semibold text-white dark:bg-white dark:text-slate-900">
+                        Viewing
+                      </span>
+                    )}
+                  </div>
+                  <div className="space-y-1.5 p-3">
+                    <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
+                      {tour.name}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500">
+                      {tour.capture_date && (
+                        <span className="inline-flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {formatDate(tour.capture_date)}
+                        </span>
+                      )}
+                      {fields.building && (
+                        <span className="inline-flex items-center gap-1">
+                          <Building2 className="h-3 w-3" />
+                          {fields.building}
+                        </span>
+                      )}
+                      {fields.floor && (
+                        <span className="inline-flex items-center gap-1">
+                          <Layers className="h-3 w-3" />
+                          {fields.floor}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </button>
               );
             })}
@@ -219,7 +286,7 @@ export function ProjectToursSection({
               {!isPortfolio && tours.length > 1 && (
                 <Button variant="outline" size="sm" onClick={() => setComparing(true)}>
                   <Columns2 className="mr-1.5 h-4 w-4" />
-                  Compare
+                  Compare scans
                 </Button>
               )}
               <Button variant="outline" size="sm" asChild>
@@ -237,11 +304,14 @@ export function ProjectToursSection({
                     variant="default"
                     size="sm"
                     className="bg-slate-900 hover:bg-slate-800"
-                    onClick={() =>
+                    onClick={() => {
+                      const a = selectedTour.id;
+                      const b =
+                        tours.find((t) => t.id !== a)?.id ?? tours[0]?.id ?? a;
                       router.push(
-                        `/dashboard/matterport-comparison?project=${pid}&scanA=${tours[0]?.id ?? ""}&scanB=${tours[1]?.id ?? tours[0]?.id ?? ""}`
-                      )
-                    }
+                        `/dashboard/matterport-comparison?project=${pid}&scanA=${a}&scanB=${b}`
+                      );
+                    }}
                   >
                     <Maximize2 className="mr-1.5 h-4 w-4" />
                     Full Compare
@@ -257,37 +327,6 @@ export function ProjectToursSection({
           </div>
         </div>
       </div>
-
-      {visibleTours.length > 1 && (
-        <div className="space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-            {isPortfolio ? `Walkthroughs (${visibleTours.length})` : `All Scans (${visibleTours.length})`}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {visibleTours.map((tour) => (
-              <button
-                key={tour.id}
-                type="button"
-                onClick={() => setSelectedId(tour.id)}
-                className={cn(
-                  "rounded-xl border px-3 py-2 text-left text-sm transition-all",
-                  tour.id === selectedTour.id
-                    ? "border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900"
-                    : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
-                )}
-              >
-                <span className="font-medium">{tour.name}</span>
-                {tour.capture_date && (
-                  <span className="mt-0.5 block text-xs opacity-70">
-                    {formatDate(tour.capture_date)}
-                  </span>
-                )}
-                <TourSpatialBadge tour={tour} />
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

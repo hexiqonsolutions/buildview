@@ -87,3 +87,17 @@ export function getTourDisplayFields(tour: ProjectTour) {
     notes: parsed.notes ?? null,
   };
 }
+
+/** Label for scan pickers (compare, filters) — name first, then date/location. */
+export function formatTourScanLabel(tour: ProjectTour): string {
+  const fields = getTourDisplayFields(tour);
+  const date = tour.capture_date
+    ? new Date(tour.capture_date).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : null;
+  const place = [fields.building, fields.floor].filter(Boolean).join(" · ");
+  return [tour.name, date, place || null].filter(Boolean).join(" · ");
+}

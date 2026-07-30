@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TabWorkspace, TabPanel } from "@/components/patterns/tab-workspace";
@@ -65,13 +66,23 @@ export function ProjectDetailTabs({
   const portal = useOptionalPortalWorkspace();
   const isPortfolioIntel = variant === "intel" && portal?.dashboardType === "portfolio";
   const showConstructionTabs = variant === "ops" || !isPortfolioIntel;
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   const openIssueCount = issues.filter(
     (i) => i.status === "open" || i.status === "in_progress"
   ).length;
 
+  const openScansTab = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", "scans");
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
   const tabs = [
     { id: "overview", label: "Overview" },
+    { id: "scans", label: isPortfolioIntel ? "Walkthroughs" : "Scans", badge: tours.length },
     ...(variant === "ops"
       ? [{ id: "spatial", label: "Buildings", badge: spatialHierarchy?.buildings.length }]
       : []),
@@ -96,7 +107,7 @@ export function ProjectDetailTabs({
   return (
     <TabWorkspace variant={variant} defaultTab="overview" tabs={tabs}>
       <TabPanel value="overview" className="mt-6 space-y-8">
-        {projectId ? (
+        {isPortfolioIntel && projectId ? (
           <ProjectMatterportPanel
             projectId={projectId}
             tours={tours}
@@ -112,6 +123,37 @@ export function ProjectDetailTabs({
             openIssueCount={openIssueCount}
           />
         )}
+
+        {!isPortfolioIntel && projectId && tours.length > 0 ? (
+          <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/40">
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              This project has{" "}
+              <span className="font-semibold text-slate-900 dark:text-white">
+                {tours.length} Matterport scan{tours.length === 1 ? "" : "s"}
+              </span>
+              . Open the Scans tab to browse the full library and compare any two.
+            </p>
+            <Button variant="outline" size="sm" className="mt-2" onClick={openScansTab}>
+              View all scans
+            </Button>
+          </div>
+        ) : !isPortfolioIntel && projectId && tours.length === 0 ? (
+          <ProjectMatterportPanel
+            projectId={projectId}
+            tours={tours}
+            canUpload={canUploadMatterport}
+          />
+        ) : null}
+      </TabPanel>
+
+      <TabPanel value="scans" className="mt-6">
+        {projectId ? (
+          <ProjectMatterportPanel
+            projectId={projectId}
+            tours={tours}
+            canUpload={canUploadMatterport}
+          />
+        ) : null}
       </TabPanel>
 
       {variant === "ops" && projectId && spatialHierarchy && (

@@ -27,14 +27,14 @@ export function ProjectMatterportPanel({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="font-display text-lg font-semibold text-slate-900 dark:text-white md:text-xl">
-            {isPortfolio ? "Virtual walkthrough" : "Matterport walkthrough"}
+            {isPortfolio ? "Virtual walkthroughs" : "Project scans"}
           </h2>
           <p className="text-sm text-slate-500">
             {canUpload
-              ? "Paste a Matterport share link to embed it on this project for clients."
+              ? "Paste Matterport share links to add scans. Clients can browse the full library and compare any two."
               : isPortfolio
-                ? "Step inside this space with an immersive 360° Matterport tour."
-                : "Explore the immersive 3D tour for this project."}
+                ? "Step inside this space with immersive 360° Matterport walkthroughs."
+                : "Browse every Matterport scan for this project, then compare any two side by side."}
           </p>
         </div>
         {canUpload && <ProjectMatterportUploader projectId={projectId} />}

@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { MatterportViewer } from "@/components/projects/MatterportViewer";
+import { formatTourScanLabel } from "@/lib/comparison/metadata";
 import { formatDate } from "@/lib/utils";
 import type { ProjectTour } from "@/lib/types";
 
@@ -41,7 +42,7 @@ function TourPicker({
         <SelectContent>
           {tours.map((tour) => (
             <SelectItem key={tour.id} value={tour.id}>
-              {tour.name}
+              {formatTourScanLabel(tour)}
             </SelectItem>
           ))}
         </SelectContent>

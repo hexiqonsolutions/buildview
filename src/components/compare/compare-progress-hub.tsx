@@ -13,6 +13,9 @@ import {
   CalendarRange,
   Trash2,
   List,
+  Calendar,
+  Building2,
+  Layers,
 } from "lucide-react";
 import { fetchComparisonSnapshot, saveComparison, deleteSavedComparison } from "@/lib/actions/comparison";
 import type { ComparisonProjectsData, ComparisonSnapshot, SavedComparison } from "@/lib/comparison/types";
@@ -57,6 +60,7 @@ import { useOptionalPortalWorkspace } from "@/components/portal/workspace/portal
 import type { WorkspaceScope } from "@/lib/admin/workspace";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { formatTourScanLabel } from "@/lib/comparison/metadata";
 
 interface CompareProgressHubProps {
   initialData: ComparisonProjectsData;
@@ -99,6 +103,7 @@ export function CompareProgressHub({
   const [floorId, setFloorId] = useState<string | null>(urlParams.floorId);
   const [scanAId, setScanAId] = useState(urlParams.scanAId ?? "");
   const [scanBId, setScanBId] = useState(urlParams.scanBId ?? "");
+  const [pickFor, setPickFor] = useState<"A" | "B">("A");
   const [snapshot, setSnapshot] = useState<ComparisonSnapshot | null>(null);
   const [saveOpen, setSaveOpen] = useState(false);
   const [saveName, setSaveName] = useState("");
@@ -205,6 +210,9 @@ export function CompareProgressHub({
     setBuilding(value);
     setFloor("all");
     setFloorId(null);
+    setScanAId("");
+    setScanBId("");
+    setSnapshot(null);
     if (value === "all") {
       setBuildingId(null);
     } else {
@@ -217,6 +225,9 @@ export function CompareProgressHub({
 
   const handleFloorChange = (value: string) => {
     setFloor(value);
+    setScanAId("");
+    setScanBId("");
+    setSnapshot(null);
     if (value === "all") {
       setFloorId(null);
     } else {
@@ -237,8 +248,14 @@ export function CompareProgressHub({
   }, [clientProjects, projectId]);
 
   useEffect(() => {
+    const ids = new Set(projectTours.map((t) => t.id));
+    if (scanAId && !ids.has(scanAId)) setScanAId("");
+    if (scanBId && !ids.has(scanBId)) setScanBId("");
     if (projectTours.length >= 1 && !scanAId) setScanAId(projectTours[0].id);
-    if (projectTours.length >= 2 && !scanBId) setScanBId(projectTours[1].id);
+    if (projectTours.length >= 2 && !scanBId) {
+      const nextB = projectTours.find((t) => t.id !== (scanAId || projectTours[0].id));
+      if (nextB) setScanBId(nextB.id);
+    }
   }, [projectTours, scanAId, scanBId]);
 
   const shellSnapshot = useMemo(() => {
@@ -418,11 +435,11 @@ export function CompareProgressHub({
                       .filter((t) => t.id !== scanBId)
                       .map((t) => ({
                         value: t.id,
-                        label: formatDate(t.capture_date ?? t.created_at),
+                        label: formatTourScanLabel(t),
                       }))
-                  : [{ value: "_none", label: "—" }]
+                  : [{ value: "_none", label: "No scans for this project" }]
               }
-              width="w-[130px]"
+              width="w-[220px]"
             />
             <FilterSelect
               label="Scan B"
@@ -434,11 +451,11 @@ export function CompareProgressHub({
                       .filter((t) => t.id !== scanAId)
                       .map((t) => ({
                         value: t.id,
-                        label: formatDate(t.capture_date ?? t.created_at),
+                        label: formatTourScanLabel(t),
                       }))
-                  : [{ value: "_none", label: "—" }]
+                  : [{ value: "_none", label: "No scans for this project" }]
               }
-              width="w-[130px]"
+              width="w-[220px]"
             />
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -503,6 +520,147 @@ export function CompareProgressHub({
           </div>
         </div>
       </div>
+
+      {/* Project scan library — pick Scan A / B from visible scans */}
+      {projectId && (
+        <div className="compare-card space-y-3 p-4">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                Project scans
+              </p>
+              <h3 className="mt-0.5 font-display text-sm font-semibold text-slate-900 dark:text-white">
+                {projectTours.length === 0
+                  ? "No scans match these filters"
+                  : `All scans (${projectTours.length})`}
+              </h3>
+              <p className="mt-1 text-xs text-slate-500">
+                Choose which scans to compare. Select A or B below, then click a scan.
+              </p>
+            </div>
+            <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 p-1 dark:border-slate-700 dark:bg-slate-800/60">
+              <button
+                type="button"
+                onClick={() => setPickFor("A")}
+                className={cn(
+                  "cursor-pointer rounded-md px-3 py-1.5 text-xs font-semibold transition-colors",
+                  pickFor === "A"
+                    ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
+                    : "text-slate-600 hover:text-slate-900 dark:text-slate-300"
+                )}
+              >
+                Select A
+              </button>
+              <button
+                type="button"
+                onClick={() => setPickFor("B")}
+                className={cn(
+                  "cursor-pointer rounded-md px-3 py-1.5 text-xs font-semibold transition-colors",
+                  pickFor === "B"
+                    ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
+                    : "text-slate-600 hover:text-slate-900 dark:text-slate-300"
+                )}
+              >
+                Select B
+              </button>
+            </div>
+          </div>
+
+          {projectTours.length > 0 ? (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {projectTours.map((tour) => {
+                const isA = tour.id === scanAId;
+                const isB = tour.id === scanBId;
+                return (
+                  <button
+                    key={tour.id}
+                    type="button"
+                    onClick={() => {
+                      if (pickFor === "A") {
+                        if (tour.id === scanBId) setScanBId("");
+                        setScanAId(tour.id);
+                        setPickFor("B");
+                      } else {
+                        if (tour.id === scanAId) setScanAId("");
+                        setScanBId(tour.id);
+                      }
+                      setSnapshot(null);
+                    }}
+                    className={cn(
+                      "group overflow-hidden rounded-2xl border bg-white text-left transition-all duration-200",
+                      "hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md",
+                      "dark:bg-slate-900/60 dark:hover:border-slate-600",
+                      "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/40",
+                      isA || isB
+                        ? "border-slate-900 ring-2 ring-slate-900/20 dark:border-white dark:ring-white/20"
+                        : "border-slate-200/80 dark:border-slate-800"
+                    )}
+                  >
+                    <div className="relative aspect-[16/10] bg-slate-100 dark:bg-slate-800">
+                      {tour.thumbnail_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={tour.thumbnail_url}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center">
+                          <Camera className="h-7 w-7 text-slate-300 dark:text-slate-600" />
+                        </div>
+                      )}
+                      <div className="absolute left-2 top-2 flex gap-1">
+                        {isA && (
+                          <span className="rounded-full bg-slate-900 px-2 py-0.5 text-[10px] font-semibold text-white dark:bg-white dark:text-slate-900">
+                            Scan A
+                          </span>
+                        )}
+                        {isB && (
+                          <span className="rounded-full bg-slate-700 px-2 py-0.5 text-[10px] font-semibold text-white dark:bg-slate-200 dark:text-slate-900">
+                            Scan B
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="space-y-1 p-3">
+                      <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
+                        {tour.name}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500">
+                        {(tour.capture_date || tour.created_at) && (
+                          <span className="inline-flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {formatDate(tour.capture_date ?? tour.created_at)}
+                          </span>
+                        )}
+                        {tour.metadata.building && (
+                          <span className="inline-flex items-center gap-1">
+                            <Building2 className="h-3 w-3" />
+                            {tour.metadata.building}
+                          </span>
+                        )}
+                        {tour.metadata.floor && (
+                          <span className="inline-flex items-center gap-1">
+                            <Layers className="h-3 w-3" />
+                            {tour.metadata.floor}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center dark:border-slate-700">
+              <Camera className="mx-auto h-8 w-8 text-slate-300 dark:text-slate-600" />
+              <p className="mt-2 text-sm text-slate-500">
+                Upload Matterport scans on this project, or clear building/floor filters.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {isPending && isBlankUi && (
         <div className="flex justify-center py-6">
