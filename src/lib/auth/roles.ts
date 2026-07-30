@@ -23,10 +23,12 @@ export type BuildViewStaffRole = (typeof BUILDVIEW_STAFF_ROLES)[number];
  * client_admin     – upload + comment + view
  * site_supervisor  – upload + comment + view
  * site_engineer    – upload + comment + view (same tier as site_supervisor)
- * client           – comment + view (+ update issue/project status)
- * client_user      – comment + view only
- * read_only_client – view only (no comments)
- * consultant       – view only (no comments)
+ * client           – comment + view + report issues
+ * client_user      – comment + view + report issues
+ * read_only_client – view + report issues
+ * consultant       – view + report issues
+ *
+ * Issue status changes: client_admin, site_supervisor, site_engineer only.
  */
 export const CLIENT_PORTAL_ROLES = [
   "client_admin",
@@ -59,6 +61,25 @@ export const CLIENT_COMMENT_ROLES = [
 ] as const satisfies readonly UserRole[];
 
 export type ClientCommentRole = (typeof CLIENT_COMMENT_ROLES)[number];
+
+/**
+ * Any client portal role assigned to a project may report issues.
+ * Status changes are restricted separately (see CLIENT_ISSUE_STATUS_ROLES).
+ */
+export const CLIENT_ISSUE_CREATE_ROLES = [
+  ...CLIENT_PORTAL_ROLES,
+] as const satisfies readonly UserRole[];
+
+export type ClientIssueCreateRole = (typeof CLIENT_ISSUE_CREATE_ROLES)[number];
+
+/** Roles that may change issue status (open → in progress → resolved/closed). */
+export const CLIENT_ISSUE_STATUS_ROLES = [
+  "client_admin",
+  "site_supervisor",
+  "site_engineer",
+] as const satisfies readonly UserRole[];
+
+export type ClientIssueStatusRole = (typeof CLIENT_ISSUE_STATUS_ROLES)[number];
 
 export const ALL_USER_ROLES: UserRole[] = [
   ...BUILDVIEW_STAFF_ROLES,
@@ -94,6 +115,18 @@ export function canAssignRoles(role: UserRole): boolean {
 export function canCommentOnProject(role: UserRole): boolean {
   if (isBuildViewStaffRole(role)) return true;
   return (CLIENT_COMMENT_ROLES as readonly string[]).includes(role);
+}
+
+/** Any project-connected client role (and BuildView staff) may report an issue. */
+export function canCreateProjectIssue(role: UserRole): boolean {
+  if (isBuildViewStaffRole(role)) return true;
+  return (CLIENT_ISSUE_CREATE_ROLES as readonly string[]).includes(role);
+}
+
+/** Client Admin, Site Supervisor, Site Engineer (and staff) may change issue status. */
+export function canUpdateIssueStatus(role: UserRole): boolean {
+  if (isBuildViewStaffRole(role)) return true;
+  return (CLIENT_ISSUE_STATUS_ROLES as readonly string[]).includes(role);
 }
 
 export function normalizeClientRole(role: UserRole): UserRole {

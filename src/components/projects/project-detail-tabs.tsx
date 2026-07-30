@@ -14,6 +14,7 @@ import { ProjectInvoicesSection } from "@/components/projects/project-invoices-s
 import { TimelineView } from "@/components/projects/timeline-view";
 import { BuildingsFloorsManager } from "@/components/admin/projects/buildings-floors-manager";
 import { ProjectTeamSection } from "@/components/projects/project-team-section";
+import { CreateIssueDialog } from "@/components/issues/create-issue-dialog";
 import { useOptionalPortalWorkspace } from "@/components/portal/workspace/portal-workspace-provider";
 import type { SpatialHierarchy } from "@/lib/actions/buildings";
 import type { ProjectTeamMember } from "@/lib/actions/data";
@@ -43,6 +44,8 @@ interface ProjectDetailTabsProps {
   canUploadMatterport?: boolean;
   /** Client/admin can change issue status */
   allowIssueStatusUpdate?: boolean;
+  /** Any project-connected client role can report issues */
+  allowCreateIssue?: boolean;
   /** Show upload actions inside individual tabs */
   canUploadContent?: boolean;
 }
@@ -61,6 +64,7 @@ export function ProjectDetailTabs({
   spatialHierarchy,
   canUploadMatterport = false,
   allowIssueStatusUpdate = false,
+  allowCreateIssue = false,
   canUploadContent = false,
 }: ProjectDetailTabsProps) {
   const portal = useOptionalPortalWorkspace();
@@ -212,16 +216,28 @@ export function ProjectDetailTabs({
       {showConstructionTabs && (
         <>
           <TabPanel value="issues" className="mt-6">
-            <TabSectionHeader
-              title="Issues"
-              description="Construction issues and defects."
-              canUpload={canUploadContent}
-              uploadHref={uploadHref ? `${uploadHref}?type=issue` : undefined}
-              uploadLabel="Report Issue"
-            />
+            <div className="mb-5 flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <h3 className="font-display text-base font-semibold text-slate-900 dark:text-white">
+                  Issues
+                </h3>
+                <p className="text-sm text-slate-500">
+                  Construction issues and defects. Everyone on the project can report; only Client
+                  Admin, Site Supervisor, and Site Engineer can change status.
+                </p>
+              </div>
+              {allowCreateIssue && projectId ? (
+                <CreateIssueDialog
+                  projects={[{ id: projectId, name: "This project" }]}
+                  defaultProjectId={projectId}
+                />
+              ) : null}
+            </div>
             <ProjectIssuesSection
               issues={issues}
               allowStatusUpdate={allowIssueStatusUpdate}
+              allowCreate={allowCreateIssue}
+              projectId={projectId}
             />
           </TabPanel>
 

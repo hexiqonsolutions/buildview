@@ -3,7 +3,9 @@ import {
   BUILDVIEW_STAFF_ROLES,
   canAssignRoles as canAssignRolesHelper,
   canCommentOnProject as canCommentOnProjectHelper,
+  canCreateProjectIssue as canCreateProjectIssueHelper,
   canManageClientUploads as canManageClientUploadsHelper,
+  canUpdateIssueStatus as canUpdateIssueStatusHelper,
   canUploadMatterport as canUploadMatterportHelper,
   isBuildViewStaffRole,
   isClientPortalRole,
@@ -75,14 +77,25 @@ const ADMIN_OPS_MATRIX: RolePermissions = {
   activity: STAFF_FULL,
 };
 
-/** Client Admin / Site Supervisor — upload & manage project content (not Matterport). */
+/** Client Admin / Site Supervisor / Site Engineer — upload & manage project content (not Matterport). */
 const CLIENT_MANAGER_MATRIX: RolePermissions = {
   projects: ["read", "update"],
   upload: CLIENT_UPLOAD_ACTIONS,
   matterport: CLIENT_VIEW,
   reports: CLIENT_UPLOAD_ACTIONS,
   documents: CLIENT_UPLOAD_ACTIONS,
-  issues: CLIENT_UPLOAD_ACTIONS,
+  issues: ["create", "read", "update", "upload"],
+  invoices: CLIENT_VIEW,
+  notifications: CLIENT_VIEW,
+};
+
+/** Client roles that can report issues but not change status. */
+const CLIENT_ISSUE_REPORTER_MATRIX: RolePermissions = {
+  projects: CLIENT_VIEW,
+  matterport: CLIENT_VIEW,
+  reports: CLIENT_VIEW,
+  documents: CLIENT_VIEW,
+  issues: ["create", "read"],
   invoices: CLIENT_VIEW,
   notifications: CLIENT_VIEW,
 };
@@ -120,40 +133,25 @@ const PERMISSIONS: Record<UserRole, RolePermissions> = {
   site_supervisor: {
     ...CLIENT_MANAGER_MATRIX,
   },
-  /** Client: view + update project status/issues + comments (no upload). */
+  /** Client: comments + report issues; cannot change issue status. */
   client: {
     projects: ["read", "update"],
     matterport: CLIENT_VIEW,
     reports: CLIENT_VIEW,
     documents: CLIENT_VIEW,
-    issues: ["read", "update"],
+    issues: ["create", "read"],
     invoices: CLIENT_VIEW,
     notifications: CLIENT_VIEW,
   },
-  /** Client User: view + comments only. */
+  /** Client User: comments + report issues. */
   client_user: {
-    projects: CLIENT_VIEW,
-    matterport: CLIENT_VIEW,
-    reports: CLIENT_VIEW,
-    documents: CLIENT_VIEW,
-    issues: CLIENT_VIEW,
-    invoices: CLIENT_VIEW,
-    notifications: CLIENT_VIEW,
+    ...CLIENT_ISSUE_REPORTER_MATRIX,
   },
   read_only_client: {
-    projects: CLIENT_VIEW,
-    matterport: CLIENT_VIEW,
-    reports: CLIENT_VIEW,
-    documents: CLIENT_VIEW,
-    issues: CLIENT_VIEW,
-    invoices: CLIENT_VIEW,
+    ...CLIENT_ISSUE_REPORTER_MATRIX,
   },
   consultant: {
-    projects: CLIENT_VIEW,
-    matterport: CLIENT_VIEW,
-    reports: CLIENT_VIEW,
-    documents: CLIENT_VIEW,
-    issues: CLIENT_VIEW,
+    ...CLIENT_ISSUE_REPORTER_MATRIX,
   },
 };
 
@@ -192,6 +190,14 @@ export function canAssignRoles(role: UserRole): boolean {
 
 export function canCommentOnProject(role: UserRole): boolean {
   return canCommentOnProjectHelper(role);
+}
+
+export function canCreateProjectIssue(role: UserRole): boolean {
+  return canCreateProjectIssueHelper(role);
+}
+
+export function canUpdateIssueStatus(role: UserRole): boolean {
+  return canUpdateIssueStatusHelper(role);
 }
 
 export function staffRoles(): UserRole[] {

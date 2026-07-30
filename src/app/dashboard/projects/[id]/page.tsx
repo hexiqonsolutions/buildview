@@ -6,7 +6,14 @@ import { ProjectHeader } from "@/components/projects/project-header";
 import { ProjectHubTabs } from "@/components/intel/projects/project-hub-tabs";
 import { IntelProjectContextBridge } from "@/components/intel/shell/intel-project-context";
 import { getCurrentUser } from "@/lib/actions/auth";
-import { can, canManageClientUploads, canCommentOnProject, canUploadMatterport } from "@/lib/auth/permissions";
+import {
+  can,
+  canManageClientUploads,
+  canCommentOnProject,
+  canUploadMatterport,
+  canCreateProjectIssue,
+  canUpdateIssueStatus,
+} from "@/lib/auth/permissions";
 import { getProjectProgressPercent } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Upload } from "lucide-react";
@@ -50,7 +57,8 @@ export default async function ProjectDetailPage({
   const canUploadContent = user
     ? can(user.role, "upload", "reports") || canManageClientUploads(user.role)
     : false;
-  const allowIssueStatusUpdate = user ? can(user.role, "update", "issues") : false;
+  const allowIssueStatusUpdate = user ? canUpdateIssueStatus(user.role) : false;
+  const allowCreateIssue = user ? canCreateProjectIssue(user.role) : false;
   const canUpdateStatus = user ? can(user.role, "update", "projects") : false;
   const showComments = user ? canCommentOnProject(user.role) : false;
 
@@ -92,6 +100,7 @@ export default async function ProjectDetailPage({
           team={team}
           canUploadMatterport={allowMatterportUpload}
           allowIssueStatusUpdate={allowIssueStatusUpdate}
+          allowCreateIssue={allowCreateIssue}
           canUploadContent={canUploadContent}
         />
       </div>

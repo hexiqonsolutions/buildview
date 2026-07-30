@@ -22,8 +22,7 @@ import type {
 import { STORAGE_BUCKETS } from "@/lib/types";
 import { resolveSpatialForWrite } from "@/lib/admin/spatial-resolve";
 import { formatUploadNotifyMessage, portalIssuesLink } from "@/lib/portal/notification-links";
-import { isBuildViewStaffRole, canManageClientUploads } from "@/lib/auth/roles";
-import { can } from "@/lib/auth/permissions";
+import { isBuildViewStaffRole, canCreateProjectIssue, canUpdateIssueStatus } from "@/lib/auth/roles";
 
 function revalidateIssuePaths(projectId: string) {
   revalidatePath("/admin/issues");
@@ -66,6 +65,17 @@ export async function createIssue(data: {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  if (!user) throw new Error("You must be signed in");
+
+  const { data: me } = await supabase
+    .from("users")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (!me?.role || !canCreateProjectIssue(me.role as UserRole)) {
+    throw new Error("You do not have permission to create issues.");
+  }
 
   const validated = validation.data;
   const status = (validated.status ?? "open") as IssueStatus;
@@ -146,7 +156,8 @@ export async function createIssue(data: {
         .eq("id", user?.id ?? "")
         .maybeSingle();
 
-      const canFallback = me && (isBuildViewStaffRole(me.role) || canManageClientUploads(me.role));
+      const canFallback =
+        me && (isBuildViewStaffRole(me.role) || canCreateProjectIssue(me.role as UserRole));
       if (!canFallback) {
         throw new Error(error?.message ?? "Failed to create issue");
       }
@@ -328,7 +339,7 @@ export async function updateIssueStatus(issueId: string, status: string) {
     .eq("id", user.id)
     .maybeSingle();
 
-  if (!me?.role || !can(me.role as UserRole, "update", "issues")) {
+  if (!me?.role || !canUpdateIssueStatus(me.role as UserRole)) {
     throw new Error("You do not have permission to update issue status.");
   }
 
