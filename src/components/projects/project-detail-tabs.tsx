@@ -46,6 +46,8 @@ interface ProjectDetailTabsProps {
   allowIssueStatusUpdate?: boolean;
   /** Any project-connected client role can report issues */
   allowCreateIssue?: boolean;
+  /** Client Admin only — invoices tab */
+  allowInvoices?: boolean;
   /** Show upload actions inside individual tabs */
   canUploadContent?: boolean;
 }
@@ -65,6 +67,7 @@ export function ProjectDetailTabs({
   canUploadMatterport = false,
   allowIssueStatusUpdate = false,
   allowCreateIssue = false,
+  allowInvoices = false,
   canUploadContent = false,
 }: ProjectDetailTabsProps) {
   const portal = useOptionalPortalWorkspace();
@@ -101,7 +104,9 @@ export function ProjectDetailTabs({
     ...(showConstructionTabs
       ? [
           { id: "issues", label: "Issues", badge: issues.length },
-          { id: "invoices", label: "Invoices", badge: invoices.length },
+          ...(allowInvoices
+            ? [{ id: "invoices", label: "Invoices", badge: invoices.length }]
+            : []),
         ]
       : []),
   ];
@@ -241,9 +246,11 @@ export function ProjectDetailTabs({
             />
           </TabPanel>
 
-          <TabPanel value="invoices" className="mt-6">
-            <ProjectInvoicesSection invoices={invoices} />
-          </TabPanel>
+          {allowInvoices && (
+            <TabPanel value="invoices" className="mt-6">
+              <ProjectInvoicesSection invoices={invoices} />
+            </TabPanel>
+          )}
         </>
       )}
     </TabWorkspace>

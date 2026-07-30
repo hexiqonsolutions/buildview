@@ -11,7 +11,7 @@ import {
   FolderOpen,
   ImageIcon,
   Calendar,
-  Receipt,
+  ReceiptIndianRupee,
   Search,
   Bell,
   AlertTriangle,
@@ -41,7 +41,7 @@ const routes = [
   { href: "/admin/documents", label: "Document Manager", icon: FolderOpen },
   { href: "/admin/photos", label: "Site Photos", icon: ImageIcon },
   { href: "/admin/issues", label: "Issue Manager", icon: FileText },
-  { href: "/admin/invoices", label: "Invoices", icon: Receipt },
+  { href: "/admin/invoices", label: "Invoices", icon: ReceiptIndianRupee },
   { href: "/admin/notifications", label: "Notifications", icon: Bell },
   { href: "/admin/users", label: "User Manager", icon: Users },
   { href: "/admin/analytics", label: "Analytics", icon: FileText },
@@ -247,7 +247,7 @@ export function OpsCommandPalette({
                   className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
                   onClick={() => navigate(inv.href)}
                 >
-                  <Receipt className="h-4 w-4 shrink-0 text-slate-400" />
+                  <ReceiptIndianRupee className="h-4 w-4 shrink-0 text-slate-400" />
                   {inv.label}
                 </button>
               ))}

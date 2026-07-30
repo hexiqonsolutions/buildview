@@ -1,4 +1,4 @@
-import { Download, Receipt } from "lucide-react";
+import { Download, ReceiptIndianRupee } from "lucide-react";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ export function ProjectInvoicesSection({ invoices }: { invoices: Invoice[] }) {
   if (invoices.length === 0) {
     return (
       <EmptyState
-        icon={Receipt}
+        icon={ReceiptIndianRupee}
         title="No invoices for this project."
         description="Billing records will appear here when issued."
       />

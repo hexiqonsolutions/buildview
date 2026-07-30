@@ -219,7 +219,11 @@ export function IntelHeader({
         </div>
       </div>
 
-      <IntelCommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
+      <IntelCommandPalette
+        open={paletteOpen}
+        onOpenChange={setPaletteOpen}
+        userRole={user.role}
+      />
     </header>
   );
 }

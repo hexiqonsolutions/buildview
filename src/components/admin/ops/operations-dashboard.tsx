@@ -6,8 +6,7 @@ import {
   AlertTriangle,
   FileText,
   HardDrive,
-  Receipt,
-  DollarSign,
+  IndianRupee,
   Upload,
   Clock,
   ArrowRight,
@@ -132,7 +131,7 @@ export function OperationsDashboard({
         <AdminMetricCard
           label="Monthly Revenue"
           value={formatCurrency(stats.monthlyRevenue)}
-          icon={DollarSign}
+          icon={IndianRupee}
         />
       </div>
 

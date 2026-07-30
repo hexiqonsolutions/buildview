@@ -111,6 +111,7 @@ export default async function AdminProjectDetailPage({
         invoices={invoices}
         team={team}
         canUploadMatterport={allowMatterportUpload}
+        allowInvoices
       />
     </div>
   );

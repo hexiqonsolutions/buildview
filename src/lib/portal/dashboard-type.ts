@@ -8,7 +8,7 @@ import {
   FileText,
   FolderOpen,
   AlertTriangle,
-  Receipt,
+  ReceiptIndianRupee,
   Bell,
 } from "lucide-react";
 
@@ -42,7 +42,7 @@ const CONSTRUCTION_NAV: PortalNavItem[] = [
   { href: "/dashboard/reports", label: "Reports", icon: FileText },
   { href: "/dashboard/documents", label: "Documents", icon: FolderOpen },
   { href: "/dashboard/issues", label: "Issues", icon: AlertTriangle },
-  { href: "/dashboard/invoices", label: "Invoices", icon: Receipt },
+  { href: "/dashboard/invoices", label: "Invoices", icon: ReceiptIndianRupee },
   { href: "/dashboard/notifications", label: "Notifications", icon: Bell },
 ];
 
@@ -53,8 +53,16 @@ const PORTFOLIO_NAV: PortalNavItem[] = [
   { href: "/dashboard/notifications", label: "Notifications", icon: Bell },
 ];
 
-export function getPortalNavItems(type: ClientDashboardType): PortalNavItem[] {
-  return type === "portfolio" ? PORTFOLIO_NAV : CONSTRUCTION_NAV;
+export function getPortalNavItems(
+  type: ClientDashboardType,
+  options?: { includeInvoices?: boolean }
+): PortalNavItem[] {
+  const items = type === "portfolio" ? PORTFOLIO_NAV : CONSTRUCTION_NAV;
+  // Invoices are Client Admin only — omit unless explicitly opted in.
+  if (options?.includeInvoices !== true) {
+    return items.filter((item) => item.href !== "/dashboard/invoices");
+  }
+  return items;
 }
 
 export function getPortalSidebarTagline(type: ClientDashboardType): string {

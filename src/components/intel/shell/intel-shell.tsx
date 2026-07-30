@@ -38,7 +38,11 @@ export function IntelShell({ user, unreadNotifications = 0, children }: IntelShe
       <IntelProjectProvider>
         <div className="intel-shell">
           <PortalTheme />
-          <IntelSidebar mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} />
+          <IntelSidebar
+            mobileOpen={mobileOpen}
+            onMobileClose={() => setMobileOpen(false)}
+            userRole={user.role}
+          />
           <div className="intel-main">
             <div className="intel-header-stack">
               <ImpersonationBanner />

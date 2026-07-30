@@ -13,7 +13,7 @@ import {
   FolderOpen,
   ImageIcon,
   AlertTriangle,
-  Receipt,
+  ReceiptIndianRupee,
   HardDrive,
   Bell,
   Activity,
@@ -63,7 +63,7 @@ const navSections: Array<{
       { href: "/admin/documents", label: "Documents", icon: FolderOpen, resource: "documents" },
       { href: "/admin/photos", label: "Site Photos", icon: ImageIcon, resource: "documents" },
       { href: "/admin/issues", label: "Issues", icon: AlertTriangle, resource: "issues" },
-      { href: "/admin/invoices", label: "Invoices", icon: Receipt, resource: "invoices" },
+      { href: "/admin/invoices", label: "Invoices", icon: ReceiptIndianRupee, resource: "invoices" },
     ],
   },
   {

@@ -7,7 +7,7 @@ import {
   FolderOpen,
   ImageIcon,
   Calendar,
-  Receipt,
+  ReceiptIndianRupee,
   FolderKanban,
   Users,
 } from "lucide-react";
@@ -21,7 +21,7 @@ const actions = [
   { href: "/admin/upload?type=drawing", label: "Drawing", icon: FolderOpen },
   { href: "/admin/upload?type=photo", label: "Photos", icon: ImageIcon },
   { href: "/admin/timeline", label: "Timeline", icon: Calendar },
-  { href: "/admin/invoices", label: "Invoice", icon: Receipt },
+  { href: "/admin/invoices", label: "Invoice", icon: ReceiptIndianRupee },
   { href: "/admin/projects", label: "Project", icon: FolderKanban },
   { href: "/admin/clients", label: "Client", icon: Users },
 ] as const;

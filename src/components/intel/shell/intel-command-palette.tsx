@@ -16,18 +16,28 @@ import { withPortalWorkspaceQuery } from "@/lib/portal/nav";
 import { getPortalNavItems } from "@/lib/portal/dashboard-type";
 import { usePortalWorkspace } from "@/components/portal/workspace/portal-workspace-provider";
 import { globalSearch } from "@/lib/actions/search";
+import { canViewClientInvoices } from "@/lib/auth/permissions";
+import type { UserRole } from "@/lib/types";
 
 export function IntelCommandPalette({
   open,
   onOpenChange,
+  userRole,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  userRole: UserRole;
 }) {
   const router = useRouter();
   const workspaceQuery = usePortalWorkspaceQuery();
   const { dashboardType } = usePortalWorkspace();
-  const routes = useMemo(() => getPortalNavItems(dashboardType), [dashboardType]);
+  const routes = useMemo(
+    () =>
+      getPortalNavItems(dashboardType, {
+        includeInvoices: canViewClientInvoices(userRole),
+      }),
+    [dashboardType, userRole]
+  );
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [entityResults, setEntityResults] = useState<Awaited<ReturnType<typeof globalSearch>> | null>(

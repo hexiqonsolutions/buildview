@@ -13,7 +13,7 @@ import {
   AlertTriangle,
   FileText,
   HardDrive,
-  Receipt,
+  ReceiptIndianRupee,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
@@ -40,7 +40,7 @@ export default async function AdminAnalyticsPage() {
         <AdminMetricCard label="Matterport Tours" value={stats.totalTours} icon={Camera} />
         <AdminMetricCard label="Open Issues" value={stats.openIssues} icon={AlertTriangle} />
         <AdminMetricCard label="Documents" value={stats.totalDocuments} icon={FileText} />
-        <AdminMetricCard label="Draft Invoices" value={opsStats.draftInvoices} icon={Receipt} />
+        <AdminMetricCard label="Draft Invoices" value={opsStats.draftInvoices} icon={ReceiptIndianRupee} />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

@@ -7,6 +7,7 @@ import {
   canManageClientUploads as canManageClientUploadsHelper,
   canUpdateIssueStatus as canUpdateIssueStatusHelper,
   canUploadMatterport as canUploadMatterportHelper,
+  canViewClientInvoices as canViewClientInvoicesHelper,
   isBuildViewStaffRole,
   isClientPortalRole,
 } from "@/lib/auth/roles";
@@ -85,7 +86,6 @@ const CLIENT_MANAGER_MATRIX: RolePermissions = {
   reports: CLIENT_UPLOAD_ACTIONS,
   documents: CLIENT_UPLOAD_ACTIONS,
   issues: ["create", "read", "update", "upload"],
-  invoices: CLIENT_VIEW,
   notifications: CLIENT_VIEW,
 };
 
@@ -96,7 +96,6 @@ const CLIENT_ISSUE_REPORTER_MATRIX: RolePermissions = {
   reports: CLIENT_VIEW,
   documents: CLIENT_VIEW,
   issues: ["create", "read"],
-  invoices: CLIENT_VIEW,
   notifications: CLIENT_VIEW,
 };
 
@@ -128,6 +127,7 @@ const PERMISSIONS: Record<UserRole, RolePermissions> = {
   },
   client_admin: {
     ...CLIENT_MANAGER_MATRIX,
+    invoices: CLIENT_VIEW,
     users: ["read", "update"],
   },
   site_supervisor: {
@@ -140,7 +140,6 @@ const PERMISSIONS: Record<UserRole, RolePermissions> = {
     reports: CLIENT_VIEW,
     documents: CLIENT_VIEW,
     issues: ["create", "read"],
-    invoices: CLIENT_VIEW,
     notifications: CLIENT_VIEW,
   },
   /** Client User: comments + report issues. */
@@ -198,6 +197,10 @@ export function canCreateProjectIssue(role: UserRole): boolean {
 
 export function canUpdateIssueStatus(role: UserRole): boolean {
   return canUpdateIssueStatusHelper(role);
+}
+
+export function canViewClientInvoices(role: UserRole): boolean {
+  return canViewClientInvoicesHelper(role);
 }
 
 export function staffRoles(): UserRole[] {

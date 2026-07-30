@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import {
   getPortalScopedInvoices,
   parsePortalWorkspaceScopeFromParams,
@@ -8,8 +9,10 @@ import { IntelPage } from "@/components/intel/pages/intel-page";
 import { EmptyState } from "@/components/patterns/page-states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Download, Receipt } from "lucide-react";
+import { Download, ReceiptIndianRupee } from "lucide-react";
 import { formatDate, formatStatus, getStatusColor, formatCurrency } from "@/lib/utils";
+import { getCurrentUser } from "@/lib/actions/auth";
+import { canViewClientInvoices } from "@/lib/auth/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +21,11 @@ export default async function InvoicesPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const user = await getCurrentUser();
+  if (!user || !canViewClientInvoices(user.role)) {
+    redirect("/dashboard");
+  }
+
   const params = await searchParams;
   const scope = await parsePortalWorkspaceScopeFromParams(params);
   const invoices = await getPortalScopedInvoices(scope);
@@ -27,13 +35,13 @@ export default async function InvoicesPage({
     <IntelPage
       title="Invoices"
       description="View and download your billing records."
-      icon={Receipt}
+      icon={ReceiptIndianRupee}
       eyebrow="Billing"
     >
       <div className="space-y-6">
         {invoices.length === 0 ? (
           <EmptyState
-            icon={Receipt}
+            icon={ReceiptIndianRupee}
             title="No invoices in this workspace"
             description="Adjust project filters in the header, or check back once billing records are issued."
             variant="intel"

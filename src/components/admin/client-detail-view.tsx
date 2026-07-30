@@ -9,7 +9,7 @@ import {
   FolderOpen,
   ImageIcon,
   AlertTriangle,
-  Receipt,
+  ReceiptIndianRupee,
   Settings,
   Upload,
 } from "lucide-react";
@@ -319,7 +319,7 @@ export function ClientWorkspaceTabs({
           const icons = {
             reports: FileText,
             documents: FolderOpen,
-            invoices: Receipt,
+            invoices: ReceiptIndianRupee,
             issues: AlertTriangle,
           };
           const Icon = icons[tab];

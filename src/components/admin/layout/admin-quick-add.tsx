@@ -7,7 +7,7 @@ import {
   Camera,
   FileText,
   FolderOpen,
-  Receipt,
+  ReceiptIndianRupee,
   Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,7 @@ const quickActions = [
   { href: "/admin/tours", label: "Upload Matterport Tour", icon: Camera },
   { href: "/admin/reports", label: "Upload Report", icon: FileText },
   { href: "/admin/documents", label: "Upload Drawing", icon: FolderOpen },
-  { href: "/admin/invoices", label: "Generate Invoice", icon: Receipt },
+  { href: "/admin/invoices", label: "Generate Invoice", icon: ReceiptIndianRupee },
 ] as const;
 
 export function AdminQuickAdd() {

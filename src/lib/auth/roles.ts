@@ -81,6 +81,11 @@ export const CLIENT_ISSUE_STATUS_ROLES = [
 
 export type ClientIssueStatusRole = (typeof CLIENT_ISSUE_STATUS_ROLES)[number];
 
+/** Only Client Admin sees invoices in the client portal (billing is org-admin scoped). */
+export const CLIENT_INVOICE_VIEW_ROLES = ["client_admin"] as const satisfies readonly UserRole[];
+
+export type ClientInvoiceViewRole = (typeof CLIENT_INVOICE_VIEW_ROLES)[number];
+
 export const ALL_USER_ROLES: UserRole[] = [
   ...BUILDVIEW_STAFF_ROLES,
   ...CLIENT_PORTAL_ROLES,
@@ -127,6 +132,12 @@ export function canCreateProjectIssue(role: UserRole): boolean {
 export function canUpdateIssueStatus(role: UserRole): boolean {
   if (isBuildViewStaffRole(role)) return true;
   return (CLIENT_ISSUE_STATUS_ROLES as readonly string[]).includes(role);
+}
+
+/** Client Admin (and BuildView staff) may view invoices in the portal. */
+export function canViewClientInvoices(role: UserRole): boolean {
+  if (isBuildViewStaffRole(role)) return true;
+  return (CLIENT_INVOICE_VIEW_ROLES as readonly string[]).includes(role);
 }
 
 export function normalizeClientRole(role: UserRole): UserRole {

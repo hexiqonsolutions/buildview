@@ -16,6 +16,8 @@ import { usePortalWorkspace } from "@/components/portal/workspace/portal-workspa
 import { cn } from "@/lib/utils";
 import { MobileNavDrawer } from "@/components/layout/mobile-nav-drawer";
 import { SidebarBrandHeader } from "@/components/layout/sidebar-brand-header";
+import { canViewClientInvoices } from "@/lib/auth/permissions";
+import type { UserRole } from "@/lib/types";
 
 function isActive(pathname: string, href: string, exact?: boolean) {
   if (exact) return pathname === href;
@@ -25,14 +27,17 @@ function isActive(pathname: string, href: string, exact?: boolean) {
 interface IntelSidebarProps {
   mobileOpen?: boolean;
   onMobileClose?: () => void;
+  userRole: UserRole;
 }
 
-export function IntelSidebar({ mobileOpen, onMobileClose }: IntelSidebarProps) {
+export function IntelSidebar({ mobileOpen, onMobileClose, userRole }: IntelSidebarProps) {
   const pathname = usePathname();
   const workspaceQuery = usePortalWorkspaceQuery();
   const homeHref = usePortalWorkspaceHref("/dashboard");
   const { dashboardType } = usePortalWorkspace();
-  const navItems = getPortalNavItems(dashboardType);
+  const navItems = getPortalNavItems(dashboardType, {
+    includeInvoices: canViewClientInvoices(userRole),
+  });
 
   const content = (
     <>

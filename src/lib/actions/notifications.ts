@@ -203,16 +203,21 @@ export async function notifyUsers(
   revalidateNotificationPaths();
 }
 
-/** Notify all client users tied to an invoice (project assignments + org users). */
+/** Notify Client Admin users for an invoice (billing is org-admin scoped). */
 export async function notifyInvoiceRecipients(
   invoice: InvoiceNotifyFields,
   payload: InvoiceNotifyPayload
 ) {
-  if (invoice.project_id) {
-    await notifyProjectClientUsers(invoice.project_id, payload);
-    return;
-  }
-  await notifyClientUsers(invoice.client_id, payload);
+  const admin = createServiceRoleClient();
+  const { data: admins } = await admin
+    .from("users")
+    .select("id")
+    .eq("client_id", invoice.client_id)
+    .eq("role", "client_admin")
+    .eq("is_active", true)
+    .is("deleted_at", null);
+
+  await notifyUsers(admins?.map((u) => u.id) ?? [], payload);
 }
 
 export async function notifyClientUsers(

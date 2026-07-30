@@ -8,7 +8,7 @@ import {
   CheckCheck,
   AlertTriangle,
   FileText,
-  Receipt,
+  ReceiptIndianRupee,
   Info,
   Loader2,
 } from "lucide-react";
@@ -30,7 +30,7 @@ const TYPE_ICONS: Record<NotificationType, React.ComponentType<{ className?: str
   error: AlertTriangle,
   project_update: FileText,
   issue_update: AlertTriangle,
-  invoice_update: Receipt,
+  invoice_update: ReceiptIndianRupee,
 };
 
 const TYPE_COLORS: Record<NotificationType, string> = {

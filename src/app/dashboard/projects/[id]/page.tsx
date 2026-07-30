@@ -13,6 +13,7 @@ import {
   canUploadMatterport,
   canCreateProjectIssue,
   canUpdateIssueStatus,
+  canViewClientInvoices,
 } from "@/lib/auth/permissions";
 import { getProjectProgressPercent } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -59,6 +60,7 @@ export default async function ProjectDetailPage({
     : false;
   const allowIssueStatusUpdate = user ? canUpdateIssueStatus(user.role) : false;
   const allowCreateIssue = user ? canCreateProjectIssue(user.role) : false;
+  const allowInvoices = user ? canViewClientInvoices(user.role) : false;
   const canUpdateStatus = user ? can(user.role, "update", "projects") : false;
   const showComments = user ? canCommentOnProject(user.role) : false;
 
@@ -101,6 +103,7 @@ export default async function ProjectDetailPage({
           canUploadMatterport={allowMatterportUpload}
           allowIssueStatusUpdate={allowIssueStatusUpdate}
           allowCreateIssue={allowCreateIssue}
+          allowInvoices={allowInvoices}
           canUploadContent={canUploadContent}
         />
       </div>

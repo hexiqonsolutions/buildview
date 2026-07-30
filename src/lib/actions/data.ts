@@ -699,6 +699,23 @@ export async function getAccessibleTimeline() {
 
 export async function getProjectInvoices(projectId: string) {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data: profile } = await supabase
+    .from("users")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  const role = profile?.role as UserRole | undefined;
+  // Client portal: only Client Admin (staff always via admin workspace / RLS)
+  if (role && isClientPortalRole(role) && role !== "client_admin") {
+    return [];
+  }
+
   const { data } = await supabase
     .from("invoices")
     .select("*")
@@ -1103,6 +1120,11 @@ export async function getInvoices() {
       .select("*")
       .order("created_at", { ascending: false });
     return data || [];
+  }
+
+  // Client portal: only Client Admin may load invoices
+  if (profile?.role !== "client_admin") {
+    return [];
   }
 
   const { data } = await supabase

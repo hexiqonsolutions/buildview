@@ -1,4 +1,4 @@
-import { Receipt } from "lucide-react";
+import { ReceiptIndianRupee } from "lucide-react";
 import { getAdminInvoices, getClients, getProjects } from "@/lib/actions/data";
 import { InvoiceManager } from "@/components/admin/invoices/invoice-manager";
 import { OpsWorkspacePage } from "@/components/admin/ops/ops-workspace-page";
@@ -14,7 +14,7 @@ export default async function AdminInvoicesPage() {
     <OpsWorkspacePage
       title="Invoice Manager"
       description="Create invoices, attach PDFs, update payment status, and notify clients when sent."
-      icon={Receipt}
+      icon={ReceiptIndianRupee}
     >
       <InvoiceManager invoices={invoices} clients={clients} projects={projects} />
     </OpsWorkspacePage>
