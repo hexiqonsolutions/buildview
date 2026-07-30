@@ -66,9 +66,11 @@ const config: Config = {
         sm: "calc(var(--radius) - 4px)",
       },
       animation: {
-        "fade-in": "fadeIn 0.5s ease-out",
-        "slide-up": "slideUp 0.5s ease-out",
+        "fade-in": "fadeIn 0.55s cubic-bezier(0.16, 1, 0.3, 1) both",
+        "slide-up": "slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both",
         "slide-in-right": "slideInRight 0.3s ease-out",
+        "hero-ken": "heroKen 28s ease-in-out infinite alternate",
+        "hero-rise": "heroRise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both",
       },
       keyframes: {
         fadeIn: {
@@ -82,6 +84,14 @@ const config: Config = {
         slideInRight: {
           "0%": { opacity: "0", transform: "translateX(20px)" },
           "100%": { opacity: "1", transform: "translateX(0)" },
+        },
+        heroKen: {
+          "0%": { transform: "scale(1.05) translate3d(0, 0, 0)" },
+          "100%": { transform: "scale(1.12) translate3d(-1.5%, -1%, 0)" },
+        },
+        heroRise: {
+          "0%": { opacity: "0", transform: "translateY(18px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
         },
       },
       backdropBlur: {

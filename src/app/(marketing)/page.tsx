@@ -24,16 +24,15 @@ import { ProductModuleCard } from "@/components/marketing/product-module-card";
 import { RoleCard } from "@/components/marketing/role-card";
 import { Section } from "@/components/marketing/section";
 import { SectionHeader } from "@/components/marketing/section-header";
-import { StatCard } from "@/components/marketing/stat-card";
 import { TestimonialCard } from "@/components/marketing/testimonial-card";
 import { TrustBar } from "@/components/marketing/trust-bar";
 import { Button } from "@/components/ui/button";
 
 const metrics = [
-  { value: "50%", label: "Fewer physical site visits with remote Matterport walkthroughs" },
-  { value: "3×", label: "Faster issue handoffs between field teams and stakeholders" },
-  { value: "70%", label: "Less time spent compiling progress documentation" },
-  { value: "24/7", label: "Secure portal access to tours, reports, and project files" },
+  { value: "50%", label: "Fewer physical site visits" },
+  { value: "3×", label: "Faster issue handoffs" },
+  { value: "70%", label: "Less time on documentation" },
+  { value: "24/7", label: "Secure portal access" },
 ];
 
 const products = [
@@ -212,66 +211,65 @@ const processSteps = [
 export default function HomePage() {
   return (
     <>
-      {/* Hero — split layout */}
-      <section className="mesh-gradient relative overflow-hidden text-white">
-        <div className="dot-pattern absolute inset-0 opacity-40" />
-        <div className="site-container relative pb-16 pt-12 lg:pb-24 lg:pt-16">
-          <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
-            <div className="animate-fade-in">
-              <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.15em] text-brand-accent">
-                Construction visibility platform
-              </p>
-              <h1 className="font-display text-4xl font-bold leading-[1.1] tracking-tight md:text-5xl lg:text-[3.25rem]">
-                See your site clearly.{" "}
-                <span className="gradient-text">Decide faster.</span>
-              </h1>
-              <p className="mt-6 max-w-lg text-lg leading-relaxed text-slate-300">
-                BuildView combines Matterport virtual tours, progress reports, document
-                management, and issue tracking in one professional client portal.
-              </p>
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <Button variant="accent" size="lg" className="shadow-glow" asChild>
-                  <Link href="/contact">
-                    Book a Demo <ArrowRight className="h-5 w-5" />
-                  </Link>
-                </Button>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="border-white/25 bg-white/5 text-white hover:bg-white/10"
-                  asChild
-                >
-                  <Link href="/projects">
-                    <Play className="h-5 w-5" /> View Sample Project
-                  </Link>
-                </Button>
-              </div>
-              <ul className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-400">
-                {["Matterport integrated", "Enterprise-ready", "Dedicated onboarding"].map(
-                  (item) => (
-                    <li key={item} className="flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-brand-accent" />
-                      {item}
-                    </li>
-                  )
-                )}
-              </ul>
-            </div>
+      {/* Full-bleed hero — brand, headline, support, CTAs, one visual plane */}
+      <section className="relative -mt-[4.5rem] min-h-svh overflow-hidden text-white lg:-mt-20">
+        <HeroCaptureVideo />
 
-            <div className="animate-slide-up">
-              <HeroCaptureVideo />
+        <div className="site-container relative flex min-h-svh flex-col justify-center pb-24 pt-28 lg:pb-28 lg:pt-32">
+          <div className="max-w-3xl">
+            <p className="font-display text-2xl font-semibold tracking-tight text-brand-accent motion-safe:animate-hero-rise md:text-3xl lg:text-4xl">
+              BuildView
+            </p>
+            <h1 className="mt-4 font-display text-4xl font-bold leading-[1.08] tracking-tight motion-safe:animate-hero-rise md:text-5xl lg:text-6xl lg:leading-[1.05] [animation-delay:80ms]">
+              See your site clearly.
+              <span className="mt-1 block text-white/95 sm:mt-0 sm:inline sm:before:content-['\00a0']">
+                Decide faster.
+              </span>
+            </h1>
+            <p className="mt-6 max-w-xl text-lg leading-relaxed text-slate-200/90 motion-safe:animate-hero-rise md:text-xl [animation-delay:160ms]">
+              Matterport virtual tours, progress reports, documents, and issue tracking — unified in
+              one professional construction portal.
+            </p>
+            <div className="mt-9 flex flex-col gap-3 motion-safe:animate-hero-rise sm:flex-row sm:items-center [animation-delay:240ms]">
+              <Button variant="accent" size="lg" className="shadow-glow" asChild>
+                <Link href="/contact">
+                  Book a Demo <ArrowRight className="h-5 w-5" />
+                </Link>
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                className="border-white/30 bg-white/5 text-white backdrop-blur-sm hover:bg-white/12 hover:text-white"
+                asChild
+              >
+                <Link href="/projects">
+                  <Play className="h-5 w-5" /> View Sample Project
+                </Link>
+              </Button>
             </div>
+          </div>
+
+          <div className="pointer-events-none absolute bottom-8 left-1/2 hidden -translate-x-1/2 flex-col items-center gap-2 text-white/50 motion-safe:animate-fade-in md:flex [animation-delay:700ms]">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.22em]">Scroll</span>
+            <span className="h-8 w-px bg-gradient-to-b from-brand-accent/80 to-transparent" />
           </div>
         </div>
       </section>
 
       <TrustBar />
 
-      {/* Metrics */}
-      <Section variant="muted" className="!py-16 md:!py-20">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Metrics — open strip, not card grid */}
+      <Section variant="muted" className="!py-14 md:!py-16">
+        <div className="grid grid-cols-2 gap-8 lg:grid-cols-4 lg:gap-0 lg:divide-x lg:divide-slate-200 dark:lg:divide-slate-800">
           {metrics.map((stat) => (
-            <StatCard key={stat.label} value={stat.value} label={stat.label} />
+            <div key={stat.label} className="text-center lg:px-6">
+              <p className="font-display text-3xl font-bold tracking-tight text-brand-primary dark:text-white md:text-4xl">
+                {stat.value}
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+                {stat.label}
+              </p>
+            </div>
           ))}
         </div>
       </Section>
@@ -302,16 +300,16 @@ export default function HomePage() {
           title="From capture to client delivery"
           description="A streamlined workflow designed for construction teams — no complex setup, no fragmented tools."
         />
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-4 lg:gap-8">
           {processSteps.map((item, index) => (
             <div key={item.step} className="relative text-center lg:text-left">
               {index < processSteps.length - 1 && (
-                <div className="absolute left-[calc(50%+2rem)] top-7 hidden h-px w-[calc(100%-4rem)] bg-brand-accent/25 lg:block" />
+                <div className="absolute left-[calc(50%+2.25rem)] top-7 hidden h-px w-[calc(100%-4.5rem)] bg-slate-200 dark:bg-slate-700 lg:block" />
               )}
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl accent-gradient font-display text-lg font-bold text-brand-primary lg:mx-0">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl accent-gradient font-display text-lg font-bold text-brand-primary shadow-soft lg:mx-0">
                 {item.step}
               </div>
-              <h3 className="mt-4 font-display text-lg font-semibold text-brand-primary dark:text-white">
+              <h3 className="mt-5 font-display text-lg font-semibold text-brand-primary dark:text-white">
                 {item.title}
               </h3>
               <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
@@ -353,13 +351,13 @@ export default function HomePage() {
           title="Built for complex builds across sectors"
           description="Residential towers to infrastructure — the same platform scales with your portfolio."
         />
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
           {industries.map((industry) => (
             <div
               key={industry.name}
-              className="surface-card flex flex-col items-center p-6 text-center transition-all hover:-translate-y-0.5 hover:shadow-soft"
+              className="group flex flex-col items-center border border-slate-200/80 bg-white px-4 py-8 text-center transition-all duration-200 hover:border-brand-accent/40 hover:shadow-soft dark:border-slate-800 dark:bg-slate-950"
             >
-              <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-accent/10">
+              <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-accent/10 transition-colors duration-200 group-hover:bg-brand-accent/20">
                 <industry.icon className="h-5 w-5 text-brand-accent-dark" />
               </div>
               <p className="font-display font-semibold text-brand-primary dark:text-white">
@@ -370,7 +368,7 @@ export default function HomePage() {
         </div>
       </Section>
 
-      {/* Platform highlights grid */}
+      {/* Platform highlights */}
       <Section variant="muted">
         <SectionHeader
           eyebrow="Why BuildView"
@@ -398,10 +396,7 @@ export default function HomePage() {
 
       {/* Testimonials */}
       <Section>
-        <SectionHeader
-          eyebrow="Testimonials"
-          title="Trusted by construction leaders"
-        />
+        <SectionHeader eyebrow="Testimonials" title="Trusted by construction leaders" />
         <div className="grid gap-6 md:grid-cols-3">
           {testimonials.map((t) => (
             <TestimonialCard key={t.author} {...t} />
@@ -411,20 +406,36 @@ export default function HomePage() {
 
       {/* Final CTA */}
       <Section variant="accent" className="relative overflow-hidden">
-        <div className="dot-pattern absolute inset-0 opacity-30" />
+        <div className="dot-pattern absolute inset-0 opacity-25" />
+        <div
+          className="pointer-events-none absolute inset-0"
+          aria-hidden
+          style={{
+            background:
+              "radial-gradient(ellipse 60% 50% at 50% 0%, rgba(164,207,48,0.14), transparent 65%)",
+          }}
+        />
         <div className="relative mx-auto max-w-3xl text-center">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-brand-accent">
+            Get started
+          </p>
           <h2 className="font-display text-3xl font-bold md:text-4xl lg:text-5xl">
             Ready to modernize your construction monitoring?
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-lg text-slate-300">
-            Join developers, contractors, and architects who use BuildView for remote
-            project visibility.
+            Join developers, contractors, and architects who use BuildView for remote project
+            visibility.
           </p>
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
             <Button variant="accent" size="lg" className="shadow-glow" asChild>
-              <Link href="/contact">Get Started Today</Link>
+              <Link href="/contact">Book a Demo</Link>
             </Button>
-            <Button size="lg" variant="outline" asChild>
+            <Button
+              size="lg"
+              variant="outline"
+              className="border-white/25 bg-white/5 text-white hover:bg-white/10 hover:text-white"
+              asChild
+            >
               <Link href="/pricing">View pricing</Link>
             </Button>
           </div>

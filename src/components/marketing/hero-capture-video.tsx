@@ -1,64 +1,59 @@
+import { cn } from "@/lib/utils";
+
 /**
- * Hero media: walkthrough capture video with a dark → clear gradient (left → right).
- * Place your file at: public/videos/walkthrough-capture.mp4
+ * Full-bleed hero media plane.
+ * Place capture video at: public/videos/walkthrough-capture.mp4
  * Optional poster: public/videos/walkthrough-capture-poster.jpg
  */
-export function HeroCaptureVideo() {
+export function HeroCaptureVideo({ className }: { className?: string }) {
   return (
-    <div className="surface-card overflow-hidden border-white/10 bg-slate-900/80 p-2 shadow-glow">
-      <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-slate-950">
-        <video
-          className="absolute inset-0 h-full w-full object-cover"
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="metadata"
-          aria-label="How BuildView captures a Matterport walkthrough on site"
-        >
-          <source src="/videos/walkthrough-capture.mp4" type="video/mp4" />
-          <source src="/videos/walkthrough-capture.webm" type="video/webm" />
-        </video>
+    <div className={cn("absolute inset-0 overflow-hidden bg-brand-primary", className)} aria-hidden>
+      {/* Atmospheric base — visible if video is missing */}
+      <div className="absolute inset-0 mesh-gradient" />
+      <div className="dot-pattern absolute inset-0 opacity-30" />
 
-        {/* Dark left → clear right */}
-        <div
-          className="pointer-events-none absolute inset-0"
-          aria-hidden
-          style={{
-            background:
-              "linear-gradient(90deg, rgba(5,5,5,0.94) 0%, rgba(5,5,5,0.72) 28%, rgba(5,5,5,0.28) 58%, rgba(5,5,5,0.06) 82%, transparent 100%)",
-          }}
-        />
+      <video
+        className="absolute inset-0 z-[1] h-full w-full scale-105 object-cover motion-safe:animate-hero-ken"
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="metadata"
+        poster="/videos/walkthrough-capture-poster.jpg"
+      >
+        <source src="/videos/walkthrough-capture.mp4" type="video/mp4" />
+        <source src="/videos/walkthrough-capture.webm" type="video/webm" />
+      </video>
 
-        {/* Soft brand tint on the dark edge */}
-        <div
-          className="pointer-events-none absolute inset-y-0 left-0 w-2/5"
-          aria-hidden
-          style={{
-            background:
-              "linear-gradient(90deg, rgba(164,207,48,0.12) 0%, transparent 100%)",
-          }}
-        />
+      {/* Readability scrim — left-weighted, no badges or overlay chrome */}
+      <div
+        className="absolute inset-0 z-[2]"
+        style={{
+          background: `
+            linear-gradient(105deg,
+              rgba(5,5,5,0.92) 0%,
+              rgba(5,5,5,0.78) 32%,
+              rgba(5,5,5,0.45) 58%,
+              rgba(5,5,5,0.55) 100%
+            ),
+            linear-gradient(180deg,
+              rgba(5,5,5,0.55) 0%,
+              transparent 28%,
+              transparent 62%,
+              rgba(5,5,5,0.75) 100%
+            )
+          `,
+        }}
+      />
 
-        <div className="absolute inset-0 flex flex-col justify-end p-5 sm:p-6">
-          <div className="max-w-[14rem] sm:max-w-[16rem]">
-            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-brand-accent">
-              On-site capture
-            </p>
-            <p className="mt-1.5 font-display text-lg font-semibold leading-snug text-white sm:text-xl">
-              How we capture the walkthrough
-            </p>
-            <p className="mt-1.5 text-xs leading-relaxed text-slate-300/90 sm:text-sm">
-              Pro Matterport scanning from dark shell to a clear, navigable tour.
-            </p>
-          </div>
-
-          <div className="mt-4 flex items-center justify-between gap-3 rounded-lg bg-black/45 px-3 py-2 text-xs text-slate-300 backdrop-blur-sm sm:px-4">
-            <span>Capture → Process → Portal</span>
-            <span className="shrink-0 font-medium text-brand-accent">Live process</span>
-          </div>
-        </div>
-      </div>
+      {/* Soft brand accent wash */}
+      <div
+        className="absolute inset-0 z-[2] opacity-60"
+        style={{
+          background:
+            "radial-gradient(ellipse 50% 45% at 18% 55%, rgba(164,207,48,0.16), transparent 70%)",
+        }}
+      />
     </div>
   );
 }

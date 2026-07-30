@@ -522,6 +522,15 @@
     .compare-kpi:hover {
       transform: none !important;
     }
+
+    .animate-hero-ken,
+    .animate-hero-rise,
+    .animate-fade-in,
+    .animate-slide-up {
+      animation: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+    }
   }
 }
 

@@ -23,9 +23,9 @@ export function TestimonialCard({
         className
       )}
     >
-      <div className="mb-4 flex gap-1">
+      <div className="mb-4 flex gap-1" aria-label={`${rating} out of 5 stars`}>
         {Array.from({ length: rating }).map((_, i) => (
-          <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-400" />
+          <Star key={i} className="h-4 w-4 fill-brand-accent text-brand-accent" />
         ))}
       </div>
       <p className="flex-1 text-base leading-relaxed text-slate-700 dark:text-slate-300">
