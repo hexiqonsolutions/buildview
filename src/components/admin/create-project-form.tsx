@@ -3,8 +3,9 @@
 import { cn } from "@/lib/utils";
 
 import { useEffect, useState } from "react";
-import { ImagePlus, Loader2, Plus, X } from "lucide-react";
+import { Building2, ImagePlus, Layers, Loader2, Plus, X } from "lucide-react";
 import { createProject, updateProjectCoverImage } from "@/lib/actions/admin";
+import { createBuilding, createFloor } from "@/lib/actions/buildings";
 import {
   uploadProjectCoverFile,
   validateProjectCoverFile,
@@ -30,6 +31,13 @@ import {
 import type { Client, PortfolioCategory } from "@/lib/types";
 import { PORTFOLIO_CATEGORY_LABELS } from "@/lib/types";
 
+function parseFloorNames(raw: string): string[] {
+  return raw
+    .split(/[,;\n]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 export function CreateProjectForm({
   clients,
   triggerLabel = "Add Project",
@@ -44,6 +52,8 @@ export function CreateProjectForm({
   const [clientId, setClientId] = useState("");
   const [status, setStatus] = useState("planning");
   const [portfolioCategory, setPortfolioCategory] = useState<string>("");
+  const [buildingName, setBuildingName] = useState("");
+  const [floorNames, setFloorNames] = useState("");
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
 
@@ -61,6 +71,8 @@ export function CreateProjectForm({
     setClientId("");
     setStatus("planning");
     setPortfolioCategory("");
+    setBuildingName("");
+    setFloorNames("");
     setThumbnailFile(null);
     setThumbnailPreview(null);
   }
@@ -84,6 +96,14 @@ export function CreateProjectForm({
     const client = clients.find((c) => c.id === clientId);
     const sqftRaw = (form.get("area_sqft") as string)?.trim();
     const areaSqft = sqftRaw ? Number.parseInt(sqftRaw, 10) : null;
+    const building = buildingName.trim();
+    const floors = parseFloorNames(floorNames);
+
+    if (floors.length > 0 && !building) {
+      alert("Add a building name before adding floors.");
+      setLoading(false);
+      return;
+    }
 
     try {
       const projectId = await createProject({
@@ -98,6 +118,21 @@ export function CreateProjectForm({
         area_sqft: areaSqft && Number.isFinite(areaSqft) ? areaSqft : null,
         portfolio_category: (portfolioCategory || null) as PortfolioCategory | null,
       });
+
+      if (building) {
+        try {
+          const buildingId = await createBuilding(projectId, building);
+          for (const floor of floors) {
+            await createFloor(buildingId, floor);
+          }
+        } catch (spatialErr) {
+          const msg =
+            spatialErr instanceof Error ? spatialErr.message : "Failed to add building/floors";
+          alert(
+            `Project was created, but building/floors could not be saved: ${msg}\n\nYou can add them from the project Buildings tab.`
+          );
+        }
+      }
 
       if (thumbnailFile) {
         try {
@@ -208,6 +243,48 @@ export function CreateProjectForm({
             <Label>Location</Label>
             <Input name="location" required placeholder="Navi Mumbai, India" />
           </div>
+
+          <div className="space-y-3 rounded-xl border border-slate-200/80 bg-slate-50/60 p-3 dark:border-slate-800 dark:bg-slate-900/40">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                Site structure
+              </p>
+              <p className="mt-0.5 text-[11px] text-slate-500">
+                Optional. Powers the admin Building / Floor filters for uploads and tours.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="create-project-building" className="inline-flex items-center gap-1.5">
+                <Building2 className="h-3.5 w-3.5 text-slate-500" />
+                Building
+              </Label>
+              <Input
+                id="create-project-building"
+                value={buildingName}
+                onChange={(e) => setBuildingName(e.target.value)}
+                placeholder="e.g. Tower A / Wing B"
+                maxLength={120}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="create-project-floors" className="inline-flex items-center gap-1.5">
+                <Layers className="h-3.5 w-3.5 text-slate-500" />
+                Floor(s)
+              </Label>
+              <Input
+                id="create-project-floors"
+                value={floorNames}
+                onChange={(e) => setFloorNames(e.target.value)}
+                placeholder="e.g. Ground, 1st Floor, Basement"
+                maxLength={240}
+                disabled={!buildingName.trim()}
+              />
+              <p className="text-[11px] text-slate-500">
+                Separate multiple floors with commas. You can add more later on the Buildings tab.
+              </p>
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Area (sq ft)</Label>
