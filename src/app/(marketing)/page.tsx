@@ -253,11 +253,6 @@ export default function HomePage() {
               </Button>
             </div>
           </div>
-
-          <div className="pointer-events-none absolute bottom-8 left-1/2 z-10 hidden -translate-x-1/2 flex-col items-center gap-2 text-white/60 motion-safe:animate-fade-in md:flex [animation-delay:700ms]">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.22em]">Scroll</span>
-            <span className="h-8 w-px bg-gradient-to-b from-brand-accent/80 to-transparent" />
-          </div>
         </div>
       </section>
 
