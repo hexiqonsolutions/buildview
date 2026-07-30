@@ -11,7 +11,7 @@ export type WorkspaceScope = {
 
 export type AdminWorkspaceClient = Pick<
   Client,
-  "id" | "name" | "company_name" | "logo_url"
+  "id" | "name" | "company_name" | "logo_url" | "email" | "phone" | "is_active"
 >;
 
 export type AdminWorkspaceBootstrap = {

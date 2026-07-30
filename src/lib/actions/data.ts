@@ -1667,7 +1667,7 @@ export async function getAdminWorkspaceBootstrap(): Promise<AdminWorkspaceBootst
     await Promise.all([
     supabase
       .from("clients")
-      .select("id, name, company_name, logo_url")
+      .select("id, name, company_name, logo_url, email, phone, is_active")
       .is("deleted_at", null)
       .order("name"),
     supabase.from("projects").select("*").is("deleted_at", null).order("name"),

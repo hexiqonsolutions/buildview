@@ -24,7 +24,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
-  useAdminWorkspaceHref,
   useAdminWorkspaceQuery,
 } from "@/components/admin/workspace/use-admin-workspace-href";
 import { withAdminWorkspaceQuery } from "@/lib/admin/nav";
@@ -92,9 +91,9 @@ interface OpsSidebarProps {
 
 export function OpsSidebar({ userRole, mobileOpen, onMobileClose }: OpsSidebarProps) {
   const pathname = usePathname();
-  const { client, project, hydrated } = useAdminWorkspace();
+  const { client, project, hydrated, resetScope } = useAdminWorkspace();
   const workspaceQuery = useAdminWorkspaceQuery();
-  const homeHref = useAdminWorkspaceHref("/admin");
+  const homeHref = "/admin";
 
   const content = (
     <>
@@ -106,7 +105,7 @@ export function OpsSidebar({ userRole, mobileOpen, onMobileClose }: OpsSidebarPr
           hydrated && client
             ? {
                 title: client.company_name || client.name,
-                subtitle: project?.name ?? null,
+                subtitle: project?.name ?? "All projects",
               }
             : null
         }
@@ -129,11 +128,15 @@ export function OpsSidebar({ userRole, mobileOpen, onMobileClose }: OpsSidebarPr
                   "exact" in item ? item.exact : undefined
                 );
                 const href = withAdminWorkspaceQuery(item.href, workspaceQuery);
+                const isDashboard = item.href === "/admin";
                 return (
                   <Link
                     key={item.href}
                     href={href}
-                    onClick={onMobileClose}
+                    onClick={() => {
+                      if (isDashboard) resetScope();
+                      onMobileClose?.();
+                    }}
                     className={cn("ops-nav-item", active && "ops-nav-item-active")}
                   >
                     <item.icon className="h-[17px] w-[17px] shrink-0" strokeWidth={1.75} />

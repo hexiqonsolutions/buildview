@@ -62,16 +62,18 @@ function resolveScope(
   bootstrap: AdminWorkspaceBootstrap,
   preferred: WorkspaceScope
 ): WorkspaceScope {
-  const firstClient = bootstrap.clients[0]?.id ?? null;
+  // Never auto-pick a client — platform overview stays unscoped until staff choose one.
   const clientId =
     preferred.clientId && bootstrap.clients.some((c) => c.id === preferred.clientId)
       ? preferred.clientId
-      : firstClient;
-  const clientProjects = bootstrap.projects.filter((p) => p.client_id === clientId);
+      : null;
+  const clientProjects = clientId
+    ? bootstrap.projects.filter((p) => p.client_id === clientId)
+    : [];
   const projectId =
     preferred.projectId && clientProjects.some((p) => p.id === preferred.projectId)
       ? preferred.projectId
-      : clientProjects[0]?.id ?? null;
+      : null;
 
   return normalizeWorkspaceScope(bootstrap, {
     clientId,
@@ -124,13 +126,17 @@ export function AdminWorkspaceProvider({
         fromUrl.building !== "all" ||
         fromUrl.floor !== "all"
     );
-    const stored = readStoredScope();
-    const preferred = hasUrlScope ? fromUrl : stored;
+    // Dashboard home is always the unscoped BuildView overview unless URL has a client.
+    const preferred = hasUrlScope
+      ? fromUrl
+      : pathname === "/admin"
+        ? DEFAULT_WORKSPACE
+        : readStoredScope();
     const next = resolveScope(bootstrapRef.current, preferred);
     setScope((prev) => (workspaceScopesEqual(prev, next) ? prev : next));
     setHydrated(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: searchKey + bootstrapKey
-  }, [bootstrapKey, searchKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: searchKey + bootstrapKey + pathname
+  }, [bootstrapKey, searchKey, pathname]);
 
   const syncScopeToUrl = useCallback(
     (next: WorkspaceScope) => {
@@ -195,10 +201,11 @@ export function AdminWorkspaceProvider({
     (clientId: string | null) => {
       const nextProjects = clientId
         ? bootstrap.projects.filter((p) => p.client_id === clientId)
-        : bootstrap.projects;
+        : [];
       applyScope(() => ({
         clientId,
-        projectId: nextProjects[0]?.id ?? null,
+        // Auto-select first project only after a client is chosen.
+        projectId: clientId ? nextProjects[0]?.id ?? null : null,
         building: "all",
         floor: "all",
         buildingId: null,
@@ -259,7 +266,12 @@ export function AdminWorkspaceProvider({
   );
 
   const resetScope = useCallback(() => {
-    setScope(resolveScope(bootstrapRef.current, DEFAULT_WORKSPACE));
+    setScope(DEFAULT_WORKSPACE);
+    try {
+      localStorage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(DEFAULT_WORKSPACE));
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   const value = useMemo<AdminWorkspaceContextValue>(

@@ -354,10 +354,13 @@ function WorkspaceScopeControls({
   stacked?: boolean;
   uploadHref?: string;
 }) {
-  const clientOptions: ScopeOption[] = clients.map((c) => ({
-    value: c.id,
-    label: c.company_name || c.name,
-  }));
+  const clientOptions: ScopeOption[] = [
+    { value: "__all__", label: "All clients" },
+    ...clients.map((c) => ({
+      value: c.id,
+      label: c.company_name || c.name,
+    })),
+  ];
   const projectOptions: ScopeOption[] = clientProjects.map((p) => ({
     value: p.id,
     label: p.name,
@@ -371,10 +374,13 @@ function WorkspaceScopeControls({
     ...floors.map((f) => ({ value: f, label: f })),
   ];
 
+  const clientValue = scope.clientId ?? "__all__";
+  const onClientChange = (v: string) => setClientId(v === "__all__" ? null : v);
+
   if (stacked) {
     return (
       <div className="space-y-3">
-        {clientOptions.length === 0 ? (
+        {clients.length === 0 ? (
           <div className="rounded-lg border border-border bg-background px-3 py-2.5 text-sm">
             <p className="text-xs font-medium text-muted-foreground">Client</p>
             <Link href="/admin/clients" className="mt-1 inline-block font-medium text-foreground underline-offset-2 hover:underline">
@@ -384,10 +390,10 @@ function WorkspaceScopeControls({
         ) : (
           <StackedSelect
             label="Client"
-            value={scope.clientId ?? ""}
-            onChange={(v) => setClientId(v || null)}
+            value={clientValue}
+            onChange={onClientChange}
             options={clientOptions}
-            placeholder="Select client"
+            placeholder="All clients"
           />
         )}
         <StackedSelect
@@ -421,7 +427,7 @@ function WorkspaceScopeControls({
   return (
     <div className="flex min-w-0 max-w-full items-center gap-2">
       <div className="ops-scope-cluster min-w-0" role="group" aria-label="Workspace filters">
-        {clientOptions.length === 0 ? (
+        {clients.length === 0 ? (
           <Link
             href="/admin/clients"
             className="inline-flex h-9 min-w-[9rem] shrink-0 items-center gap-1.5 px-2.5 text-xs font-medium text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
@@ -432,13 +438,13 @@ function WorkspaceScopeControls({
         ) : (
           <ScopeSelect
             ariaLabel="Client"
-            value={scope.clientId ?? ""}
-            onChange={(v) => setClientId(v || null)}
+            value={clientValue}
+            onChange={onClientChange}
             options={clientOptions}
-            placeholder="Client"
+            placeholder="All clients"
             className="w-[7.25rem] shrink-0 xl:w-44"
             leading={
-              clientLogoUrl ? (
+              clientLogoUrl && scope.clientId ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={clientLogoUrl} alt="" className="h-4 w-4 rounded object-cover" />
               ) : (

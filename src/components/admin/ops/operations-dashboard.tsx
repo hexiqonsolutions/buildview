@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Users,
   FolderKanban,
@@ -11,10 +14,15 @@ import {
   Clock,
   ArrowRight,
   Zap,
+  Building2,
+  ReceiptIndianRupee,
 } from "lucide-react";
 import type { AdminOperationsStats } from "@/lib/actions/data";
 import { AdminMetricCard } from "@/components/admin/admin-metric-card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { useAdminWorkspace } from "@/components/admin/workspace/admin-workspace-provider";
 import { formatCurrency, formatDate, formatRelativeTime } from "@/lib/utils";
 
 interface OperationsDashboardProps {
@@ -42,6 +50,17 @@ export function OperationsDashboard({
   email,
   avatarUrl,
 }: OperationsDashboardProps) {
+  const router = useRouter();
+  const { hydrated, client, project, clients, clientProjects, setClientId } =
+    useAdminWorkspace();
+
+  function activateClient(clientId: string, openWorkspace = false) {
+    setClientId(clientId);
+    if (openWorkspace) {
+      router.push(`/admin/clients/${clientId}`);
+    }
+  }
+
   const queueItems = [
     {
       label: "Uploads waiting",
@@ -69,12 +88,14 @@ export function OperationsDashboard({
     },
   ];
 
+  const activeProjects = clientProjects.filter((p) => p.status !== "completed").length;
+
   return (
     <div className="dashboard-page">
       <div className="flex items-center gap-4 sm:gap-5">
         <Link
           href="/dashboard/profile"
-          className="shrink-0 self-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2"
+          className="shrink-0 cursor-pointer self-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2"
           aria-label="Open profile"
         >
           <Avatar className="h-20 w-20 ring-2 ring-white shadow-md dark:ring-slate-800 sm:h-24 sm:w-24">
@@ -94,15 +115,201 @@ export function OperationsDashboard({
             Welcome Back, {firstName}
           </h1>
           <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-500">
-            Manage BuildView operations across clients and projects. Select a client workspace
-            above — everything updates automatically.
+            {client
+              ? `Working in ${client.company_name || client.name}${project ? ` · ${project.name}` : ""}. Open the full client workspace for users, invoices, and project detail.`
+              : "BuildView platform overview across all clients. Select a client above to activate a workspace."}
           </p>
         </div>
       </div>
 
+      {hydrated && !client && (
+        <div className="ops-card overflow-hidden">
+          <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+            <h2 className="dashboard-section-title">Activate a client workspace</h2>
+            <p className="mt-0.5 text-xs text-slate-500">
+              Choose a client to filter Content pages and open their full workspace.
+            </p>
+          </div>
+          {clients.length === 0 ? (
+            <div className="px-5 py-10 text-center">
+              <Building2 className="mx-auto h-8 w-8 text-slate-300" />
+              <p className="mt-3 text-sm font-medium text-slate-900 dark:text-white">
+                No clients yet
+              </p>
+              <Button asChild size="sm" className="ops-btn-primary mt-4">
+                <Link href="/admin/clients">Open Client Manager</Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
+              {clients.map((c) => {
+                const projectCount = clientProjects.filter((p) => p.client_id === c.id).length;
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => activateClient(c.id, true)}
+                    className="group flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200/80 bg-slate-50/60 p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white hover:shadow-sm dark:border-slate-800 dark:bg-slate-900/40 dark:hover:border-slate-700 dark:hover:bg-slate-900"
+                  >
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm dark:bg-slate-800">
+                      {c.logo_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={c.logo_url} alt="" className="h-8 w-8 rounded object-cover" />
+                      ) : (
+                        <span className="text-sm font-bold text-slate-600 dark:text-slate-200">
+                          {(c.company_name || c.name).charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
+                        {c.company_name || c.name}
+                      </p>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        {projectCount} project{projectCount === 1 ? "" : "s"}
+                      </p>
+                    </div>
+                    <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-slate-500" />
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {hydrated && client && (
+        <div className="ops-card overflow-hidden border-slate-200 dark:border-slate-800">
+          <div className="flex flex-col gap-4 border-b border-slate-100 bg-gradient-to-br from-slate-50 to-white px-5 py-5 dark:border-slate-800 dark:from-slate-900/80 dark:to-slate-950 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex min-w-0 items-start gap-4">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-slate-200/80 dark:bg-slate-800 dark:ring-slate-700">
+                {client.logo_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={client.logo_url}
+                    alt=""
+                    className="h-10 w-10 rounded-lg object-cover"
+                  />
+                ) : (
+                  <Building2 className="h-6 w-6 text-slate-400" />
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                  Active Workspace
+                </p>
+                <h2 className="mt-1 truncate font-display text-xl font-bold text-slate-900 dark:text-white">
+                  {client.company_name || client.name}
+                </h2>
+                <p className="mt-1 truncate text-sm text-slate-500">
+                  {client.email}
+                  {client.phone ? ` · ${client.phone}` : ""}
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <Badge variant={client.is_active ? "secondary" : "destructive"}>
+                    {client.is_active ? "Active" : "Disabled"}
+                  </Badge>
+                  <Badge variant="outline">{clientProjects.length} projects</Badge>
+                  <Badge variant="outline">{activeProjects} in progress</Badge>
+                  {project ? (
+                    <Badge variant="outline" className="max-w-[12rem] truncate">
+                      {project.name}
+                    </Badge>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2 sm:justify-end">
+              <Button asChild size="sm" className="ops-btn-primary h-9 cursor-pointer">
+                <Link href={`/admin/clients/${client.id}`}>
+                  Open full workspace
+                  <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                </Link>
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-9 cursor-pointer"
+                onClick={() => setClientId(null)}
+              >
+                Clear workspace
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-px bg-slate-100 dark:bg-slate-800 sm:grid-cols-4">
+            {[
+              {
+                label: "Projects",
+                value: clientProjects.length,
+                href: `/admin/clients/${client.id}`,
+                icon: FolderKanban,
+              },
+              {
+                label: "Invoices",
+                value: "Billing",
+                href: "/admin/invoices",
+                icon: ReceiptIndianRupee,
+              },
+              {
+                label: "Issues",
+                value: "Track",
+                href: "/admin/issues",
+                icon: AlertTriangle,
+              },
+              {
+                label: "Documents",
+                value: "Files",
+                href: "/admin/documents",
+                icon: FileText,
+              },
+            ].map((item) => (
+              <Link
+                key={item.label}
+                href={item.href}
+                className="flex cursor-pointer items-center gap-3 bg-white px-4 py-4 transition-colors hover:bg-slate-50 dark:bg-slate-950 dark:hover:bg-slate-900"
+              >
+                <item.icon className="h-4 w-4 shrink-0 text-slate-400" strokeWidth={1.75} />
+                <div className="min-w-0">
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                    {item.label}
+                  </p>
+                  <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
+                    {item.value}
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          {clientProjects.length > 0 && (
+            <div className="border-t border-slate-100 px-5 py-4 dark:border-slate-800">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                Projects
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {clientProjects.map((p) => (
+                  <Link
+                    key={p.id}
+                    href={`/admin/projects/${p.id}`}
+                    className="cursor-pointer rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600"
+                  >
+                    {p.name}
+                    <span className="ml-1.5 capitalize text-slate-400">
+                      {p.status.replace(/_/g, " ")}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {queueItems.map((item) => (
-          <Link key={item.label} href={item.href} className="ops-queue-card group">
+          <Link key={item.label} href={item.href} className="ops-queue-card group cursor-pointer">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-medium text-slate-500">{item.label}</p>
@@ -139,9 +346,7 @@ export function OperationsDashboard({
         <div className="ops-card xl:col-span-2">
           <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
             <div>
-              <h2 className="dashboard-section-title">
-                Today&apos;s Operations
-              </h2>
+              <h2 className="dashboard-section-title">Today&apos;s Operations</h2>
               <p className="text-xs text-slate-500">{stats.todaysUploads} uploads today</p>
             </div>
             <Zap className="h-5 w-5 text-brand-accent" />
@@ -214,7 +419,10 @@ export function OperationsDashboard({
           <h3 className="font-display text-base font-semibold text-slate-900 dark:text-white">
             Activity Log
           </h3>
-          <Link href="/admin/activity" className="text-xs font-medium text-slate-500 hover:text-slate-900">
+          <Link
+            href="/admin/activity"
+            className="cursor-pointer text-xs font-medium text-slate-500 hover:text-slate-900"
+          >
             View all
           </Link>
         </div>

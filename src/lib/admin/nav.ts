@@ -2,6 +2,7 @@ import { scopeToQueryString } from "@/lib/admin/scope";
 import type { WorkspaceScope } from "@/lib/admin/workspace";
 
 const ADMIN_NO_WORKSPACE_EXACT = new Set([
+  "/admin",
   "/admin/clients",
   "/admin/projects",
   "/admin/users",
