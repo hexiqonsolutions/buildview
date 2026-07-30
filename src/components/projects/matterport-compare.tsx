@@ -68,7 +68,7 @@ export function MatterportCompare({ tours, onClose }: MatterportCompareProps) {
     <div className="surface-card space-y-4 p-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Columns2 className="h-4 w-4 text-brand-accent" />
+          <Columns2 className="h-4 w-4 text-slate-500" />
           <h3 className="font-display text-sm font-semibold text-brand-primary dark:text-white">
             Compare Virtual Tours
           </h3>

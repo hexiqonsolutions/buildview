@@ -100,8 +100,8 @@ export function MatterportComparisonHub({ tours }: MatterportComparisonHubProps)
   return (
     <div className="space-y-6">
       <div className="portal-card flex items-center gap-3 p-4">
-        <div className="rounded-lg bg-brand-accent/10 p-2">
-          <Columns2 className="h-5 w-5 text-brand-accent-dark" />
+        <div className="rounded-lg bg-slate-100 p-2 dark:bg-slate-800">
+          <Columns2 className="h-5 w-5 text-slate-600 dark:text-slate-300" />
         </div>
         <div>
           <p className="font-medium text-brand-primary dark:text-white">Matterport Comparison</p>

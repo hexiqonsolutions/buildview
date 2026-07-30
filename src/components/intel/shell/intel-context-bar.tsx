@@ -22,7 +22,7 @@ export function IntelContextBar() {
   return (
     <div className="intel-context-bar">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 px-4 py-2 text-xs text-slate-600 lg:px-8 dark:text-slate-400">
-        <MapPin className="h-3.5 w-3.5 shrink-0 text-brand-accent-dark" />
+        <MapPin className="h-3.5 w-3.5 shrink-0 text-slate-500" />
         <Link href={projectsHref} className="font-medium text-slate-500 hover:text-slate-700">
           {isPortfolio ? "Projects" : "Projects"}
         </Link>

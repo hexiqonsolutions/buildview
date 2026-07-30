@@ -86,7 +86,7 @@ export function PortalProjectCard({
             </div>
             <div className="h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
               <div
-                className="h-full rounded-full bg-brand-accent transition-all duration-500"
+                className="h-full rounded-full bg-slate-800 transition-all duration-500 dark:bg-slate-200"
                 style={{ width: `${project.progress}%` }}
               />
             </div>

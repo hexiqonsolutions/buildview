@@ -218,7 +218,7 @@ function TabSectionHeader({
           asChild
           size="sm"
           variant="outline"
-          className="shrink-0 gap-1.5 border-slate-200 text-slate-700 transition-colors hover:border-brand-accent hover:bg-brand-accent/5 hover:text-brand-accent dark:border-slate-700 dark:text-slate-300 dark:hover:border-brand-accent"
+          className="shrink-0 gap-1.5 border-slate-200 text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-500 dark:hover:bg-slate-800 dark:hover:text-white"
         >
           <Link href={uploadHref}>
             <Plus className="h-3.5 w-3.5" />

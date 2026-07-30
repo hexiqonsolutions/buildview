@@ -64,7 +64,7 @@ function ViewerPane({
     <div className="relative bg-slate-900">
       {loading && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-900">
-          <Loader2 className="h-8 w-8 animate-spin text-brand-accent" />
+          <Loader2 className="h-8 w-8 animate-spin text-slate-500" />
         </div>
       )}
       <div

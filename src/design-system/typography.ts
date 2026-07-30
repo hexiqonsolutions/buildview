@@ -11,7 +11,7 @@ export const typography = {
   intelHeroTitle: "font-display text-2xl font-bold tracking-tight text-slate-900 dark:text-white md:text-3xl",
 
   /** Shared showcase tokens */
-  eyebrow: "text-[10px] font-semibold uppercase tracking-[0.2em] text-brand-accent",
+  eyebrow: "text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400",
   metricLabel: "text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400",
   body: "text-sm text-slate-500",
   bodyMuted: "text-xs text-slate-400",

@@ -40,10 +40,10 @@ export type AdminTimelineMonth = {
 export const DEFAULT_TRADE_NAMES = ["Structure", "Masonry", "Electrical", "Plumbing"] as const;
 
 export const DEFAULT_TRADE_COLORS: Record<string, string> = {
-  Structure: "bg-emerald-500",
-  Masonry: "bg-amber-400",
-  Electrical: "bg-orange-400",
-  Plumbing: "bg-rose-400",
+  Structure: "bg-slate-800",
+  Masonry: "bg-slate-600",
+  Electrical: "bg-slate-500",
+  Plumbing: "bg-slate-400",
 };
 
 function monthKeyFromDate(date: string): string {

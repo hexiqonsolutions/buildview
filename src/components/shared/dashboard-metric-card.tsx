@@ -22,10 +22,10 @@ export function DashboardMetricCard({
 }: DashboardMetricCardProps) {
   const trendClass =
     trendTone === "down"
-      ? "text-rose-600"
+      ? "text-slate-600 dark:text-slate-400"
       : trendTone === "neutral"
         ? "text-slate-500"
-        : "text-emerald-600";
+        : "text-slate-700 dark:text-slate-300";
 
   return (
     <div className={cn("intel-card dashboard-card-hover p-4 sm:p-5", className)}>

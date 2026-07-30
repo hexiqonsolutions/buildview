@@ -44,7 +44,7 @@ export function ProjectMatterportPanel({
         <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-slate-950 dark:border-slate-800">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-700/40 via-slate-950 to-black" />
           <div className="relative flex flex-col items-center justify-center px-6 py-16 text-center">
-            <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-accent/20 text-brand-accent">
+            <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-600 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700">
               <Camera className="h-7 w-7" />
             </span>
             <p className="font-display text-lg font-semibold text-white">

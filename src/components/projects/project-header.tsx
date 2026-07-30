@@ -122,7 +122,7 @@ export function ProjectHeader({
                   triggerClassName="h-7 w-[7.75rem] border-white/20 bg-white/95 text-[11px] shadow-sm"
                 />
               ) : (
-                <span className="rounded-full bg-brand-accent/95 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-slate-950">
+                <span className="rounded-full bg-white/95 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-slate-900">
                   {formatStatus(project.status)}
                 </span>
               )}
@@ -146,19 +146,19 @@ export function ProjectHeader({
             <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1.5 text-xs text-white/70">
               {location && (
                 <span className="inline-flex items-center gap-1">
-                  <MapPin className="h-3 w-3 text-brand-accent" />
+                  <MapPin className="h-3 w-3 text-white/80" />
                   {location}
                 </span>
               )}
               {sqft && (
                 <span className="inline-flex items-center gap-1">
-                  <Ruler className="h-3 w-3 text-brand-accent" />
+                  <Ruler className="h-3 w-3 text-white/80" />
                   {sqft}
                 </span>
               )}
               {project.completion_date && (
                 <span className="inline-flex items-center gap-1">
-                  <Calendar className="h-3 w-3 text-brand-accent" />
+                  <Calendar className="h-3 w-3 text-white/80" />
                   {formatDate(project.completion_date)}
                 </span>
               )}
@@ -174,7 +174,7 @@ export function ProjectHeader({
               <div className="mt-4">
                 <Button
                   size="sm"
-                  className="h-9 bg-brand-accent text-xs font-semibold text-slate-950 hover:bg-brand-accent-dark"
+                  className="h-9 bg-white text-xs font-semibold text-slate-900 hover:bg-slate-100"
                   asChild
                 >
                   <a href="#project-walkthrough">

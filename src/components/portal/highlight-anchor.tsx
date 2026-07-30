@@ -30,7 +30,7 @@ export function HighlightAnchor({
       className={cn(
         className,
         active &&
-          "rounded-xl ring-2 ring-brand-accent ring-offset-2 ring-offset-white dark:ring-offset-slate-950"
+          "rounded-xl ring-2 ring-slate-400 ring-offset-2 ring-offset-white dark:ring-offset-slate-950"
       )}
     >
       {children}

@@ -36,7 +36,7 @@ export function PortalQuickActions({ workspaceQuery = "" }: { workspaceQuery?: s
           href={withPortalWorkspaceQuery(action.href, workspaceQuery)}
           className="intel-card group dashboard-card-hover flex flex-col items-center justify-center gap-2.5 p-4 text-center sm:p-5"
         >
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 transition-colors duration-150 group-hover:bg-brand-accent/20 dark:bg-slate-800">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 transition-colors duration-150 group-hover:bg-slate-200 dark:bg-slate-800 dark:group-hover:bg-slate-700">
             <action.icon
               className="h-5 w-5 text-slate-700 transition-colors group-hover:text-slate-900 dark:text-slate-300 dark:group-hover:text-white"
               strokeWidth={1.75}
@@ -69,7 +69,7 @@ export function PortalWelcomeBanner({
       <div className="flex min-w-0 flex-1 items-center gap-4 sm:gap-5">
         <Link
           href={profileHref}
-          className="shrink-0 self-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2"
+          className="shrink-0 self-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
           aria-label="Open profile"
         >
           <Avatar className="h-16 w-16 ring-2 ring-white shadow-soft dark:ring-slate-800 sm:h-20 sm:w-20">
@@ -96,7 +96,7 @@ export function PortalWelcomeBanner({
       </div>
       <div className="hidden shrink-0 sm:flex">
         <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-slate-900 dark:bg-white">
-          <Building2 className="h-8 w-8 text-brand-accent dark:text-brand-accent-dark" strokeWidth={1.25} />
+          <Building2 className="h-8 w-8 text-white dark:text-slate-900" strokeWidth={1.25} />
         </div>
       </div>
     </div>

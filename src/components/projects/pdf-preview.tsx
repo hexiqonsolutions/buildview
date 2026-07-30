@@ -108,7 +108,7 @@ export function PdfPreview({ reportId, fileName, title }: PdfPreviewProps) {
 
           {loading && (
             <div className="flex items-center justify-center gap-2 py-16">
-              <Loader2 className="h-6 w-6 animate-spin text-brand-accent" />
+              <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
               <span className="text-sm text-slate-500">Loading PDF...</span>
             </div>
           )}

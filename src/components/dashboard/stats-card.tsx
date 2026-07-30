@@ -32,13 +32,13 @@ export function StatsCard({
             <p className="mt-1 text-xs text-slate-500">{description}</p>
           )}
           {trend && (
-            <p className="mt-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+            <p className="mt-1 text-xs font-medium text-slate-600 dark:text-slate-400">
               {trend}
             </p>
           )}
         </div>
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-accent/10 ring-1 ring-brand-accent/15">
-          <Icon className="h-5 w-5 text-brand-accent-dark" strokeWidth={1.75} />
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 ring-1 ring-slate-200 dark:ring-slate-700">
+          <Icon className="h-5 w-5 text-slate-700 dark:text-slate-300" strokeWidth={1.75} />
         </div>
       </div>
     </div>

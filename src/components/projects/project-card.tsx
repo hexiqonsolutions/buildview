@@ -28,7 +28,7 @@ export function ProjectCard({ project }: { project: Project }) {
           </div>
         </div>
         <CardContent className="p-5">
-          <h3 className="font-display text-base font-semibold text-brand-primary transition-colors group-hover:text-brand-accent-dark dark:text-white">
+          <h3 className="font-display text-base font-semibold text-brand-primary transition-colors group-hover:text-slate-700 dark:text-white dark:group-hover:text-slate-200">
             {project.name}
           </h3>
           <p className="text-sm text-slate-500 mt-1">{project.client_name}</p>

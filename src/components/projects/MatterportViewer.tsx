@@ -54,7 +54,7 @@ export function MatterportViewer({
           className
         )}
       >
-        <AlertCircle className="h-10 w-10 text-amber-500" />
+        <AlertCircle className="h-10 w-10 text-slate-500" />
         <p className="text-sm text-slate-600 dark:text-slate-400">
           Invalid Matterport URL. Please check the tour link.
         </p>
@@ -87,7 +87,7 @@ export function MatterportViewer({
           )}
           style={aspectRatio ? undefined : { height }}
         >
-          <Loader2 className="h-8 w-8 animate-spin text-brand-accent" />
+          <Loader2 className="h-8 w-8 animate-spin text-slate-500" />
         </div>
       )}
 

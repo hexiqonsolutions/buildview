@@ -29,11 +29,11 @@ export function TimelineView({
 
   return (
     <div className="relative">
-      <div className="absolute bottom-0 left-6 top-0 w-0.5 bg-brand-accent/30" />
+      <div className="absolute bottom-0 left-6 top-0 w-0.5 bg-slate-200 dark:bg-slate-700" />
       <div className="space-y-8">
         {sortedEvents.map((event) => (
           <div key={event.id} className="relative pl-14">
-            <div className="absolute left-4 top-1 h-4 w-4 rounded-full border-4 border-white bg-brand-accent dark:border-slate-900" />
+            <div className="absolute left-4 top-1 h-4 w-4 rounded-full border-4 border-white bg-slate-800 dark:border-slate-900 dark:bg-slate-200" />
             <TimelineEventCard
               event={event}
               showProject={showProject}

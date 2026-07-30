@@ -224,7 +224,7 @@ function FeedWidgets({
             <div className="space-y-3">
               {data.stats.recentActivity.slice(0, 5).map((activity) => (
                 <div key={activity.id} className="flex items-start gap-3">
-                  <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand-accent" />
+                  <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-slate-900" />
                   <div className="min-w-0">
                     <p className="text-sm text-slate-900 dark:text-white">{activity.action}</p>
                     <p className="text-xs text-slate-500">

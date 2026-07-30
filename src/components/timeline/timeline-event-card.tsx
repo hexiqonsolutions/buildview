@@ -31,14 +31,14 @@ export function TimelineEventCard({
             <p className="mt-1 text-sm text-slate-500">
               <Link
                 href={`/dashboard/projects/${event.project_id}`}
-                className="hover:text-brand-accent hover:underline"
+                className="hover:text-slate-800 hover:underline dark:hover:text-slate-200"
               >
                 {event.projectName}
               </Link>
             </p>
           )}
         </div>
-        <span className="shrink-0 text-sm font-medium text-brand-accent">
+        <span className="shrink-0 text-sm font-medium text-slate-600 dark:text-slate-400">
           {formatDate(event.event_date)}
         </span>
       </div>
@@ -70,7 +70,7 @@ export function TimelineEventCard({
       {event.report && (
         <div className="mb-4 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
           <div className="mb-2 flex items-center gap-2 text-sm font-medium text-brand-primary dark:text-white">
-            <FileText className="h-4 w-4 text-brand-accent" />
+            <FileText className="h-4 w-4 text-slate-500" />
             Linked Report: {event.report.title}
           </div>
           <PdfPreview

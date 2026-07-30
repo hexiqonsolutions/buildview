@@ -37,9 +37,9 @@ export function MatterportTourCard({ tour }: { tour: ProjectTour }) {
               className="absolute inset-0 h-full w-full object-cover"
             />
           ) : (
-            <div className="absolute inset-0 bg-brand-accent/10 transition-colors group-hover:bg-brand-accent/20" />
+            <div className="absolute inset-0 bg-slate-100 transition-colors group-hover:bg-slate-200 dark:bg-slate-800 dark:group-hover:bg-slate-700" />
           )}
-          <Camera className="relative z-10 h-12 w-12 text-brand-accent" />
+          <Camera className="relative z-10 h-12 w-12 text-slate-400" />
           <div className="absolute bottom-3 left-3 right-3 z-10">
             <p className="truncate text-sm font-medium text-white drop-shadow">
               {tour.name}

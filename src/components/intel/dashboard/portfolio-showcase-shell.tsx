@@ -77,13 +77,13 @@ function ProjectMetaRow({
     >
       {project.location && (
         <span className="inline-flex items-center gap-1">
-          <MapPin className="h-3 w-3 shrink-0 text-brand-accent" />
+          <MapPin className="h-3 w-3 shrink-0 text-white/70" />
           {project.location}
         </span>
       )}
       {sqft && (
         <span className="inline-flex items-center gap-1">
-          <Ruler className="h-3 w-3 shrink-0 text-brand-accent" />
+          <Ruler className="h-3 w-3 shrink-0 text-white/70" />
           {sqft}
         </span>
       )}
@@ -132,14 +132,14 @@ function PortfolioGridCard({
           <span
             className={cn(
               "rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-white",
-              project.status === "completed" ? "bg-emerald-600/95" : "bg-black/50 backdrop-blur-sm"
+              project.status === "completed" ? "bg-slate-800/95" : "bg-black/50 backdrop-blur-sm"
             )}
           >
             {project.status === "completed" ? "Completed" : "In progress"}
           </span>
         </div>
         {hasTour && (
-          <span className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-brand-accent text-[9px] font-bold text-slate-950 shadow-lg">
+          <span className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-white text-[9px] font-bold text-slate-900 shadow-lg">
             360
           </span>
         )}
@@ -203,7 +203,7 @@ export function PortfolioShowcaseShell({
       <div className="intel-hero-strip flex items-center gap-4 sm:gap-5">
         <Link
           href="/dashboard/profile"
-          className="shrink-0 self-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2"
+          className="shrink-0 self-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
           aria-label="Open profile"
         >
           <Avatar className="h-16 w-16 ring-2 ring-white shadow-soft dark:ring-slate-800 sm:h-20 sm:w-20">
@@ -218,7 +218,7 @@ export function PortfolioShowcaseShell({
           </Avatar>
         </Link>
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-brand-accent">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
             Portfolio
           </p>
           <h2 className="mt-1 truncate font-display text-xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-2xl">
@@ -249,12 +249,12 @@ export function PortfolioShowcaseShell({
 
         <div className="relative flex h-full min-h-[320px] flex-col justify-between p-5 md:min-h-[400px] md:p-8">
           <div className="flex items-start justify-between gap-4">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-brand-accent">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-white/55">
               Featured project
             </p>
             {featuredTourUrl && (
               <span className="hidden items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-white backdrop-blur-md sm:inline-flex">
-                <Camera className="h-3 w-3 text-brand-accent" />
+                <Camera className="h-3 w-3 text-white/80" />
                 360 ready
               </span>
             )}
@@ -265,7 +265,7 @@ export function PortfolioShowcaseShell({
               {featured?.name ?? "Your next showcase project"}
             </h1>
             <p className="mt-2 flex items-center gap-1.5 text-sm font-medium text-white/75">
-              <Building2 className="h-3.5 w-3.5 text-brand-accent" />
+              <Building2 className="h-3.5 w-3.5 text-white/70" />
               {brand}
             </p>
 
@@ -279,7 +279,7 @@ export function PortfolioShowcaseShell({
               )}
               {featured && featured.tourCount > 0 && (
                 <span className="inline-flex items-center gap-1">
-                  <Camera className="h-3 w-3 text-brand-accent" />
+                  <Camera className="h-3 w-3 text-white/70" />
                   {featured.tourCount} walkthrough{featured.tourCount === 1 ? "" : "s"}
                 </span>
               )}
@@ -289,7 +289,7 @@ export function PortfolioShowcaseShell({
               {featuredTourUrl ? (
                 <Button
                   size="sm"
-                  className="h-9 rounded-full bg-brand-accent px-5 text-xs font-semibold text-slate-950 shadow-lg shadow-brand-accent/25 hover:bg-brand-accent-dark"
+                  className="h-9 rounded-full bg-white px-5 text-xs font-semibold text-slate-900 shadow-lg hover:bg-slate-100"
                   onClick={() => setTourOpen(true)}
                 >
                   <Play className="mr-1.5 h-3.5 w-3.5 fill-current" />
@@ -298,7 +298,7 @@ export function PortfolioShowcaseShell({
               ) : (
                 <Button
                   size="sm"
-                  className="h-9 rounded-full bg-brand-accent px-5 text-xs font-semibold text-slate-950 shadow-lg shadow-brand-accent/25 hover:bg-brand-accent-dark"
+                  className="h-9 rounded-full bg-white px-5 text-xs font-semibold text-slate-900 shadow-lg hover:bg-slate-100"
                   asChild
                 >
                   <Link href={featuredHref}>
@@ -334,7 +334,7 @@ export function PortfolioShowcaseShell({
                 className="h-9 w-9 rounded-xl object-contain ring-1 ring-slate-200 dark:ring-slate-700"
               />
             ) : (
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-950 font-display text-sm font-bold text-brand-accent">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-950 font-display text-sm font-bold text-white">
                 {brand.charAt(0)}
               </div>
             )}

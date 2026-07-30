@@ -203,13 +203,13 @@ export function ProjectToursSection({
                 )}
                 {selectedFields.building && (
                   <span className="flex items-center gap-1.5">
-                    <Building2 className="h-3.5 w-3.5 text-brand-accent" />
+                    <Building2 className="h-3.5 w-3.5 text-slate-500" />
                     {selectedFields.building}
                   </span>
                 )}
                 {selectedFields.floor && (
                   <span className="flex items-center gap-1.5">
-                    <Layers className="h-3.5 w-3.5 text-brand-accent" />
+                    <Layers className="h-3.5 w-3.5 text-slate-500" />
                     {selectedFields.floor}
                   </span>
                 )}

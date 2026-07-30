@@ -73,13 +73,13 @@ function ProgressRing({
             strokeLinecap="round"
             strokeDasharray={c}
             strokeDashoffset={offset}
-            className="text-emerald-500 transition-all duration-700"
+            className="text-slate-800 transition-all duration-700 dark:text-slate-200"
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="font-display text-3xl font-bold text-slate-900 dark:text-white">{value}%</span>
           {delta !== 0 && (
-            <span className="text-sm font-semibold text-emerald-600">
+            <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
               {delta >= 0 ? "+" : ""}
               {delta}%
             </span>
@@ -116,7 +116,7 @@ function TradeProgressList({ snapshot }: { snapshot: ComparisonSnapshot }) {
           <span className="text-sm text-slate-700 dark:text-slate-300">{item.trade}</span>
           <div className="flex items-center gap-2">
             {item.delta !== undefined && item.delta > 0 && (
-              <span className="text-xs font-semibold text-emerald-600">+{item.delta}%</span>
+              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">+{item.delta}%</span>
             )}
             {item.delta === 0 && item.status === "pending" && (
               <span className="text-xs text-slate-400">0%</span>
@@ -126,9 +126,9 @@ function TradeProgressList({ snapshot }: { snapshot: ComparisonSnapshot }) {
                 className={cn(
                   "h-full rounded-full",
                   item.status === "completed"
-                    ? "bg-emerald-500"
+                    ? "bg-slate-800 dark:bg-slate-200"
                     : item.status === "in_progress"
-                      ? "bg-blue-500"
+                      ? "bg-slate-500"
                       : "bg-slate-300"
                 )}
                 style={{
@@ -161,7 +161,7 @@ export function CompareProgressSummary({ snapshot }: { snapshot: ComparisonSnaps
               <span className="text-sm text-slate-700 dark:text-slate-300">{item.trade}</span>
               <div className="flex items-center gap-2">
                 {item.delta !== undefined && item.delta > 0 && (
-                  <span className="text-xs font-semibold text-emerald-600">+{item.delta}%</span>
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">+{item.delta}%</span>
                 )}
                 {item.delta === 0 && item.status === "pending" && (
                   <span className="text-xs text-slate-400">0%</span>
@@ -171,9 +171,9 @@ export function CompareProgressSummary({ snapshot }: { snapshot: ComparisonSnaps
                     className={cn(
                       "h-full rounded-full",
                       item.status === "completed"
-                        ? "bg-emerald-500"
+                        ? "bg-slate-800 dark:bg-slate-200"
                         : item.status === "in_progress"
-                          ? "bg-blue-500"
+                          ? "bg-slate-500"
                           : "bg-slate-300"
                     )}
                     style={{
@@ -222,7 +222,7 @@ export function CompareKpiRow({
       value: blank ? "—" : `${kpis.currentProgress}%`,
       sub: blank ? "awaiting scans" : `from ${kpis.previousProgress}%`,
       icon: TrendingUp,
-      tone: "text-emerald-600 bg-emerald-50",
+      tone: "text-slate-700 bg-slate-100 dark:text-slate-300 dark:bg-slate-800",
       ring: !blank,
     },
     {
@@ -236,7 +236,7 @@ export function CompareKpiRow({
             : "Delayed",
       sub: "vs planned timeline",
       icon: Calendar,
-      tone: "text-emerald-600 bg-emerald-50",
+      tone: "text-slate-700 bg-slate-100 dark:text-slate-300 dark:bg-slate-800",
     },
     {
       label: "Quality Status",
@@ -249,7 +249,7 @@ export function CompareKpiRow({
             : "Concern",
       sub: blank ? "awaiting data" : "No major issues",
       icon: ShieldCheck,
-      tone: "text-emerald-600 bg-emerald-50",
+      tone: "text-slate-700 bg-slate-100 dark:text-slate-300 dark:bg-slate-800",
     },
     {
       label: "Safety Status",
@@ -262,14 +262,14 @@ export function CompareKpiRow({
             : "Alert",
       sub: blank ? "awaiting data" : "Zero incidents",
       icon: HardHat,
-      tone: "text-emerald-600 bg-emerald-50",
+      tone: "text-slate-700 bg-slate-100 dark:text-slate-300 dark:bg-slate-800",
     },
     {
       label: "Open Issues",
       value: blank ? "—" : String(openTotal),
       sub: blank ? "awaiting data" : newIssues > 0 ? `+${newIssues} new` : "no new issues",
       icon: AlertTriangle,
-      tone: "text-amber-600 bg-amber-50",
+      tone: "text-slate-600 bg-slate-100 dark:text-slate-400 dark:bg-slate-800",
       alert: !blank && newIssues > 0,
     },
     {
@@ -397,13 +397,13 @@ export function CompareDocumentsMatrix({ snapshot }: { snapshot: ComparisonSnaps
                   </td>
                   <td className="py-2.5 text-center">
                     {!inB ? (
-                      <Check className="mx-auto h-4 w-4 text-emerald-500" />
+                      <Check className="mx-auto h-4 w-4 text-slate-700 dark:text-slate-300" />
                     ) : (
                       <X className="mx-auto h-4 w-4 text-slate-300" />
                     )}
                   </td>
                   <td className="py-2.5 text-center">
-                    <Check className="mx-auto h-4 w-4 text-emerald-500" />
+                    <Check className="mx-auto h-4 w-4 text-slate-700 dark:text-slate-300" />
                   </td>
                 </tr>
               );
@@ -417,9 +417,9 @@ export function CompareDocumentsMatrix({ snapshot }: { snapshot: ComparisonSnaps
 
 export function CompareIssuesStats({ snapshot }: { snapshot: ComparisonSnapshot }) {
   const stats = [
-    { label: "Resolved", count: snapshot.resolvedIssues.length, color: "text-emerald-600" },
-    { label: "New", count: snapshot.newIssues.length, color: "text-blue-600" },
-    { label: "Pending", count: snapshot.pendingIssues.length, color: "text-amber-600" },
+    { label: "Resolved", count: snapshot.resolvedIssues.length, color: "text-slate-700 dark:text-slate-300" },
+    { label: "New", count: snapshot.newIssues.length, color: "text-slate-700 dark:text-slate-300" },
+    { label: "Pending", count: snapshot.pendingIssues.length, color: "text-slate-600 dark:text-slate-400" },
     { label: "Critical", count: snapshot.criticalIssues.length, color: "text-red-600" },
   ];
 
@@ -475,7 +475,7 @@ export function CompareReportsTable({ snapshot }: { snapshot: ComparisonSnapshot
                 </td>
                 <td className="py-2.5">
                   {reportB ? (
-                    <span className={cn("text-slate-700", isNew && "font-medium text-emerald-600")}>
+                    <span className={cn("text-slate-700", isNew && "font-medium text-slate-700 dark:text-slate-300")}>
                       {formatDate(reportB.report_date)}
                       {isNew && " · New"}
                     </span>
@@ -538,7 +538,7 @@ export function ComparePhotoCarousel({ snapshot }: { snapshot: ComparisonSnapsho
                   <img
                     src={photoB.url}
                     alt="After"
-                    className="aspect-square w-full rounded-lg object-cover ring-2 ring-emerald-500/30"
+                    className="aspect-square w-full rounded-lg object-cover ring-2 ring-slate-400/40"
                   />
                 ) : (
                   <PhotoPlaceholder label="No photo" />
@@ -566,7 +566,7 @@ export function CompareHorizontalTimeline({ snapshot }: { snapshot: ComparisonSn
             <div
               className={cn(
                 "flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-slate-900 text-[8px] font-bold text-white dark:border-slate-900 dark:bg-white dark:text-slate-900",
-                node.type === "scan" && "bg-emerald-500 border-emerald-500 dark:bg-emerald-500"
+                node.type === "scan" && "bg-slate-800 dark:bg-slate-200 border-slate-800 dark:border-slate-200 dark:bg-slate-800 dark:bg-slate-200"
               )}
             >
               {i + 1}
@@ -633,8 +633,8 @@ export function CompareEngineerNotes({ snapshot }: { snapshot: ComparisonSnapsho
             {snapshot.engineerNotesA || "No notes recorded."}
           </p>
         </div>
-        <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/20">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600">
+        <div className="rounded-xl border border-slate-200 bg-slate-50 dark:bg-slate-900/40 p-4 dark:border-slate-700 dark:bg-slate-900/40">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300">
             Scan B — {formatDate(snapshot.scanB.capture_date ?? snapshot.scanB.created_at)}
           </p>
           <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
@@ -652,7 +652,7 @@ export function CompareAiSummary({ snapshot }: { snapshot: ComparisonSnapshot })
     <div className="compare-card overflow-hidden">
       <div className="border-b border-slate-100 px-4 py-3 dark:border-slate-800">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-brand-accent-dark" />
+          <Sparkles className="h-4 w-4 text-slate-700 dark:text-slate-300" />
           <h3 className="text-sm font-semibold text-slate-900 dark:text-white">AI Summary</h3>
           <Badge className="bg-slate-100 text-[10px] text-slate-600 dark:bg-slate-800 dark:text-slate-300">
             BETA
