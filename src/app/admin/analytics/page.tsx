@@ -15,7 +15,7 @@ import {
   HardDrive,
   ReceiptIndianRupee,
 } from "lucide-react";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatStatus } from "@/lib/utils";
 
 function formatGb(bytes: number) {
   return `${Math.round((bytes / 1_073_741_824) * 10) / 10} GB`;
@@ -33,6 +33,7 @@ export default async function AdminAnalyticsPage() {
       title="Analytics"
       description="Growth, usage, revenue, and operational insights across all BuildView projects."
       icon={FileText}
+      showBanner={false}
     >
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 xl:grid-cols-6">
         <AdminMetricCard label="Clients" value={stats.totalClients} icon={Users} />
@@ -40,7 +41,17 @@ export default async function AdminAnalyticsPage() {
         <AdminMetricCard label="Matterport Tours" value={stats.totalTours} icon={Camera} />
         <AdminMetricCard label="Open Issues" value={stats.openIssues} icon={AlertTriangle} />
         <AdminMetricCard label="Documents" value={stats.totalDocuments} icon={FileText} />
-        <AdminMetricCard label="Draft Invoices" value={opsStats.draftInvoices} icon={ReceiptIndianRupee} />
+        <AdminMetricCard
+          label="Invoices"
+          value={stats.totalInvoices}
+          icon={ReceiptIndianRupee}
+          trend={
+            stats.draftInvoices > 0
+              ? `${stats.draftInvoices} draft`
+              : undefined
+          }
+          trendTone="neutral"
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -49,39 +60,61 @@ export default async function AdminAnalyticsPage() {
           data={stats.projectsByClient.map((p) => ({ label: p.clientName, value: p.count }))}
         />
         <AdminBarChart
-          title="Monthly Report Uploads"
-          data={stats.monthlyUploads.map((m) => ({ label: m.month, value: m.count }))}
+          title="Invoices by Status"
+          data={stats.invoicesByStatus
+            .map((row) => ({
+              label: formatStatus(row.status),
+              value: row.count,
+            }))
+            .sort((a, b) => b.value - a.value)}
+          emptyMessage="No invoices yet"
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="ops-card p-6">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-            Revenue this month
-          </p>
-          <p className="mt-2 font-display text-3xl font-bold text-slate-900 dark:text-white">
-            {formatCurrency(stats.monthlyRevenue)}
-          </p>
-        </div>
-        <div className="ops-card p-6">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-            Storage used
-          </p>
-          <p className="mt-2 font-display text-3xl font-bold text-slate-900 dark:text-white">
-            {formatGb(storageStats.totalBytes)}
-          </p>
-          <p className="mt-1 text-sm text-slate-500">
-            of {formatGb(storageStats.limitBytes)} allocated
-          </p>
-        </div>
-        <div className="ops-card p-6">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-            Today&apos;s uploads
-          </p>
-          <p className="mt-2 font-display text-3xl font-bold text-slate-900 dark:text-white">
-            {opsStats.todaysUploads}
-          </p>
-          <p className="mt-1 text-sm text-slate-500">Matterport + reports</p>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <AdminBarChart
+          title="Monthly Report Uploads"
+          data={stats.monthlyUploads.map((m) => ({ label: m.month, value: m.count }))}
+        />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="ops-card p-6">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+              Revenue this month
+            </p>
+            <p className="mt-2 font-display text-3xl font-bold text-slate-900 dark:text-white">
+              {formatCurrency(stats.monthlyRevenue)}
+            </p>
+            <p className="mt-1 text-sm text-slate-500">Paid invoices</p>
+          </div>
+          <div className="ops-card p-6">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+              Billed this month
+            </p>
+            <p className="mt-2 font-display text-3xl font-bold text-slate-900 dark:text-white">
+              {formatCurrency(stats.billedThisMonth)}
+            </p>
+            <p className="mt-1 text-sm text-slate-500">Sent / overdue / paid</p>
+          </div>
+          <div className="ops-card p-6">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+              Storage used
+            </p>
+            <p className="mt-2 font-display text-3xl font-bold text-slate-900 dark:text-white">
+              {formatGb(storageStats.totalBytes)}
+            </p>
+            <p className="mt-1 text-sm text-slate-500">
+              of {formatGb(storageStats.limitBytes)} allocated
+            </p>
+          </div>
+          <div className="ops-card p-6">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+              Today&apos;s uploads
+            </p>
+            <p className="mt-2 font-display text-3xl font-bold text-slate-900 dark:text-white">
+              {opsStats.todaysUploads}
+            </p>
+            <p className="mt-1 text-sm text-slate-500">Matterport + reports</p>
+          </div>
         </div>
       </div>
 

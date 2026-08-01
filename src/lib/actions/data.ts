@@ -8,6 +8,7 @@ import type {
   Client,
   ClientDashboardType,
   DashboardStats,
+  InvoiceStatus,
   Project,
   ProjectStatus,
   ProjectTour,
@@ -42,7 +43,9 @@ export type AdminDashboardStats = {
   totalReports: number;
   totalDocuments: number;
   totalInvoices: number;
+  draftInvoices: number;
   monthlyRevenue: number;
+  billedThisMonth: number;
   recentActivity: Awaited<ReturnType<typeof getDashboardStats>>["recentActivity"];
   recentUploads: Array<{
     id: string;
@@ -55,6 +58,7 @@ export type AdminDashboardStats = {
   projectsByClient: { clientName: string; count: number }[];
   monthlyUploads: { month: string; count: number }[];
   issueDistribution: { priority: string; count: number }[];
+  invoicesByStatus: { status: InvoiceStatus; count: number }[];
 };
 
 export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
@@ -76,7 +80,10 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
     supabase.from("issues").select("id, priority, status").is("deleted_at", null),
     supabase.from("reports").select("id, title, created_at, project:projects(name)").is("deleted_at", null).order("created_at", { ascending: false }).limit(5),
     supabase.from("documents").select("id", { count: "exact", head: true }).is("deleted_at", null),
-    supabase.from("invoices").select("amount, status, created_at"),
+    supabase
+      .from("invoices")
+      .select("amount, status, created_at")
+      .is("deleted_at", null),
     supabase.from("activity_logs").select("*, user:users(id, full_name, email, avatar_url)").order("created_at", { ascending: false }).limit(8),
   ]);
 
@@ -96,12 +103,29 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
     priorityCounts[i.priority] = (priorityCounts[i.priority] || 0) + 1;
   });
 
+  const invoiceStatusCounts: Record<string, number> = {};
+  invoices.forEach((inv) => {
+    invoiceStatusCounts[inv.status] = (invoiceStatusCounts[inv.status] || 0) + 1;
+  });
+
   const now = new Date();
+  const isThisMonth = (iso: string) => {
+    const d = new Date(iso);
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  };
+
   const monthlyRevenue = invoices
-    .filter((inv) => {
-      const d = new Date(inv.created_at);
-      return inv.status === "paid" && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-    })
+    .filter((inv) => inv.status === "paid" && isThisMonth(inv.created_at))
+    .reduce((sum, inv) => sum + Number(inv.amount), 0);
+
+  // Billed = anything issued this month except cancelled drafts that never went out.
+  const billedThisMonth = invoices
+    .filter(
+      (inv) =>
+        isThisMonth(inv.created_at) &&
+        inv.status !== "cancelled" &&
+        inv.status !== "draft"
+    )
     .reduce((sum, inv) => sum + Number(inv.amount), 0);
 
   const recentUploads = (reportsRes.data ?? []).map((r) => ({
@@ -133,7 +157,9 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
     totalReports: reportsRes.data?.length ?? 0,
     totalDocuments: documentsRes.count ?? 0,
     totalInvoices: invoices.length,
+    draftInvoices: invoiceStatusCounts.draft ?? 0,
     monthlyRevenue,
+    billedThisMonth,
     recentActivity: activityRes.data ?? [],
     recentUploads,
     projectsByStatus: Object.entries(statusCounts).map(([status, count]) => ({
@@ -147,6 +173,10 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
     monthlyUploads,
     issueDistribution: Object.entries(priorityCounts).map(([priority, count]) => ({
       priority,
+      count,
+    })),
+    invoicesByStatus: Object.entries(invoiceStatusCounts).map(([status, count]) => ({
+      status: status as InvoiceStatus,
       count,
     })),
   };
@@ -1967,7 +1997,6 @@ export type AdminOperationsStats = AdminDashboardStats & {
   projectsRequiringUpdates: number;
   matterportProcessing: number;
   reportsPending: number;
-  draftInvoices: number;
   storageUsedGb: number;
   storageLimitGb: number;
   todaysUploads: number;
@@ -1987,7 +2016,6 @@ export async function getAdminOperationsStats(): Promise<AdminOperationsStats> {
   const [
     toursTodayRes,
     reportsTodayRes,
-    draftInvoicesRes,
     recentToursRes,
     fileSizeRes,
   ] = await Promise.all([
@@ -2001,10 +2029,6 @@ export async function getAdminOperationsStats(): Promise<AdminOperationsStats> {
       .select("id", { count: "exact", head: true })
       .is("deleted_at", null)
       .gte("created_at", todayIso),
-    supabase
-      .from("invoices")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "draft"),
     supabase
       .from("project_tours")
       .select("project_id, capture_date, created_at")
@@ -2045,7 +2069,6 @@ export async function getAdminOperationsStats(): Promise<AdminOperationsStats> {
     projectsRequiringUpdates,
     matterportProcessing: 0,
     reportsPending: 0,
-    draftInvoices: draftInvoicesRes.count ?? 0,
     storageUsedGb: Math.round((storageBytes / 1_073_741_824) * 10) / 10,
     storageLimitGb: 100,
     todaysUploads: (toursTodayRes.count ?? 0) + (reportsTodayRes.count ?? 0),
