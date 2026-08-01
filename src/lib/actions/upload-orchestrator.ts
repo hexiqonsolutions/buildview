@@ -28,6 +28,7 @@ import {
   portalInvoiceLink,
   portalIssuesLink,
   portalMatterportLink,
+  portalPhotosLink,
   portalReportLink,
   portalTimelineLink,
 } from "@/lib/portal/notification-links";
@@ -437,6 +438,8 @@ export async function uploadTimelineUpdateWithAutomation(data: {
   floor?: string;
   tour_id?: string;
   report_id?: string;
+  /** When true, skip onUpload notify (e.g. prelude to site-photo attach). */
+  skipClientNotify?: boolean;
 }): Promise<UploadResult> {
   await assertCanUploadToProject(data.project_id, "upload");
   const eventId = await createTimelineEvent({
@@ -460,18 +463,20 @@ export async function uploadTimelineUpdateWithAutomation(data: {
     { building: data.building, floor: data.floor, engineer: data.engineer }
   );
 
-  try {
-    if (await isNotificationRuleEnabled("onUpload")) {
-      const projectName = await getProjectNameForNotify(data.project_id);
-      await notifyProjectClientUsers(data.project_id, {
-        title: "Timeline updated",
-        message: formatUploadNotifyMessage(data.title, projectName, "Timeline"),
-        type: "project_update",
-        link: portalTimelineLink(data.project_id),
-      });
+  if (!data.skipClientNotify) {
+    try {
+      if (await isNotificationRuleEnabled("onUpload")) {
+        const projectName = await getProjectNameForNotify(data.project_id);
+        await notifyProjectClientUsers(data.project_id, {
+          title: "Timeline updated",
+          message: formatUploadNotifyMessage(data.title, projectName, "Timeline"),
+          type: "project_update",
+          link: portalTimelineLink(data.project_id),
+        });
+      }
+    } catch (err) {
+      console.error("[uploadTimelineUpdateWithAutomation] notify failed:", err);
     }
-  } catch (err) {
-    console.error("[uploadTimelineUpdateWithAutomation] notify failed:", err);
   }
 
   revalidatePaths(data.project_id);
@@ -516,10 +521,10 @@ export async function attachSitePhotosWithAutomation(data: {
         message: formatUploadNotifyMessage(
           `${data.title} (${data.photos.length} photo${data.photos.length === 1 ? "" : "s"})`,
           projectName,
-          "Timeline"
+          "Site Photos"
         ),
         type: "project_update",
-        link: portalTimelineLink(data.project_id),
+        link: portalPhotosLink(data.project_id),
       });
     }
   } catch (err) {

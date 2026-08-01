@@ -22,6 +22,10 @@ export function portalTimelineLink(projectId: string): string {
   return `/dashboard/timeline?project=${projectId}`;
 }
 
+export function portalPhotosLink(projectId: string): string {
+  return `/dashboard/projects/${projectId}?tab=photos`;
+}
+
 export function portalIssuesLink(projectId: string, issueId?: string): string {
   const base = `/dashboard/issues?project=${projectId}`;
   return issueId ? `${base}&issue=${issueId}` : base;
@@ -36,7 +40,14 @@ export function portalMatterportLink(projectId: string, tourId?: string): string
 export function formatUploadNotifyMessage(
   itemName: string,
   projectName: string,
-  destination: "Reports" | "Documents" | "Invoices" | "Timeline" | "Issues" | "project"
+  destination:
+    | "Reports"
+    | "Documents"
+    | "Invoices"
+    | "Timeline"
+    | "Site Photos"
+    | "Issues"
+    | "project"
 ): string {
   const item = itemName.trim() || "A file";
   const project = projectName.trim() || "your project";
@@ -128,9 +139,11 @@ export function resolveNotificationHref(
       /invoice/.test(haystack)
     ) {
       href = portalInvoiceLink(projectId);
+    } else if (/site photo|new site photos|site images/.test(haystack)) {
+      href = portalPhotosLink(projectId);
     } else if (
       /[?&]tab=timeline/i.test(link) ||
-      /timeline updated|site photo|new site photos/.test(haystack)
+      /timeline updated/.test(haystack)
     ) {
       href = portalTimelineLink(projectId);
     } else if (

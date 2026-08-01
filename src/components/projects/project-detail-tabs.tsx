@@ -11,6 +11,10 @@ import { ProjectReportsSection } from "@/components/projects/project-reports-sec
 import { ProjectDocumentsSection } from "@/components/projects/project-documents-section";
 import { ProjectIssuesSection } from "@/components/projects/project-issues-section";
 import { ProjectInvoicesSection } from "@/components/projects/project-invoices-section";
+import {
+  ProjectSitePhotosSection,
+  flattenProjectSitePhotos,
+} from "@/components/projects/project-site-photos-section";
 import { TimelineView } from "@/components/projects/timeline-view";
 import { BuildingsFloorsManager } from "@/components/admin/projects/buildings-floors-manager";
 import { ProjectTeamSection } from "@/components/projects/project-team-section";
@@ -80,6 +84,7 @@ export function ProjectDetailTabs({
   const openIssueCount = issues.filter(
     (i) => i.status === "open" || i.status === "in_progress"
   ).length;
+  const sitePhotoCount = flattenProjectSitePhotos(timeline).length;
 
   const openScansTab = () => {
     const params = new URLSearchParams(searchParams.toString());
@@ -95,6 +100,7 @@ export function ProjectDetailTabs({
       : []),
     ...(showConstructionTabs
       ? [
+          { id: "photos", label: "Site Images", badge: sitePhotoCount },
           { id: "timeline", label: "Timeline", badge: timeline.length },
           { id: "reports", label: "Reports", badge: reports.length },
         ]
@@ -173,6 +179,17 @@ export function ProjectDetailTabs({
 
       {showConstructionTabs && (
         <>
+          <TabPanel value="photos" className="mt-6">
+            <TabSectionHeader
+              title="Site Images"
+              description="All site photography for this project."
+              canUpload={canUploadContent}
+              uploadHref={uploadHref ? `${uploadHref}?type=site_photos` : undefined}
+              uploadLabel="Upload Photos"
+            />
+            <ProjectSitePhotosSection timeline={timeline} />
+          </TabPanel>
+
           <TabPanel value="timeline" className="mt-6">
             <TabSectionHeader
               title="Timeline"

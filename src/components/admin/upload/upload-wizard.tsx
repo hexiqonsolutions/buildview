@@ -341,6 +341,7 @@ export function UploadWizard({
         progress_note:
           progressNote ||
           `${files.length} site photo${files.length === 1 ? "" : "s"} uploaded via Upload Center.`,
+        skipClientNotify: true,
         ...scopeMeta,
       });
 
