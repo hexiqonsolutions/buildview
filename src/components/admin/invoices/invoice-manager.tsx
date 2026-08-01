@@ -19,6 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { downloadFileFromUrl } from "@/lib/download-file";
 import type { Client, Invoice, InvoiceStatus, Project } from "@/lib/types";
 
 type InvoiceRow = Invoice & {
@@ -88,12 +89,7 @@ export function InvoiceManager({ invoices, clients, projects }: InvoiceManagerPr
     setDownloadingId(invoiceId);
     try {
       const { url, fileName } = await getInvoiceDownloadUrl(invoiceId);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = fileName;
-      anchor.target = "_blank";
-      anchor.rel = "noopener noreferrer";
-      anchor.click();
+      await downloadFileFromUrl(url, fileName);
     } catch (err) {
       alert(err instanceof Error ? err.message : "No PDF available");
     }

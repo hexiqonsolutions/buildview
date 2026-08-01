@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Download, Loader2 } from "lucide-react";
 import { getDocumentSignedUrl } from "@/lib/actions/documents";
+import { downloadFileFromUrl } from "@/lib/download-file";
 import { Button } from "@/components/ui/button";
 
 interface DocumentDownloadButtonProps {
@@ -28,14 +29,7 @@ export function DocumentDownloadButton({
     startTransition(async () => {
       try {
         const { url, fileName: name } = await getDocumentSignedUrl(documentId);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = name;
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        await downloadFileFromUrl(url, name || fileName);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Download failed");
       }

@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Download, Loader2 } from "lucide-react";
 import { getInvoiceDownloadUrl } from "@/lib/actions/admin";
+import { downloadFileFromUrl } from "@/lib/download-file";
 import { Button } from "@/components/ui/button";
 
 interface InvoiceDownloadButtonProps {
@@ -30,14 +31,7 @@ export function InvoiceDownloadButton({
     startTransition(async () => {
       try {
         const { url, fileName } = await getInvoiceDownloadUrl(invoiceId);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = fileName;
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        await downloadFileFromUrl(url, fileName);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Download failed");
       }
