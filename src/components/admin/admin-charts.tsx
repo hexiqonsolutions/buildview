@@ -14,12 +14,18 @@ export function AdminBarChart({
   title,
   data,
   emptyMessage = "No data yet",
+  formatValue,
+  /** When true, bar widths use max value (trends) instead of share-of-total. */
+  scaleToMax = false,
 }: {
   title: string;
   data: BarChartItem[];
   emptyMessage?: string;
+  formatValue?: (value: number) => string;
+  scaleToMax?: boolean;
 }) {
   const total = data.reduce((s, d) => s + d.value, 0);
+  const max = Math.max(...data.map((d) => d.value), 0);
 
   return (
     <Card className="admin-card border-0 shadow-none">
@@ -31,23 +37,34 @@ export function AdminBarChart({
           <p className="py-8 text-center text-sm text-slate-500">{emptyMessage}</p>
         ) : (
           <div className="space-y-3">
-            {data.map((item, i) => (
-              <div key={item.label}>
-                <div className="mb-1 flex justify-between text-xs">
-                  <span className="text-slate-600 dark:text-slate-400">{item.label}</span>
-                  <span className="font-medium text-slate-900 dark:text-white">{item.value}</span>
+            {data.map((item, i) => {
+              const widthPct = scaleToMax
+                ? max > 0
+                  ? (item.value / max) * 100
+                  : 0
+                : (item.value / total) * 100;
+              return (
+                <div key={`${item.label}-${i}`}>
+                  <div className="mb-1 flex justify-between gap-2 text-xs">
+                    <span className="truncate text-slate-600 dark:text-slate-400">
+                      {item.label}
+                    </span>
+                    <span className="shrink-0 font-medium text-slate-900 dark:text-white">
+                      {formatValue ? formatValue(item.value) : item.value}
+                    </span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{
+                        width: `${widthPct}%`,
+                        backgroundColor: COLORS[i % COLORS.length],
+                      }}
+                    />
+                  </div>
                 </div>
-                <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                  <div
-                    className="h-full rounded-full transition-all"
-                    style={{
-                      width: `${(item.value / total) * 100}%`,
-                      backgroundColor: COLORS[i % COLORS.length],
-                    }}
-                  />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </CardContent>
