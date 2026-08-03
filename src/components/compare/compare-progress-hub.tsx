@@ -34,6 +34,7 @@ import {
   CompareActivityFeed,
   CompareEngineerNotes,
 } from "@/components/compare/compare-sections";
+import { CompareDetailedReportDialog } from "@/components/compare/compare-detailed-report";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -108,6 +109,7 @@ export function CompareProgressHub({
   const [saveOpen, setSaveOpen] = useState(false);
   const [saveName, setSaveName] = useState("");
   const [manageOpen, setManageOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const [saved, setSaved] = useState<SavedComparison[]>(initialSaved);
   const [isPending, startTransition] = useTransition();
 
@@ -423,7 +425,7 @@ export function CompareProgressHub({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => window.print()}
+              onClick={() => setReportOpen(true)}
               disabled={isBlankUi || !snapshot}
               className="h-9 cursor-pointer"
             >
@@ -753,7 +755,7 @@ export function CompareProgressHub({
           </div>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <CompareEngineerNotes snapshot={displaySnapshot} />
+            <CompareEngineerNotes snapshot={displaySnapshot} blank={isBlankUi} />
             <CompareActivityFeed snapshot={displaySnapshot} />
           </div>
 
@@ -761,9 +763,18 @@ export function CompareProgressHub({
             <div className="lg:col-span-2">
               <CompareHorizontalTimeline snapshot={displaySnapshot} />
             </div>
-            <CompareAiSummary snapshot={displaySnapshot} />
+            <CompareAiSummary
+              snapshot={displaySnapshot}
+              onOpenReport={() => setReportOpen(true)}
+            />
           </div>
         </div>
+
+      <CompareDetailedReportDialog
+        snapshot={displaySnapshot}
+        open={reportOpen}
+        onOpenChange={setReportOpen}
+      />
 
       <Dialog open={saveOpen} onOpenChange={setSaveOpen}>
         <DialogContent>

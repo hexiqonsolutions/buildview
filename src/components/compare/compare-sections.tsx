@@ -621,21 +621,34 @@ export function CompareActivityFeed({ snapshot }: { snapshot: ComparisonSnapshot
   );
 }
 
-export function CompareEngineerNotes({ snapshot }: { snapshot: ComparisonSnapshot }) {
+export function CompareEngineerNotes({
+  snapshot,
+  blank = false,
+}: {
+  snapshot: ComparisonSnapshot;
+  blank?: boolean;
+}) {
+  const dateA = blank
+    ? "—"
+    : formatDate(snapshot.scanA.capture_date ?? snapshot.scanA.created_at);
+  const dateB = blank
+    ? "—"
+    : formatDate(snapshot.scanB.capture_date ?? snapshot.scanB.created_at);
+
   return (
     <WidgetCard title="Engineer Notes">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-900/40">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-            Scan A — {formatDate(snapshot.scanA.capture_date ?? snapshot.scanA.created_at)}
+            Scan A — {dateA}
           </p>
           <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
             {snapshot.engineerNotesA || "No notes recorded."}
           </p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-slate-50 dark:bg-slate-900/40 p-4 dark:border-slate-700 dark:bg-slate-900/40">
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900/40">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-            Scan B — {formatDate(snapshot.scanB.capture_date ?? snapshot.scanB.created_at)}
+            Scan B — {dateB}
           </p>
           <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
             {snapshot.engineerNotesB || "No notes recorded."}
@@ -646,8 +659,16 @@ export function CompareEngineerNotes({ snapshot }: { snapshot: ComparisonSnapsho
   );
 }
 
-export function CompareAiSummary({ snapshot }: { snapshot: ComparisonSnapshot }) {
+export function CompareAiSummary({
+  snapshot,
+  onOpenReport,
+}: {
+  snapshot: ComparisonSnapshot;
+  onOpenReport?: () => void;
+}) {
   const { aiPlaceholder: ai } = snapshot;
+  const blank = isBlankComparisonSnapshot(snapshot);
+
   return (
     <div className="compare-card overflow-hidden">
       <div className="border-b border-slate-100 px-4 py-3 dark:border-slate-800">
@@ -659,22 +680,77 @@ export function CompareAiSummary({ snapshot }: { snapshot: ComparisonSnapshot })
           </Badge>
         </div>
       </div>
-      <div className="p-4">
-        <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">{ai.overallProgress}</p>
+      <div className="space-y-4 p-4">
+        <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+          {ai.overallProgress}
+        </p>
+
         {ai.keyChanges.length > 0 && (
-          <ul className="mt-3 space-y-1">
-            {ai.keyChanges.map((c, i) => (
-              <li key={i} className="text-xs text-slate-500">
-                · {c}
-              </li>
-            ))}
-          </ul>
+          <div>
+            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+              Key changes
+            </p>
+            <ul className="space-y-1">
+              {ai.keyChanges.map((c, i) => (
+                <li key={i} className="text-xs text-slate-500">
+                  · {c}
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
+
+        {ai.pendingActivities.length > 0 && (
+          <div>
+            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+              Pending
+            </p>
+            <ul className="space-y-1">
+              {ai.pendingActivities.map((c, i) => (
+                <li key={i} className="text-xs text-slate-500">
+                  · {c}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {ai.criticalRisks.length > 0 && (
+          <div>
+            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+              Risks
+            </p>
+            <ul className="space-y-1">
+              {ai.criticalRisks.map((c, i) => (
+                <li key={i} className="text-xs text-rose-600 dark:text-rose-400">
+                  · {c}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {ai.recommendedActions.length > 0 && (
+          <div>
+            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+              Recommended actions
+            </p>
+            <ul className="space-y-1">
+              {ai.recommendedActions.map((c, i) => (
+                <li key={i} className="text-xs text-slate-500">
+                  · {c}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <Button
           variant="outline"
           size="sm"
-          className="mt-4 w-full"
-          onClick={() => window.print()}
+          className="mt-1 w-full cursor-pointer"
+          onClick={onOpenReport}
+          disabled={blank || !onOpenReport}
         >
           Generate Detailed Report
         </Button>
