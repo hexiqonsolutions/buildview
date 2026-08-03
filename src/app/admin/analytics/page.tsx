@@ -372,14 +372,14 @@ export default async function AdminAnalyticsPage() {
             title="Paid revenue (6 mo)"
             data={marketing.monthlyRevenue}
             scaleToMax
-            formatValue={(v) => formatCurrency(v)}
+            valueFormat="currency"
             emptyMessage="No paid revenue yet"
           />
           <AdminBarChart
             title="Billed amount (6 mo)"
             data={marketing.monthlyBilled}
             scaleToMax
-            formatValue={(v) => formatCurrency(v)}
+            valueFormat="currency"
             emptyMessage="No billed invoices yet"
           />
           <AdminBarChart
@@ -395,7 +395,7 @@ export default async function AdminAnalyticsPage() {
           <AdminBarChart
             title="Paid revenue by client"
             data={marketing.revenueByClient}
-            formatValue={(v) => formatCurrency(v)}
+            valueFormat="currency"
             emptyMessage="No paid invoices yet"
           />
           <AdminBarChart
