@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatStatus } from "@/lib/utils";
+import { formatCurrency, formatStatus } from "@/lib/utils";
 
 const COLORS = ["#A4CF30", "#76B82D", "#050505", "#94A3B8", "#64748B"];
 
@@ -14,18 +14,22 @@ export function AdminBarChart({
   title,
   data,
   emptyMessage = "No data yet",
-  formatValue,
+  /** Serializable display mode — do not pass functions from Server Components. */
+  valueFormat = "number",
   /** When true, bar widths use max value (trends) instead of share-of-total. */
   scaleToMax = false,
 }: {
   title: string;
   data: BarChartItem[];
   emptyMessage?: string;
-  formatValue?: (value: number) => string;
+  valueFormat?: "number" | "currency";
   scaleToMax?: boolean;
 }) {
   const total = data.reduce((s, d) => s + d.value, 0);
   const max = Math.max(...data.map((d) => d.value), 0);
+
+  const displayValue = (value: number) =>
+    valueFormat === "currency" ? formatCurrency(value) : String(value);
 
   return (
     <Card className="admin-card border-0 shadow-none">
@@ -50,7 +54,7 @@ export function AdminBarChart({
                       {item.label}
                     </span>
                     <span className="shrink-0 font-medium text-slate-900 dark:text-white">
-                      {formatValue ? formatValue(item.value) : item.value}
+                      {displayValue(item.value)}
                     </span>
                   </div>
                   <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
