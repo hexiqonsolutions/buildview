@@ -8,7 +8,7 @@ import type { UserRole } from "@/lib/types";
  * BuildView internal team — full platform access.
  * super_admin  – unrestricted
  * admin        – full project & upload control
- * operations_manager – same as admin minus Matterport upload
+ * operations_manager – same as admin minus virtual tour upload
  */
 export const BUILDVIEW_STAFF_ROLES = [
   "super_admin",
