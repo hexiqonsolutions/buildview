@@ -36,6 +36,12 @@ yarn-error.log*
 # vercel
 .vercel
 
+# cursor / local tooling
+.cursor/
+.shared/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+/src/generated/prisma

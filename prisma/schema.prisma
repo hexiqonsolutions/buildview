@@ -1,0 +1,527 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ============================================================
+// Enums
+// ============================================================
+
+enum MembershipRole {
+  OWNER
+  ADMIN
+  SALES
+  VIEWER
+}
+
+enum MembershipStatus {
+  ACTIVE
+  INVITED
+  SUSPENDED
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  PROPOSAL
+  NEGOTIATION
+  WON
+  LOST
+}
+
+enum LeadPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum EmailMessageStatus {
+  DRAFT
+  SCHEDULED
+  SENT
+  FAILED
+  INBOX
+}
+
+enum EmailDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum FollowUpStatus {
+  PENDING
+  DONE
+  CANCELLED
+}
+
+enum ActivityType {
+  CALL
+  MEETING
+  EMAIL
+  TASK
+  NOTE
+}
+
+enum DocumentType {
+  PDF
+  PROPOSAL
+  QUOTATION
+  CONTRACT
+  INVOICE
+  IMAGE
+  OTHER
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+// ============================================================
+// Core / Auth
+// ============================================================
+
+model Organization {
+  id        String    @id @default(uuid()) @db.Uuid
+  name      String
+  slug      String    @unique
+  logoUrl   String?   @map("logo_url")
+  website   String?
+  phone     String?
+  address   String?
+  branding  Json      @default("{}")
+  settings  Json      @default("{}")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  memberships    Membership[]
+  invitations    Invitation[]
+  auditLogs      AuditLog[]
+  leads          Lead[]
+  tags           Tag[]
+  emailAccounts  EmailAccount[]
+  emailTemplates EmailTemplate[]
+  emailCampaigns EmailCampaign[]
+  emailThreads   EmailThread[]
+  emailMessages  EmailMessage[]
+  followUps      FollowUp[]
+  activities     Activity[]
+  documents      Document[]
+
+  @@index([deletedAt])
+  @@map("organizations")
+}
+
+model User {
+  id        String    @id @db.Uuid // Matches Supabase auth.users.id
+  email     String    @unique
+  fullName  String?   @map("full_name")
+  avatarUrl String?   @map("avatar_url")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  memberships      Membership[]
+  invitationsSent  Invitation[]      @relation("InvitationInviter")
+  auditLogs        AuditLog[]
+  ownedLeads       Lead[]            @relation("LeadOwner")
+  emailAccounts    EmailAccount[]
+  emailMessages    EmailMessage[]    @relation("EmailMessageAuthor")
+  followUps        FollowUp[]        @relation("FollowUpAssignee")
+  activities       Activity[]        @relation("ActivityActor")
+  documents        Document[]        @relation("DocumentUploader")
+
+  @@index([deletedAt])
+  @@map("users")
+}
+
+model Membership {
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  userId         String           @map("user_id") @db.Uuid
+  role           MembershipRole   @default(SALES)
+  status         MembershipStatus @default(ACTIVE)
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+  deletedAt      DateTime?        @map("deleted_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@unique([organizationId, userId])
+  @@index([userId, deletedAt])
+  @@index([organizationId, role, status])
+  @@map("memberships")
+}
+
+model Invitation {
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  email          String
+  role           MembershipRole   @default(SALES)
+  token          String           @unique @default(uuid())
+  status         InvitationStatus @default(PENDING)
+  invitedById    String           @map("invited_by_id") @db.Uuid
+  expiresAt      DateTime         @map("expires_at")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+  deletedAt      DateTime?        @map("deleted_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  invitedBy    User         @relation("InvitationInviter", fields: [invitedById], references: [id])
+
+  @@index([organizationId, status])
+  @@index([email, status])
+  @@map("invitations")
+}
+
+model AuditLog {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  actorId        String?   @map("actor_id") @db.Uuid
+  action         String
+  entityType     String    @map("entity_type")
+  entityId       String?   @map("entity_id")
+  metadata       Json      @default("{}")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  deletedAt      DateTime? @map("deleted_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  actor        User?        @relation(fields: [actorId], references: [id])
+
+  @@index([organizationId, createdAt])
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}
+
+// ============================================================
+// Leads
+// ============================================================
+
+model Lead {
+  id               String       @id @default(uuid()) @db.Uuid
+  organizationId   String       @map("organization_id") @db.Uuid
+  ownerId          String?      @map("owner_id") @db.Uuid
+  company          String
+  contactName      String       @map("contact_name")
+  email            String?
+  phone            String?
+  whatsapp         String?
+  linkedin         String?
+  website          String?
+  industry         String?
+  location         String?
+  designation      String?
+  leadSource       String?      @map("lead_source")
+  priority         LeadPriority @default(MEDIUM)
+  status           LeadStatus   @default(NEW)
+  projectType      String?      @map("project_type")
+  budget           Decimal?     @db.Decimal(14, 2)
+  expectedRevenue  Decimal?     @map("expected_revenue") @db.Decimal(14, 2)
+  notes            String?
+  lastContactedAt  DateTime?    @map("last_contacted_at")
+  nextFollowUpAt   DateTime?    @map("next_follow_up_at")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+  deletedAt        DateTime?    @map("deleted_at")
+
+  organization Organization   @relation(fields: [organizationId], references: [id])
+  owner        User?          @relation("LeadOwner", fields: [ownerId], references: [id])
+  tags         LeadTag[]
+  documents    Document[]
+  followUps    FollowUp[]
+  activities   Activity[]
+  emailThreads EmailThread[]
+
+  @@index([organizationId, deletedAt])
+  @@index([organizationId, status])
+  @@index([organizationId, priority])
+  @@index([organizationId, ownerId])
+  @@index([organizationId, nextFollowUpAt])
+  @@index([organizationId, email])
+  @@index([organizationId, company])
+  @@map("leads")
+}
+
+model Tag {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  name           String
+  color          String?   @default("#F97316")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  deletedAt      DateTime? @map("deleted_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  leads        LeadTag[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId, deletedAt])
+  @@map("tags")
+}
+
+model LeadTag {
+  id        String   @id @default(uuid()) @db.Uuid
+  leadId    String   @map("lead_id") @db.Uuid
+  tagId     String   @map("tag_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([leadId, tagId])
+  @@map("lead_tags")
+}
+
+// ============================================================
+// Email
+// ============================================================
+
+model EmailAccount {
+  id               String    @id @default(uuid()) @db.Uuid
+  organizationId   String    @map("organization_id") @db.Uuid
+  userId           String    @map("user_id") @db.Uuid
+  email            String
+  provider         String    @default("gmail")
+  accessTokenEnc   String?   @map("access_token_enc")
+  refreshTokenEnc  String?   @map("refresh_token_enc")
+  tokenExpiresAt   DateTime? @map("token_expires_at")
+  syncCursor       String?   @map("sync_cursor")
+  lastSyncedAt     DateTime? @map("last_synced_at")
+  isActive         Boolean   @default(true) @map("is_active")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  deletedAt        DateTime? @map("deleted_at")
+
+  organization Organization   @relation(fields: [organizationId], references: [id])
+  user         User           @relation(fields: [userId], references: [id])
+  threads      EmailThread[]
+  messages     EmailMessage[]
+
+  @@unique([organizationId, email])
+  @@index([userId, deletedAt])
+  @@map("email_accounts")
+}
+
+model EmailThread {
+  id              String    @id @default(uuid()) @db.Uuid
+  organizationId  String    @map("organization_id") @db.Uuid
+  emailAccountId  String    @map("email_account_id") @db.Uuid
+  leadId          String?   @map("lead_id") @db.Uuid
+  gmailThreadId   String?   @map("gmail_thread_id")
+  subject         String?
+  snippet         String?
+  lastMessageAt   DateTime? @map("last_message_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
+
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  emailAccount EmailAccount  @relation(fields: [emailAccountId], references: [id])
+  lead         Lead?         @relation(fields: [leadId], references: [id])
+  messages     EmailMessage[]
+
+  @@index([organizationId, deletedAt])
+  @@index([emailAccountId, lastMessageAt])
+  @@index([leadId])
+  @@unique([emailAccountId, gmailThreadId])
+  @@map("email_threads")
+}
+
+model EmailMessage {
+  id              String             @id @default(uuid()) @db.Uuid
+  organizationId  String             @map("organization_id") @db.Uuid
+  emailAccountId  String             @map("email_account_id") @db.Uuid
+  threadId        String?            @map("thread_id") @db.Uuid
+  authorId        String?            @map("author_id") @db.Uuid
+  gmailMessageId  String?            @map("gmail_message_id")
+  direction       EmailDirection     @default(OUTBOUND)
+  status          EmailMessageStatus @default(DRAFT)
+  fromAddress     String             @map("from_address")
+  toAddresses     String[]           @map("to_addresses")
+  ccAddresses     String[]           @default([]) @map("cc_addresses")
+  bccAddresses    String[]           @default([]) @map("bcc_addresses")
+  subject         String
+  bodyHtml        String?            @map("body_html")
+  bodyText        String?            @map("body_text")
+  scheduledAt     DateTime?          @map("scheduled_at")
+  sentAt          DateTime?          @map("sent_at")
+  trackingToken   String?            @unique @map("tracking_token")
+  openCount       Int                @default(0) @map("open_count")
+  firstOpenedAt   DateTime?          @map("first_opened_at")
+  lastOpenedAt    DateTime?          @map("last_opened_at")
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
+  deletedAt       DateTime?          @map("deleted_at")
+
+  organization Organization      @relation(fields: [organizationId], references: [id])
+  emailAccount EmailAccount      @relation(fields: [emailAccountId], references: [id])
+  thread       EmailThread?      @relation(fields: [threadId], references: [id])
+  author       User?             @relation("EmailMessageAuthor", fields: [authorId], references: [id])
+  attachments  EmailAttachment[]
+  openEvents   EmailOpenEvent[]
+
+  @@index([organizationId, status, deletedAt])
+  @@index([threadId, createdAt])
+  @@index([emailAccountId, status])
+  @@unique([emailAccountId, gmailMessageId])
+  @@map("email_messages")
+}
+
+model EmailOpenEvent {
+  id        String   @id @default(uuid()) @db.Uuid
+  messageId String   @map("message_id") @db.Uuid
+  openedAt  DateTime @default(now()) @map("opened_at")
+  userAgent String?  @map("user_agent")
+  ipHash    String?  @map("ip_hash")
+
+  message EmailMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId, openedAt])
+  @@map("email_open_events")
+}
+
+model EmailAttachment {
+  id             String    @id @default(uuid()) @db.Uuid
+  messageId      String    @map("message_id") @db.Uuid
+  fileName       String    @map("file_name")
+  mimeType       String    @map("mime_type")
+  sizeBytes      Int       @map("size_bytes")
+  storagePath    String    @map("storage_path")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  deletedAt      DateTime? @map("deleted_at")
+
+  message EmailMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+  @@map("email_attachments")
+}
+
+model EmailTemplate {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  name           String
+  subject        String
+  bodyHtml       String    @map("body_html")
+  variables      String[]  @default([])
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  deletedAt      DateTime? @map("deleted_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId, deletedAt])
+  @@map("email_templates")
+}
+
+model EmailCampaign {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  name           String
+  subject        String
+  bodyHtml       String    @map("body_html")
+  status         String    @default("draft")
+  scheduledAt    DateTime? @map("scheduled_at")
+  sentAt         DateTime? @map("sent_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  deletedAt      DateTime? @map("deleted_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId, status, deletedAt])
+  @@map("email_campaigns")
+}
+
+// ============================================================
+// Follow-ups & Activities
+// ============================================================
+
+model FollowUp {
+  id             String         @id @default(uuid()) @db.Uuid
+  organizationId String         @map("organization_id") @db.Uuid
+  leadId         String         @map("lead_id") @db.Uuid
+  assigneeId     String?        @map("assignee_id") @db.Uuid
+  title          String
+  notes          String?
+  dueAt          DateTime       @map("due_at")
+  status         FollowUpStatus @default(PENDING)
+  remindedAt     DateTime?      @map("reminded_at")
+  completedAt    DateTime?      @map("completed_at")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+  deletedAt      DateTime?      @map("deleted_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  lead         Lead         @relation(fields: [leadId], references: [id])
+  assignee     User?        @relation("FollowUpAssignee", fields: [assigneeId], references: [id])
+
+  @@index([organizationId, status, dueAt])
+  @@index([leadId, status])
+  @@index([assigneeId, dueAt])
+  @@map("follow_ups")
+}
+
+model Activity {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  leadId         String?      @map("lead_id") @db.Uuid
+  actorId        String?      @map("actor_id") @db.Uuid
+  type           ActivityType
+  title          String
+  body           String?
+  occurredAt     DateTime     @default(now()) @map("occurred_at")
+  metadata       Json         @default("{}")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  deletedAt      DateTime?    @map("deleted_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  lead         Lead?        @relation(fields: [leadId], references: [id])
+  actor        User?        @relation("ActivityActor", fields: [actorId], references: [id])
+
+  @@index([organizationId, occurredAt])
+  @@index([leadId, occurredAt])
+  @@index([type])
+  @@map("activities")
+}
+
+// ============================================================
+// Documents
+// ============================================================
+
+model Document {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  leadId         String?      @map("lead_id") @db.Uuid
+  uploadedById   String?      @map("uploaded_by_id") @db.Uuid
+  name           String
+  type           DocumentType @default(OTHER)
+  mimeType       String       @map("mime_type")
+  sizeBytes      Int          @map("size_bytes")
+  storagePath    String       @map("storage_path")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  deletedAt      DateTime?    @map("deleted_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  lead         Lead?        @relation(fields: [leadId], references: [id])
+  uploadedBy   User?        @relation("DocumentUploader", fields: [uploadedById], references: [id])
+
+  @@index([organizationId, deletedAt])
+  @@index([leadId])
+  @@index([type])
+  @@map("documents")
+}
