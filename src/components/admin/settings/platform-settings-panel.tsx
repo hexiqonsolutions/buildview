@@ -154,7 +154,7 @@ export function PlatformSettingsPanel({
         <div className="mt-2 divide-y divide-slate-100 dark:divide-slate-800">
           <ToggleRow
             label="Notify clients on uploads"
-            description="Matterport scans, reports, and documents uploaded to their projects."
+            description="Virtual tour scans, reports, and documents uploaded to their projects."
             checked={settings.notifications.onUpload}
             onChange={(onUpload) =>
               updateSettings({

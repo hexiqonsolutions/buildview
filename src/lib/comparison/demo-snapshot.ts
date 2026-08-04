@@ -1,6 +1,6 @@
 import type { ComparisonSnapshot } from "@/lib/comparison/types";
 
-/** Public Matterport model that loads reliably in embeds (used for demo scans). */
+/** Public demo model that loads reliably in embeds (used for demo scans). */
 const DEMO_MATTERPORT_MODEL = "https://my.matterport.com/show/?m=SxQL3iGyoDo";
 
 /** Demo snapshot so the comparison UI is visible before real tours are uploaded. */

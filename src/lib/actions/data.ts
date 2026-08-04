@@ -2196,7 +2196,7 @@ export async function getAdminStorageStats(): Promise<AdminStorageStats> {
     },
     {
       id: "matterport",
-      label: "Matterport Tours",
+      label: "Virtual Tours",
       bytes: 0,
       fileCount: tourCount,
     },

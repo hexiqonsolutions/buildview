@@ -388,7 +388,7 @@ export function PortfolioShowcaseShell({
               No projects yet
             </p>
             <p className="mx-auto mt-1.5 max-w-md text-xs text-slate-500">
-              Once projects and Matterport links are added, your portfolio will appear here.
+              Once projects and tour links are added, your portfolio will appear here.
             </p>
           </div>
         ) : (

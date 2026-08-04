@@ -54,7 +54,7 @@ export function MatterportManager({ tours }: { tours: TourRow[] }) {
           <Camera className="mb-3 h-10 w-10 text-slate-300" />
           <p className="font-medium text-slate-900 dark:text-white">No tours in this workspace</p>
           <p className="mt-1 max-w-sm text-sm text-slate-500">
-            Use Upload in the header, or Quick add → Matterport, to add a scan.
+            Use Upload in the header, or Quick add → Virtual Tour, to add a scan.
           </p>
         </div>
       ) : (

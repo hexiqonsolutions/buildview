@@ -78,7 +78,7 @@ const ADMIN_CATEGORIES: {
   icon: React.ComponentType<{ className?: string }>;
   description: string;
 }[] = [
-  { id: "matterport", label: "Matterport Tour", icon: Camera, description: "3D scan link" },
+  { id: "matterport", label: "Virtual Tour", icon: Camera, description: "3D scan link" },
   { id: "progress_report", label: "Progress Report", icon: FileText, description: "PDF report" },
   { id: "inspection_report", label: "Inspection Report", icon: FileText, description: "PDF report" },
   { id: "safety_report", label: "Safety Report", icon: FileText, description: "PDF report" },
@@ -103,7 +103,7 @@ export type UploadWizardProps = {
   /** Where to send users after success (defaults to admin project page). */
   projectHref?: string;
   mode?: "admin" | "portal";
-  /** Super Admin / Admin only — show Matterport category in admin upload center. */
+  /** Super Admin / Admin only — show virtual tour category in admin upload center. */
   canUploadMatterport?: boolean;
 };
 
@@ -222,7 +222,7 @@ export function UploadWizard({
     if (!projectId) return "Choose a client and project before uploading.";
     if (categoryNeedsMatterportUrl(category)) {
       if (!tourName.trim()) return "Tour name is required.";
-      if (!isValidMatterportUrl(matterportUrl)) return "Enter a valid Matterport URL.";
+      if (!isValidMatterportUrl(matterportUrl)) return "Enter a valid 360° tour share URL.";
     }
     if (categoryIsTimelineOnly(category) && !title.trim()) {
       return "Milestone title is required.";
@@ -982,7 +982,7 @@ function DetailsStep(props: {
           <Field label="Tour name" required>
             <Input value={tourName} onChange={(e) => setTourName(e.target.value)} required placeholder="Level 8 — June Capture" />
           </Field>
-          <Field label="Matterport URL" required>
+          <Field label="Tour share URL" required>
             <Input value={matterportUrl} onChange={(e) => setMatterportUrl(e.target.value)} required placeholder="https://my.matterport.com/show/?m=..." />
           </Field>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

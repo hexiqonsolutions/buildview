@@ -165,10 +165,10 @@ export async function uploadMatterportWithAutomation(data: {
   await createTimelineEvent({
     project_id: parsed.data.project_id,
     event_date: eventDate,
-    title: `Matterport scan — ${parsed.data.name}`,
+    title: `Virtual tour scan — ${parsed.data.name}`,
     progress_note:
       data.progress_note ??
-      `New Matterport tour uploaded${spatial.building ? ` for ${spatial.building}` : ""}${spatial.floor ? ` · ${spatial.floor}` : ""}.`,
+      `New virtual tour uploaded${spatial.building ? ` for ${spatial.building}` : ""}${spatial.floor ? ` · ${spatial.floor}` : ""}.`,
     tour_id: tour.id,
     building: spatial.building ?? undefined,
     floor: spatial.floor ?? undefined,
@@ -177,7 +177,7 @@ export async function uploadMatterportWithAutomation(data: {
 
   await logActivity(
     parsed.data.project_id,
-    `Matterport tour uploaded: ${parsed.data.name}`,
+    `Virtual tour uploaded: ${parsed.data.name}`,
     "project_tour",
     tour.id,
     {
@@ -192,7 +192,7 @@ export async function uploadMatterportWithAutomation(data: {
     if (await isNotificationRuleEnabled("onUpload")) {
       const projectName = await getProjectNameForNotify(parsed.data.project_id);
       await notifyProjectClientUsers(parsed.data.project_id, {
-        title: "New Matterport scan available",
+        title: "New virtual tour scan available",
         message: formatUploadNotifyMessage(parsed.data.name, projectName, "project"),
         type: "project_update",
         link: portalMatterportLink(parsed.data.project_id, tour.id),

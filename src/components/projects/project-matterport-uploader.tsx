@@ -25,10 +25,10 @@ import {
 import { isValidMatterportUrl } from "@/lib/matterport";
 import type { Building, Floor } from "@/lib/types";
 
-/** Dialog-based Matterport URL uploader — lives on the project overview. */
+/** Dialog-based 360° tour URL uploader — lives on the project overview. */
 export function ProjectMatterportUploader({
   projectId,
-  triggerLabel = "Add Matterport link",
+  triggerLabel = "Add tour link",
   triggerClassName,
   variant = "outline",
 }: {
@@ -84,7 +84,7 @@ export function ProjectMatterportUploader({
       try {
         await createTour({
           project_id: projectId,
-          name: name.trim() || "Matterport Walkthrough",
+          name: name.trim() || "Virtual Walkthrough",
           matterport_url: url.trim(),
           capture_date: captureDate || undefined,
           building_id: buildingId || undefined,
@@ -93,7 +93,7 @@ export function ProjectMatterportUploader({
         resetForm();
         setOpen(false);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to add Matterport link");
+        setError(err instanceof Error ? err.message : "Failed to add tour link");
       }
     });
   }
@@ -121,13 +121,13 @@ export function ProjectMatterportUploader({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Link2 className="h-4 w-4" />
-            Embed Matterport on this project
+            Embed virtual tour on this project
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="mp-url">Matterport share URL</Label>
+            <Label htmlFor="mp-url">360° tour share URL</Label>
             <Input
               id="mp-url"
               value={url}
@@ -136,7 +136,7 @@ export function ProjectMatterportUploader({
               required
             />
             <p className="text-xs text-slate-500">
-              Paste the share link from Matterport (Showcase or Discover).
+              Paste the 360° tour share link (Showcase or Discover).
             </p>
           </div>
 

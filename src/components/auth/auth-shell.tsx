@@ -3,7 +3,7 @@ import { CheckCircle2 } from "lucide-react";
 import { BrandLogo } from "@/components/brand/brand-logo";
 
 const highlights = [
-  "Matterport virtual tours in every project",
+  "Virtual tour services in every project",
   "Progress reports & document hub",
   "Issue tracking with photo evidence",
   "Secure client & admin portals",

@@ -19,7 +19,7 @@ export function PortalLatestTourCard({ tour }: { tour: LatestTour | null }) {
     return (
       <div className="intel-card flex flex-col items-center justify-center p-10 text-center">
         <Camera className="mb-3 h-10 w-10 text-slate-300" />
-        <p className="font-medium text-slate-900 dark:text-white">No Matterport scans yet</p>
+        <p className="font-medium text-slate-900 dark:text-white">No virtual tour scans yet</p>
         <p className="mt-1 max-w-sm text-sm text-slate-500">
           Your latest 3D site visit will appear here once uploaded by BuildView.
         </p>
@@ -35,7 +35,7 @@ export function PortalLatestTourCard({ tour }: { tour: LatestTour | null }) {
       <div className="flex flex-col gap-4 border-b border-slate-100 p-5 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="dashboard-section-eyebrow">
-            Latest Matterport Tour
+            Latest Virtual Tour
           </p>
           <h2 className="mt-1 font-display text-lg font-semibold tracking-tight text-slate-900 dark:text-white">
             {tour.name}

@@ -102,7 +102,7 @@ export function CreateTourForm({
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add Matterport Tour</DialogTitle>
+          <DialogTitle>Add Virtual Tour</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           {!fixedProjectId && (
@@ -134,7 +134,7 @@ export function CreateTourForm({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="matterport-url">Matterport URL</Label>
+            <Label htmlFor="matterport-url">Tour share URL</Label>
             <Input
               id="matterport-url"
               name="matterport_url"
@@ -147,11 +147,11 @@ export function CreateTourForm({
               placeholder="https://my.matterport.com/show/?m=..."
             />
             <p className="text-xs text-slate-500">
-              Paste the share link from Matterport (Showcase or Discover).
+              Paste the 360° tour share link (Showcase or Discover).
             </p>
             {matterportUrl && !urlIsValid && (
               <p className="text-xs text-red-500">
-                URL not recognized. Use a my.matterport.com link.
+                Enter a valid 360° tour share URL.
               </p>
             )}
           </div>

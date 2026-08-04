@@ -432,7 +432,7 @@ export function AdminTimelineView({
                           <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
                             <StatPill
                               icon={Camera}
-                              label={`${month.counts.tours} Matterport`}
+                              label={`${month.counts.tours} Virtual tours`}
                               color="text-blue-500"
                             />
                             <StatPill

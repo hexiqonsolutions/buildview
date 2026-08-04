@@ -372,7 +372,7 @@ export async function createTour(data: {
 
   const projectName = await getProjectNameForNotify(parsed.data.project_id);
   await notifyClientsIfEnabled("onUpload", parsed.data.project_id, {
-    title: "New Matterport scan available",
+    title: "New virtual tour scan available",
     message: formatUploadNotifyMessage(parsed.data.name, projectName, "project"),
     type: "project_update",
     link: portalMatterportLink(parsed.data.project_id),

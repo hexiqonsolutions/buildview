@@ -41,7 +41,7 @@ const reasons = [
   "Request a Live Demo",
   "Construction Monitoring Quote",
   "Enterprise Deployment",
-  "Matterport Services",
+  "Virtual Tour Services",
   "Technical Support",
   "Partner With Us",
 ];

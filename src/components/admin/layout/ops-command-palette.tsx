@@ -35,7 +35,7 @@ const routes = [
   { href: "/admin/clients", label: "Client Manager", icon: Users },
   { href: "/admin/projects", label: "Project Manager", icon: FolderKanban },
   { href: "/admin/upload", label: "Upload Center", icon: FolderOpen },
-  { href: "/admin/tours", label: "Matterport Manager", icon: Camera },
+  { href: "/admin/tours", label: "Tour Manager", icon: Camera },
   { href: "/admin/timeline", label: "Timeline Manager", icon: Calendar },
   { href: "/admin/reports", label: "Reports Manager", icon: FileText },
   { href: "/admin/documents", label: "Document Manager", icon: FolderOpen },

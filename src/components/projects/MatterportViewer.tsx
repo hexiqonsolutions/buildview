@@ -17,7 +17,7 @@ import {
 } from "@/lib/matterport";
 
 export interface MatterportViewerProps {
-  /** Matterport share URL or model ID */
+  /** 360° tour share URL or model ID */
   url: string;
   /** Accessible title for the iframe */
   title?: string;
@@ -33,7 +33,7 @@ export interface MatterportViewerProps {
 
 export function MatterportViewer({
   url,
-  title = "Matterport Virtual Tour",
+  title = "360° Virtual Tour",
   className,
   height = 480,
   aspectRatio = true,
@@ -56,7 +56,7 @@ export function MatterportViewer({
       >
         <AlertCircle className="h-10 w-10 text-slate-500" />
         <p className="text-sm text-slate-600 dark:text-slate-400">
-          Invalid Matterport URL. Please check the tour link.
+          Invalid tour URL. Please check the tour link.
         </p>
       </div>
     );

@@ -23,7 +23,7 @@ import {
 const quickActions = [
   { href: "/admin/clients", label: "Create Client", icon: Users },
   { href: "/admin/projects", label: "Create Project", icon: FolderKanban },
-  { href: "/admin/tours", label: "Upload Matterport Tour", icon: Camera },
+  { href: "/admin/tours", label: "Upload Virtual Tour", icon: Camera },
   { href: "/admin/reports", label: "Upload Report", icon: FileText },
   { href: "/admin/documents", label: "Upload Drawing", icon: FolderOpen },
   { href: "/admin/invoices", label: "Generate Invoice", icon: ReceiptIndianRupee },

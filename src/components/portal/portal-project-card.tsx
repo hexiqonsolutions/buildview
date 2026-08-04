@@ -98,7 +98,7 @@ export function PortalProjectCard({
           <span className="truncate">
             {tour
               ? `${project.tourCount ?? 1} walkthrough${(project.tourCount ?? 1) === 1 ? "" : "s"}`
-              : "No Matterport yet"}
+              : "No virtual tour yet"}
             {project.latestScanDate ? ` · ${formatDate(project.latestScanDate)}` : ""}
           </span>
         </p>

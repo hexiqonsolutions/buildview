@@ -19,8 +19,8 @@ export default function PrivacyPage() {
       <LegalSection title="Overview">
         <p>
           BuildView (&quot;we&quot;, &quot;our&quot;, or &quot;us&quot;) operates a construction
-          operations and project monitoring platform. We capture site progress using Matterport
-          virtual tours, reports, documents, timelines, and issue tracking — and make that
+          operations and project monitoring platform. We capture site progress using 360° virtual
+          tours, reports, documents, timelines, and issue tracking — and make that
           information available to authorized project stakeholders through a secure client portal.
         </p>
         <p>
@@ -59,7 +59,7 @@ export default function PrivacyPage() {
             associations, and activity logs needed for security and audit.
           </li>
           <li>
-            <strong>Project content</strong> — documents, reports, photos, Matterport tour links,
+            <strong>Project content</strong> — documents, reports, photos, virtual tour links,
             timeline entries, issues, invoices, and related metadata uploaded or managed by the
             BuildView team on behalf of clients.
           </li>

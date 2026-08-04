@@ -57,7 +57,7 @@ export function TimelineEventCard({
       {showMatterportEmbed && event.tour?.matterport_url && (
         <div className="mb-4">
           <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-400">
-            Matterport Tour
+            Virtual Tour
           </p>
           <MatterportViewer
             url={event.tour.matterport_url}

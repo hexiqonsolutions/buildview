@@ -46,7 +46,7 @@ export function getAutomationPreview(category: UploadCategory): AutomationPrevie
   switch (category) {
     case "matterport":
       return {
-        label: "Matterport tour",
+        label: "Virtual tour",
         timeline: true,
         activity: true,
         clientNotify: true,

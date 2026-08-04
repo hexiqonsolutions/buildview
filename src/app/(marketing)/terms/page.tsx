@@ -28,7 +28,7 @@ export default function TermsPage() {
       <LegalSection title="Service description">
         <p>
           BuildView provides construction operations and project monitoring software, including
-          Matterport virtual tour delivery, progress reports, document management, issue tracking,
+          360° virtual tour delivery, progress reports, document management, issue tracking,
           timelines, invoicing visibility, and related collaboration features. Specific features may
           vary by subscription plan or statement of work.
         </p>
@@ -94,8 +94,8 @@ export default function TermsPage() {
 
       <LegalSection title="Third-party services">
         <p>
-          The Service may integrate with or link to third-party services (for example Matterport,
-          Calendly, or email providers). Those services are subject to their own terms and privacy
+          The Service may integrate with or link to third-party services (for example 360° tour
+          hosting providers, Calendly, or email providers). Those services are subject to their own terms and privacy
           policies. BuildView is not responsible for third-party services outside our reasonable
           control.
         </p>

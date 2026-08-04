@@ -164,7 +164,7 @@ export function ProjectDetailTabs({
             <p className="text-sm text-slate-600 dark:text-slate-300">
               This project has{" "}
               <span className="font-semibold text-slate-900 dark:text-white">
-                {tours.length} Matterport scan{tours.length === 1 ? "" : "s"}
+                {tours.length} virtual tour scan{tours.length === 1 ? "" : "s"}
               </span>
               . Open the Scans tab to browse the full library and compare any two.
             </p>

@@ -7,7 +7,7 @@ import type { ProjectTour } from "@/lib/types";
 import { Camera } from "lucide-react";
 
 /**
- * Matterport lives on the project itself (overview) — not a separate Matterport tab.
+ * Virtual tours live on the project itself (overview) — not a separate tours tab.
  * Admin can paste embed URLs here; clients see the walkthrough showcase.
  */
 export function ProjectMatterportPanel({
@@ -31,10 +31,10 @@ export function ProjectMatterportPanel({
           </h2>
           <p className="text-sm text-slate-500">
             {canUpload
-              ? "Paste Matterport share links to add scans. Clients can browse the full library and compare any two."
+              ? "Paste 360° tour share links to add scans. Clients can browse the full library and compare any two."
               : isPortfolio
-                ? "Step inside this space with immersive 360° Matterport walkthroughs."
-                : "Browse every Matterport scan for this project, then compare any two side by side."}
+                ? "Step inside this space with immersive 360° virtual walkthroughs."
+                : "Browse every virtual tour scan for this project, then compare any two side by side."}
           </p>
         </div>
         {canUpload && <ProjectMatterportUploader projectId={projectId} />}
@@ -52,8 +52,8 @@ export function ProjectMatterportPanel({
             </p>
             <p className="mt-2 max-w-md text-sm text-slate-400">
               {canUpload
-                ? "Paste a my.matterport.com share link to embed the 360° tour on this project."
-                : "Your BuildView team will publish a Matterport tour for this project shortly."}
+                ? "Paste the 360° tour share link (Showcase or Discover) to embed the tour on this project."
+                : "Your BuildView team will publish a virtual tour for this project shortly."}
             </p>
             {canUpload && (
               <div className="mt-6">

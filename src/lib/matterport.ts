@@ -49,7 +49,7 @@ export function isValidMatterportUrl(url: string): boolean {
 export function normalizeMatterportUrl(url: string): string {
   const modelId = extractMatterportModelId(url);
   if (!modelId) {
-    throw new Error("Invalid Matterport URL. Use a link like https://my.matterport.com/show/?m=...");
+    throw new Error("Enter a valid 360° tour share URL.");
   }
   return `https://${MATTERPORT_SHOW_HOST}/show/?m=${modelId}`;
 }

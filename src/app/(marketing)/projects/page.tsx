@@ -69,7 +69,7 @@ const sampleProjects = [
     status: "In Progress" as const,
     type: "Hospitality",
     description:
-      "12-story waterfront hotel with ballroom and spa wing — investor visibility via monthly Matterport captures.",
+      "12-story waterfront hotel with ballroom and spa wing — investor visibility via monthly virtual tour captures.",
     tours: 6,
     reports: 9,
   },

@@ -78,7 +78,7 @@ const ADMIN_OPS_MATRIX: RolePermissions = {
   activity: STAFF_FULL,
 };
 
-/** Client Admin / Site Supervisor / Site Engineer — upload & manage project content (not Matterport). */
+/** Client Admin / Site Supervisor / Site Engineer — upload & manage project content (not virtual tours). */
 const CLIENT_MANAGER_MATRIX: RolePermissions = {
   projects: ["read", "update"],
   upload: CLIENT_UPLOAD_ACTIONS,

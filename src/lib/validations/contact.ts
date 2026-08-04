@@ -16,7 +16,7 @@ const interestLabels: Record<ContactFormInput["interest"], string> = {
   demo: "Request a Live Demo",
   quote: "Construction Monitoring Quote",
   enterprise: "Enterprise Deployment",
-  matterport: "Matterport Services",
+  matterport: "Virtual Tour Services",
   partnership: "Partner With Us",
   support: "Technical Support",
   other: "Other",

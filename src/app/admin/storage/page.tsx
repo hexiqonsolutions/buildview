@@ -9,7 +9,7 @@ export default async function StorageManagerPage() {
   return (
     <OpsWorkspacePage
       title="Storage Manager"
-      description="Per-client storage usage across documents, reports, site photos, and Matterport tours."
+      description="Per-client storage usage across documents, reports, site photos, and virtual tours."
       icon={HardDrive}
     >
       <StorageManager stats={stats} />

@@ -464,7 +464,7 @@ export function buildBlankComparisonSnapshot(
       pendingActivities: [],
       criticalRisks: [],
       recommendedActions: [
-        "Upload Matterport scans for this project",
+        "Upload virtual tour scans for this project",
         "Add progress reports and site notes",
         "Compare two captures once available",
       ],

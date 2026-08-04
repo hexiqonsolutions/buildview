@@ -75,7 +75,7 @@ export function getTourDate(tour: ProjectTour): Date {
   return new Date(tour.created_at);
 }
 
-/** Lightweight fields for client Matterport UI (from tour JSON / name heuristics). */
+/** Lightweight fields for client virtual tour UI (from tour JSON / name heuristics). */
 export function getTourDisplayFields(tour: ProjectTour) {
   const parsed = { ...inferFromName(tour.name), ...tryParseDescription(tour.description) };
   return {

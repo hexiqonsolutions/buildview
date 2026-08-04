@@ -75,7 +75,7 @@ export function OperationsDashboard({
       tone: stats.projectsRequiringUpdates > 0 ? "text-rose-600" : "text-slate-500",
     },
     {
-      label: "Matterport processing",
+      label: "Tour processing",
       value: stats.matterportProcessing,
       href: "/admin/tours",
       tone: "text-slate-500",
@@ -324,7 +324,7 @@ export function OperationsDashboard({
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 xl:grid-cols-4">
         <AdminMetricCard label="Clients" value={stats.totalClients} icon={Users} />
         <AdminMetricCard label="Projects" value={stats.activeProjects} icon={FolderKanban} />
-        <AdminMetricCard label="Matterport Tours" value={stats.totalTours} icon={Camera} />
+        <AdminMetricCard label="Virtual Tours" value={stats.totalTours} icon={Camera} />
         <AdminMetricCard label="Pending Uploads" value={stats.pendingUploads} icon={Clock} />
         <AdminMetricCard
           label="Storage Used"

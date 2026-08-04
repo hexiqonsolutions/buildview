@@ -16,7 +16,7 @@ import type { UserRole } from "@/lib/types";
 
 const baseLinks: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/dashboard/projects", label: "Projects", icon: FolderKanban },
-  { href: "/dashboard/matterport-comparison", label: "Matterport Compare", icon: Columns2 },
+  { href: "/dashboard/matterport-comparison", label: "Compare Tours", icon: Columns2 },
   { href: "/dashboard/reports", label: "Reports", icon: FileText },
   { href: "/dashboard/documents", label: "Documents", icon: FolderOpen },
   { href: "/dashboard/issues", label: "Issues", icon: AlertTriangle },

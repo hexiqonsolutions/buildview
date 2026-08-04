@@ -17,7 +17,7 @@ const stats = [
   {
     key: "tours",
     label: "Virtual Tours",
-    hint: "Matterport scans",
+    hint: "Virtual tour scans",
     emptyHint: "No scans yet",
     tab: "overview",
     icon: Camera,

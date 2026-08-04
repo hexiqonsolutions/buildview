@@ -209,7 +209,7 @@ export function AdminProjectsView({ data, clients, mode = "admin" }: AdminProjec
           trend="↑ 5% vs last month"
         />
         <AdminMetricCard
-          label="Total Matterport Tours"
+          label="Total Virtual Tours"
           value={stats.totalTours}
           icon={Camera}
           trend="↑ 15% vs last month"
@@ -345,7 +345,7 @@ export function AdminProjectsView({ data, clients, mode = "admin" }: AdminProjec
                   <TableHead className="admin-table-head">Location</TableHead>
                   <TableHead className="admin-table-head">Status</TableHead>
                   <TableHead className="admin-table-head min-w-[140px]">Progress</TableHead>
-                  <TableHead className="admin-table-head">Matterport Tours</TableHead>
+                  <TableHead className="admin-table-head">Virtual Tours</TableHead>
                   <TableHead className="admin-table-head">Open Issues</TableHead>
                   <TableHead className="admin-table-head">Last Scan</TableHead>
                   <TableHead className="admin-table-head text-right">Actions</TableHead>

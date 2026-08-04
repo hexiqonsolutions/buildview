@@ -61,7 +61,7 @@ export function ExecutiveOverview({
           trendTone={data.kpis.trends.activeProjects.tone}
         />
         <PortalMetricCard
-          label="Matterport Tours"
+          label="Virtual Tours"
           value={data.kpis.totalTours}
           icon={Camera}
           trend={data.kpis.trends.totalTours.text}

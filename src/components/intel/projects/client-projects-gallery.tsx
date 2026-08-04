@@ -35,8 +35,8 @@ export function ClientProjectsGallery({
       title={isPortfolio ? "Project Portfolio" : "Your Projects"}
       description={
         isPortfolio
-          ? "Browse curated work with immersive Matterport walkthroughs — ideal for architecture, interior design, and real estate showcases."
-          : "Executive view of every construction project — progress, latest scans, and quick access to Matterport tours."
+          ? "Browse curated work with immersive 360° walkthroughs — ideal for architecture, interior design, and real estate showcases."
+          : "Executive view of every construction project — progress, latest scans, and quick access to virtual tours."
       }
       icon={isPortfolio ? Sparkles : FolderKanban}
       eyebrow={isPortfolio ? "Showcase" : "Projects"}

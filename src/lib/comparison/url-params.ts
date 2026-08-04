@@ -3,7 +3,7 @@ import { WORKSPACE_PARAM_KEYS } from "@/lib/admin/scope";
 
 const COMPARE_SCAN_A = "scanA";
 const COMPARE_SCAN_B = "scanB";
-/** Legacy deep link from Matterport manager */
+/** Legacy deep link from Tour Manager */
 const COMPARE_TOUR_A = "tourA";
 
 export type CompareUrlParams = WorkspaceScope & {

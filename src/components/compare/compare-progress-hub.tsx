@@ -364,7 +364,7 @@ export function CompareProgressHub({
                 No site visits yet
               </p>
               <p className="mt-0.5 text-sm text-slate-500">
-                Layout is ready — values will fill in after Matterport scans are uploaded.
+                Layout is ready — values will fill in after virtual tour scans are uploaded.
               </p>
             </div>
           </div>
@@ -683,7 +683,7 @@ export function CompareProgressHub({
             <div className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center dark:border-slate-700">
               <Camera className="mx-auto h-8 w-8 text-slate-300 dark:text-slate-600" />
               <p className="mt-2 text-sm text-slate-500">
-                Upload Matterport scans on this project, or clear building/floor filters.
+                Upload virtual tour scans on this project, or clear building/floor filters.
               </p>
             </div>
           )}

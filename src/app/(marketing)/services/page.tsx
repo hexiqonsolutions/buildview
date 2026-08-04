@@ -20,7 +20,7 @@ import { pageMetadata } from "@/lib/seo";
 export const metadata: Metadata = pageMetadata({
   title: "Construction Monitoring Services",
   description:
-    "End-to-end construction monitoring services: Matterport virtual tours, compare progress, reports, timelines, document management, issue tracking, and client dashboards.",
+    "End-to-end construction monitoring services: 360° virtual tours, compare progress, reports, timelines, document management, issue tracking, and client dashboards.",
   path: "/services",
 });
 
@@ -28,7 +28,7 @@ const services = [
   {
     id: "virtual-tours",
     icon: Camera,
-    title: "Matterport Virtual Tours",
+    title: "360° Virtual Site Tours",
     description:
       "Create immersive digital twins of construction sites for remote inspections, stakeholder reviews, and historical documentation.",
     features: [

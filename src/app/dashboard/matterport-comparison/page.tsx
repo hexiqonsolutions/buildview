@@ -25,7 +25,7 @@ export default async function MatterportComparisonPage() {
       title="Compare Progress"
       description="Compare any two site visits and understand how the project has changed."
       icon={Columns2}
-      eyebrow="Matterport"
+      eyebrow="Virtual Tours"
     >
       <Suspense
         fallback={

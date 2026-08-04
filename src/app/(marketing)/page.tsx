@@ -48,7 +48,7 @@ const products = [
     description:
       "Walk through your project from anywhere using immersive 360° site captures.",
     highlights: [
-      "Professional Matterport digital twins",
+      "Professional 360° digital twins",
       "Remote stakeholder walkthroughs",
       "Historical site documentation",
     ],
@@ -168,7 +168,7 @@ const processSteps = [
 const testimonials = [
   {
     quote:
-      "BuildView transformed how we monitor our projects. The Matterport tours save us countless site visits.",
+      "BuildView transformed how we monitor our projects. The virtual tours save us countless site visits.",
     author: "Sarah Chen",
     role: "Project Director, Meridian Development",
   },
@@ -301,7 +301,7 @@ export default function HomePage() {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           <FeatureCard
             icon={Camera}
-            title="Matterport-native virtual tours"
+            title="360°-native virtual tours"
             description="Immersive site captures embedded in the platform for remote inspections and stakeholder reviews."
           />
           <FeatureCard

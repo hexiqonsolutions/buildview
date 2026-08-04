@@ -56,7 +56,7 @@ const navSections: Array<{
   {
     label: "Content",
     items: [
-      { href: "/admin/tours", label: "Matterport Manager", icon: Camera, resource: "matterport" },
+      { href: "/admin/tours", label: "Tour Manager", icon: Camera, resource: "matterport" },
       { href: "/admin/timeline", label: "Timeline Manager", icon: Calendar, resource: "reports" },
       { href: "/admin/reports", label: "Reports Manager", icon: FileText, resource: "reports" },
       { href: "/admin/documents", label: "Documents", icon: FolderOpen, resource: "documents" },

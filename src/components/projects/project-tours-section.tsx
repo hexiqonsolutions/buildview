@@ -88,8 +88,8 @@ export function ProjectToursSection({
         title={isPortfolio ? "No walkthroughs yet." : "No virtual tours available yet."}
         description={
           isPortfolio
-            ? "Matterport walkthroughs will appear here once your BuildView team uploads them."
-            : "Matterport 3D tours will appear here once added by your administrator."
+            ? "Virtual walkthroughs will appear here once your BuildView team uploads them."
+            : "360° virtual tours will appear here once added by your administrator."
         }
       />
     );

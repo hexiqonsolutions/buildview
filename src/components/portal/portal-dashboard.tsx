@@ -21,7 +21,7 @@ function welcomeInitials(name?: string | null, email?: string | null) {
 }
 
 const actions = [
-  { href: "/dashboard/projects", label: "Open Matterport", icon: Camera },
+  { href: "/dashboard/projects", label: "Open Virtual Tours", icon: Camera },
   { href: "/dashboard/timeline", label: "View Timeline", icon: Calendar },
   { href: "/dashboard/matterport-comparison", label: "Compare Tours", icon: Columns2 },
   { href: "/dashboard/reports", label: "Download Report", icon: Download },

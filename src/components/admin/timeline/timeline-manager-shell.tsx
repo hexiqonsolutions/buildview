@@ -56,7 +56,7 @@ export function TimelineManagerShell({ data, initialProjectId }: TimelineManager
   return (
     <OpsWorkspacePage
       title="Timeline"
-      description="Milestones, progress updates, and linked Matterport scans."
+      description="Milestones, progress updates, and linked virtual tour scans."
       icon={Calendar}
       showBanner={false}
     >

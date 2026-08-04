@@ -92,7 +92,7 @@ export function BuildingsFloorsManager({
     <div className="space-y-6">
       <div className="rounded-2xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
         <p className="text-sm text-slate-500">
-          Define the physical structure for workspace selectors, uploads, and Matterport filtering.
+          Define the physical structure for workspace selectors, uploads, and virtual tour filtering.
         </p>
         <div className="mt-4 flex flex-col gap-2 sm:flex-row">
           <Input

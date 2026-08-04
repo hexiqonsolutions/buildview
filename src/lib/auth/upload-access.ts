@@ -40,10 +40,10 @@ export async function assertCanUploadToProject(
 
   if (resource === "matterport") {
     if (!canUploadMatterport(role)) {
-      throw new Error("Only BuildView Super Admin and Admin can upload Matterport tours");
+      throw new Error("Only BuildView Super Admin and Admin can upload virtual tours");
     }
     if (!isBuildViewStaffRole(role)) {
-      throw new Error("You do not have permission to upload Matterport tours");
+      throw new Error("You do not have permission to upload virtual tours");
     }
     return { userId: user.id, role, clientId: profile.client_id };
   }

@@ -16,7 +16,7 @@ import { withAdminWorkspaceQuery } from "@/lib/admin/nav";
 import { cn } from "@/lib/utils";
 
 const actions = [
-  { href: "/admin/upload?type=matterport", label: "Matterport", icon: Camera },
+  { href: "/admin/upload?type=matterport", label: "Virtual Tour", icon: Camera },
   { href: "/admin/upload?type=report", label: "Report", icon: FileText },
   { href: "/admin/upload?type=drawing", label: "Drawing", icon: FolderOpen },
   { href: "/admin/upload?type=photo", label: "Photos", icon: ImageIcon },
@@ -43,7 +43,7 @@ export function OpsQuickActionBar() {
               href={href}
               className={cn(
                 "ops-quick-action inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors sm:px-3",
-                action.label === "Matterport" && "ops-quick-action-primary"
+                action.href.includes("type=matterport") && "ops-quick-action-primary"
               )}
             >
               <action.icon className="h-3.5 w-3.5" />

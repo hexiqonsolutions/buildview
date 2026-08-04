@@ -96,7 +96,7 @@ export default async function AdminAnalyticsPage() {
             value={stats.activeProjects}
             icon={FolderKanban}
           />
-          <AdminMetricCard label="Matterport Tours" value={stats.totalTours} icon={Camera} />
+          <AdminMetricCard label="Virtual Tours" value={stats.totalTours} icon={Camera} />
           <AdminMetricCard label="Open Issues" value={stats.openIssues} icon={AlertTriangle} />
           <AdminMetricCard label="Documents" value={stats.totalDocuments} icon={FileText} />
           <AdminMetricCard
@@ -445,7 +445,7 @@ export default async function AdminAnalyticsPage() {
             label="Today's uploads"
             value={opsStats.todaysUploads}
             icon={TrendingUp}
-            trend="Matterport + reports"
+            trend="Virtual tours + reports"
             trendTone="neutral"
           />
           <AdminMetricCard
@@ -477,7 +477,7 @@ export default async function AdminAnalyticsPage() {
             data={stats.monthlyUploads.map((m) => ({ label: m.month, value: m.count }))}
             scaleToMax
           />
-          <AdminBarChart title="Monthly Matterport tours" data={marketing.monthlyTours} scaleToMax />
+          <AdminBarChart title="Monthly virtual tours" data={marketing.monthlyTours} scaleToMax />
           <AdminBarChart title="Monthly documents" data={marketing.monthlyDocuments} scaleToMax />
           <AdminBarChart title="Monthly site photos" data={marketing.monthlyPhotos} scaleToMax />
           <AdminBarChart
@@ -623,7 +623,7 @@ export default async function AdminAnalyticsPage() {
             </p>
             <ul className="list-disc space-y-1 pl-4 text-slate-500">
               <li>
-                Prioritize outreach to dormant clients and projects that need fresh Matterport
+                Prioritize outreach to dormant clients and projects that need fresh virtual tour
                 scans.
               </li>
               <li>

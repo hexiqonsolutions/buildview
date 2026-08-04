@@ -16,7 +16,7 @@ export const defaultMetadata: Metadata = {
     "construction intelligence platform",
     "construction progress tracking",
     "virtual site tours",
-    "Matterport construction",
+    "360 virtual tour construction",
     "360 site captures",
     "construction document management",
     "construction issue tracking",

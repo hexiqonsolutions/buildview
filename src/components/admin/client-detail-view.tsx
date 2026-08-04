@@ -138,7 +138,7 @@ export function ClientWorkspaceTabs({
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             {[
               { label: "Projects", value: projects.length },
-              { label: "Matterport", value: tours.length },
+              { label: "Virtual Tours", value: tours.length },
               { label: "Reports", value: reports.length },
               {
                 label: "Open Issues",
@@ -184,7 +184,7 @@ export function ClientWorkspaceTabs({
 
         <TabPanel value="projects" className="mt-6 space-y-3">
           <p className="text-sm text-slate-500">
-            Matterport walkthroughs are embedded on each project. Open a project to add or
+            Virtual tour walkthroughs are embedded on each project. Open a project to add or
             manage links.
           </p>
           {projects.length === 0 ? (
@@ -207,7 +207,7 @@ export function ClientWorkspaceTabs({
                     <p className="text-xs text-slate-500">
                       {p.location || "No location"}
                       {" · "}
-                      {tours.filter((t) => t.project_id === p.id).length} Matterport
+                      {tours.filter((t) => t.project_id === p.id).length} virtual tour{tours.filter((t) => t.project_id === p.id).length === 1 ? "" : "s"}
                     </p>
                   </div>
                 </div>
