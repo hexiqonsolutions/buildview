@@ -1,60 +1,51 @@
 import { Metadata } from "next";
-import { Award, Eye, Target, Users, Zap } from "lucide-react";
+import { Eye, Handshake, Shield, Sparkles, Target, Zap } from "lucide-react";
 import { FeatureCard } from "@/components/marketing/feature-card";
 import { PageCta } from "@/components/marketing/page-cta";
 import { PageHero } from "@/components/marketing/page-hero";
 import { Section } from "@/components/marketing/section";
 import { SectionHeader } from "@/components/marketing/section-header";
-import { StatCard } from "@/components/marketing/stat-card";
 import { TrustBar } from "@/components/marketing/trust-bar";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({
-  title: "About Us",
+  title: "About BuildView",
   description:
-    "Learn about BuildView's mission to revolutionize construction monitoring with Matterport technology and purpose-built client portals.",
+    "BuildView makes construction projects transparent, accessible, and data-driven with virtual site tours, progress tracking, and stakeholder collaboration.",
   path: "/about",
 });
 
 const values = [
   {
-    icon: Target,
-    title: "Our Mission",
-    description:
-      "Empower construction teams with remote site visibility — so decisions are made on evidence, not assumptions.",
-  },
-  {
     icon: Eye,
-    title: "Our Vision",
+    title: "Transparency",
     description:
-      "Every stakeholder should be able to walk any active project from anywhere, with full transparency and trust.",
+      "Every stakeholder deserves clear visibility into site progress without chasing updates.",
   },
   {
-    icon: Users,
-    title: "Our Team",
+    icon: Handshake,
+    title: "Collaboration",
     description:
-      "Construction technologists, Matterport capture specialists, and software engineers united by one goal.",
+      "Developers, contractors, architects, and consultants work from one shared source of truth.",
   },
   {
-    icon: Award,
-    title: "Our Standards",
+    icon: Target,
+    title: "Accuracy",
     description:
-      "Enterprise-grade security, certified capture workflows, and quality-reviewed deliverables on every project.",
+      "Time-stamped captures, structured reports, and issue trails reduce guesswork in decisions.",
   },
-];
-
-const milestones = [
-  { year: "2019", event: "Founded to solve remote site visibility for multi-site developers" },
-  { year: "2021", event: "Launched integrated Matterport + client portal platform" },
-  { year: "2023", event: "Expanded to issue tracking, documents, and timeline modules" },
-  { year: "2025", event: "Serving enterprise portfolios across 12 countries" },
-];
-
-const stats = [
-  { value: "500+", label: "Projects monitored" },
-  { value: "2,000+", label: "Virtual tours captured" },
-  { value: "150+", label: "Enterprise clients" },
-  { value: "12", label: "Countries served" },
+  {
+    icon: Sparkles,
+    title: "Innovation",
+    description:
+      "Digital twins and construction intelligence replace fragmented photos, calls, and spreadsheets.",
+  },
+  {
+    icon: Shield,
+    title: "Reliability",
+    description:
+      "Secure access, organized documentation, and consistent delivery across every project.",
+  },
 ];
 
 export default function AboutPage() {
@@ -62,70 +53,65 @@ export default function AboutPage() {
     <>
       <PageHero
         eyebrow="About"
-        title="Building transparency into every construction site"
-        description="We bridge the gap between job sites and decision-makers through Matterport virtual tours and a purpose-built monitoring platform."
+        title="Building Transparency Into Every Construction Project."
+        description="BuildView was created to solve one of construction's biggest challenges—keeping every stakeholder informed without depending on endless calls, messages, and site visits."
       />
 
       <TrustBar />
 
       <Section>
-        <div className="grid items-center gap-12 lg:grid-cols-2">
-          <div>
-            <SectionHeader
-              align="left"
-              eyebrow="Our story"
-              title="Born from a site-visit problem"
-              description="Founded by construction and technology veterans, BuildView started with a simple observation: stakeholders spend too much time traveling to sites and not enough time making informed decisions."
-              className="mb-0"
-            />
-            <p className="mt-6 leading-relaxed text-slate-600 dark:text-slate-400">
-              We combined Matterport&apos;s industry-leading 3D capture with a monitoring platform
-              designed specifically for construction — not adapted from generic project software.
-              Today, developers, contractors, and consultants rely on BuildView to keep projects
-              visible, documented, and on track.
+        <div className="mx-auto max-w-3xl">
+          <SectionHeader
+            align="left"
+            eyebrow="Our story"
+            title="Construction Projects Deserve Better Visibility"
+            description="Construction teams often spend more time collecting updates than making decisions."
+            className="mb-0"
+          />
+          <div className="mt-6 space-y-4 text-base leading-relaxed text-slate-600 dark:text-slate-400">
+            <p>Drawings are scattered. Reports arrive late. Clients request progress photos.</p>
+            <p>
+              Engineers spend valuable time preparing documentation instead of managing execution.
             </p>
-          </div>
-          <div className="surface-card p-8 lg:p-10">
-            <h3 className="font-display text-lg font-semibold text-brand-primary dark:text-white">
-              Company milestones
-            </h3>
-            <ol className="mt-6 space-y-6">
-              {milestones.map((item) => (
-                <li key={item.year} className="flex gap-4">
-                  <span className="font-display shrink-0 text-sm font-bold text-brand-accent">
-                    {item.year}
-                  </span>
-                  <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-                    {item.event}
-                  </p>
-                </li>
-              ))}
-            </ol>
+            <p>
+              BuildView centralizes everything into one intelligent platform designed specifically
+              for construction projects.
+            </p>
           </div>
         </div>
       </Section>
 
       <Section variant="muted">
-        <SectionHeader
-          eyebrow="Values"
-          title="What drives us"
-          description="Principles that guide how we capture, deliver, and support every project."
-        />
-        <div className="grid gap-6 md:grid-cols-2">
-          {values.map((value) => (
-            <FeatureCard key={value.title} {...value} />
-          ))}
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div className="surface-card p-8 lg:p-10">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-accent">
+              Mission
+            </p>
+            <h2 className="mt-3 font-display text-2xl font-bold text-brand-primary dark:text-white">
+              To make every construction project transparent, accessible, and data-driven.
+            </h2>
+          </div>
+          <div className="surface-card p-8 lg:p-10">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-accent">
+              Vision
+            </p>
+            <h2 className="mt-3 font-display text-2xl font-bold text-brand-primary dark:text-white">
+              A future where every construction project has a live digital twin that anyone can
+              access securely from anywhere.
+            </h2>
+          </div>
         </div>
       </Section>
 
       <Section>
         <SectionHeader
-          eyebrow="Impact"
-          title="Trusted at scale"
+          eyebrow="Core values"
+          title="What drives BuildView"
+          description="Principles that guide how we capture, deliver, and support every construction project."
         />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {stats.map((stat) => (
-            <StatCard key={stat.label} value={stat.value} label={stat.label} />
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {values.map((value) => (
+            <FeatureCard key={value.title} {...value} />
           ))}
         </div>
       </Section>
@@ -143,9 +129,9 @@ export default function AboutPage() {
 
       <PageCta
         title="See how BuildView works on a real project"
-        description="Book a personalized walkthrough of the platform with our team."
-        secondaryLabel="View sample projects"
-        secondaryHref="/projects"
+        description="Book a personalized demonstration and discover how BuildView improves project visibility and decision-making."
+        secondaryLabel="Explore services"
+        secondaryHref="/services"
       />
     </>
   );

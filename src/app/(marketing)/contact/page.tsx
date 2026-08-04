@@ -11,9 +11,9 @@ import { pageMetadata } from "@/lib/seo";
 import { siteConfig } from "@/lib/site-config";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Contact",
+  title: "Contact BuildView",
   description:
-    "Book a BuildView demo, request a quote, or get in touch with our construction monitoring team.",
+    "Talk about your construction project, request a live BuildView demo, or discuss monitoring requirements for residential, commercial, industrial, or infrastructure builds.",
   path: "/contact",
 });
 
@@ -38,32 +38,33 @@ const contactMethods = [
 ];
 
 const reasons = [
-  "Book a live platform demo",
-  "Get a custom pricing quote",
-  "Discuss enterprise rollout",
-  "Technical or support inquiry",
+  "Request a Live Demo",
+  "Construction Monitoring Quote",
+  "Enterprise Deployment",
+  "Matterport Services",
+  "Technical Support",
+  "Partner With Us",
 ];
 
 const faqs = [
   {
-    question: "How quickly can we get started?",
+    question: "How quickly can BuildView be deployed?",
     answer:
-      "Most projects go live within 1–2 weeks: baseline capture, portal setup, and client invites. Enterprise rollouts include a dedicated onboarding workshop.",
+      "Most projects can be onboarded within a few days depending on project size and documentation requirements.",
   },
   {
-    question: "Do you work outside the United States?",
-    answer:
-      "Yes. BuildView supports projects globally where Matterport capture partners are available. Contact us with your site location for scheduling.",
+    question: "Does BuildView support multiple projects?",
+    answer: "Yes. Monitor multiple construction projects from one centralized dashboard.",
   },
   {
-    question: "Can we integrate with our existing PM tools?",
+    question: "Can clients access the platform?",
     answer:
-      "Enterprise plans support custom integrations and API access. We commonly work alongside Procore, Autodesk, and internal reporting workflows.",
+      "Yes. Role-based permissions ensure every stakeholder only sees the information relevant to them.",
   },
   {
-    question: "What support do existing clients receive?",
+    question: "Can we upload our own reports and drawings?",
     answer:
-      "Active clients can sign in to the portal for support requests. Priority response times are included on Portfolio and Enterprise plans.",
+      "Absolutely. BuildView supports drawings, BOQs, contracts, reports, and other project documentation.",
   },
 ];
 
@@ -72,8 +73,8 @@ export default function ContactPage() {
     <>
       <PageHero
         eyebrow="Contact"
-        title="Let's talk about your project"
-        description="Book a demo, request a quote, or ask us anything about remote construction monitoring."
+        title="Let's Talk About Your Construction Project"
+        description="Whether you're managing a residential tower, commercial complex, industrial facility, or infrastructure project, we'll help you build a monitoring solution that fits your workflow."
       />
 
       <TrustBar />
@@ -82,11 +83,11 @@ export default function ContactPage() {
         <div className="grid gap-12 lg:grid-cols-5">
           <div className="lg:col-span-2">
             <h2 className="font-display text-2xl font-bold text-brand-primary dark:text-white">
-              Get in touch
+              Contact Information
             </h2>
             <p className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-              Our team typically responds within one business day. For urgent support,
-              existing clients can sign in to the portal.
+              We&apos;re here to answer questions about BuildView, schedule product demonstrations,
+              or discuss construction monitoring requirements.
             </p>
 
             <ul className="mt-8 space-y-5">
@@ -119,17 +120,26 @@ export default function ContactPage() {
             <div className="mt-10 surface-card p-6">
               <div className="flex items-center gap-2 text-sm font-medium text-brand-primary dark:text-white">
                 <Clock className="h-4 w-4 text-brand-accent" />
-                Response time
+                Typical Response Time
               </div>
-              <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-                Demo requests: within 24 hours · Sales inquiries: 1–2 business days
-              </p>
+              <dl className="mt-3 space-y-2 text-sm text-slate-600 dark:text-slate-400">
+                <div className="flex justify-between gap-4">
+                  <dt>Demo Requests</dt>
+                  <dd className="font-medium text-brand-primary dark:text-white">Within 24 Hours</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt>General Queries</dt>
+                  <dd className="font-medium text-brand-primary dark:text-white">
+                    Within 1 Business Day
+                  </dd>
+                </div>
+              </dl>
             </div>
 
             <div className="mt-6">
               <div className="flex items-center gap-2 text-sm font-medium text-brand-primary dark:text-white">
                 <MessageSquare className="h-4 w-4 text-brand-accent" />
-                Common reasons to reach out
+                Common Reasons Teams Contact Us
               </div>
               <ul className="mt-3 space-y-2">
                 {reasons.map((reason) => (
@@ -148,10 +158,10 @@ export default function ContactPage() {
           <div className="lg:col-span-3">
             <div className="surface-card p-8 lg:p-10">
               <h2 className="font-display text-xl font-semibold text-brand-primary dark:text-white">
-                Send us a message
+                Tell Us About Your Project
               </h2>
               <p className="mt-1 text-sm text-slate-500">
-                Fill out the form and we&apos;ll be in touch shortly.
+                Share your project type, monitoring needs, and preferred demo timing.
               </p>
               <div className="mt-8">
                 <ContactForm />
@@ -167,7 +177,7 @@ export default function ContactPage() {
         <SectionHeader
           eyebrow="FAQ"
           title="Before you reach out"
-          description="Quick answers to common sales and onboarding questions."
+          description="Quick answers about deployment, access, and documentation."
         />
         <FaqSection items={faqs} />
       </Section>

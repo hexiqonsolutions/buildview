@@ -95,10 +95,12 @@ export function ContactForm() {
               <SelectValue placeholder="Select an option" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="demo">Book a demo</SelectItem>
-              <SelectItem value="pricing">Pricing information</SelectItem>
-              <SelectItem value="partnership">Partnership</SelectItem>
-              <SelectItem value="support">Support</SelectItem>
+              <SelectItem value="demo">Request a Live Demo</SelectItem>
+              <SelectItem value="quote">Construction Monitoring Quote</SelectItem>
+              <SelectItem value="enterprise">Enterprise Deployment</SelectItem>
+              <SelectItem value="matterport">Matterport Services</SelectItem>
+              <SelectItem value="partnership">Partner With Us</SelectItem>
+              <SelectItem value="support">Technical Support</SelectItem>
               <SelectItem value="other">Other</SelectItem>
             </SelectContent>
           </Select>
@@ -134,7 +136,7 @@ export function ContactForm() {
         ) : (
           <Send className="h-4 w-4" />
         )}
-        {pending ? "Sending…" : "Send message"}
+        {pending ? "Sending…" : "Schedule My Demo"}
       </Button>
       <p className="text-center text-xs text-slate-500">
         By submitting, you agree to our{" "}

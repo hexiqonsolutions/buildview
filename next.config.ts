@@ -11,6 +11,15 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      {
+        source: "/pricing",
+        destination: "/contact",
+        permanent: true,
+      },
+    ];
+  },
   webpack: (config) => {
     config.resolve.alias.canvas = false;
     return config;

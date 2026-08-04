@@ -91,6 +91,7 @@ export default async function ProjectDetailPage({
       <div id="project-walkthrough">
         <ProjectHubTabs
           projectId={project.id}
+          projectName={project.name}
           spatialHierarchy={spatialHierarchy}
           tours={detail.tours}
           reports={detail.reports}

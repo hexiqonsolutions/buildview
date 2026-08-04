@@ -29,7 +29,7 @@ const items: Array<{
   {
     key: "calendly",
     label: "Calendly scheduler",
-    description: "Inline demo booking on Contact and Pricing",
+    description: "Inline demo booking on Contact",
     envHint: "NEXT_PUBLIC_CALENDLY_URL",
   },
   {

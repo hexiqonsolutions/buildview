@@ -5,7 +5,6 @@ export const marketingRoutes = [
   "/about",
   "/services",
   "/projects",
-  "/pricing",
   "/contact",
   "/privacy",
   "/terms",

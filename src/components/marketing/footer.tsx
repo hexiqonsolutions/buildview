@@ -17,15 +17,15 @@ export function MarketingFooter() {
         <div className="site-container flex flex-col items-start justify-between gap-6 py-12 lg:flex-row lg:items-center">
           <div className="max-w-xl">
             <h3 className="font-display text-2xl font-bold text-white md:text-3xl">
-              Ready to see your site from anywhere?
+              Ready to Bring Every Project Into One Platform?
             </h3>
             <p className="mt-2 text-sm leading-relaxed text-slate-400">
-              Book a walkthrough of BuildView and see how Matterport tours, reports, and
-              issue tracking work together in one client portal.
+              Replace scattered updates, manual reports, and endless follow-ups with one
+              intelligent construction monitoring system.
             </p>
           </div>
           <Button variant="accent" size="lg" className="shrink-0 shadow-glow" asChild>
-            <Link href="/contact">Schedule a Demo</Link>
+            <Link href="/contact">Book a Demo</Link>
           </Button>
         </div>
       </div>

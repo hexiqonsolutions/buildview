@@ -6,18 +6,24 @@ const siteUrl = siteConfig.url;
 export const defaultMetadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: `${siteConfig.name} — Monitor Construction Progress From Anywhere`,
+    default:
+      "Construction Monitoring Software | BuildView Construction Intelligence Platform",
     template: `%s | ${siteConfig.name}`,
   },
   description: siteConfig.description,
   keywords: [
-    "construction monitoring",
-    "Matterport",
-    "virtual tours",
-    "progress reports",
-    "construction management",
+    "construction monitoring software",
+    "construction intelligence platform",
+    "construction progress tracking",
+    "virtual site tours",
+    "Matterport construction",
+    "360 site captures",
+    "construction document management",
+    "construction issue tracking",
+    "project timeline construction",
     "remote site inspection",
     "BuildView",
+    "PMC dashboard",
   ],
   authors: [{ name: siteConfig.name, url: siteUrl }],
   creator: siteConfig.name,
@@ -32,20 +38,22 @@ export const defaultMetadata: Metadata = {
     locale: "en_US",
     url: siteUrl,
     siteName: siteConfig.name,
-    title: `${siteConfig.name} — Construction Monitoring Platform`,
+    title:
+      "Construction Monitoring Software | BuildView Construction Intelligence Platform",
     description: siteConfig.description,
     images: [
       {
         url: siteConfig.brand.logo,
         width: 1200,
         height: 630,
-        alt: `${siteConfig.name} — Matterport construction monitoring`,
+        alt: `${siteConfig.name} — construction monitoring with virtual site tours`,
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: `${siteConfig.name} — Construction Monitoring Platform`,
+    title:
+      "Construction Monitoring Software | BuildView Construction Intelligence Platform",
     description: siteConfig.description,
     images: [siteConfig.brand.logo],
   },
@@ -79,13 +87,17 @@ export function pageMetadata({
   return {
     title,
     description,
+    keywords: defaultMetadata.keywords,
     alternates: { canonical: url },
     openGraph: {
       title: `${title} | ${siteConfig.name}`,
       description,
       url,
+      siteName: siteConfig.name,
+      type: "website",
     },
     twitter: {
+      card: "summary_large_image",
       title: `${title} | ${siteConfig.name}`,
       description,
     },

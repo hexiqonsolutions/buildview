@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,8 @@ import { TabWorkspace, TabPanel } from "@/components/patterns/tab-workspace";
 import { ProjectOverview } from "@/components/projects/project-overview";
 import { ProjectMatterportPanel } from "@/components/projects/project-matterport-panel";
 import { ProjectReportsSection } from "@/components/projects/project-reports-section";
+import { ProjectAiSummaryPanel } from "@/components/projects/project-ai-summary-panel";
+import { buildProjectReportSummary } from "@/lib/ai/build-project-report-summary";
 import { ProjectDocumentsSection } from "@/components/projects/project-documents-section";
 import { ProjectIssuesSection } from "@/components/projects/project-issues-section";
 import { ProjectInvoicesSection } from "@/components/projects/project-invoices-section";
@@ -33,6 +36,7 @@ import type {
 } from "@/lib/types";
 
 interface ProjectDetailTabsProps {
+  projectName?: string;
   tours: ProjectTour[];
   reports: Report[];
   folders: DocumentFolder[];
@@ -57,6 +61,7 @@ interface ProjectDetailTabsProps {
 }
 
 export function ProjectDetailTabs({
+  projectName = "This project",
   tours,
   reports,
   folders,
@@ -119,6 +124,17 @@ export function ProjectDetailTabs({
 
   const uploadHref = projectId ? `/dashboard/projects/${projectId}/upload` : null;
 
+  const aiSummary = useMemo(
+    () =>
+      buildProjectReportSummary({
+        projectName,
+        reports,
+        issues,
+        timeline,
+      }),
+    [projectName, reports, issues, timeline]
+  );
+
   return (
     <TabWorkspace variant={variant} defaultTab="overview" tabs={tabs}>
       <TabPanel value="overview" className="mt-6 space-y-8">
@@ -138,6 +154,10 @@ export function ProjectDetailTabs({
             openIssueCount={openIssueCount}
           />
         )}
+
+        {showConstructionTabs ? (
+          <ProjectAiSummaryPanel summary={aiSummary} />
+        ) : null}
 
         {!isPortfolioIntel && projectId && tours.length > 0 ? (
           <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/40">
@@ -201,7 +221,7 @@ export function ProjectDetailTabs({
             <TimelineView events={timeline} />
           </TabPanel>
 
-          <TabPanel value="reports" className="mt-6">
+          <TabPanel value="reports" className="mt-6 space-y-6">
             <TabSectionHeader
               title="Reports"
               description="Progress and inspection reports."
@@ -209,6 +229,7 @@ export function ProjectDetailTabs({
               uploadHref={uploadHref ? `${uploadHref}?type=report` : undefined}
               uploadLabel="Upload Report"
             />
+            <ProjectAiSummaryPanel summary={aiSummary} compact />
             <ProjectReportsSection reports={reports} />
           </TabPanel>
         </>

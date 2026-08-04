@@ -4,7 +4,7 @@ export const contactFormSchema = z.object({
   name: z.string().min(2, "Please enter your full name"),
   email: z.string().email("Please enter a valid email address"),
   company: z.string().optional(),
-  interest: z.enum(["demo", "pricing", "partnership", "support", "other"], {
+  interest: z.enum(["demo", "quote", "enterprise", "matterport", "partnership", "support", "other"], {
     required_error: "Please select what you're interested in",
   }),
   message: z.string().min(10, "Please provide a bit more detail in your message"),
@@ -13,10 +13,12 @@ export const contactFormSchema = z.object({
 export type ContactFormInput = z.infer<typeof contactFormSchema>;
 
 const interestLabels: Record<ContactFormInput["interest"], string> = {
-  demo: "Book a demo",
-  pricing: "Pricing information",
-  partnership: "Partnership",
-  support: "Support",
+  demo: "Request a Live Demo",
+  quote: "Construction Monitoring Quote",
+  enterprise: "Enterprise Deployment",
+  matterport: "Matterport Services",
+  partnership: "Partner With Us",
+  support: "Technical Support",
   other: "Other",
 };
 

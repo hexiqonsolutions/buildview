@@ -101,6 +101,7 @@ export default async function AdminProjectDetailPage({
 
       <ProjectWorkspaceTabs
         projectId={project.id}
+        projectName={project.name}
         spatialHierarchy={spatialHierarchy}
         tours={detail.tours}
         reports={detail.reports}

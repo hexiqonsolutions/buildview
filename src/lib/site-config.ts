@@ -6,9 +6,9 @@ export const siteConfig = {
     /** Logo for dark backgrounds */
     logoOnDark: "/db-logo.png",
   },
-  tagline: "Monitor construction progress from anywhere",
+  tagline: "Construction Intelligence Platform",
   description:
-    "Immersive Matterport virtual tours, progress reports, document management, and issue tracking — built for developers, contractors, and project owners.",
+    "Monitor construction projects with 360° virtual site tours, progress reports, document management, issue tracking, and timelines. Built for developers, architects, contractors, and PMCs.",
   url:
     process.env.NEXT_PUBLIC_SITE_URL ??
     process.env.NEXT_PUBLIC_APP_URL ??
@@ -28,21 +28,22 @@ export const siteConfig = {
     { href: "/about", label: "About" },
     { href: "/services", label: "Services" },
     { href: "/projects", label: "Projects" },
-    { href: "/pricing", label: "Pricing" },
     { href: "/contact", label: "Contact" },
   ],
   footer: {
     product: [
       { label: "Virtual Tours", href: "/services#virtual-tours" },
+      { label: "Compare Progress", href: "/services#compare-tours" },
       { label: "Progress Reports", href: "/services#reports" },
       { label: "Document Hub", href: "/services#documents" },
       { label: "Issue Tracking", href: "/services#issues" },
       { label: "Project Timeline", href: "/services#timeline" },
-      { label: "Pricing", href: "/pricing" },
+      { label: "Client Dashboard", href: "/services#dashboard" },
     ],
     company: [
       { label: "About", href: "/about" },
       { label: "Projects", href: "/projects" },
+      { label: "Services", href: "/services" },
       { label: "Contact", href: "/contact" },
     ],
     legal: [
