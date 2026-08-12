@@ -24,6 +24,8 @@ import { RoleCard } from "@/components/marketing/role-card";
 import { Section } from "@/components/marketing/section";
 import { SectionHeader } from "@/components/marketing/section-header";
 import { TestimonialCard } from "@/components/marketing/testimonial-card";
+import { SponsorLogoStrip } from "@/components/marketing/sponsor-logo-strip";
+import { SponsorSpotlight } from "@/components/marketing/sponsor-spotlight";
 import { TrustBar } from "@/components/marketing/trust-bar";
 import { Button } from "@/components/ui/button";
 import { pageMetadata } from "@/lib/seo";
@@ -253,6 +255,8 @@ export default function HomePage() {
         </div>
       </Section>
 
+      <SponsorSpotlight />
+
       <Section variant="muted">
         <SectionHeader
           eyebrow="Workflow"
@@ -325,6 +329,12 @@ export default function HomePage() {
           ))}
         </div>
       </Section>
+
+      <SponsorLogoStrip
+        placement="mid-strip"
+        title="Partners powering modern construction monitoring"
+        variant="muted"
+      />
 
       <Section variant="accent" className="relative overflow-hidden">
         <div className="dot-pattern absolute inset-0 opacity-25" />

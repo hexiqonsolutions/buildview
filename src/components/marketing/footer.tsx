@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { Button } from "@/components/ui/button";
+import { SponsorLogo } from "@/components/marketing/sponsor-logo";
 import { siteConfig } from "@/lib/site-config";
+import { getSponsorsByPlacement } from "@/lib/sponsors";
 import { Linkedin, Mail, MapPin, Phone, Twitter, Youtube } from "lucide-react";
 
 const socialIcons = {
@@ -11,6 +13,8 @@ const socialIcons = {
 } as const;
 
 export function MarketingFooter() {
+  const footerPartners = getSponsorsByPlacement("footer");
+
   return (
     <footer className="border-t border-slate-800 bg-brand-primary text-slate-300">
       <div className="border-b border-slate-800">
@@ -111,6 +115,21 @@ export function MarketingFooter() {
             </ul>
           </div>
         </div>
+
+        {footerPartners.length > 0 && (
+          <div className="mt-12 border-t border-slate-800 pt-10">
+            <h4 className="mb-6 text-center text-sm font-semibold uppercase tracking-wider text-white">
+              Our partners
+            </h4>
+            <ul className="flex flex-wrap items-center justify-center gap-x-10 gap-y-6 md:gap-x-12">
+              {footerPartners.map((sponsor) => (
+                <li key={sponsor.id}>
+                  <SponsorLogo sponsor={sponsor} variant="onDark" size="sm" />
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-slate-800 pt-8 text-sm text-slate-500 md:flex-row">
           <p>&copy; {new Date().getFullYear()} {siteConfig.name}. All rights reserved.</p>
