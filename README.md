@@ -157,6 +157,19 @@ See `.env.example` for all variables. Required for local dev:
 | `NEXT_PUBLIC_APP_URL` | `http://localhost:3000` |
 | `DATABASE_URL` | Postgres URI (for `db:apply` only) |
 
+## Google sign-in (Supabase Auth)
+
+BuildView uses Supabase OAuth for Google login and signup on `/login` and `/register`.
+
+1. **Google Cloud Console** — create an OAuth 2.0 Client ID (Web application).
+   - Authorized redirect URI: `https://<your-project-ref>.supabase.co/auth/v1/callback`
+2. **Supabase Dashboard** → Authentication → Providers → **Google** — enable and paste Client ID + Client Secret.
+3. **Supabase Dashboard** → Authentication → URL Configuration — add your app URLs:
+   - Site URL: `https://your-domain.com` (or `http://localhost:3000` for local dev)
+   - Redirect URLs: `http://localhost:3000/auth/callback`, `https://your-domain.com/auth/callback`
+
+No extra env vars are required in the Next.js app; OAuth is handled by Supabase.
+
 ## Security
 
 - Row Level Security (RLS) on all application tables

@@ -174,6 +174,31 @@ export async function resetPassword(
   redirect("/dashboard");
 }
 
+export async function signInWithGoogle(formData: FormData): Promise<void> {
+  const supabase = await createClient();
+  const origin = await getOrigin();
+  const redirectTo = safeRedirectPath(
+    formData.get("redirect")?.toString() ?? null
+  );
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(redirectTo)}`,
+      queryParams: {
+        access_type: "offline",
+        prompt: "select_account",
+      },
+    },
+  });
+
+  if (error || !data.url) {
+    redirect("/login?error=google_signin_failed");
+  }
+
+  redirect(data.url);
+}
+
 export async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();

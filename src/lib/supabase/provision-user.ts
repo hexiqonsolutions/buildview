@@ -6,18 +6,25 @@ type AuthUserLike = {
   email?: string | null;
   user_metadata?: {
     full_name?: string;
+    name?: string;
+    avatar_url?: string;
+    picture?: string;
     role?: string;
   } | null;
 };
 
 function profileFromAuth(authUser: AuthUserLike): UserInsert | null {
   const email = authUser.email?.trim() || `${authUser.id}@buildview.local`;
+  const metadata = authUser.user_metadata;
   const fullName =
-    authUser.user_metadata?.full_name?.trim() ||
+    metadata?.full_name?.trim() ||
+    metadata?.name?.trim() ||
     email.split("@")[0] ||
     "User";
+  const avatarUrl =
+    metadata?.avatar_url?.trim() || metadata?.picture?.trim() || null;
   const role =
-    authUser.user_metadata?.role === "super_admin" ? "super_admin" : "client";
+    metadata?.role === "super_admin" ? "super_admin" : "client";
 
   return {
     id: authUser.id,
@@ -25,7 +32,7 @@ function profileFromAuth(authUser: AuthUserLike): UserInsert | null {
     full_name: fullName,
     role: role as UserRole,
     client_id: null,
-    avatar_url: null,
+    avatar_url: avatarUrl,
     phone: null,
     is_active: true,
     created_by: null,

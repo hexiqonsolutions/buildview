@@ -3,7 +3,9 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
+import { AuthDivider } from "@/components/auth/auth-divider";
 import { AuthShell } from "@/components/auth/auth-shell";
+import { GoogleSignInButton } from "@/components/auth/google-sign-in-button";
 import { PasswordInput } from "@/components/auth/password-input";
 import {
   forgotPassword,
@@ -16,6 +18,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 const ERROR_MESSAGES: Record<string, string> = {
+  google_signin_failed:
+    "Google sign-in could not be started. Try again or use email and password.",
   auth_callback_failed:
     "Authentication failed. The link may have expired. Please try again.",
   account_inactive:
@@ -62,7 +66,21 @@ export function AuthForm({ mode, redirectTo, errorCode }: AuthFormProps) {
         </h2>
         <p className="mt-1 text-sm text-slate-500">{descriptions[mode]}</p>
 
-        <form action={formAction} className="mt-8 space-y-4">
+        {mode !== "forgot-password" && (
+          <div className="mt-8">
+            <GoogleSignInButton
+              redirectTo={redirectTo ?? "/dashboard"}
+              label={
+                mode === "register"
+                  ? "Sign up with Google"
+                  : "Continue with Google"
+              }
+            />
+            <AuthDivider />
+          </div>
+        )}
+
+        <form action={formAction} className={mode === "forgot-password" ? "mt-8 space-y-4" : "space-y-4"}>
           {mode === "login" && redirectTo && (
             <input type="hidden" name="redirect" value={redirectTo} />
           )}
