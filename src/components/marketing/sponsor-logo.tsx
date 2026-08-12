@@ -5,15 +5,14 @@ import type { Sponsor } from "@/lib/sponsors";
 interface SponsorLogoProps {
   sponsor: Sponsor;
   className?: string;
-  /** Footer uses light logos on dark background */
   variant?: "default" | "onDark";
   size?: "sm" | "md" | "lg";
 }
 
 const sizeClasses = {
-  sm: { box: "h-8 max-w-[5.5rem]", text: "text-xs" },
-  md: { box: "h-9 max-w-[7rem]", text: "text-sm" },
-  lg: { box: "h-11 max-w-[8.5rem]", text: "text-base" },
+  sm: { box: "h-8 max-w-[5.5rem]", text: "text-xs", image: "h-7" },
+  md: { box: "h-9 max-w-[7.5rem]", text: "text-sm", image: "h-8" },
+  lg: { box: "h-11 max-w-[9rem]", text: "text-base", image: "h-10" },
 } as const;
 
 function SponsorWordmark({
@@ -51,11 +50,12 @@ export function SponsorLogo({
       width={140}
       height={44}
       className={cn(
-        "h-auto w-full object-contain object-center",
+        "w-auto max-w-full object-contain object-center",
+        sizeClasses[size].image,
         variant === "default" &&
-          "opacity-60 grayscale transition-all duration-300 group-hover:opacity-100 group-hover:grayscale-0",
+          "opacity-70 grayscale transition-all duration-200 motion-reduce:transition-none group-hover:opacity-100 group-hover:grayscale-0",
         variant === "onDark" &&
-          "opacity-50 brightness-200 grayscale transition-all duration-300 group-hover:opacity-90 group-hover:grayscale-0"
+          "opacity-55 brightness-200 grayscale transition-all duration-200 motion-reduce:transition-none group-hover:opacity-90 group-hover:grayscale-0"
       )}
     />
   ) : (
@@ -65,7 +65,7 @@ export function SponsorLogo({
   const inner = (
     <div
       className={cn(
-        "group flex items-center justify-center",
+        "group flex w-full items-center justify-center",
         sponsor.logoSrc && sizeClasses[size].box,
         className
       )}
@@ -83,8 +83,12 @@ export function SponsorLogo({
       href={sponsor.href}
       target="_blank"
       rel="sponsored noopener noreferrer"
-      className="rounded-lg outline-none transition-opacity focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2"
-      aria-label={`Visit ${sponsor.name}`}
+      className={cn(
+        "flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-lg outline-none",
+        "transition-opacity duration-200 motion-reduce:transition-none",
+        "focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2"
+      )}
+      aria-label={`Visit ${sponsor.name} (partner)`}
     >
       {inner}
     </a>

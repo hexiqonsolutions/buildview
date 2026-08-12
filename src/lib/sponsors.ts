@@ -1,4 +1,4 @@
-export type SponsorPlacement = "trust-strip" | "spotlight" | "mid-strip" | "footer";
+export type SponsorPlacement = "trust-strip" | "spotlight";
 
 export interface Sponsor {
   id: string;
@@ -13,8 +13,8 @@ export interface Sponsor {
 }
 
 /**
- * Homepage sponsor inventory. Replace logoSrc with files in /public/sponsors/
- * and update entries as partnerships are signed.
+ * Homepage sponsor inventory (rendered in HomePartnersSection after hero).
+ * Replace logoSrc with approved assets in /public/sponsors/.
  */
 export const sponsors: Sponsor[] = [
   {
@@ -24,7 +24,7 @@ export const sponsors: Sponsor[] = [
     href: "https://www.insta360.com/enterprise",
     description:
       "Official 360° capture technology for immersive site documentation and remote walkthroughs on BuildView.",
-    placements: ["trust-strip", "spotlight", "mid-strip", "footer"],
+    placements: ["trust-strip", "spotlight"],
     active: true,
   },
   {
@@ -32,7 +32,7 @@ export const sponsors: Sponsor[] = [
     name: "Autodesk",
     logoSrc: "/sponsors/autodesk.svg",
     href: "https://www.autodesk.com/industry/aec",
-    placements: ["trust-strip", "mid-strip", "footer"],
+    placements: ["trust-strip"],
     active: true,
   },
   {
@@ -40,7 +40,7 @@ export const sponsors: Sponsor[] = [
     name: "Procore",
     logoSrc: "/sponsors/procore.svg",
     href: "https://www.procore.com",
-    placements: ["trust-strip", "mid-strip", "footer"],
+    placements: ["trust-strip"],
     active: true,
   },
   {
@@ -48,7 +48,7 @@ export const sponsors: Sponsor[] = [
     name: "Trimble",
     logoSrc: "/sponsors/trimble.svg",
     href: "https://www.trimble.com/en/industries/construction",
-    placements: ["trust-strip", "footer"],
+    placements: ["trust-strip"],
     active: true,
   },
   {
@@ -56,7 +56,7 @@ export const sponsors: Sponsor[] = [
     name: "Ricoh",
     logoSrc: "/sponsors/ricoh.svg",
     href: "https://theta360.com",
-    placements: ["trust-strip", "footer"],
+    placements: ["trust-strip"],
     active: true,
   },
   {
@@ -64,7 +64,7 @@ export const sponsors: Sponsor[] = [
     name: "Bentley",
     logoSrc: "/sponsors/bentley.svg",
     href: "https://www.bentley.com",
-    placements: ["mid-strip", "footer"],
+    placements: ["trust-strip"],
     active: true,
   },
 ];

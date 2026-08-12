@@ -1,5 +1,6 @@
 import { getSponsorsByPlacement } from "@/lib/sponsors";
 import { SponsorLogo } from "@/components/marketing/sponsor-logo";
+import { cn } from "@/lib/utils";
 
 const audienceLabels = [
   "Developers",
@@ -15,36 +16,42 @@ export function TrustBar() {
 
   return (
     <div className="border-y border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-950">
-      <div className="site-container py-7 md:py-8">
-        <p className="mb-4 text-center text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-          Trusted by developers, contractors, architects, consultants, and project owners to
-          simplify construction monitoring
+      <div className="site-container py-8 md:py-10">
+        <p className="text-center text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+          Trusted across the construction lifecycle
         </p>
-        <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 md:gap-x-12">
-          {audienceLabels.map((name) => (
-            <span
-              key={name}
-              className="font-display text-sm font-semibold tracking-wide text-slate-400 transition-colors duration-200 hover:text-brand-primary dark:hover:text-slate-200"
-            >
-              {name}
-            </span>
+        <ul className="mt-4 flex flex-wrap items-center justify-center gap-2">
+          {audienceLabels.map((label) => (
+            <li key={label}>
+              <span className="inline-flex items-center rounded-full border border-slate-200/80 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                {label}
+              </span>
+            </li>
           ))}
-        </div>
+        </ul>
 
         {partners.length > 0 && (
-          <>
-            <div className="mx-auto my-6 h-px max-w-3xl bg-slate-200 dark:bg-slate-800" />
-            <p className="mb-5 text-center text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+          <div className="mt-8">
+            <p className="text-center text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
               Technology &amp; industry partners
             </p>
-            <ul className="flex flex-wrap items-center justify-center gap-x-10 gap-y-5 md:gap-x-14">
+            <ul className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
               {partners.map((sponsor) => (
                 <li key={sponsor.id}>
-                  <SponsorLogo sponsor={sponsor} size="md" />
+                  <div
+                    className={cn(
+                      "group flex min-h-[4.25rem] items-center justify-center rounded-xl border border-slate-200/80 bg-slate-50/50 px-3 py-3",
+                      "transition-all duration-200 motion-reduce:transition-none",
+                      "hover:border-brand-accent/35 hover:bg-white hover:shadow-soft",
+                      "dark:border-slate-800 dark:bg-slate-900/40 dark:hover:border-brand-accent/25 dark:hover:bg-slate-900"
+                    )}
+                  >
+                    <SponsorLogo sponsor={sponsor} size="sm" className="w-full" />
+                  </div>
                 </li>
               ))}
             </ul>
-          </>
+          </div>
         )}
       </div>
     </div>
