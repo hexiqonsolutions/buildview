@@ -1,14 +1,11 @@
 import Link from "next/link";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { Button } from "@/components/ui/button";
+import { SocialLinks } from "@/components/marketing/social-links";
+import { InstagramFollow } from "@/components/marketing/instagram-follow";
+import { TrackedLink } from "@/components/analytics/tracked-link";
 import { siteConfig } from "@/lib/site-config";
-import { Linkedin, Mail, MapPin, Phone, Twitter, Youtube } from "lucide-react";
-
-const socialIcons = {
-  linkedin: Linkedin,
-  twitter: Twitter,
-  youtube: Youtube,
-} as const;
+import { Mail, MapPin, Phone } from "lucide-react";
 
 export function MarketingFooter() {
   return (
@@ -25,7 +22,9 @@ export function MarketingFooter() {
             </p>
           </div>
           <Button variant="accent" size="lg" className="shrink-0 shadow-glow" asChild>
-            <Link href="/contact">Book a Demo</Link>
+            <TrackedLink href="/contact" eventLabel="footer_book_demo">
+              Book a Demo
+            </TrackedLink>
           </Button>
         </div>
       </div>
@@ -37,22 +36,9 @@ export function MarketingFooter() {
             <p className="max-w-sm text-sm leading-relaxed text-slate-400">
               {siteConfig.description}
             </p>
-            <div className="mt-6 flex gap-3">
-              {Object.entries(siteConfig.social).map(([key, href]) => {
-                const Icon = socialIcons[key as keyof typeof socialIcons];
-                return (
-                  <a
-                    key={key}
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 text-slate-400 transition-colors hover:border-brand-accent/50 hover:text-brand-accent"
-                    aria-label={key}
-                  >
-                    <Icon className="h-4 w-4" />
-                  </a>
-                );
-              })}
+            <SocialLinks className="mt-6" />
+            <div className="mt-4">
+              <InstagramFollow tone="dark" />
             </div>
           </div>
 
@@ -103,6 +89,10 @@ export function MarketingFooter() {
               <li className="flex items-center gap-3">
                 <Phone className="h-4 w-4 shrink-0 text-brand-accent" />
                 <span>{siteConfig.contact.phone}</span>
+              </li>
+              <li className="flex items-center gap-3">
+                <Phone className="h-4 w-4 shrink-0 text-brand-accent" />
+                <span>{siteConfig.contact.phoneAlt}</span>
               </li>
               <li className="flex items-start gap-3">
                 <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-accent" />

@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import { Clock, Mail, MapPin, MessageSquare, Phone } from "lucide-react";
+import { Clock, Instagram, Mail, MapPin, MessageSquare, Phone } from "lucide-react";
 import { BookDemoSection } from "@/components/marketing/book-demo-section";
 import { ContactForm } from "@/components/marketing/contact-form";
 import { FaqSection } from "@/components/marketing/faq-section";
@@ -7,17 +7,25 @@ import { PageHero } from "@/components/marketing/page-hero";
 import { Section } from "@/components/marketing/section";
 import { SectionHeader } from "@/components/marketing/section-header";
 import { TrustBar } from "@/components/marketing/trust-bar";
+import { ViewContentTracker } from "@/components/analytics/view-content-tracker";
 import { pageMetadata } from "@/lib/seo";
 import { siteConfig } from "@/lib/site-config";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Contact BuildView",
+  title: "Book a Construction Monitoring Demo",
   description:
-    "Talk about your construction project, request a live BuildView demo, or discuss monitoring requirements for residential, commercial, industrial, or infrastructure builds.",
+    "Request a live BuildView demo and discuss construction monitoring with 360° site tours, progress reports, documents, timelines and issue tracking.",
   path: "/contact",
 });
 
-const contactMethods = [
+type ContactMethod = {
+  icon: typeof Mail;
+  label: string;
+  value: string;
+  href?: string;
+};
+
+const contactMethods: ContactMethod[] = [
   {
     icon: Mail,
     label: "Email",
@@ -26,14 +34,26 @@ const contactMethods = [
   },
   {
     icon: Phone,
-    label: "Phone",
+    label: "Phone (Sales)",
     value: siteConfig.contact.phone,
     href: `tel:${siteConfig.contact.phone.replace(/\D/g, "")}`,
+  },
+  {
+    icon: Phone,
+    label: "Phone (Support)",
+    value: siteConfig.contact.phoneAlt,
+    href: `tel:${siteConfig.contact.phoneAlt.replace(/\D/g, "")}`,
   },
   {
     icon: MapPin,
     label: "Office",
     value: siteConfig.contact.address,
+  },
+  {
+    icon: Instagram,
+    label: "Instagram",
+    value: siteConfig.instagram.handle,
+    href: siteConfig.instagram.url,
   },
 ];
 
@@ -71,6 +91,7 @@ const faqs = [
 export default function ContactPage() {
   return (
     <>
+      <ViewContentTracker contentName="contact" contentCategory="conversion" />
       <PageHero
         eyebrow="Contact"
         title="Let's Talk About Your Construction Project"
@@ -103,6 +124,9 @@ export default function ContactPage() {
                     {method.href ? (
                       <a
                         href={method.href}
+                        {...(method.href.startsWith("http")
+                          ? { target: "_blank", rel: "noopener noreferrer" }
+                          : {})}
                         className="mt-0.5 text-sm text-slate-600 transition-colors hover:text-brand-accent-dark dark:text-slate-400"
                       >
                         {method.value}

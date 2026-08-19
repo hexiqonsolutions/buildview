@@ -95,9 +95,9 @@ export default function PrivacyPage() {
       <LegalSection title="Analytics & cookies">
         <p>
           Our marketing website may use analytics tools such as Vercel Analytics and, when
-          configured, Google Analytics. Google Analytics loads only if you accept analytics cookies
-          through our consent banner. Essential cookies are required for authentication and core
-          portal functionality. For details, see our{" "}
+          configured, Google Analytics and Meta Pixel. These tools load only if you accept
+          analytics cookies through our consent banner. Essential cookies are required for
+          authentication and core portal functionality. For details, see our{" "}
           <Link href="/cookies" className="font-medium text-brand-accent-dark hover:underline">
             Cookie Policy
           </Link>
@@ -115,7 +115,7 @@ export default function PrivacyPage() {
           <li>Database, authentication, and file storage (e.g. Supabase)</li>
           <li>Transactional email delivery (e.g. Resend)</li>
           <li>Demo scheduling embeds (e.g. Calendly, when enabled)</li>
-          <li>Website analytics (e.g. Google Analytics, when enabled and consented)</li>
+          <li>Website analytics (e.g. Google Analytics and Meta Pixel, when enabled and consented)</li>
         </ul>
         <p>We do not sell your personal information.</p>
       </LegalSection>
@@ -135,9 +135,9 @@ export default function PrivacyPage() {
 
       <LegalSection title="International transfers">
         <p>
-          BuildView may process data in the United States and other countries where our service
-          providers operate. Where required, we rely on appropriate safeguards for cross-border
-          transfers.
+          BuildView processes data primarily in India and may use service providers that operate
+          in other countries. Where required, we rely on appropriate safeguards for cross-border
+          transfers in accordance with applicable data protection laws.
         </p>
       </LegalSection>
 

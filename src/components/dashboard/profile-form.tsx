@@ -130,7 +130,7 @@ export function ProfileForm({ user, client }: ProfileFormProps) {
                   name="phone"
                   type="tel"
                   defaultValue={user.phone ?? ""}
-                  placeholder="+91 98765 43210"
+                  placeholder="+91 86552 24990"
                   disabled={isPending}
                   className="border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:placeholder:text-slate-500"
                 />

@@ -139,10 +139,9 @@ export default function TermsPage() {
 
       <LegalSection title="Governing law">
         <p>
-          These Terms are governed by the laws of the State of California, United States, without
-          regard to conflict-of-law principles, except where mandatory local law applies. Disputes
-          will be resolved in the courts located in San Francisco County, California, unless
-          otherwise agreed in a signed enterprise agreement.
+          These Terms are governed by the laws of India. Disputes
+          will be subject to the exclusive jurisdiction of the courts in Thane, Maharashtra, India,
+          unless otherwise agreed in a signed enterprise agreement.
         </p>
       </LegalSection>
 

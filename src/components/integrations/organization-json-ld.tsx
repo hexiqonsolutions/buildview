@@ -8,16 +8,24 @@ export function OrganizationJsonLd() {
     url: siteConfig.url,
     description: siteConfig.description,
     email: siteConfig.contact.email,
-    telephone: siteConfig.contact.phone,
-    address: {
-      "@type": "PostalAddress",
-      streetAddress: siteConfig.contact.address,
+    ...(siteConfig.contact.phone ? { telephone: siteConfig.contact.phone } : {}),
+    ...(siteConfig.contact.address
+      ? {
+          address: {
+            "@type": "PostalAddress",
+            streetAddress: "Lok Upvan Phase 2",
+            addressLocality: "Thane",
+            addressRegion: "Maharashtra",
+            addressCountry: "IN",
+          },
+        }
+      : {}),
+    logo: `${siteConfig.url}${siteConfig.brand.logo}`,
+    sameAs: Object.values(siteConfig.social).filter(Boolean),
+    areaServed: {
+      "@type": "Country",
+      name: "India",
     },
-    sameAs: [
-      siteConfig.social.linkedin,
-      siteConfig.social.twitter,
-      siteConfig.social.youtube,
-    ],
   };
 
   return (
