@@ -50,20 +50,22 @@ export function SupportPanel({
             </dd>
           </div>
         </div>
-        <div className="flex items-start gap-3">
-          <Phone className="mt-0.5 h-4 w-4 text-slate-400" />
-          <div>
-            <dt className="text-xs text-slate-500">Phone</dt>
-            <dd className="mt-1">
-              <a
-                href={`tel:${supportPhone.replace(/\s+/g, "")}`}
-                className="text-sm font-medium text-slate-900 underline-offset-2 hover:underline dark:text-white"
-              >
-                {supportPhone}
-              </a>
-            </dd>
+        {supportPhone ? (
+          <div className="flex items-start gap-3">
+            <Phone className="mt-0.5 h-4 w-4 text-slate-400" />
+            <div>
+              <dt className="text-xs text-slate-500">Phone</dt>
+              <dd className="mt-1">
+                <a
+                  href={`tel:${supportPhone.replace(/\s+/g, "")}`}
+                  className="text-sm font-medium text-slate-900 underline-offset-2 hover:underline dark:text-white"
+                >
+                  {supportPhone}
+                </a>
+              </dd>
+            </div>
           </div>
-        </div>
+        ) : null}
       </dl>
 
       <div className="mt-6 flex flex-wrap gap-3">

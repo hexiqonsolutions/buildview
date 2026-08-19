@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useState } from "react";
 import { Send, CheckCircle2, Loader2 } from "lucide-react";
 import { submitContact, type ContactActionState } from "@/lib/actions/contact";
+import { analyticsEvents } from "@/lib/analytics/events";
 import { trackEvent } from "@/lib/analytics/track";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +25,11 @@ export function ContactForm() {
 
   useEffect(() => {
     if (state.success) {
-      trackEvent("contact_form_submit", { interest: interest || "unknown" });
+      trackEvent(analyticsEvents.contact, { interest: interest || "unknown" });
+      trackEvent(analyticsEvents.lead, { interest: interest || "unknown" });
+      if (interest === "demo") {
+        trackEvent(analyticsEvents.bookDemo, { interest });
+      }
     }
   }, [state.success, interest]);
 

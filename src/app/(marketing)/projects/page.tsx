@@ -1,5 +1,4 @@
 import { Metadata } from "next";
-import Link from "next/link";
 import { ArrowRight, LayoutDashboard } from "lucide-react";
 import { PageCta } from "@/components/marketing/page-cta";
 import { PageHero } from "@/components/marketing/page-hero";
@@ -7,104 +6,95 @@ import { ProjectShowcaseCard } from "@/components/marketing/project-showcase-car
 import { Section } from "@/components/marketing/section";
 import { SectionHeader } from "@/components/marketing/section-header";
 import { TrustBar } from "@/components/marketing/trust-bar";
+import { ViewContentTracker } from "@/components/analytics/view-content-tracker";
 import { Button } from "@/components/ui/button";
+import { TrackedLink } from "@/components/analytics/tracked-link";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Construction Monitoring Examples",
+  title: "Construction Monitoring Use Cases",
   description:
-    "Explore how BuildView supports residential, commercial, industrial, and infrastructure projects through digital construction monitoring.",
+    "See how BuildView supports residential, commercial, industrial, and infrastructure projects through 360° site tours, progress reports, documents and issue tracking.",
   path: "/projects",
 });
 
-const sampleProjects = [
+const projectUseCases = [
   {
-    name: "Navi Mumbai Commercial Tower",
-    client: "Meridian Development",
-    location: "Navi Mumbai, India",
+    name: "Commercial towers",
+    client: "Developers, PMCs, and consultants",
+    location: "Multi-floor progress and remote reviews",
     status: "In Progress" as const,
     type: "Commercial",
     description:
-      "32-story commercial tower with retail podium and underground parking — monitored across 8 capture cycles.",
-    tours: 8,
-    reports: 12,
+      "Give stakeholders a floor-by-floor visual record so tower progress can be reviewed without waiting on scattered site photos.",
   },
   {
-    name: "Pacific Heights Residence",
-    client: "Luxury Homes Inc.",
-    location: "San Francisco, CA",
+    name: "Residential developments",
+    client: "Developers and project owners",
+    location: "Plot, wing, and interior milestone visibility",
     status: "In Progress" as const,
     type: "Residential",
     description:
-      "Luxury 4-story residential development with panoramic bay views and high-spec interior milestones.",
-    tours: 5,
-    reports: 8,
+      "Keep owners and internal teams aligned with repeatable 360° captures, progress reports, and documented issues.",
   },
   {
-    name: "Riverside Industrial Park",
-    client: "Apex Logistics",
-    location: "Austin, TX",
-    status: "Completed" as const,
+    name: "Industrial facilities",
+    client: "Contractors and project owners",
+    location: "Large-footprint site documentation",
+    status: "In Progress" as const,
     type: "Industrial",
     description:
-      "500,000 sq ft warehouse and distribution facility — full digital handover record delivered.",
-    tours: 15,
-    reports: 24,
+      "Document warehouses, plants, and MEP-heavy builds with a shared visual record, drawings, and issue trails.",
   },
   {
-    name: "Downtown Metro Station",
-    client: "City Infrastructure Authority",
-    location: "Seattle, WA",
+    name: "Infrastructure works",
+    client: "Consultants, PMCs, and owners",
+    location: "Corridor and checkpoint monitoring",
     status: "Planning" as const,
     type: "Infrastructure",
     description:
-      "Underground metro station with pedestrian concourse and retail spaces — pre-construction baseline established.",
-    tours: 2,
-    reports: 3,
+      "Create a dated site record for civil works so reviews, audits, and progress conversations use the same evidence.",
   },
   {
-    name: "Harbor View Hotel",
-    client: "Coastal Hospitality Group",
-    location: "Miami, FL",
+    name: "Hospitality projects",
+    client: "Developers and architects",
+    location: "Interior and common-area progress",
     status: "In Progress" as const,
     type: "Hospitality",
     description:
-      "12-story waterfront hotel with ballroom and spa wing — investor visibility via monthly virtual tour captures.",
-    tours: 6,
-    reports: 9,
+      "Let design and delivery teams review execution remotely as rooms, public areas, and finishes move forward.",
   },
   {
-    name: "Greenfield Data Center",
-    client: "CloudScale Infrastructure",
-    location: "Phoenix, AZ",
+    name: "Specialized facilities",
+    client: "Owners, consultants, and contractors",
+    location: "Technical milestone documentation",
     status: "In Progress" as const,
-    type: "Industrial",
+    type: "Specialized",
     description:
-      "Mission-critical data center build with MEP-heavy milestones tracked through issue and report workflows.",
-    tours: 4,
-    reports: 7,
+      "Combine 360° walkthroughs, reports, and issue tracking where coordination and documentation matter as much as photos.",
   },
 ];
 
 export default function ProjectsPage() {
   return (
     <>
+      <ViewContentTracker contentName="projects" contentCategory="product" />
       <PageHero
         eyebrow="Projects"
-        title="Construction Projects We've Helped Monitor"
-        description="Explore how BuildView supports residential, commercial, industrial, and infrastructure projects through digital construction monitoring."
+        title="Construction Monitoring Across Project Types"
+        description="BuildView is used to give developers, architects, contractors, PMCs, and project owners a visual record of construction progress—without treating every project as a photography assignment."
       />
 
       <TrustBar />
 
       <Section>
         <SectionHeader
-          eyebrow="Construction Monitoring Examples"
-          title="Real monitoring scenarios across sectors"
-          description="Each example shows how virtual tours, progress reports, documents, and issue tracking come together in one platform."
+          eyebrow="Use cases"
+          title="Where construction visibility matters"
+          description="These are typical monitoring scenarios—not invented client case studies. Live project examples are shown in a demo."
         />
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2 xl:grid-cols-3">
-          {sampleProjects.map((project) => (
+          {projectUseCases.map((project) => (
             <ProjectShowcaseCard key={project.name} {...project} />
           ))}
         </div>
@@ -125,16 +115,16 @@ export default function ProjectsPage() {
             </p>
           </div>
           <Button variant="accent" size="lg" className="shrink-0 shadow-soft" asChild>
-            <Link href="/contact">
+            <TrackedLink href="/contact" eventLabel="projects_book_demo">
               Book Live Demo <ArrowRight className="h-5 w-5" />
-            </Link>
+            </TrackedLink>
           </Button>
         </div>
       </Section>
 
       <PageCta
         title="Want BuildView on Your Next Project?"
-        description="Let's discuss your project size, monitoring requirements, and reporting schedule."
+        description="Tell us about your project size, monitoring requirements, and reporting schedule."
         primaryLabel="Book a Demo"
         secondaryLabel="Explore services"
         secondaryHref="/services"

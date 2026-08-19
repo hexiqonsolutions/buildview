@@ -4,6 +4,7 @@ import { CalendlyEmbed } from "@/components/integrations/calendly-embed";
 import { Section } from "@/components/marketing/section";
 import { SectionHeader } from "@/components/marketing/section-header";
 import { Button } from "@/components/ui/button";
+import { TrackedLink } from "@/components/analytics/tracked-link";
 import { integrations, isCalendlyEnabled } from "@/lib/integrations";
 
 interface BookDemoSectionProps {
@@ -29,9 +30,9 @@ export function BookDemoSection({
             Tell us about your portfolio and we&apos;ll schedule a personalized walkthrough.
           </p>
           <Button variant="accent" size="lg" className="mt-6 shadow-soft" asChild>
-            <Link href="/contact">
+            <TrackedLink href="/contact" eventLabel="book_demo_section">
               Contact our team <ArrowRight className="h-5 w-5" />
-            </Link>
+            </TrackedLink>
           </Button>
         </div>
       </Section>

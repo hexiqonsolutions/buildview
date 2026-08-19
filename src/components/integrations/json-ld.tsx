@@ -1,5 +1,18 @@
 import { siteConfig } from "@/lib/site-config";
 
+const contactSchema = {
+  email: siteConfig.contact.email,
+  ...(siteConfig.contact.phone ? { telephone: siteConfig.contact.phone } : {}),
+  ...(siteConfig.contact.address
+    ? {
+        address: {
+          "@type": "PostalAddress",
+          streetAddress: siteConfig.contact.address,
+        },
+      }
+    : {}),
+};
+
 export function JsonLd() {
   const schema = {
     "@context": "https://schema.org",
@@ -9,11 +22,12 @@ export function JsonLd() {
         "@id": `${siteConfig.url}/#organization`,
         name: siteConfig.name,
         url: siteConfig.url,
-        email: siteConfig.contact.email,
-        telephone: siteConfig.contact.phone,
+        ...contactSchema,
         description: siteConfig.description,
         logo: `${siteConfig.url}${siteConfig.brand.logo}`,
-        sameAs: Object.values(siteConfig.social),
+        sameAs: [siteConfig.instagram.url, ...Object.values(siteConfig.social).filter(Boolean)].filter(
+          (value, index, list) => list.indexOf(value) === index
+        ),
       },
       {
         "@type": "SoftwareApplication",
@@ -33,6 +47,17 @@ export function JsonLd() {
           "Project timelines",
           "Client dashboard",
         ],
+      },
+      {
+        "@type": "Service",
+        "@id": `${siteConfig.url}/#service`,
+        name: "Construction monitoring",
+        serviceType: "Construction monitoring and project visibility",
+        provider: { "@id": `${siteConfig.url}/#organization` },
+        areaServed: "IN",
+        description:
+          "Construction visibility and monitoring through 360° site capture, progress tracking, documentation, reports and issue management.",
+        url: `${siteConfig.url}/services`,
       },
       {
         "@type": "WebSite",

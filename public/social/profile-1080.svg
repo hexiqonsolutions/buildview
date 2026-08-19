@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080" role="img" aria-label="BuildView">
+  <rect width="1080" height="1080" fill="#050505"/>
+  <circle cx="540" cy="540" r="430" fill="none" stroke="#1A1A1A" stroke-width="6"/>
+  <circle cx="540" cy="540" r="250" fill="none" stroke="#A4CF30" stroke-width="28"/>
+  <circle cx="540" cy="540" r="118" fill="none" stroke="#A4CF30" stroke-width="18"/>
+  <circle cx="540" cy="540" r="28" fill="#A4CF30"/>
+</svg>

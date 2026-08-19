@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080" role="img" aria-label="Monitoring">
+  <rect width="1080" height="1080" fill="#050505"/>
+  <circle cx="540" cy="540" r="310" fill="none" stroke="#1A1A1A" stroke-width="4"/>
+  <path d="M360 680 L480 540 L560 600 L720 400" fill="none" stroke="#A4CF30" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="720" cy="400" r="18" fill="#A4CF30"/>
+</svg>

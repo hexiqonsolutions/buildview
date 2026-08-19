@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { Button } from "@/components/ui/button";
+import { TrackedLink } from "@/components/analytics/tracked-link";
 import { siteConfig } from "@/lib/site-config";
 import { cn } from "@/lib/utils";
 
@@ -88,7 +89,9 @@ export function MarketingHeader() {
               <Link href="/login">Sign In</Link>
             </Button>
             <Button variant="accent" className="shadow-soft" asChild>
-              <Link href="/contact">Book Demo</Link>
+              <TrackedLink href="/contact" eventLabel="header_book_demo">
+                Book Demo
+              </TrackedLink>
             </Button>
           </div>
 
@@ -143,7 +146,9 @@ export function MarketingHeader() {
                 <Link href="/login">Sign In</Link>
               </Button>
               <Button variant="accent" asChild>
-                <Link href="/contact">Book Demo</Link>
+                <TrackedLink href="/contact" eventLabel="header_mobile_book_demo">
+                  Book Demo
+                </TrackedLink>
               </Button>
             </div>
           </nav>

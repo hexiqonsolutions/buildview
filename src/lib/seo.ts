@@ -2,60 +2,59 @@ import type { Metadata } from "next";
 import { siteConfig } from "@/lib/site-config";
 
 const siteUrl = siteConfig.url;
+const ogImage = {
+  url: siteConfig.brand.ogImage,
+  width: 1200,
+  height: 630,
+  alt: "BuildView — Construction Intelligence Platform. Construction monitoring through 360° site capture, progress tracking, reports and issue management.",
+};
 
 export const defaultMetadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default:
-      "Construction Monitoring Software | BuildView Construction Intelligence Platform",
+    default: siteConfig.seo.title,
     template: `%s | ${siteConfig.name}`,
   },
   description: siteConfig.description,
+  applicationName: siteConfig.name,
   keywords: [
-    "construction monitoring software",
+    "construction monitoring",
     "construction intelligence platform",
     "construction progress tracking",
-    "virtual site tours",
-    "360 virtual tour construction",
-    "360 site captures",
-    "construction document management",
+    "remote construction monitoring",
+    "360 site walkthrough",
+    "construction documentation",
     "construction issue tracking",
-    "project timeline construction",
-    "remote site inspection",
+    "construction progress reports",
+    "construction project visibility",
     "BuildView",
-    "PMC dashboard",
   ],
   authors: [{ name: siteConfig.name, url: siteUrl }],
   creator: siteConfig.name,
   publisher: siteConfig.name,
+  category: "technology",
   formatDetection: {
     email: false,
     address: false,
     telephone: false,
   },
+  alternates: {
+    canonical: siteUrl,
+  },
   openGraph: {
     type: "website",
-    locale: "en_US",
+    locale: "en_IN",
     url: siteUrl,
     siteName: siteConfig.name,
-    title:
-      "Construction Monitoring Software | BuildView Construction Intelligence Platform",
+    title: siteConfig.seo.ogTitle,
     description: siteConfig.description,
-    images: [
-      {
-        url: siteConfig.brand.logo,
-        width: 1200,
-        height: 630,
-        alt: `${siteConfig.name} — construction monitoring with virtual site tours`,
-      },
-    ],
+    images: [ogImage],
   },
   twitter: {
     card: "summary_large_image",
-    title:
-      "Construction Monitoring Software | BuildView Construction Intelligence Platform",
+    title: siteConfig.seo.ogTitle,
     description: siteConfig.description,
-    images: [siteConfig.brand.logo],
+    images: [ogImage.url],
   },
   robots: {
     index: true,
@@ -68,8 +67,8 @@ export const defaultMetadata: Metadata = {
     },
   },
   icons: {
-    icon: "/favicon.png",
-    apple: "/apple-touch-icon.png",
+    icon: [{ url: "/icon", type: "image/png" }],
+    apple: [{ url: "/apple-icon", type: "image/png" }],
   },
 };
 
@@ -83,6 +82,7 @@ export function pageMetadata({
   path?: string;
 }): Metadata {
   const url = `${siteUrl}${path}`;
+  const ogTitle = `${title} | ${siteConfig.name}`;
 
   return {
     title,
@@ -90,16 +90,19 @@ export function pageMetadata({
     keywords: defaultMetadata.keywords,
     alternates: { canonical: url },
     openGraph: {
-      title: `${title} | ${siteConfig.name}`,
+      title: ogTitle,
       description,
       url,
       siteName: siteConfig.name,
       type: "website",
+      locale: "en_IN",
+      images: [ogImage],
     },
     twitter: {
       card: "summary_large_image",
-      title: `${title} | ${siteConfig.name}`,
+      title: ogTitle,
       description,
+      images: [ogImage.url],
     },
   };
 }

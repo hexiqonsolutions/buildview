@@ -10,8 +10,8 @@ interface ProjectShowcaseCardProps {
   location: string;
   status: "In Progress" | "Completed" | "Planning";
   description: string;
-  tours: number;
-  reports: number;
+  tours?: number;
+  reports?: number;
   type: string;
   className?: string;
 }
@@ -62,16 +62,20 @@ export function ProjectShowcaseCard({
         </div>
         <div className="mt-5 flex items-center justify-between border-t border-slate-200/80 pt-5 dark:border-slate-800">
           <div className="flex gap-4 text-sm text-slate-500">
-            <span className="flex items-center gap-1.5">
-              <Camera className="h-4 w-4" /> {tours} tours
-            </span>
-            <span className="flex items-center gap-1.5">
-              <FileText className="h-4 w-4" /> {reports} reports
-            </span>
+            {tours != null && (
+              <span className="flex items-center gap-1.5">
+                <Camera className="h-4 w-4" /> {tours} tours
+              </span>
+            )}
+            {reports != null && (
+              <span className="flex items-center gap-1.5">
+                <FileText className="h-4 w-4" /> {reports} reports
+              </span>
+            )}
           </div>
           <Button variant="ghost" size="sm" className="text-brand-accent-dark" asChild>
-            <Link href="/login">
-              Portal <ArrowRight className="h-4 w-4" />
+            <Link href="/contact">
+              Book demo <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
         </div>

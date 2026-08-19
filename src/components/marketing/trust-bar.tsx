@@ -33,7 +33,9 @@ export function TrustBar() {
         {partners.length > 0 && (
           <div className="mt-8">
             <p className="text-center text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-              Technology &amp; industry partners
+              {partners.every((partner) => partner.kind === "technology")
+                ? "Capture technology"
+                : "Technology & industry partners"}
             </p>
             <ul className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
               {partners.map((sponsor) => (

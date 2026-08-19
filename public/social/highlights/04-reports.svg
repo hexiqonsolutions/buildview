@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080" role="img" aria-label="Reports">
+  <rect width="1080" height="1080" fill="#050505"/>
+  <circle cx="540" cy="540" r="310" fill="none" stroke="#1A1A1A" stroke-width="4"/>
+  <path d="M410 360h260v360H410z" fill="none" stroke="#A4CF30" stroke-width="22"/>
+  <path d="M460 430h160v22H460z" fill="#A4CF30"/>
+  <path d="M460 490h160v16H460z" fill="#334155"/>
+  <path d="M460 536h160v16H460z" fill="#334155"/>
+  <path d="M460 582h110v16H460z" fill="#334155"/>
+</svg>

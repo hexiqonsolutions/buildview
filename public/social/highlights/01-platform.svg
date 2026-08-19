@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080" role="img" aria-label="Platform">
+  <rect width="1080" height="1080" fill="#050505"/>
+  <circle cx="540" cy="540" r="310" fill="none" stroke="#1A1A1A" stroke-width="4"/>
+  <path d="M360 420h360v240H360z" fill="none" stroke="#A4CF30" stroke-width="22"/>
+  <path d="M400 470h120v24H400z" fill="#A4CF30"/>
+  <path d="M400 520h280v16H400z" fill="#334155"/>
+  <path d="M400 556h220v16H400z" fill="#334155"/>
+  <path d="M400 592h160v16H400z" fill="#334155"/>
+</svg>

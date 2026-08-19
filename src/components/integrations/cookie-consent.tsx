@@ -7,7 +7,7 @@ import {
   readCookieConsent,
   writeCookieConsent,
 } from "@/lib/analytics/consent";
-import { isGoogleAnalyticsEnabled } from "@/lib/integrations";
+import { isAnalyticsConfigured } from "@/lib/integrations";
 import { Button } from "@/components/ui/button";
 
 export function CookieConsent() {
@@ -33,7 +33,7 @@ export function CookieConsent() {
     return null;
   }
 
-  const mentionsAnalytics = isGoogleAnalyticsEnabled();
+  const mentionsAnalytics = isAnalyticsConfigured();
 
   return (
     <div
@@ -46,7 +46,7 @@ export function CookieConsent() {
       <div className="surface-card flex flex-col gap-4 p-5 shadow-soft sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400">
           {mentionsAnalytics
-            ? "We use cookies for analytics and to improve your experience. Analytics loads only if you accept."
+            ? "We use cookies for analytics and to improve your experience. Google Analytics and Meta Pixel load only if you accept."
             : "We use essential cookies to operate the site."}{" "}
           See our{" "}
           <Link href="/cookies" className="font-medium text-brand-accent-dark hover:underline">

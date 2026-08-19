@@ -15,12 +15,13 @@ import { Section } from "@/components/marketing/section";
 import { SectionHeader } from "@/components/marketing/section-header";
 import { ServiceSection } from "@/components/marketing/service-section";
 import { TrustBar } from "@/components/marketing/trust-bar";
+import { ViewContentTracker } from "@/components/analytics/view-content-tracker";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({
   title: "Construction Monitoring Services",
   description:
-    "End-to-end construction monitoring services: 360° virtual tours, compare progress, reports, timelines, document management, issue tracking, and client dashboards.",
+    "Construction monitoring with 360° virtual site tours, progress reports, timelines, document management, issue tracking, and role-based client dashboards.",
   path: "/services",
 });
 
@@ -144,6 +145,7 @@ const faqs = [
 export default function ServicesPage() {
   return (
     <>
+      <ViewContentTracker contentName="services" contentCategory="product" />
       <PageHero
         eyebrow="Services"
         title="End-to-End Construction Monitoring Services"

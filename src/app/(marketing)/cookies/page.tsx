@@ -34,7 +34,8 @@ export default function CookiesPage() {
           </li>
           <li>
             <strong>Analytics cookies</strong> — Help us understand marketing site traffic and
-            performance (e.g. Vercel Analytics, and Google Analytics when enabled and accepted).
+            performance (e.g. Vercel Analytics, Google Analytics, and Meta Pixel when enabled and
+            accepted).
           </li>
         </ul>
       </LegalSection>
@@ -52,8 +53,8 @@ export default function CookiesPage() {
         <p>
           You can control cookies through your browser settings. Disabling essential cookies may
           prevent you from signing in or using certain portal features. Our cookie consent banner
-          lets you accept or decline analytics on the marketing site — Google Analytics loads only
-          after you accept.
+          lets you accept or decline analytics on the marketing site — Google Analytics and Meta
+          Pixel load only after you accept.
         </p>
       </LegalSection>
 

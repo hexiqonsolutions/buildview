@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Section } from "@/components/marketing/section";
+import { TrackedLink } from "@/components/analytics/tracked-link";
 
 interface PageCtaProps {
   title: string;
@@ -28,9 +29,9 @@ export function PageCta({
         <p className="mx-auto mt-4 max-w-xl text-lg text-slate-300">{description}</p>
         <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
           <Button variant="accent" size="lg" className="shadow-glow" asChild>
-            <Link href={primaryHref}>
+            <TrackedLink href={primaryHref} eventLabel="page_cta_primary">
               {primaryLabel} <ArrowRight className="h-5 w-5" />
-            </Link>
+            </TrackedLink>
           </Button>
           {secondaryLabel && secondaryHref && (
             <Button

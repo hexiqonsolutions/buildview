@@ -6,6 +6,7 @@ export const marketingRoutes = [
   "/services",
   "/projects",
   "/contact",
+  "/links",
   "/privacy",
   "/terms",
   "/cookies",
@@ -14,6 +15,7 @@ export const marketingRoutes = [
 export const integrations = {
   calendlyUrl: process.env.NEXT_PUBLIC_CALENDLY_URL ?? "",
   gaMeasurementId: process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ?? "",
+  metaPixelId: process.env.NEXT_PUBLIC_META_PIXEL_ID ?? "",
   resendApiKey: process.env.RESEND_API_KEY ?? "",
   contactToEmail: process.env.CONTACT_TO_EMAIL ?? siteConfig.contact.email,
   contactFromEmail:
@@ -26,6 +28,14 @@ export function isCalendlyEnabled(): boolean {
 
 export function isGoogleAnalyticsEnabled(): boolean {
   return Boolean(integrations.gaMeasurementId);
+}
+
+export function isMetaPixelEnabled(): boolean {
+  return Boolean(integrations.metaPixelId);
+}
+
+export function isAnalyticsConfigured(): boolean {
+  return isGoogleAnalyticsEnabled() || isMetaPixelEnabled();
 }
 
 export function isContactEmailEnabled(): boolean {

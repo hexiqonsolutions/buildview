@@ -6,12 +6,14 @@ import { PageHero } from "@/components/marketing/page-hero";
 import { Section } from "@/components/marketing/section";
 import { SectionHeader } from "@/components/marketing/section-header";
 import { TrustBar } from "@/components/marketing/trust-bar";
+import { InstagramFollow } from "@/components/marketing/instagram-follow";
+import { ViewContentTracker } from "@/components/analytics/view-content-tracker";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({
   title: "About BuildView",
   description:
-    "BuildView makes construction projects transparent, accessible, and data-driven with virtual site tours, progress tracking, and stakeholder collaboration.",
+    "BuildView is a construction monitoring and intelligence platform that helps developers, architects, contractors and PMCs see what is happening on site without relying only on site visits.",
   path: "/about",
 });
 
@@ -51,6 +53,7 @@ const values = [
 export default function AboutPage() {
   return (
     <>
+      <ViewContentTracker contentName="about" contentCategory="marketing" />
       <PageHero
         eyebrow="About"
         title="Building Transparency Into Every Construction Project."
@@ -77,6 +80,9 @@ export default function AboutPage() {
               BuildView centralizes everything into one intelligent platform designed specifically
               for construction projects.
             </p>
+            <div className="pt-2">
+              <InstagramFollow />
+            </div>
           </div>
         </div>
       </Section>

@@ -18,6 +18,11 @@ const nextConfig: NextConfig = {
         destination: "/contact",
         permanent: true,
       },
+      {
+        source: "/instagram",
+        destination: "/links",
+        permanent: false,
+      },
     ];
   },
   webpack: (config) => {

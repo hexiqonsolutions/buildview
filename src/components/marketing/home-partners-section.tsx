@@ -62,7 +62,9 @@ export function HomePartnersSection() {
               id="home-partners-heading"
               className="text-center text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500"
             >
-              Technology &amp; industry partners
+              {partners.every((partner) => partner.kind === "technology")
+                ? "Capture technology"
+                : "Technology & industry partners"}
             </h2>
             <ul className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
               {partners.map((sponsor) => (
@@ -115,7 +117,9 @@ export function HomePartnersSection() {
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="inline-flex rounded-full border border-brand-accent/30 bg-brand-accent/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand-accent-dark dark:text-brand-accent">
-                    Partner spotlight
+                    {spotlight.kind === "technology"
+                      ? "Capture technology"
+                      : "Partner spotlight"}
                   </span>
                 </div>
                 <h3 className="mt-3 font-display text-xl font-bold text-brand-primary dark:text-white md:text-2xl">
@@ -130,7 +134,7 @@ export function HomePartnersSection() {
                   <Link
                     href={spotlight.href}
                     target="_blank"
-                    rel="sponsored noopener noreferrer"
+                    rel="noopener noreferrer"
                     className="group/link mt-5 inline-flex min-h-11 items-center gap-1.5 rounded-lg text-sm font-semibold text-brand-accent-dark transition-colors duration-200 hover:text-brand-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2 dark:hover:text-brand-accent"
                   >
                     Learn more

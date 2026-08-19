@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { Metadata } from "next";
-import { JsonLd } from "@/components/integrations/json-ld";
 import {
   AlertTriangle,
   ArrowRight,
@@ -23,21 +22,20 @@ import { ProductModuleCard } from "@/components/marketing/product-module-card";
 import { RoleCard } from "@/components/marketing/role-card";
 import { Section } from "@/components/marketing/section";
 import { SectionHeader } from "@/components/marketing/section-header";
-import { TestimonialCard } from "@/components/marketing/testimonial-card";
 import { HomePartnersSection } from "@/components/marketing/home-partners-section";
 import { Button } from "@/components/ui/button";
+import { TrackedLink } from "@/components/analytics/tracked-link";
 import { pageMetadata } from "@/lib/seo";
+import { siteConfig } from "@/lib/site-config";
 
 export const metadata: Metadata = {
   ...pageMetadata({
-    title: "Construction Monitoring Software",
-    description:
-      "Monitor construction projects with 360° virtual site tours, progress reports, document management, issue tracking, and timelines. Built for developers, architects, contractors, and PMCs.",
+    title: "Construction Monitoring & Intelligence Platform",
+    description: siteConfig.description,
     path: "/",
   }),
   title: {
-    absolute:
-      "Construction Monitoring Software | BuildView Construction Intelligence Platform",
+    absolute: siteConfig.seo.title,
   },
 };
 
@@ -165,24 +163,21 @@ const processSteps = [
   },
 ];
 
-const testimonials = [
+const visibilityOutcomes = [
   {
-    quote:
-      "BuildView transformed how we monitor our projects. The virtual tours save us countless site visits.",
-    author: "Sarah Chen",
-    role: "Project Director, Meridian Development",
+    title: "Remote site review",
+    description:
+      "Walk a construction project from anywhere using 360° site captures instead of waiting on scattered photos.",
   },
   {
-    quote:
-      "Our investors love the transparency. They can walk through the site virtually and see real progress.",
-    author: "Michael Torres",
-    role: "CEO, Apex Construction Group",
+    title: "One visual project record",
+    description:
+      "Keep tours, progress reports, documents, timelines, and issues together in one construction workspace.",
   },
   {
-    quote:
-      "Issue tracking and document management in one platform is exactly what our team needed.",
-    author: "Priya Sharma",
-    role: "Senior Architect, Design Collective",
+    title: "Stakeholder alignment",
+    description:
+      "Give developers, architects, contractors, and PMCs role-based access to the same site record.",
   },
 ];
 
@@ -214,9 +209,9 @@ export default function HomePage() {
                 className="shadow-glow text-brand-primary hover:text-brand-primary"
                 asChild
               >
-                <Link href="/contact">
+                <TrackedLink href="/contact" eventLabel="home_hero_book_demo">
                   Book Live Demo <ArrowRight className="h-5 w-5" />
-                </Link>
+                </TrackedLink>
               </Button>
               <Button
                 size="lg"
@@ -318,10 +313,21 @@ export default function HomePage() {
       </Section>
 
       <Section>
-        <SectionHeader eyebrow="Testimonials" title="Trusted by construction leaders" />
+        <SectionHeader
+          eyebrow="Visibility"
+          title="Know what's happening on site, without always being on site."
+          description="BuildView is built for construction monitoring—not as a photography service, and not as a generic project tool with a camera added on."
+        />
         <div className="grid gap-6 md:grid-cols-3">
-          {testimonials.map((t) => (
-            <TestimonialCard key={t.author} {...t} />
+          {visibilityOutcomes.map((item) => (
+            <article key={item.title} className="surface-card h-full p-6 lg:p-8">
+              <h3 className="font-display text-lg font-semibold text-brand-primary dark:text-white">
+                {item.title}
+              </h3>
+              <p className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+                {item.description}
+              </p>
+            </article>
           ))}
         </div>
       </Section>
@@ -349,7 +355,9 @@ export default function HomePage() {
           </p>
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
             <Button variant="accent" size="lg" className="shadow-glow" asChild>
-              <Link href="/contact">Book Live Demo</Link>
+              <TrackedLink href="/contact" eventLabel="home_bottom_book_demo">
+                Book Live Demo
+              </TrackedLink>
             </Button>
             <Button
               size="lg"
@@ -362,7 +370,6 @@ export default function HomePage() {
           </div>
         </div>
       </Section>
-      <JsonLd />
     </>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { AuthDivider } from "@/components/auth/auth-divider";
@@ -13,6 +13,8 @@ import {
   signUp,
   type AuthActionState,
 } from "@/lib/actions/auth";
+import { analyticsEvents } from "@/lib/analytics/events";
+import { trackEvent } from "@/lib/analytics/track";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,6 +44,12 @@ export function AuthForm({ mode, redirectTo, errorCode }: AuthFormProps) {
     mode === "login" ? signIn : mode === "register" ? signUp : forgotPassword;
 
   const [state, formAction, pending] = useActionState(action, initialState);
+
+  useEffect(() => {
+    if (mode === "register" && state.success) {
+      trackEvent(analyticsEvents.signUp, { method: "email" });
+    }
+  }, [mode, state.success]);
 
   const titles = {
     login: "Welcome back",
