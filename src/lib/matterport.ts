@@ -5,9 +5,27 @@
 
 const MATTERPORT_SHOW_HOST = "my.matterport.com";
 
-/** Extract the Matterport model ID from a share or embed URL. */
+/** Pull the URL out of pasted iframe embed code and add a missing scheme. */
+function unwrapMatterportInput(input: string): string {
+  let value = input.trim();
+
+  const srcMatch = value.match(/src\s*=\s*["']([^"']+)["']/i);
+  if (srcMatch?.[1]) {
+    value = srcMatch[1].trim();
+  }
+
+  value = value.replace(/&amp;/g, "&");
+
+  if (/^(www\.|my\.|discover\.)?matterport\.com/i.test(value)) {
+    value = `https://${value}`;
+  }
+
+  return value;
+}
+
+/** Extract the Matterport model ID from a share URL, embed URL, or iframe embed code. */
 export function extractMatterportModelId(url: string): string | null {
-  const trimmed = url.trim();
+  const trimmed = unwrapMatterportInput(url);
   if (!trimmed) return null;
 
   // Bare model ID (alphanumeric, typical length 10–15)
@@ -31,7 +49,7 @@ export function extractMatterportModelId(url: string): string | null {
     const modelsMatch = parsed.pathname.match(/\/models\/([a-zA-Z0-9]+)/);
     if (modelsMatch?.[1]) return modelsMatch[1];
 
-    const discoverMatch = parsed.pathname.match(/\/discover\/space\/([a-zA-Z0-9]+)/);
+    const discoverMatch = parsed.pathname.match(/\/(?:discover\/)?space\/([a-zA-Z0-9]+)/);
     if (discoverMatch?.[1]) return discoverMatch[1];
   } catch {
     return null;
