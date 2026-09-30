@@ -8,7 +8,7 @@ import { createSignedStorageUrl } from "@/lib/supabase/storage-server";
 import { resolveInvoiceStoragePath } from "@/lib/supabase/storage";
 import { notifyClientOrgIfEnabled, notifyClientsIfEnabled, notifyInvoiceRecipients, notifyUsersIfEnabled } from "@/lib/actions/notifications";
 import { isNotificationRuleEnabled } from "@/lib/actions/platform-settings";
-import { normalizeMatterportUrl } from "@/lib/matterport";
+import { normalizeMatterportUrl, resolveMatterportThumbnailUrl } from "@/lib/matterport";
 import { resolveSpatialForWrite } from "@/lib/admin/spatial-resolve";
 import { buildTourDescription } from "@/lib/admin/tour-metadata";
 import { createTourSchema } from "@/lib/validations/tour";
@@ -308,6 +308,44 @@ export async function updateProjectCoverImage(
   revalidatePath("/dashboard");
 }
 
+/** Set, replace, or clear a tour's thumbnail. */
+export async function updateTourThumbnail(tourId: string, thumbnailUrl: string | null) {
+  const admin = createServiceRoleClient();
+  const { data: tour, error: tourError } = await admin
+    .from("project_tours")
+    .select("id, project_id")
+    .eq("id", tourId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (tourError) throw new Error(tourError.message);
+  if (!tour) throw new Error("Tour not found.");
+
+  await assertCanUploadToProject(tour.project_id, "matterport");
+
+  if (thumbnailUrl !== null && !/^https:\/\//i.test(thumbnailUrl)) {
+    throw new Error("Thumbnail must be an https:// image URL.");
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { error } = await admin
+    .from("project_tours")
+    .update({ thumbnail_url: thumbnailUrl, updated_by: user?.id ?? null })
+    .eq("id", tourId);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/admin/tours");
+  revalidatePath(`/admin/projects/${tour.project_id}`);
+  revalidatePath("/dashboard/projects");
+  revalidatePath(`/dashboard/projects/${tour.project_id}`);
+  revalidatePath("/dashboard");
+}
+
 export async function createTour(data: {
   project_id: string;
   name: string;
@@ -352,6 +390,7 @@ export async function createTour(data: {
     project_id: parsed.data.project_id,
     name: parsed.data.name,
     matterport_url: normalizedUrl,
+    thumbnail_url: await resolveMatterportThumbnailUrl(normalizedUrl),
     capture_date: parsed.data.capture_date ?? null,
     description: structuredDescription ?? parsed.data.description ?? null,
     building_id: spatial.building_id,

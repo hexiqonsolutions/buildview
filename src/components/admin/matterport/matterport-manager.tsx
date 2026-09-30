@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   Camera,
   MoreHorizontal,
@@ -9,10 +9,12 @@ import {
   Eye,
   Archive,
   Copy,
+  ImagePlus,
   Trash2,
 } from "lucide-react";
 import { useAdminWorkspace } from "@/components/admin/workspace/admin-workspace-provider";
 import { PreviewTourDialog } from "@/components/admin/preview-tour-dialog";
+import { TourThumbnailDialog } from "@/components/admin/matterport/tour-thumbnail-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,6 +34,7 @@ type TourRow = ProjectTour & { project?: { id: string; name: string } | null };
 
 export function MatterportManager({ tours }: { tours: TourRow[] }) {
   const { hydrated, scope, clientProjects, project } = useAdminWorkspace();
+  const [thumbnailTour, setThumbnailTour] = useState<TourRow | null>(null);
 
   const filtered = useMemo(() => {
     const ids = new Set(clientProjects.map((p) => p.id));
@@ -78,9 +81,17 @@ export function MatterportManager({ tours }: { tours: TourRow[] }) {
                       className="h-full w-full object-cover"
                     />
                   ) : (
-                    <div className="flex h-full items-center justify-center">
+                    <button
+                      type="button"
+                      onClick={() => setThumbnailTour(tour)}
+                      className="flex h-full w-full flex-col items-center justify-center gap-2 text-slate-400 transition-colors hover:bg-slate-200/60 hover:text-slate-600 dark:hover:bg-slate-700/60"
+                    >
                       <Camera className="h-10 w-10 text-slate-300" />
-                    </div>
+                      <span className="flex items-center gap-1 text-xs font-medium">
+                        <ImagePlus className="h-3.5 w-3.5" />
+                        Add thumbnail
+                      </span>
+                    </button>
                   )}
                   <div className="absolute right-2 top-2">
                     <DropdownMenu>
@@ -104,6 +115,9 @@ export function MatterportManager({ tours }: { tours: TourRow[] }) {
                               </span>
                             }
                           />
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => setThumbnailTour(tour)}>
+                          <ImagePlus className="mr-2 h-4 w-4" /> Change thumbnail
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild>
                           <Link href={`/admin/compare?scanA=${tour.id}&project=${tour.project_id}`}>
@@ -166,6 +180,11 @@ export function MatterportManager({ tours }: { tours: TourRow[] }) {
           })}
         </div>
       )}
+
+      <TourThumbnailDialog
+        tour={thumbnailTour}
+        onOpenChange={(open) => !open && setThumbnailTour(null)}
+      />
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { normalizeMatterportUrl } from "@/lib/matterport";
+import { normalizeMatterportUrl, resolveMatterportThumbnailUrl } from "@/lib/matterport";
 import { createTourSchema } from "@/lib/validations/tour";
 import { createReportSchema } from "@/lib/validations/report";
 import { createDocumentSchema } from "@/lib/validations/document";
@@ -141,10 +141,13 @@ export async function uploadMatterportWithAutomation(data: {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const normalizedUrl = normalizeMatterportUrl(parsed.data.matterport_url);
+
   const payload: ProjectTourInsert = {
     project_id: parsed.data.project_id,
     name: parsed.data.name,
-    matterport_url: normalizeMatterportUrl(parsed.data.matterport_url),
+    matterport_url: normalizedUrl,
+    thumbnail_url: await resolveMatterportThumbnailUrl(normalizedUrl),
     capture_date: parsed.data.capture_date ?? null,
     description: parsed.data.description ?? null,
     building_id: spatial.building_id,

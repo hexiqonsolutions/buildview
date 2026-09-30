@@ -81,6 +81,26 @@ export function getMatterportEmbedUrl(url: string): string {
   return `https://${MATTERPORT_SHOW_HOST}/show/?m=${modelId}&play=1&qs=1&title=0&help=0`;
 }
 
+/** Public snapshot image Matterport serves for the model (works for public/unlisted spaces). */
+export function getMatterportThumbnailUrl(url: string): string | null {
+  const modelId = extractMatterportModelId(url);
+  if (!modelId) return null;
+  return `https://${MATTERPORT_SHOW_HOST}/api/v1/player/models/${modelId}/thumb`;
+}
+
+/** Snapshot URL only if Matterport actually serves it; private or archived spaces return 404. */
+export async function resolveMatterportThumbnailUrl(url: string): Promise<string | null> {
+  const thumbUrl = getMatterportThumbnailUrl(url);
+  if (!thumbUrl) return null;
+  try {
+    const res = await fetch(thumbUrl, { method: "HEAD", signal: AbortSignal.timeout(4000) });
+    const type = res.headers.get("content-type") ?? "";
+    return res.ok && type.startsWith("image/") ? thumbUrl : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Public share URL (opens in new tab). */
 export function getMatterportShareUrl(url: string): string {
   const modelId = extractMatterportModelId(url);
