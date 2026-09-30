@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  ArrowRight,
   Columns2,
   Share2,
   Maximize2,
@@ -11,6 +12,7 @@ import {
   Camera,
   Building2,
   Layers,
+  Rotate3d,
 } from "lucide-react";
 import { MatterportViewer } from "@/components/projects/MatterportViewer";
 import { MatterportCompare } from "@/components/projects/matterport-compare";
@@ -68,6 +70,7 @@ export function ProjectToursSection({
   const [comparing, setComparing] = useState(false);
   const [selectedId, setSelectedId] = useState(tours[0]?.id ?? "");
   const [filterGroup, setFilterGroup] = useState<string | null>(null);
+  const viewerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const { dashboardType } = usePortalWorkspace();
   const isPortfolio = dashboardType === "portfolio";
@@ -104,6 +107,15 @@ export function ProjectToursSection({
 
   const shareUrl = getMatterportShareUrl(selectedTour.matterport_url);
   const selectedFields = getTourDisplayFields(selectedTour);
+
+  function selectTour(tourId: string) {
+    setSelectedId(tourId);
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    viewerRef.current?.scrollIntoView({
+      behavior: reduceMotion ? "auto" : "smooth",
+      block: "nearest",
+    });
+  }
 
   return (
     <div className="space-y-6">
@@ -176,7 +188,7 @@ export function ProjectToursSection({
             )}
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
             {visibleTours.map((tour) => {
               const fields = getTourDisplayFields(tour);
               const selected = tour.id === selectedTour.id;
@@ -184,18 +196,19 @@ export function ProjectToursSection({
                 <button
                   key={tour.id}
                   type="button"
-                  onClick={() => setSelectedId(tour.id)}
+                  aria-pressed={selected}
+                  onClick={() => selectTour(tour.id)}
                   className={cn(
-                    "group overflow-hidden rounded-2xl border bg-white text-left transition-all duration-200",
-                    "hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md",
-                    "dark:bg-slate-900/60 dark:hover:border-slate-600",
-                    "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/40",
+                    "group flex min-h-[96px] w-full cursor-pointer items-stretch gap-4 overflow-hidden rounded-2xl border bg-white p-2 pr-4 text-left",
+                    "transition-[border-color,box-shadow,background-color] duration-200 motion-reduce:transition-none",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/30 dark:focus-visible:ring-white/30",
+                    "dark:bg-slate-900/60",
                     selected
-                      ? "border-slate-900 ring-2 ring-slate-900/20 dark:border-white dark:ring-white/20"
-                      : "border-slate-200/80 dark:border-slate-800"
+                      ? "border-slate-900 shadow-md ring-1 ring-slate-900 dark:border-white dark:ring-white"
+                      : "border-slate-200/80 hover:border-slate-300 hover:shadow-md dark:border-slate-800 dark:hover:border-slate-600"
                   )}
                 >
-                  <div className="relative aspect-[16/10] bg-slate-100 dark:bg-slate-800">
+                  <div className="relative aspect-video w-32 shrink-0 overflow-hidden rounded-xl sm:w-40">
                     {tour.thumbnail_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -204,40 +217,59 @@ export function ProjectToursSection({
                         className="h-full w-full object-cover"
                       />
                     ) : (
-                      <div className="flex h-full items-center justify-center">
-                        <Camera className="h-8 w-8 text-slate-300 dark:text-slate-600" />
+                      <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+                        <Rotate3d className="h-6 w-6 text-brand-accent" aria-hidden />
+                        <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300">
+                          360° tour
+                        </span>
                       </div>
                     )}
-                    {selected && (
-                      <span className="absolute left-2 top-2 rounded-full bg-slate-900 px-2 py-0.5 text-[10px] font-semibold text-white dark:bg-white dark:text-slate-900">
-                        Viewing
-                      </span>
-                    )}
                   </div>
-                  <div className="space-y-1.5 p-3">
-                    <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
+
+                  <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5 py-1">
+                    <p className="truncate font-display text-sm font-semibold text-slate-900 dark:text-white sm:text-base">
                       {tour.name}
                     </p>
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-500">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
                       {tour.capture_date && (
                         <span className="inline-flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
+                          <Calendar className="h-3.5 w-3.5" aria-hidden />
                           {formatDate(tour.capture_date)}
                         </span>
                       )}
                       {fields.building && (
                         <span className="inline-flex items-center gap-1">
-                          <Building2 className="h-3 w-3" />
+                          <Building2 className="h-3.5 w-3.5" aria-hidden />
                           {fields.building}
                         </span>
                       )}
                       {fields.floor && (
                         <span className="inline-flex items-center gap-1">
-                          <Layers className="h-3 w-3" />
+                          <Layers className="h-3.5 w-3.5" aria-hidden />
                           {fields.floor}
                         </span>
                       )}
                     </div>
+                    {selected && (
+                      <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-900 dark:text-white sm:hidden">
+                        <span className="h-1.5 w-1.5 rounded-full bg-brand-accent motion-safe:animate-pulse" aria-hidden />
+                        Now viewing
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="hidden shrink-0 items-center sm:flex">
+                    {selected ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-2.5 py-1 text-[11px] font-semibold text-white dark:bg-white dark:text-slate-900">
+                        <span className="h-1.5 w-1.5 rounded-full bg-brand-accent motion-safe:animate-pulse" aria-hidden />
+                        Now viewing
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 transition-colors group-hover:text-slate-900 dark:text-slate-400 dark:group-hover:text-white">
+                        View
+                        <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                      </span>
+                    )}
                   </div>
                 </button>
               );
@@ -246,7 +278,7 @@ export function ProjectToursSection({
         </div>
       )}
 
-      <div className="intel-card overflow-hidden">
+      <div ref={viewerRef} className="intel-card scroll-mt-24 overflow-hidden">
         <MatterportViewer
           url={selectedTour.matterport_url}
           title={selectedTour.name}

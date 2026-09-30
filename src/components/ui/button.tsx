@@ -15,6 +15,9 @@ const buttonVariants = cva(
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
         accent: "accent-gradient text-brand-primary shadow-md hover:brightness-95",
+        /** Floating over tour imagery — legible on both bright and dark scenes. */
+        overlay:
+          "border border-white/20 bg-slate-950/70 text-white shadow-md backdrop-blur-md hover:bg-slate-950/85 focus-visible:ring-white/70",
       },
       size: {
         default: "h-10 px-4 py-2",

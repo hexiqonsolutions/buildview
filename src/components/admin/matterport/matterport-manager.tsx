@@ -97,9 +97,10 @@ export function MatterportManager({ tours }: { tours: TourRow[] }) {
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
-                          variant="secondary"
+                          variant="overlay"
                           size="icon"
-                          className="h-8 w-8 bg-white/90 shadow-sm"
+                          className="h-8 w-8"
+                          aria-label={`Actions for ${tour.name}`}
                         >
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>

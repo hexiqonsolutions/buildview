@@ -140,7 +140,7 @@ export function SyncedViewerPair({
 
 export function ViewerFullscreenButton({ onClick }: { onClick: () => void }) {
   return (
-    <Button variant="secondary" size="sm" className="h-8 bg-white/90" onClick={onClick}>
+    <Button variant="overlay" size="sm" className="h-8" onClick={onClick}>
       <Maximize2 className="mr-1.5 h-3.5 w-3.5" />
       Fullscreen
     </Button>

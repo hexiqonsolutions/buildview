@@ -99,21 +99,16 @@ export function MatterportViewer({
 
       {showToolbar && (
         <div className="absolute right-3 top-3 z-20 flex gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            className="h-8 bg-white/90 shadow-sm hover:bg-white"
-            asChild
-          >
+          <Button variant="overlay" size="sm" className="h-8" asChild>
             <a href={shareUrl} target="_blank" rel="noopener noreferrer">
               <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
               Open
             </a>
           </Button>
           <Button
-            variant="secondary"
+            variant="overlay"
             size="sm"
-            className="h-8 bg-white/90 shadow-sm hover:bg-white"
+            className="h-8"
             onClick={() => setFullscreen(true)}
           >
             <Maximize2 className="mr-1.5 h-3.5 w-3.5" />
