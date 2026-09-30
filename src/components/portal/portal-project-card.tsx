@@ -1,11 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { MapPin, Camera, ArrowRight } from "lucide-react";
+import { MapPin, Camera, ArrowRight, Rotate3d } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { MatterportViewer } from "@/components/projects/MatterportViewer";
 import { UpdateProjectStatusSelect } from "@/components/shared/update-project-status-select";
 import { formatDate } from "@/lib/utils";
+import { getMatterportThumbnailUrl } from "@/lib/matterport";
 import type { ProjectWithMeta } from "@/lib/actions/data";
 import { useOptionalPortalWorkspace } from "@/components/portal/workspace/portal-workspace-provider";
 
@@ -23,49 +24,64 @@ export function PortalProjectCard({
   const openHref = `/dashboard/projects/${project.id}${workspaceQuery}`;
   const tour = project.latestTour;
 
-  const statusControl = canUpdateStatus ? (
-    <div className="absolute right-3 top-3 z-10">
-      <UpdateProjectStatusSelect
-        projectId={project.id}
-        currentStatus={project.status}
-        triggerClassName="h-7 w-[7.75rem] bg-white/95 text-[11px] shadow-sm backdrop-blur dark:bg-slate-950/90"
-      />
-    </div>
-  ) : null;
+  const thumbnailCandidates = [
+    project.cover_image_url,
+    tour?.thumbnail_url,
+    tour?.matterport_url ? getMatterportThumbnailUrl(tour.matterport_url) : null,
+  ].filter((src, index, all): src is string => Boolean(src) && all.indexOf(src) === index);
+
+  const [failedCount, setFailedCount] = useState(0);
+  const thumbnail = thumbnailCandidates[failedCount] ?? null;
 
   return (
     <article className="intel-card dashboard-card-hover group overflow-hidden">
-      {tour?.matterport_url ? (
-        <div className="relative border-b border-slate-100/80 dark:border-slate-800/80">
-          <MatterportViewer
-            url={tour.matterport_url}
-            title={tour.name || project.name}
-            aspectRatio
-            showToolbar={false}
-            className="rounded-none"
-          />
-          {statusControl}
-        </div>
-      ) : (
-        <div className="relative h-40 overflow-hidden bg-gradient-to-br from-slate-800 to-slate-950">
-          {project.cover_image_url ? (
+      <div className="relative aspect-video overflow-hidden border-b border-slate-100/80 bg-slate-900 dark:border-slate-800/80">
+        <Link href={openHref} aria-label={`View ${project.name}`} className="absolute inset-0">
+          {thumbnail ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={project.cover_image_url}
+              key={thumbnail}
+              src={thumbnail}
               alt=""
-              className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+              loading="lazy"
+              onError={() => setFailedCount((count) => count + 1)}
+              className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
             />
           ) : (
-            <div className="flex h-full items-center justify-center bg-gradient-to-br from-slate-700 via-slate-800 to-slate-950">
-              <span className="font-display text-5xl font-bold text-white/15">
-                {project.name.charAt(0)}
-              </span>
+            <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-slate-800 via-slate-900 to-black">
+              {tour ? (
+                <>
+                  <Rotate3d className="h-8 w-8 text-brand-accent" aria-hidden />
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300">
+                    360° walkthrough
+                  </span>
+                </>
+              ) : (
+                <span className="font-display text-5xl font-bold text-white/15">
+                  {project.name.charAt(0)}
+                </span>
+              )}
             </div>
           )}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/40 to-transparent" />
-          {statusControl}
-        </div>
-      )}
+          <span className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/50 to-transparent" />
+          {tour && thumbnail && (
+            <span className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full bg-slate-950/70 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white backdrop-blur-sm">
+              <Rotate3d className="h-3 w-3 text-brand-accent" aria-hidden />
+              360° walkthrough
+            </span>
+          )}
+        </Link>
+
+        {canUpdateStatus && (
+          <div className="absolute right-3 top-3 z-10">
+            <UpdateProjectStatusSelect
+              projectId={project.id}
+              currentStatus={project.status}
+              triggerClassName="h-7 w-[7.75rem] bg-white/95 text-[11px] shadow-sm backdrop-blur dark:bg-slate-950/90"
+            />
+          </div>
+        )}
+      </div>
 
       <div className="p-4 sm:p-5">
         <h3 className="truncate font-display text-base font-semibold tracking-tight text-slate-900 dark:text-white">
