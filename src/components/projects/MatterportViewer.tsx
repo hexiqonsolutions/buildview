@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ExternalLink, Loader2, Maximize2, AlertCircle } from "lucide-react";
+import { Loader2, Maximize2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,11 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import {
-  getMatterportEmbedUrl,
-  getMatterportShareUrl,
-  isValidMatterportUrl,
-} from "@/lib/matterport";
+import { getMatterportEmbedUrl, isValidMatterportUrl } from "@/lib/matterport";
 
 export interface MatterportViewerProps {
   /** 360° tour share URL or model ID */
@@ -27,7 +23,7 @@ export interface MatterportViewerProps {
   height?: number;
   /** Use 16:9 responsive aspect ratio container */
   aspectRatio?: boolean;
-  /** Show toolbar with open-in-new-tab and fullscreen */
+  /** Show toolbar with fullscreen button */
   showToolbar?: boolean;
 }
 
@@ -44,7 +40,6 @@ export function MatterportViewer({
 
   const isValid = useMemo(() => isValidMatterportUrl(url), [url]);
   const embedUrl = useMemo(() => getMatterportEmbedUrl(url), [url]);
-  const shareUrl = useMemo(() => getMatterportShareUrl(url), [url]);
 
   if (!isValid) {
     return (
@@ -99,12 +94,6 @@ export function MatterportViewer({
 
       {showToolbar && (
         <div className="absolute right-3 top-3 z-20 flex gap-2">
-          <Button variant="overlay" size="sm" className="h-8" asChild>
-            <a href={shareUrl} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-              Open
-            </a>
-          </Button>
           <Button
             variant="overlay"
             size="sm"

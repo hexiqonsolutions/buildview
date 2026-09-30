@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import {
   ArrowRight,
   Columns2,
-  Share2,
   Maximize2,
   Calendar,
   Camera,
@@ -22,7 +21,7 @@ import {
 } from "@/components/intel/matterport/matterport-metadata";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { Button } from "@/components/ui/button";
-import { formatDate, getMatterportShareUrl } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 import type { ProjectTour } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { usePortalWorkspace } from "@/components/portal/workspace/portal-workspace-provider";
@@ -105,7 +104,6 @@ export function ProjectToursSection({
     return <MatterportCompare tours={tours} onClose={() => setComparing(false)} />;
   }
 
-  const shareUrl = getMatterportShareUrl(selectedTour.matterport_url);
   const selectedFields = getTourDisplayFields(selectedTour);
 
   function selectTour(tourId: string) {
@@ -321,12 +319,6 @@ export function ProjectToursSection({
                   Compare scans
                 </Button>
               )}
-              <Button variant="outline" size="sm" asChild>
-                <a href={shareUrl} target="_blank" rel="noopener noreferrer">
-                  <Share2 className="mr-1.5 h-4 w-4" />
-                  Share
-                </a>
-              </Button>
               {!isPortfolio && (
                 <>
                   <Button variant="outline" size="sm" asChild>
