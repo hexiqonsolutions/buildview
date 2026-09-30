@@ -405,20 +405,23 @@ export function PortfolioShowcaseShell({
       </section>
 
       <Dialog open={tourOpen} onOpenChange={setTourOpen}>
-        <DialogContent className="max-w-5xl overflow-hidden p-0 sm:rounded-2xl">
-          <DialogHeader className="border-b border-slate-100 px-5 py-3 dark:border-slate-800">
-            <DialogTitle className="font-display text-base">
+        <DialogContent className="flex h-[100dvh] w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none border-0 p-0 sm:h-auto sm:w-full sm:max-w-5xl sm:rounded-2xl sm:border">
+          <DialogHeader className="shrink-0 border-b border-slate-100 px-5 py-3 pr-12 text-left dark:border-slate-800">
+            <DialogTitle className="truncate font-display text-base">
               {featured?.latestTour?.name ?? featured?.name ?? "Virtual walkthrough"}
             </DialogTitle>
           </DialogHeader>
           {featuredTourUrl && (
-            <MatterportViewer
-              url={featuredTourUrl}
-              title={featured?.name ?? "Walkthrough"}
-              aspectRatio
-              showToolbar
-              className="rounded-none"
-            />
+            <div className="min-h-0 flex-1 sm:flex-none">
+              <MatterportViewer
+                url={featuredTourUrl}
+                title={featured?.name ?? "Walkthrough"}
+                aspectRatio
+                showToolbar={false}
+                fill
+                className="rounded-none"
+              />
+            </div>
           )}
         </DialogContent>
       </Dialog>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Loader2, Maximize2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +25,8 @@ export interface MatterportViewerProps {
   aspectRatio?: boolean;
   /** Show toolbar with fullscreen button */
   showToolbar?: boolean;
+  /** Stretch to the parent's height on phones (used by the fullscreen dialog) */
+  fill?: boolean;
 }
 
 export function MatterportViewer({
@@ -34,12 +36,24 @@ export function MatterportViewer({
   height = 480,
   aspectRatio = true,
   showToolbar = true,
+  fill = false,
 }: MatterportViewerProps) {
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
 
   const isValid = useMemo(() => isValidMatterportUrl(url), [url]);
   const embedUrl = useMemo(() => getMatterportEmbedUrl(url), [url]);
+
+  // A server-rendered iframe can finish loading before hydration attaches onLoad
+  // (common on slower phones), which would leave the loading cover up forever.
+  // Mounting the iframe client-side guarantees the listener, and the timeout is a backstop.
+  useEffect(() => {
+    setMounted(true);
+    setLoading(true);
+    const timer = window.setTimeout(() => setLoading(false), 8000);
+    return () => window.clearTimeout(timer);
+  }, [embedUrl]);
 
   if (!isValid) {
     return (
@@ -57,8 +71,9 @@ export function MatterportViewer({
     );
   }
 
-  const iframe = (
+  const iframe = mounted ? (
     <iframe
+      key={embedUrl}
       src={embedUrl}
       title={title}
       allowFullScreen
@@ -70,26 +85,36 @@ export function MatterportViewer({
       )}
       style={aspectRatio ? undefined : { height }}
     />
-  );
+  ) : null;
 
   const viewer = (
-    <div className={cn("relative overflow-hidden rounded-lg bg-slate-900", className)}>
+    <div
+      className={cn(
+        "relative overflow-hidden rounded-lg bg-slate-900",
+        fill && "h-full sm:h-auto",
+        className
+      )}
+    >
       {loading && (
         <div
-          className={cn(
-            "absolute inset-0 z-10 flex items-center justify-center bg-slate-900",
-            aspectRatio && "aspect-video"
-          )}
-          style={aspectRatio ? undefined : { height }}
+          className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-slate-900"
+          aria-hidden
         >
-          <Loader2 className="h-8 w-8 animate-spin text-slate-500" />
+          <Loader2 className="h-8 w-8 animate-spin text-slate-500 motion-reduce:animate-none" />
         </div>
       )}
 
       {aspectRatio ? (
-        <div className="relative aspect-video w-full">{iframe}</div>
+        <div
+          className={cn(
+            "relative w-full sm:aspect-video sm:h-auto sm:max-h-none",
+            fill ? "h-full" : "aspect-[3/4] max-h-[75dvh]"
+          )}
+        >
+          {iframe}
+        </div>
       ) : (
-        iframe
+        <div style={{ height }}>{iframe}</div>
       )}
 
       {showToolbar && (
@@ -113,16 +138,18 @@ export function MatterportViewer({
       {viewer}
 
       <Dialog open={fullscreen} onOpenChange={setFullscreen}>
-        <DialogContent className="max-h-[95vh] max-w-6xl gap-0 overflow-hidden p-0">
-          <DialogHeader className="border-b px-4 py-3">
-            <DialogTitle>{title}</DialogTitle>
+        <DialogContent className="flex h-[100dvh] w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none border-0 p-0 sm:h-auto sm:max-h-[95vh] sm:w-full sm:max-w-6xl sm:rounded-lg sm:border">
+          <DialogHeader className="shrink-0 border-b px-4 py-3 pr-12 text-left">
+            <DialogTitle className="truncate">{title}</DialogTitle>
           </DialogHeader>
-          <div className="p-4">
+          <div className="min-h-0 flex-1 sm:flex-none sm:p-4">
             <MatterportViewer
               url={url}
               title={title}
               aspectRatio
               showToolbar={false}
+              fill
+              className="rounded-none sm:rounded-lg"
             />
           </div>
         </DialogContent>
