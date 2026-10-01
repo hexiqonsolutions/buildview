@@ -6,6 +6,10 @@ import {
   parsePortalWorkspaceScopeFromParams,
 } from "@/lib/portal/scope-server";
 import { DocumentBrowser } from "@/components/documents/document-browser";
+import { PortalDocumentUploadButton } from "@/components/documents/portal-document-upload-button";
+import { getPortalWorkspaceBootstrap } from "@/lib/actions/data";
+import { getCurrentUser } from "@/lib/actions/auth";
+import { isClientPortalRole } from "@/lib/auth/roles";
 import { firstSearchParam } from "@/lib/portal/search-params";
 import { IntelPage } from "@/components/intel/pages/intel-page";
 import { EmptyState } from "@/components/patterns/page-states";
@@ -23,11 +27,16 @@ export default async function DocumentsPage({
   const listScope = broadPortalListScope(scope);
   const highlightDocumentId = firstSearchParam(params.document);
 
-  const [projects, documents, folders] = await Promise.all([
+  const [projects, documents, folders, bootstrap, user] = await Promise.all([
     getPortalScopedProjects(listScope),
     getPortalScopedDocuments(listScope),
     getPortalScopedFolders(listScope),
+    getPortalWorkspaceBootstrap(),
+    getCurrentUser(),
   ]);
+
+  const canUpload =
+    bootstrap.dashboardType === "portfolio" && !!user && isClientPortalRole(user.role);
 
   const projectDocuments = projects
     .map((project) => ({
@@ -45,13 +54,25 @@ export default async function DocumentsPage({
       description="Drawings, contracts, BOQs, and project files."
       icon={FolderOpen}
       eyebrow="Project Files"
+      actions={
+        canUpload ? (
+          <PortalDocumentUploadButton
+            projects={projects.map((p) => ({ id: p.id, name: p.name }))}
+            defaultProjectId={scope.projectId}
+          />
+        ) : undefined
+      }
     >
       <div className="space-y-6">
         {!hasDocuments ? (
           <EmptyState
             icon={FolderOpen}
             title="No documents in this workspace"
-            description="Adjust project or building filters, or check back once files are uploaded by your BuildView team."
+            description={
+              canUpload
+                ? "Use Upload Document to share files, or check back once your BuildView team adds them."
+                : "Adjust project or building filters, or check back once files are uploaded by your BuildView team."
+            }
             variant="intel"
           />
         ) : (
