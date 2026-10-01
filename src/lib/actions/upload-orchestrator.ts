@@ -8,6 +8,7 @@ import { createReportSchema } from "@/lib/validations/report";
 import { createDocumentSchema } from "@/lib/validations/document";
 import { createIssueSchema } from "@/lib/validations/issue";
 import { createTimelineEvent } from "@/lib/actions/timeline";
+import { recordTimelineEntry } from "@/lib/timeline/auto-entry";
 import { DEFAULT_CURRENCY } from "@/lib/currency";
 import type {
   ActivityLogInsert,
@@ -163,20 +164,20 @@ export async function uploadMatterportWithAutomation(data: {
 
   if (error || !tour) throw new Error(error?.message ?? "Failed to create tour");
 
-  const eventDate = parsed.data.capture_date ?? new Date().toISOString().split("T")[0];
-
-  await createTimelineEvent({
-    project_id: parsed.data.project_id,
-    event_date: eventDate,
-    title: `Virtual tour scan — ${parsed.data.name}`,
-    progress_note:
-      data.progress_note ??
-      `New virtual tour uploaded${spatial.building ? ` for ${spatial.building}` : ""}${spatial.floor ? ` · ${spatial.floor}` : ""}.`,
-    tour_id: tour.id,
-    building: spatial.building ?? undefined,
-    floor: spatial.floor ?? undefined,
-    skipClientNotify: true,
-  });
+  await recordTimelineEntry(
+    {
+      project_id: parsed.data.project_id,
+      event_date: parsed.data.capture_date,
+      title: `Virtual tour scan — ${parsed.data.name}`,
+      progress_note:
+        data.progress_note ??
+        `New virtual tour uploaded${spatial.building ? ` for ${spatial.building}` : ""}${spatial.floor ? ` · ${spatial.floor}` : ""}.`,
+      tour_id: tour.id,
+      building: spatial.building,
+      floor: spatial.floor,
+    },
+    "uploadMatterportWithAutomation"
+  );
 
   await logActivity(
     parsed.data.project_id,
@@ -233,10 +234,11 @@ export async function uploadReportWithAutomation(data: {
     building: validation.data.building ?? undefined,
     floor: validation.data.floor ?? undefined,
     skipClientNotify: true,
+    skipTimeline: true,
   });
 
-  try {
-    await createTimelineEvent({
+  await recordTimelineEntry(
+    {
       project_id: data.project_id,
       event_date: data.report_date,
       title: `Report uploaded — ${data.title}`,
@@ -244,11 +246,9 @@ export async function uploadReportWithAutomation(data: {
       report_id: reportId,
       building: data.building ?? null,
       floor: data.floor ?? null,
-      skipClientNotify: true,
-    });
-  } catch (err) {
-    console.error("[uploadReportWithAutomation] timeline failed:", err);
-  }
+    },
+    "uploadReportWithAutomation"
+  );
 
   try {
     await logActivity(data.project_id, `Report uploaded: ${data.title}`, "report", reportId);
@@ -300,19 +300,20 @@ export async function uploadDocumentWithAutomation(data: {
     building: validation.data.building ?? undefined,
     floor: validation.data.floor ?? undefined,
     skipClientNotify: true,
+    skipTimeline: true,
   });
 
-  const eventDate = data.event_date ?? new Date().toISOString().split("T")[0];
-
-  const eventId = await createTimelineEvent({
-    project_id: data.project_id,
-    event_date: eventDate,
-    title: `Document uploaded — ${data.name}`,
-    progress_note: data.description ?? `${data.category.replace(/_/g, " ")} document added to project.`,
-    building: data.building ?? null,
-    floor: data.floor ?? null,
-    skipClientNotify: true,
-  });
+  const eventId = await recordTimelineEntry(
+    {
+      project_id: data.project_id,
+      event_date: data.event_date,
+      title: `Document uploaded — ${data.name}`,
+      progress_note: data.description ?? `${data.category.replace(/_/g, " ")} document added to project.`,
+      building: data.building ?? null,
+      floor: data.floor ?? null,
+    },
+    "uploadDocumentWithAutomation"
+  );
 
   await logActivity(data.project_id, `Document uploaded: ${data.name}`, "document", documentId, {
     category: data.category,
@@ -381,19 +382,15 @@ export async function finalizeInvoiceUploadWithAutomation(data: {
   }
   await attachInvoicePdf(data.invoice_id, { storage_path: data.storage_path });
 
-  const eventDate = data.event_date ?? new Date().toISOString().split("T")[0];
-
-  try {
-    await createTimelineEvent({
+  await recordTimelineEntry(
+    {
       project_id: data.project_id,
-      event_date: eventDate,
+      event_date: data.event_date,
       title: `Invoice uploaded — ${data.invoice_number}`,
       progress_note: data.description ?? "Invoice PDF added to project billing.",
-      skipClientNotify: true,
-    });
-  } catch (err) {
-    console.error("[finalizeInvoiceUploadWithAutomation] timeline failed:", err);
-  }
+    },
+    "finalizeInvoiceUploadWithAutomation"
+  );
 
   try {
     await logActivity(
@@ -626,19 +623,20 @@ export async function uploadIssueWithAutomation(data: {
     floor: data.floor,
     images: data.images,
     skipClientNotify: true,
+    skipTimeline: true,
   });
 
-  const eventDate = data.event_date ?? new Date().toISOString().split("T")[0];
-
-  const eventId = await createTimelineEvent({
-    project_id: data.project_id,
-    event_date: eventDate,
-    title: `Issue reported — ${data.title}`,
-    progress_note: data.description ?? `New ${data.priority} priority issue logged.`,
-    building: data.building ?? null,
-    floor: data.floor ?? null,
-    skipClientNotify: true,
-  });
+  const eventId = await recordTimelineEntry(
+    {
+      project_id: data.project_id,
+      event_date: data.event_date,
+      title: `Issue reported — ${data.title}`,
+      progress_note: data.description ?? `New ${data.priority} priority issue logged.`,
+      building: data.building ?? null,
+      floor: data.floor ?? null,
+    },
+    "uploadIssueWithAutomation"
+  );
 
   try {
     await logActivity(data.project_id, `Issue reported: ${data.title}`, "issue", issueId, {

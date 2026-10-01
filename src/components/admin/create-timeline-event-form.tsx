@@ -240,10 +240,9 @@ export function CreateTimelineEventForm({
           );
           await addTimelinePhotos(
             editEvent.id,
-            uploads.map((upload, index) => ({
+            uploads.map((upload) => ({
               storage_path: upload.path,
               file_name: upload.fileName,
-              sort_order: index,
             }))
           );
         }
@@ -264,10 +263,9 @@ export function CreateTimelineEventForm({
           );
           await addTimelinePhotos(
             eventId,
-            uploads.map((upload, index) => ({
+            uploads.map((upload) => ({
               storage_path: upload.path,
               file_name: upload.fileName,
-              sort_order: index,
             }))
           );
         }

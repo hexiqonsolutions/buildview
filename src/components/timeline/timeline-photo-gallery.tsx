@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, ZoomIn } from "lucide-react";
+import { Loader2, X, ZoomIn } from "lucide-react";
 import { getTimelinePhotoSignedUrl } from "@/lib/actions/timeline";
 import type { TimelinePhoto } from "@/lib/types";
 import {
@@ -15,17 +15,22 @@ import { Button } from "@/components/ui/button";
 interface TimelinePhotoGalleryProps {
   photos: TimelinePhoto[];
   compact?: boolean;
+  /** When provided, each thumbnail shows a remove button. */
+  onRemove?: (photoId: string) => Promise<void>;
 }
 
 export function TimelinePhotoGallery({
   photos,
   compact = false,
+  onRemove,
 }: TimelinePhotoGalleryProps) {
   const [urls, setUrls] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [lightboxId, setLightboxId] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
 
   const sortedPhotos = [...photos].sort((a, b) => a.sort_order - b.sort_order);
+  const photoKey = sortedPhotos.map((photo) => photo.id).join(",");
 
   useEffect(() => {
     let cancelled = false;
@@ -36,13 +41,15 @@ export function TimelinePhotoGallery({
 
       await Promise.all(
         sortedPhotos.map(async (photo) => {
+          if (photo.image_url.startsWith("http")) {
+            next[photo.id] = photo.image_url;
+            return;
+          }
           try {
             const { url } = await getTimelinePhotoSignedUrl(photo.id);
             next[photo.id] = url;
           } catch {
-            if (photo.image_url.startsWith("http")) {
-              next[photo.id] = photo.image_url;
-            }
+            // Skip photos that cannot be resolved
           }
         })
       );
@@ -62,7 +69,18 @@ export function TimelinePhotoGallery({
     return () => {
       cancelled = true;
     };
-  }, [photos]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refetch only when the set of photos changes
+  }, [photoKey]);
+
+  async function handleRemove(photoId: string) {
+    if (!onRemove) return;
+    setRemovingId(photoId);
+    try {
+      await onRemove(photoId);
+    } finally {
+      setRemovingId(null);
+    }
+  }
 
   if (sortedPhotos.length === 0) return null;
 
@@ -74,7 +92,7 @@ export function TimelinePhotoGallery({
 
   return (
     <>
-      <div className="mt-4">
+      <div className={compact ? "mt-2" : "mt-4"}>
         {loading ? (
           <div className="flex items-center gap-2 text-xs text-slate-500">
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -87,27 +105,43 @@ export function TimelinePhotoGallery({
               if (!url) return null;
 
               return (
-                <button
-                  key={photo.id}
-                  type="button"
-                  className="group relative shrink-0 text-left"
-                  onClick={() => setLightboxId(photo.id)}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={url}
-                    alt={photo.caption || "Timeline photo"}
-                    className={thumbClass}
-                  />
-                  <span className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/0 opacity-0 transition-opacity group-hover:bg-black/20 group-hover:opacity-100">
-                    <ZoomIn className="h-5 w-5 text-white drop-shadow" />
-                  </span>
-                  {photo.caption && (
-                    <span className="mt-1 block max-w-32 truncate text-xs text-slate-500">
-                      {photo.caption}
+                <div key={photo.id} className="relative shrink-0">
+                  <button
+                    type="button"
+                    className="group relative text-left"
+                    onClick={() => setLightboxId(photo.id)}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={url}
+                      alt={photo.caption || "Timeline photo"}
+                      className={thumbClass}
+                    />
+                    <span className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/0 opacity-0 transition-opacity group-hover:bg-black/20 group-hover:opacity-100">
+                      <ZoomIn className="h-5 w-5 text-white drop-shadow" />
                     </span>
+                    {photo.caption && (
+                      <span className="mt-1 block max-w-32 truncate text-xs text-slate-500">
+                        {photo.caption}
+                      </span>
+                    )}
+                  </button>
+                  {onRemove && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemove(photo.id)}
+                      disabled={removingId !== null}
+                      aria-label="Remove photo"
+                      className="absolute right-1 top-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {removingId === photo.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <X className="h-3.5 w-3.5" />
+                      )}
+                    </button>
                   )}
-                </button>
+                </div>
               );
             })}
           </div>

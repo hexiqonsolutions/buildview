@@ -13,17 +13,41 @@ import {
   MoreHorizontal,
   X,
   TrendingUp,
+  Loader2,
+  MapPin,
+  Pencil,
+  Trash2,
+  ExternalLink,
 } from "lucide-react";
 import type { TimelinePageData } from "@/lib/timeline/page-data";
-import type { Project, Report } from "@/lib/types";
+import type { Project } from "@/lib/types";
 import {
   buildAdminTimelineMonths,
-  formatMonthLabel,
   getBuildingOptions,
   getFloorOptions,
   type AdminTimelineMonth,
+  type TimelineGranularity,
+  type TimelinePeriodEvent,
 } from "@/lib/timeline/admin-timeline";
+import {
+  deleteTimelineEvent,
+  deleteTimelinePhoto,
+  getTimelinePhotoSignedUrl,
+} from "@/lib/actions/timeline";
+import { portalMatterportLink, portalReportLink } from "@/lib/portal/notification-links";
 import { CreateTimelineEventForm } from "@/components/admin/create-timeline-event-form";
+import { TimelinePhotoGallery } from "@/components/timeline/timeline-photo-gallery";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -97,11 +121,33 @@ function priorityClass(priority: string): string {
 }
 
 function MilestoneThumbnail({ month }: { month: AdminTimelineMonth }) {
-  if (month.thumbnailUrl) {
+  const photoId = month.thumbnailPhoto?.id ?? null;
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!photoId) {
+      setSignedUrl(null);
+      return;
+    }
+    let cancelled = false;
+    getTimelinePhotoSignedUrl(photoId)
+      .then(({ url }) => {
+        if (!cancelled) setSignedUrl(url);
+      })
+      .catch(() => {
+        if (!cancelled) setSignedUrl(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [photoId]);
+
+  const src = month.thumbnailUrl ?? signedUrl;
+  if (src) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
-        src={month.thumbnailUrl}
+        src={src}
         alt={month.title}
         className="h-[72px] w-[104px] shrink-0 rounded-lg object-cover ring-1 ring-slate-200/80 dark:ring-slate-700"
       />
@@ -133,7 +179,8 @@ export function AdminTimelineView({
   const [projectId, setProjectId] = useState(resolvedInitialProjectId);
   const [building, setBuilding] = useState(workspaceFilters?.building ?? "all");
   const [floor, setFloor] = useState(workspaceFilters?.floor ?? "all");
-  const [viewMode, setViewMode] = useState<"monthly" | "weekly">("monthly");
+  const [viewMode, setViewMode] = useState<TimelineGranularity>("monthly");
+  const [order, setOrder] = useState<"newest" | "oldest">("newest");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(true);
   const [hydrated, setHydrated] = useState(false);
@@ -170,7 +217,7 @@ export function AdminTimelineView({
 
   const months = useMemo(() => {
     if (!project) return [];
-    return buildAdminTimelineMonths(
+    const periods = buildAdminTimelineMonths(
       project,
       events,
       tours,
@@ -179,16 +226,37 @@ export function AdminTimelineView({
       activeBuilding,
       activeFloor,
       activeBuildingId,
-      activeFloorId
+      activeFloorId,
+      viewMode
     );
-  }, [project, events, tours, reports, issues, activeBuilding, activeFloor, activeBuildingId, activeFloorId]);
+    return order === "oldest" ? [...periods].reverse() : periods;
+  }, [
+    project,
+    events,
+    tours,
+    reports,
+    issues,
+    activeBuilding,
+    activeFloor,
+    activeBuildingId,
+    activeFloorId,
+    viewMode,
+    order,
+  ]);
 
   const [editOpen, setEditOpen] = useState(false);
-  const selectedEvent = useMemo(() => {
-    const month = months.find((m) => m.id === selectedId) ?? months[0] ?? null;
-    if (!month?.eventId) return null;
-    return events.find((e) => e.id === month.eventId) ?? null;
-  }, [months, selectedId, events]);
+  const [editEventId, setEditEventId] = useState<string | null>(null);
+  const selectedEvent = useMemo(
+    () => (editEventId ? events.find((e) => e.id === editEventId) ?? null : null),
+    [editEventId, events]
+  );
+  const newestPeriodId = order === "newest" ? months[0]?.id : months[months.length - 1]?.id;
+
+  function openEditor(eventId: string | null) {
+    if (!eventId) return;
+    setEditEventId(eventId);
+    setEditOpen(true);
+  }
 
   useEffect(() => {
     if (workspaceFilters) return;
@@ -273,12 +341,22 @@ export function AdminTimelineView({
               <FilterSelect
                 label="View"
                 value={viewMode}
-                onChange={(v) => setViewMode(v as "monthly" | "weekly")}
+                onChange={(v) => setViewMode(v as TimelineGranularity)}
                 options={[
                   { value: "monthly", label: "Monthly" },
                   { value: "weekly", label: "Weekly" },
                 ]}
                 width="w-[130px]"
+              />
+              <FilterSelect
+                label="Order"
+                value={order}
+                onChange={(v) => setOrder(v as "newest" | "oldest")}
+                options={[
+                  { value: "newest", label: "Newest first" },
+                  { value: "oldest", label: "Oldest first" },
+                ]}
+                width="w-[140px]"
               />
             </>
           ) : (
@@ -287,6 +365,7 @@ export function AdminTimelineView({
               <FilterSkeleton width="w-[150px]" />
               <FilterSkeleton width="w-[140px]" />
               <FilterSkeleton width="w-[130px]" />
+              <FilterSkeleton width="w-[140px]" />
             </>
           )}
         </div>
@@ -328,9 +407,9 @@ export function AdminTimelineView({
         <div className={cn("xl:col-span-7", panelOpen && selected && "xl:col-span-7")}>
           <div className="relative space-y-5">
             <div className="absolute bottom-4 left-[88px] top-4 w-px bg-slate-200 dark:bg-slate-700" />
-            {months.map((month, index) => {
+            {months.map((month) => {
               const isSelected = selected?.id === month.id;
-              const isCurrent = index === 0;
+              const isCurrent = month.id === newestPeriodId;
               return (
                 <div key={month.id} className="flex gap-4">
                   <div className="hidden w-[72px] shrink-0 pt-5 text-right sm:block">
@@ -411,10 +490,10 @@ export function AdminTimelineView({
                                   <DropdownMenuItem
                                     onClick={() => {
                                       setSelectedId(month.id);
-                                      setEditOpen(true);
+                                      openEditor(month.eventId);
                                     }}
                                   >
-                                    Edit milestone
+                                    Edit latest milestone
                                   </DropdownMenuItem>
                                 )}
                                 {!isDemo && (
@@ -477,11 +556,7 @@ export function AdminTimelineView({
               isDemo={isDemo}
               isAdmin={isAdmin}
               onClose={() => setPanelOpen(false)}
-              onEdit={
-                isAdmin && selected.eventId
-                  ? () => setEditOpen(true)
-                  : undefined
-              }
+              onEditEvent={isAdmin && !isDemo ? openEditor : undefined}
             />
           </div>
         ) : (
@@ -508,7 +583,10 @@ export function AdminTimelineView({
           reports={reports}
           editEvent={selectedEvent}
           open={editOpen}
-          onOpenChange={setEditOpen}
+          onOpenChange={(next) => {
+            setEditOpen(next);
+            if (!next) setEditEventId(null);
+          }}
           hideTrigger
           triggerLabel="Edit Milestone"
         />
@@ -583,7 +661,7 @@ function MilestoneDetailPanel({
   isDemo = false,
   isAdmin = false,
   onClose,
-  onEdit,
+  onEditEvent,
 }: {
   month: AdminTimelineMonth;
   project: Project;
@@ -592,23 +670,14 @@ function MilestoneDetailPanel({
   isDemo?: boolean;
   isAdmin?: boolean;
   onClose: () => void;
-  onEdit?: () => void;
+  onEditEvent?: (eventId: string) => void;
 }) {
   const hasProgress = month.progress.overall != null;
   const delta =
     hasProgress && month.progress.previousOverall != null
       ? month.progress.overall! - month.progress.previousOverall
       : null;
-  const priorLabel =
-    month.progress.previousOverall != null
-      ? formatMonthLabel(
-          (() => {
-            const [y, m] = month.monthKey.split("-").map(Number);
-            const d = new Date(y, m - 2, 1);
-            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-          })()
-        )
-      : null;
+  const priorLabel = month.progress.previousLabel;
 
   return (
     <div className={cn(cardClass, "sticky top-24 overflow-hidden")}>
@@ -628,8 +697,14 @@ function MilestoneDetailPanel({
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-1">
-            {isAdmin && onEdit && (
-              <Button type="button" variant="outline" size="sm" className="h-8" onClick={onEdit}>
+            {isAdmin && onEditEvent && month.eventId && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8"
+                onClick={() => onEditEvent(month.eventId!)}
+              >
                 Edit
               </Button>
             )}
@@ -650,7 +725,7 @@ function MilestoneDetailPanel({
           <h3 className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
             Overview
           </h3>
-          <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+          <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-slate-600 dark:text-slate-400">
             {month.overview || "No overview added for this milestone."}
           </p>
         </section>
@@ -734,6 +809,24 @@ function MilestoneDetailPanel({
 
         <section>
           <h3 className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+            Milestones ({month.events.length})
+          </h3>
+          <ol className="relative mt-3 space-y-4 border-l border-slate-200 pl-4 dark:border-slate-700">
+            {month.events.map((event) => (
+              <PeriodEventItem
+                key={event.id}
+                event={event}
+                projectId={project.id}
+                isAdmin={isAdmin}
+                isDemo={isDemo}
+                onEdit={onEditEvent ? () => onEditEvent(event.id) : undefined}
+              />
+            ))}
+          </ol>
+        </section>
+
+        <section>
+          <h3 className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
             Top Issues
           </h3>
           {month.topIssues.length === 0 ? (
@@ -777,5 +870,175 @@ function MilestoneDetailPanel({
         )}
       </div>
     </div>
+  );
+}
+
+function PeriodEventItem({
+  event,
+  projectId,
+  isAdmin,
+  isDemo,
+  onEdit,
+}: {
+  event: TimelinePeriodEvent;
+  projectId: string;
+  isAdmin: boolean;
+  isDemo: boolean;
+  onEdit?: () => void;
+}) {
+  const [error, setError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const canManage = isAdmin && !isDemo;
+
+  async function handleDelete() {
+    setError(null);
+    setIsDeleting(true);
+    try {
+      await deleteTimelineEvent(event.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete milestone");
+      setIsDeleting(false);
+    }
+  }
+
+  async function handleRemovePhoto(photoId: string) {
+    setError(null);
+    try {
+      await deleteTimelinePhoto(photoId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to remove photo");
+    }
+  }
+
+  const tourHref =
+    event.tour && !isDemo
+      ? isAdmin
+        ? event.tour.matterportUrl
+        : portalMatterportLink(projectId, event.tour.id)
+      : null;
+  const reportHref =
+    event.report && !isDemo
+      ? isAdmin
+      ? "/admin/reports"
+      : portalReportLink(projectId, event.report.id)
+    : null;
+
+  return (
+    <li className="relative">
+      <span className="absolute -left-[21px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-slate-400 dark:border-slate-900" />
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-slate-500">{formatDate(event.date)}</p>
+          <p className="mt-0.5 text-sm font-semibold text-slate-900 dark:text-white">
+            {event.title}
+          </p>
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
+            <span>{event.status === "completed" ? "Completed" : "In progress"}</span>
+            {event.progressPercent != null && <span>{event.progressPercent}% overall</span>}
+            {event.location && (
+              <span className="inline-flex items-center gap-1">
+                <MapPin className="h-3 w-3" />
+                {event.location}
+              </span>
+            )}
+            {event.author && <span>By {event.author}</span>}
+          </div>
+        </div>
+        {canManage && (
+          <div className="flex shrink-0 items-center gap-0.5">
+            {onEdit && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 cursor-pointer"
+                onClick={onEdit}
+                aria-label={`Edit ${event.title}`}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+            )}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 cursor-pointer text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/30"
+                  disabled={isDeleting}
+                  aria-label={`Delete ${event.title}`}
+                >
+                  {isDeleting ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-3.5 w-3.5" />
+                  )}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete this milestone?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    &ldquo;{event.title}&rdquo; and its photos will be removed from the admin
+                    timeline and the client portal. The record is archived, not permanently
+                    erased. Linked tours and reports are not affected.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel className="cursor-pointer">Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="cursor-pointer bg-rose-600 hover:bg-rose-700"
+                    onClick={handleDelete}
+                  >
+                    Delete milestone
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        )}
+      </div>
+
+      {event.progressNote && (
+        <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+          {event.progressNote}
+        </p>
+      )}
+
+      {(event.tour || event.report) && (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {event.tour && tourHref && (
+            <Button asChild variant="outline" size="sm" className="h-7 text-xs">
+              <Link
+                href={tourHref}
+                {...(isAdmin ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+              >
+                <Camera className="mr-1.5 h-3.5 w-3.5 text-blue-500" />
+                {event.tour.name}
+                {isAdmin && <ExternalLink className="ml-1.5 h-3 w-3" />}
+              </Link>
+            </Button>
+          )}
+          {event.report && reportHref && (
+            <Button asChild variant="outline" size="sm" className="h-7 text-xs">
+              <Link href={reportHref}>
+                <FileText className="mr-1.5 h-3.5 w-3.5 text-emerald-500" />
+                {event.report.title}
+              </Link>
+            </Button>
+          )}
+        </div>
+      )}
+
+      {event.photos.length > 0 && (
+        <TimelinePhotoGallery
+          photos={event.photos}
+          compact
+          onRemove={canManage ? handleRemovePhoto : undefined}
+        />
+      )}
+
+      {error && <p className="mt-2 text-xs text-rose-600">{error}</p>}
+    </li>
   );
 }

@@ -1151,14 +1151,14 @@ export type ProjectTourUpdate = Partial<ProjectTourInsert>;
 export type ReportUpdate = Partial<ReportInsert>;
 export type DocumentFolderUpdate = Partial<DocumentFolderInsert>;
 export type DocumentUpdate = Partial<DocumentInsert>;
-export type IssueUpdate = Partial<IssueInsert>;
-export type IssueImageUpdate = Partial<IssueImageInsert>;
+export type IssueUpdate = Partial<IssueInsert> & Partial<SoftDeleteFields>;
+export type IssueImageUpdate = Partial<IssueImageInsert> & Partial<SoftDeleteFields>;
 export type ProjectCommentUpdate = Partial<ProjectCommentInsert> &
   Partial<SoftDeleteFields> & {
     updated_by?: string | null;
   };
-export type TimelineEventUpdate = Partial<TimelineEventInsert>;
-export type TimelinePhotoUpdate = Partial<TimelinePhotoInsert>;
+export type TimelineEventUpdate = Partial<TimelineEventInsert> & Partial<SoftDeleteFields>;
+export type TimelinePhotoUpdate = Partial<TimelinePhotoInsert> & Partial<SoftDeleteFields>;
 export type InvoiceUpdate = Partial<InvoiceInsert>;
 export type NotificationUpdate = Partial<NotificationInsert>;
 export type ActivityLogUpdate = Partial<ActivityLogInsert>;

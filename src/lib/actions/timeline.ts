@@ -7,6 +7,7 @@ import { isRlsOrPermissionError } from "@/lib/supabase/rls";
 import { createSignedStorageUrl } from "@/lib/supabase/storage-server";
 import { resolveTimelinePhotoStoragePath } from "@/lib/supabase/storage";
 import {
+  MAX_TIMELINE_PHOTOS,
   createTimelineEventSchema,
   updateTimelineEventSchema,
 } from "@/lib/validations/timeline";
@@ -14,16 +15,200 @@ import type {
   TimelineEventInsert,
   TimelineEventUpdate,
   TimelinePhotoInsert,
+  UserRole,
 } from "@/lib/types";
 import { STORAGE_BUCKETS } from "@/lib/types";
 import { resolveSpatialForWrite } from "@/lib/admin/spatial-resolve";
 import { notifyClientsIfEnabled } from "@/lib/actions/notifications";
 import { portalTimelineLink } from "@/lib/portal/notification-links";
+import { assertCanUploadToProject } from "@/lib/auth/upload-access";
+import { isBuildViewStaffRole } from "@/lib/auth/roles";
+
+type TimelinePhotoInput = {
+  storage_path: string;
+  file_name: string;
+  caption?: string;
+  sort_order?: number;
+};
+
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
+type SupabaseAdminClient = ReturnType<typeof createServiceRoleClient>;
 
 function revalidateTimelinePaths(projectId: string) {
   revalidatePath("/admin/timeline");
+  revalidatePath("/dashboard/timeline");
   revalidatePath(`/dashboard/projects/${projectId}`);
+  revalidatePath(`/admin/projects/${projectId}`);
   revalidatePath("/dashboard/projects");
+  revalidatePath("/dashboard");
+  revalidatePath("/admin");
+}
+
+/** Accepts `2026-03-14` or a full ISO timestamp and keeps only the calendar date. */
+function normalizeEventDate(value: string | undefined): string | undefined {
+  if (!value) return value;
+  const match = /^(\d{4}-\d{2}-\d{2})(T.*)?$/.exec(value.trim());
+  return match ? match[1] : value;
+}
+
+function isMissingColumnError(message: string | undefined): boolean {
+  const msg = (message ?? "").toLowerCase();
+  return msg.includes("column") || msg.includes("schema cache") || msg.includes("could not find");
+}
+
+/** Strips columns added by later migrations so older databases still accept the insert. */
+function withoutOptionalColumns(payload: TimelineEventInsert): TimelineEventInsert {
+  const {
+    status: _status,
+    progress_percent: _progress,
+    trades: _trades,
+    whats_new: _whatsNew,
+    author_name: _author,
+    building: _building,
+    floor: _floor,
+    building_id: _buildingId,
+    floor_id: _floorId,
+    ...base
+  } = payload;
+  return base as TimelineEventInsert;
+}
+
+async function insertEventRow(
+  client: SupabaseServerClient | SupabaseAdminClient,
+  payload: TimelineEventInsert
+): Promise<{ id: string | null; error: string | null }> {
+  const { data, error } = await client
+    .from("timeline_events")
+    .insert(payload)
+    .select("id")
+    .single();
+
+  if (!error && data) return { id: data.id, error: null };
+
+  if (isMissingColumnError(error?.message)) {
+    const { data: retry, error: retryError } = await client
+      .from("timeline_events")
+      .insert(withoutOptionalColumns(payload))
+      .select("id")
+      .single();
+    if (!retryError && retry) return { id: retry.id, error: null };
+    return { id: null, error: retryError?.message ?? "Failed to create timeline event" };
+  }
+
+  return { id: null, error: error?.message ?? "Failed to create timeline event" };
+}
+
+async function requireTimelineStaff() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("You must be signed in");
+
+  const { data: me } = await supabase
+    .from("users")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (!me?.role || !isBuildViewStaffRole(me.role as UserRole)) {
+    throw new Error("Only BuildView staff can edit or delete timeline milestones.");
+  }
+  return { supabase, user };
+}
+
+/** A milestone may only link a tour or report from its own project. */
+async function assertLinkedContentBelongsToProject(
+  projectId: string,
+  tourId: string | null | undefined,
+  reportId: string | null | undefined
+) {
+  if (!tourId && !reportId) return;
+  const admin = createServiceRoleClient();
+
+  if (tourId) {
+    const { data: tour } = await admin
+      .from("project_tours")
+      .select("project_id")
+      .eq("id", tourId)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (!tour || tour.project_id !== projectId) {
+      throw new Error("The selected virtual tour does not belong to this project.");
+    }
+  }
+
+  if (reportId) {
+    const { data: report } = await admin
+      .from("reports")
+      .select("project_id")
+      .eq("id", reportId)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (!report || report.project_id !== projectId) {
+      throw new Error("The selected report does not belong to this project.");
+    }
+  }
+}
+
+/** Service-role lookup; callers must authorize against the returned project_id. */
+async function getActiveEventProjectId(eventId: string): Promise<string> {
+  const admin = createServiceRoleClient();
+  const { data: event } = await admin
+    .from("timeline_events")
+    .select("project_id")
+    .eq("id", eventId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (!event) throw new Error("Timeline event not found");
+  return event.project_id;
+}
+
+/** Caller must have already authorized the upload for this event's project. */
+async function insertTimelinePhotos(
+  eventId: string,
+  projectId: string,
+  photos: TimelinePhotoInput[],
+  userId: string
+) {
+  if (photos.length > MAX_TIMELINE_PHOTOS) {
+    throw new Error(`You can upload up to ${MAX_TIMELINE_PHOTOS} photos at a time.`);
+  }
+
+  // Signed URLs are issued for whatever path a row stores, so rows must point
+  // inside this event's own folder.
+  const expectedPrefix = `${projectId}/${eventId}/`;
+  if (photos.some((photo) => !photo.storage_path.startsWith(expectedPrefix))) {
+    throw new Error("Invalid photo location for this milestone.");
+  }
+
+  const admin = createServiceRoleClient();
+  const { count } = await admin
+    .from("timeline_photos")
+    .select("*", { count: "exact", head: true })
+    .eq("timeline_event_id", eventId)
+    .is("deleted_at", null);
+
+  const startOrder = count ?? 0;
+
+  const rows: TimelinePhotoInsert[] = photos.map((photo, index) => ({
+    timeline_event_id: eventId,
+    image_url: photo.storage_path,
+    storage_path: photo.storage_path,
+    caption: photo.caption ?? null,
+    sort_order: photo.sort_order ?? startOrder + index,
+    created_by: userId,
+    updated_by: null,
+  }));
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("timeline_photos").insert(rows);
+  if (!error) return;
+
+  if (!isRlsOrPermissionError(error.message)) throw new Error(error.message);
+
+  const { error: retryError } = await admin.from("timeline_photos").insert(rows);
+  if (retryError) throw new Error(retryError.message);
 }
 
 export async function createTimelineEvent(data: {
@@ -41,27 +226,27 @@ export async function createTimelineEvent(data: {
   trades?: Array<{ name: string; percent: number; color?: string }>;
   whats_new?: string[];
   author_name?: string | null;
-  photos?: Array<{
-    storage_path: string;
-    file_name: string;
-    caption?: string;
-    sort_order?: number;
-  }>;
+  photos?: TimelinePhotoInput[];
   /** When true, caller already notifies clients (e.g. upload orchestrator). */
   skipClientNotify?: boolean;
 }) {
-  const validation = createTimelineEventSchema.safeParse(data);
+  const validation = createTimelineEventSchema.safeParse({
+    ...data,
+    event_date: normalizeEventDate(data.event_date),
+  });
   if (!validation.success) {
     throw new Error(validation.error.errors[0]?.message ?? "Invalid timeline data");
   }
-
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
   const validated = validation.data;
 
+  const auth = await assertCanUploadToProject(validated.project_id, "upload");
+  await assertLinkedContentBelongsToProject(
+    validated.project_id,
+    validated.tour_id,
+    validated.report_id
+  );
+
+  const supabase = await createClient();
   const spatial = await resolveSpatialForWrite(supabase, validated.project_id, {
     building: validated.building,
     floor: validated.floor,
@@ -84,139 +269,39 @@ export async function createTimelineEvent(data: {
     floor: spatial.floor,
     building_id: spatial.building_id,
     floor_id: spatial.floor_id,
-    created_by: user?.id ?? null,
+    created_by: auth.userId,
     updated_by: null,
   };
 
-  const { data: event, error } = await supabase
-    .from("timeline_events")
-    .insert(payload)
-    .select("id")
-    .single();
+  let { id: eventId, error } = await insertEventRow(supabase, payload);
 
-  if (error || !event) {
-    const msg = (error?.message ?? "").toLowerCase();
-    const missingCols =
-      msg.includes("column") ||
-      msg.includes("schema cache") ||
-      msg.includes("could not find");
-
-    if (missingCols) {
-      const {
-        status: _s,
-        progress_percent: _p,
-        trades: _t,
-        whats_new: _w,
-        author_name: _a,
-        building: _b,
-        floor: _f,
-        building_id: _bi,
-        floor_id: _fi,
-        ...basePayload
-      } = payload;
-
-      const { data: retryEvent, error: retryError } = await supabase
-        .from("timeline_events")
-        .insert(basePayload)
-        .select("id")
-        .single();
-
-      if (retryError || !retryEvent) {
-        throw new Error(retryError?.message ?? "Failed to create timeline event");
-      }
-
-      if (data.photos && data.photos.length > 0) {
-        await insertTimelinePhotos(retryEvent.id, data.photos, user?.id ?? null);
-      }
-
-      if (!data.skipClientNotify) {
-        await notifyClientsIfEnabled("onTimeline", validated.project_id, {
-          title: "Timeline updated",
-          message: validated.title,
-          type: "project_update",
-          link: portalTimelineLink(validated.project_id),
-        });
-      }
-
-      revalidateTimelinePaths(validated.project_id);
-      return retryEvent.id;
-    }
-
-    if (error && isRlsOrPermissionError(error.message)) {
-      const admin = createServiceRoleClient();
-      let { data: retryEvent, error: retryError } = await admin
-        .from("timeline_events")
-        .insert(payload)
-        .select("id")
-        .single();
-
-      if (retryError) {
-        const retryMsg = retryError.message.toLowerCase();
-        const missingOnRetry =
-          retryMsg.includes("column") ||
-          retryMsg.includes("schema cache") ||
-          retryMsg.includes("could not find");
-
-        if (missingOnRetry) {
-          const {
-            status: _s,
-            progress_percent: _p,
-            trades: _t,
-            whats_new: _w,
-            author_name: _a,
-            building: _b,
-            floor: _f,
-            building_id: _bi,
-            floor_id: _fi,
-            ...basePayload
-          } = payload;
-          ({ data: retryEvent, error: retryError } = await admin
-            .from("timeline_events")
-            .insert(basePayload)
-            .select("id")
-            .single());
-        }
-      }
-
-      if (retryError || !retryEvent) {
-        throw new Error(retryError?.message ?? "Failed to create timeline event");
-      }
-
-      if (data.photos && data.photos.length > 0) {
-        await insertTimelinePhotos(retryEvent.id, data.photos, user?.id ?? null);
-      }
-
-      if (!data.skipClientNotify) {
-        await notifyClientsIfEnabled("onTimeline", validated.project_id, {
-          title: "Timeline updated",
-          message: validated.title,
-          type: "project_update",
-          link: portalTimelineLink(validated.project_id),
-        });
-      }
-
-      revalidateTimelinePaths(validated.project_id);
-      return retryEvent.id;
-    }
-
-    throw new Error(error?.message ?? "Failed to create timeline event");
+  // RLS only covers assigned projects; assertCanUploadToProject has already
+  // authorized org-wide Client Admin access at the app level.
+  if (!eventId && error && isRlsOrPermissionError(error)) {
+    ({ id: eventId, error } = await insertEventRow(createServiceRoleClient(), payload));
   }
 
+  if (!eventId) throw new Error(error ?? "Failed to create timeline event");
+
   if (data.photos && data.photos.length > 0) {
-    await insertTimelinePhotos(event.id, data.photos, user?.id ?? null);
+    await insertTimelinePhotos(eventId, validated.project_id, data.photos, auth.userId);
   }
 
   if (!data.skipClientNotify) {
-    await notifyClientsIfEnabled("onTimeline", validated.project_id, {
-      title: "Timeline updated",
-      message: validated.title,
-      type: "project_update",
-      link: portalTimelineLink(validated.project_id),
-    });
+    try {
+      await notifyClientsIfEnabled("onTimeline", validated.project_id, {
+        title: "Timeline updated",
+        message: validated.title,
+        type: "project_update",
+        link: portalTimelineLink(validated.project_id),
+      });
+    } catch (err) {
+      console.error("[createTimelineEvent] client notify failed:", err);
+    }
   }
 
   revalidateTimelinePaths(validated.project_id);
-  return event.id;
+  return eventId;
 }
 
 export async function updateTimelineEvent(data: {
@@ -233,15 +318,15 @@ export async function updateTimelineEvent(data: {
   whats_new?: string[];
   author_name?: string | null;
 }) {
-  const validation = updateTimelineEventSchema.safeParse(data);
+  const validation = updateTimelineEventSchema.safeParse({
+    ...data,
+    event_date: normalizeEventDate(data.event_date),
+  });
   if (!validation.success) {
     throw new Error(validation.error.errors[0]?.message ?? "Invalid timeline data");
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await requireTimelineStaff();
 
   const { data: existing, error: fetchError } = await supabase
     .from("timeline_events")
@@ -252,8 +337,14 @@ export async function updateTimelineEvent(data: {
 
   if (fetchError || !existing) throw new Error("Timeline event not found");
 
+  await assertLinkedContentBelongsToProject(
+    existing.project_id,
+    validation.data.tour_id,
+    validation.data.report_id
+  );
+
   const update: TimelineEventUpdate = {
-    updated_by: user?.id ?? null,
+    updated_by: user.id,
   };
 
   if (validation.data.event_date !== undefined) update.event_date = validation.data.event_date;
@@ -284,63 +375,18 @@ export async function updateTimelineEvent(data: {
   revalidateTimelinePaths(existing.project_id);
 }
 
-async function insertTimelinePhotos(
-  eventId: string,
-  photos: Array<{
-    storage_path: string;
-    file_name: string;
-    caption?: string;
-    sort_order?: number;
-  }>,
-  userId: string | null
-) {
-  const supabase = await createClient();
-
-  const { count } = await supabase
-    .from("timeline_photos")
-    .select("*", { count: "exact", head: true })
-    .eq("timeline_event_id", eventId)
-    .is("deleted_at", null);
-
-  const startOrder = count ?? 0;
-
-  const rows: TimelinePhotoInsert[] = photos.map((photo, index) => ({
-    timeline_event_id: eventId,
-    image_url: photo.storage_path,
-    storage_path: photo.storage_path,
-    caption: photo.caption ?? null,
-    sort_order: photo.sort_order ?? startOrder + index,
-    created_by: userId,
-    updated_by: null,
-  }));
-
-  const { error } = await supabase.from("timeline_photos").insert(rows);
-  if (error) {
-    if (isRlsOrPermissionError(error.message)) {
-      const admin = createServiceRoleClient();
-      const { error: retryError } = await admin.from("timeline_photos").insert(rows);
-      if (retryError) throw new Error(retryError.message);
-    } else {
-      throw new Error(error.message);
-    }
-  }
-}
-
-export async function addTimelinePhotos(
-  eventId: string,
-  photos: Array<{
-    storage_path: string;
-    file_name: string;
-    caption?: string;
-    sort_order?: number;
-  }>
-) {
+export async function addTimelinePhotos(eventId: string, photos: TimelinePhotoInput[]) {
   if (photos.length === 0) return;
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const projectId = await getActiveEventProjectId(eventId);
+  const auth = await assertCanUploadToProject(projectId, "upload");
+
+  await insertTimelinePhotos(eventId, projectId, photos, auth.userId);
+  revalidateTimelinePaths(projectId);
+}
+
+export async function deleteTimelineEvent(eventId: string) {
+  const { supabase, user } = await requireTimelineStaff();
 
   const { data: event, error: fetchError } = await supabase
     .from("timeline_events")
@@ -351,8 +397,44 @@ export async function addTimelinePhotos(
 
   if (fetchError || !event) throw new Error("Timeline event not found");
 
-  await insertTimelinePhotos(eventId, photos, user?.id ?? null);
+  const now = new Date().toISOString();
+
+  const { error } = await supabase
+    .from("timeline_events")
+    .update({ deleted_at: now, updated_by: user.id })
+    .eq("id", eventId);
+  if (error) throw new Error(error.message);
+
+  const { error: photosError } = await supabase
+    .from("timeline_photos")
+    .update({ deleted_at: now, updated_by: user.id })
+    .eq("timeline_event_id", eventId)
+    .is("deleted_at", null);
+  if (photosError) console.error("[deleteTimelineEvent] soft-delete photos failed:", photosError);
+
   revalidateTimelinePaths(event.project_id);
+}
+
+export async function deleteTimelinePhoto(photoId: string) {
+  const { supabase, user } = await requireTimelineStaff();
+
+  const { data: photo, error: fetchError } = await supabase
+    .from("timeline_photos")
+    .select("id, event:timeline_events!inner(project_id)")
+    .eq("id", photoId)
+    .is("deleted_at", null)
+    .single();
+
+  if (fetchError || !photo) throw new Error("Photo not found");
+
+  const { error } = await supabase
+    .from("timeline_photos")
+    .update({ deleted_at: new Date().toISOString(), updated_by: user.id })
+    .eq("id", photoId);
+  if (error) throw new Error(error.message);
+
+  const event = photo.event as unknown as { project_id: string } | null;
+  if (event?.project_id) revalidateTimelinePaths(event.project_id);
 }
 
 export async function getTimelinePhotoSignedUrl(

@@ -6,9 +6,23 @@ const tradeSchema = z.object({
   color: z.string().optional(),
 });
 
+/** Calendar date (YYYY-MM-DD) that actually exists, e.g. rejects 2026-02-30. */
+const eventDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Event date must be a valid date")
+  .refine((value) => {
+    const [year, month, day] = value.split("-").map(Number);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    return (
+      date.getUTCFullYear() === year &&
+      date.getUTCMonth() === month - 1 &&
+      date.getUTCDate() === day
+    );
+  }, "Event date must be a valid date");
+
 export const createTimelineEventSchema = z.object({
   project_id: z.string().uuid("Please select a project"),
-  event_date: z.string().min(1, "Event date is required"),
+  event_date: eventDateSchema,
   title: z.string().min(2, "Title must be at least 2 characters"),
   progress_note: z.string().optional(),
   tour_id: z.string().uuid().optional().nullable(),
@@ -25,7 +39,7 @@ export const createTimelineEventSchema = z.object({
 
 export const updateTimelineEventSchema = z.object({
   id: z.string().uuid(),
-  event_date: z.string().optional(),
+  event_date: eventDateSchema.optional(),
   title: z.string().min(2).optional(),
   progress_note: z.string().optional().nullable(),
   tour_id: z.string().uuid().optional().nullable(),

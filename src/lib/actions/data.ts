@@ -1124,7 +1124,8 @@ export async function getProjectTimeline(projectId: string) {
     .eq("project_id", projectId)
     .is("deleted_at", null)
     .order("event_date", { ascending: true })
-    .order("sort_order", { ascending: true });
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true });
 
   return (data || []).map((event) => ({
     ...event,
@@ -1621,7 +1622,8 @@ export async function getAllTimelineEvents() {
     )
     .is("deleted_at", null)
     .order("event_date", { ascending: true })
-    .order("sort_order", { ascending: true });
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true });
 
   return (data || []).map((event) => ({
     ...event,

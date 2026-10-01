@@ -8,6 +8,7 @@ import { resolveIssueImageStoragePath } from "@/lib/supabase/storage";
 import { notifyClientsIfEnabled, notifySuperAdmins, getProjectNameForNotify } from "@/lib/actions/notifications";
 import { isNotificationRuleEnabled } from "@/lib/actions/platform-settings";
 import {
+  MAX_ISSUE_IMAGES,
   createIssueSchema,
   updateIssueSchema,
   updateIssueStatusSchema,
@@ -23,6 +24,7 @@ import { STORAGE_BUCKETS } from "@/lib/types";
 import { resolveSpatialForWrite } from "@/lib/admin/spatial-resolve";
 import { formatUploadNotifyMessage, portalIssuesLink } from "@/lib/portal/notification-links";
 import { isBuildViewStaffRole, canCreateProjectIssue, canUpdateIssueStatus } from "@/lib/auth/roles";
+import { recordTimelineEntry } from "@/lib/timeline/auto-entry";
 
 function revalidateIssuePaths(projectId: string) {
   revalidatePath("/admin/issues");
@@ -32,8 +34,148 @@ function revalidateIssuePaths(projectId: string) {
   revalidatePath("/admin");
 }
 
+function isResolvedStatus(status: IssueStatus): boolean {
+  return status === "resolved" || status === "closed";
+}
+
+/** Logs only the first move into resolved/closed, so resolved → closed is not logged twice. */
+async function recordIssueResolution(
+  projectId: string,
+  title: string,
+  previous: IssueStatus,
+  next: IssueStatus,
+  source: string
+) {
+  if (isResolvedStatus(previous) || !isResolvedStatus(next)) return;
+  await recordTimelineEntry(
+    {
+      project_id: projectId,
+      title: `Issue ${next === "resolved" ? "resolved" : "closed"} — ${title}`,
+      progress_note: `Issue marked as ${next}.`,
+    },
+    source
+  );
+}
+
 function resolvedAtForStatus(status: IssueStatus): string | null {
-  return status === "resolved" || status === "closed" ? new Date().toISOString() : null;
+  return isResolvedStatus(status) ? new Date().toISOString() : null;
+}
+
+/** Keeps the original resolution date when moving between Resolved and Closed. */
+function nextResolvedAt(
+  previousStatus: IssueStatus,
+  previousResolvedAt: string | null,
+  nextStatus: IssueStatus
+): string | null {
+  if (!isResolvedStatus(nextStatus)) return null;
+  if (isResolvedStatus(previousStatus) && previousResolvedAt) return previousResolvedAt;
+  return new Date().toISOString();
+}
+
+async function getSignedInUserWithRole() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("You must be signed in");
+
+  const { data: me } = await supabase
+    .from("users")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (!me?.role) throw new Error("Your account profile could not be found.");
+  return { supabase, user, role: me.role as UserRole };
+}
+
+/**
+ * Mirrors the portal's project visibility (assignment, or org-wide for Client Admin).
+ * Must pass before any service-role write on behalf of a non-staff user.
+ */
+async function userCanAccessProject(
+  userId: string,
+  role: UserRole,
+  projectId: string
+): Promise<boolean> {
+  if (isBuildViewStaffRole(role)) return true;
+
+  const admin = createServiceRoleClient();
+
+  const { data: assignment } = await admin
+    .from("project_assignments")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("project_id", projectId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (assignment) return true;
+
+  if (role !== "client_admin") return false;
+
+  const [{ data: profile }, { data: project }] = await Promise.all([
+    admin.from("users").select("client_id").eq("id", userId).maybeSingle(),
+    admin
+      .from("projects")
+      .select("client_id")
+      .eq("id", projectId)
+      .is("deleted_at", null)
+      .maybeSingle(),
+  ]);
+
+  return Boolean(profile?.client_id && project?.client_id === profile.client_id);
+}
+
+const ISSUE_WRITE_COLUMNS = "id, project_id, status, title, resolved_at";
+
+type IssueWriteRow = {
+  id: string;
+  project_id: string;
+  status: IssueStatus;
+  title: string;
+  resolved_at: string | null;
+};
+
+/**
+ * Loads an active issue the caller may act on. Falls back to the service role
+ * (after an explicit access check) when RLS hides org-wide Client Admin projects.
+ */
+async function findAccessibleIssue(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  role: UserRole,
+  issueId: string
+): Promise<{ issue: IssueWriteRow; rlsVisible: boolean }> {
+  const { data: visible } = await supabase
+    .from("issues")
+    .select(ISSUE_WRITE_COLUMNS)
+    .eq("id", issueId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (visible) return { issue: visible as IssueWriteRow, rlsVisible: true };
+
+  const admin = createServiceRoleClient();
+  const { data: hidden } = await admin
+    .from("issues")
+    .select(ISSUE_WRITE_COLUMNS)
+    .eq("id", issueId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (!hidden || !(await userCanAccessProject(userId, role, hidden.project_id))) {
+    throw new Error("Issue not found");
+  }
+
+  return { issue: hidden as IssueWriteRow, rlsVisible: false };
+}
+
+async function requireIssueStaff() {
+  const context = await getSignedInUserWithRole();
+  if (!isBuildViewStaffRole(context.role)) {
+    throw new Error("Only BuildView staff can edit or delete issues.");
+  }
+  return context;
 }
 
 export async function createIssue(data: {
@@ -55,29 +197,26 @@ export async function createIssue(data: {
   }>;
   /** When true, caller already notifies clients (e.g. upload orchestrator). */
   skipClientNotify?: boolean;
+  /** When true, caller creates its own timeline entry (e.g. upload orchestrator). */
+  skipTimeline?: boolean;
 }) {
   const validation = createIssueSchema.safeParse(data);
   if (!validation.success) {
     throw new Error(validation.error.errors[0]?.message ?? "Invalid issue data");
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("You must be signed in");
+  const { supabase, user, role } = await getSignedInUserWithRole();
 
-  const { data: me } = await supabase
-    .from("users")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (!me?.role || !canCreateProjectIssue(me.role as UserRole)) {
+  if (!canCreateProjectIssue(role)) {
     throw new Error("You do not have permission to create issues.");
   }
 
   const validated = validation.data;
+  let projectAccessVerified: boolean | null = null;
+  const verifyProjectAccess = async () => {
+    projectAccessVerified ??= await userCanAccessProject(user.id, role, validated.project_id);
+    return projectAccessVerified;
+  };
   const status = (validated.status ?? "open") as IssueStatus;
 
   const spatial = await resolveSpatialForWrite(supabase, validated.project_id, {
@@ -149,17 +288,9 @@ export async function createIssue(data: {
     }
 
     if (!issueId) {
-      // Staff upload may fail when RLS only allows is_super_admin().
-      const { data: me } = await supabase
-        .from("users")
-        .select("role")
-        .eq("id", user?.id ?? "")
-        .maybeSingle();
-
-      const canFallback =
-        me && (isBuildViewStaffRole(me.role) || canCreateProjectIssue(me.role as UserRole));
-      if (!canFallback) {
-        throw new Error(error?.message ?? "Failed to create issue");
+      // RLS only covers assigned projects; Client Admins also see org-wide projects.
+      if (!(await verifyProjectAccess())) {
+        throw new Error("You do not have access to this project.");
       }
 
       const admin = createServiceRoleClient();
@@ -202,18 +333,10 @@ export async function createIssue(data: {
 
     const { error: imageError } = await supabase.from("issue_images").insert(imageRows);
     if (imageError) {
-      const { data: me } = await supabase
-        .from("users")
-        .select("role")
-        .eq("id", user?.id ?? "")
-        .maybeSingle();
-      if (me && isBuildViewStaffRole(me.role)) {
-        const admin = createServiceRoleClient();
-        const { error: staffImageError } = await admin.from("issue_images").insert(imageRows);
-        if (staffImageError) throw new Error(staffImageError.message);
-      } else {
-        throw new Error(imageError.message);
-      }
+      if (!(await verifyProjectAccess())) throw new Error(imageError.message);
+      const admin = createServiceRoleClient();
+      const { error: fallbackImageError } = await admin.from("issue_images").insert(imageRows);
+      if (fallbackImageError) throw new Error(fallbackImageError.message);
     }
   }
 
@@ -247,6 +370,19 @@ export async function createIssue(data: {
     }
   }
 
+  if (!data.skipTimeline) {
+    await recordTimelineEntry(
+      {
+        project_id: validated.project_id,
+        title: `Issue reported — ${validated.title}`,
+        progress_note: validated.description || `New ${validated.priority} priority issue logged.`,
+        building: spatial.building,
+        floor: spatial.floor,
+      },
+      "createIssue"
+    );
+  }
+
   revalidateIssuePaths(validated.project_id);
   revalidatePath("/admin/notifications");
   return issueId;
@@ -267,14 +403,11 @@ export async function updateIssue(data: {
     throw new Error(validation.error.errors[0]?.message ?? "Invalid issue data");
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await requireIssueStaff();
 
   const { data: existing, error: fetchError } = await supabase
     .from("issues")
-    .select("project_id, status, title")
+    .select("project_id, status, title, resolved_at")
     .eq("id", validation.data.id)
     .is("deleted_at", null)
     .single();
@@ -282,7 +415,7 @@ export async function updateIssue(data: {
   if (fetchError || !existing) throw new Error("Issue not found");
 
   const update: IssueUpdate = {
-    updated_by: user?.id ?? null,
+    updated_by: user.id,
   };
 
   if (validation.data.title !== undefined) update.title = validation.data.title;
@@ -294,7 +427,11 @@ export async function updateIssue(data: {
 
   if (validation.data.status !== undefined) {
     update.status = validation.data.status;
-    update.resolved_at = resolvedAtForStatus(validation.data.status);
+    update.resolved_at = nextResolvedAt(
+      existing.status as IssueStatus,
+      existing.resolved_at,
+      validation.data.status
+    );
   }
 
   const { error } = await supabase
@@ -318,6 +455,16 @@ export async function updateIssue(data: {
     });
   }
 
+  if (nextStatus) {
+    await recordIssueResolution(
+      existing.project_id,
+      validation.data.title ?? existing.title,
+      existing.status as IssueStatus,
+      nextStatus as IssueStatus,
+      "updateIssue"
+    );
+  }
+
   revalidateIssuePaths(existing.project_id);
 }
 
@@ -327,41 +474,49 @@ export async function updateIssueStatus(issueId: string, status: string) {
     throw new Error(validation.error.errors[0]?.message ?? "Invalid status");
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("You must be signed in");
+  const { supabase, user, role } = await getSignedInUserWithRole();
 
-  const { data: me } = await supabase
-    .from("users")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (!me?.role || !canUpdateIssueStatus(me.role as UserRole)) {
+  if (!canUpdateIssueStatus(role)) {
     throw new Error("You do not have permission to update issue status.");
   }
 
-  const { data: existing, error: fetchError } = await supabase
-    .from("issues")
-    .select("project_id, status, title")
-    .eq("id", issueId)
-    .is("deleted_at", null)
-    .single();
+  const { issue: existing, rlsVisible } = await findAccessibleIssue(
+    supabase,
+    user.id,
+    role,
+    issueId
+  );
 
-  if (fetchError || !existing) throw new Error("Issue not found");
+  const statusUpdate = {
+    status: validation.data.status,
+    resolved_at: nextResolvedAt(existing.status, existing.resolved_at, validation.data.status),
+    updated_by: user.id,
+  };
 
-  const { error } = await supabase
-    .from("issues")
-    .update({
-      status: validation.data.status,
-      resolved_at: resolvedAtForStatus(validation.data.status),
-      updated_by: user.id,
-    })
-    .eq("id", issueId);
+  let updated = false;
+  if (rlsVisible) {
+    const { data: updatedRows, error } = await supabase
+      .from("issues")
+      .update(statusUpdate)
+      .eq("id", issueId)
+      .select("id");
+    if (error) throw new Error(error.message);
+    updated = Boolean(updatedRows && updatedRows.length > 0);
+  }
 
-  if (error) throw new Error(error.message);
+  // RLS can match zero rows for org-wide Client Admin access; findAccessibleIssue
+  // or the check below has already verified project access at the app level.
+  if (!updated) {
+    if (rlsVisible && !(await userCanAccessProject(user.id, role, existing.project_id))) {
+      throw new Error("You do not have access to this project.");
+    }
+    const admin = createServiceRoleClient();
+    const { error: fallbackError } = await admin
+      .from("issues")
+      .update(statusUpdate)
+      .eq("id", issueId);
+    if (fallbackError) throw new Error(fallbackError.message);
+  }
 
   const nextStatus = validation.data.status;
   if (
@@ -380,6 +535,14 @@ export async function updateIssueStatus(issueId: string, status: string) {
     }
   }
 
+  await recordIssueResolution(
+    existing.project_id,
+    existing.title,
+    existing.status,
+    nextStatus as IssueStatus,
+    "updateIssueStatus"
+  );
+
   revalidateIssuePaths(existing.project_id);
 }
 
@@ -393,22 +556,26 @@ export async function addIssueImages(
   }>
 ) {
   if (images.length === 0) return;
+  if (images.length > MAX_ISSUE_IMAGES) {
+    throw new Error(`You can upload up to ${MAX_ISSUE_IMAGES} images at a time.`);
+  }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user, role } = await getSignedInUserWithRole();
+  if (!canCreateProjectIssue(role)) {
+    throw new Error("You do not have permission to add photos to issues.");
+  }
 
-  const { data: issue, error: fetchError } = await supabase
-    .from("issues")
-    .select("project_id")
-    .eq("id", issueId)
-    .is("deleted_at", null)
-    .single();
+  const { issue, rlsVisible } = await findAccessibleIssue(supabase, user.id, role, issueId);
 
-  if (fetchError || !issue) throw new Error("Issue not found");
+  // Signed URLs are issued for whatever path a row stores, so rows must point
+  // inside this issue's own folder.
+  const expectedPrefix = `${issue.project_id}/${issueId}/`;
+  if (images.some((img) => !img.storage_path.startsWith(expectedPrefix))) {
+    throw new Error("Invalid photo location for this issue.");
+  }
 
-  const { count } = await supabase
+  const reader = rlsVisible ? supabase : createServiceRoleClient();
+  const { count } = await reader
     .from("issue_images")
     .select("*", { count: "exact", head: true })
     .eq("issue_id", issueId)
@@ -422,14 +589,79 @@ export async function addIssueImages(
     storage_path: img.storage_path,
     caption: img.caption ?? null,
     sort_order: img.sort_order ?? startOrder + index,
-    created_by: user?.id ?? null,
+    created_by: user.id,
     updated_by: null,
   }));
 
-  const { error } = await supabase.from("issue_images").insert(imageRows);
-  if (error) throw new Error(error.message);
+  let inserted = false;
+  if (rlsVisible) {
+    const { error } = await supabase.from("issue_images").insert(imageRows);
+    if (!error) {
+      inserted = true;
+    } else if (!(await userCanAccessProject(user.id, role, issue.project_id))) {
+      throw new Error(error.message);
+    }
+  }
+
+  if (!inserted) {
+    const admin = createServiceRoleClient();
+    const { error: fallbackError } = await admin.from("issue_images").insert(imageRows);
+    if (fallbackError) throw new Error(fallbackError.message);
+  }
 
   revalidateIssuePaths(issue.project_id);
+}
+
+export async function deleteIssue(issueId: string) {
+  const { supabase, user } = await requireIssueStaff();
+
+  const { data: issue, error: fetchError } = await supabase
+    .from("issues")
+    .select("project_id")
+    .eq("id", issueId)
+    .is("deleted_at", null)
+    .single();
+
+  if (fetchError || !issue) throw new Error("Issue not found");
+
+  const now = new Date().toISOString();
+
+  const { error } = await supabase
+    .from("issues")
+    .update({ deleted_at: now, updated_by: user.id })
+    .eq("id", issueId);
+  if (error) throw new Error(error.message);
+
+  const { error: imagesError } = await supabase
+    .from("issue_images")
+    .update({ deleted_at: now, updated_by: user.id })
+    .eq("issue_id", issueId)
+    .is("deleted_at", null);
+  if (imagesError) console.error("[deleteIssue] soft-delete images failed:", imagesError);
+
+  revalidateIssuePaths(issue.project_id);
+}
+
+export async function deleteIssueImage(imageId: string) {
+  const { supabase, user } = await requireIssueStaff();
+
+  const { data: image, error: fetchError } = await supabase
+    .from("issue_images")
+    .select("id, issue:issues!inner(project_id)")
+    .eq("id", imageId)
+    .is("deleted_at", null)
+    .single();
+
+  if (fetchError || !image) throw new Error("Photo not found");
+
+  const { error } = await supabase
+    .from("issue_images")
+    .update({ deleted_at: new Date().toISOString(), updated_by: user.id })
+    .eq("id", imageId);
+  if (error) throw new Error(error.message);
+
+  const issue = image.issue as unknown as { project_id: string } | null;
+  if (issue?.project_id) revalidateIssuePaths(issue.project_id);
 }
 
 export async function getIssueImageSignedUrl(

@@ -1,10 +1,28 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { Loader2, MapPin, User as UserIcon } from "lucide-react";
-import { updateIssue } from "@/lib/actions/issues";
+import { ImagePlus, Loader2, MapPin, Trash2, User as UserIcon } from "lucide-react";
+import {
+  addIssueImages,
+  deleteIssue,
+  deleteIssueImage,
+  updateIssue,
+} from "@/lib/actions/issues";
+import { uploadIssueImageFile } from "@/lib/supabase/storage";
+import { validateIssueImageFiles } from "@/lib/validations/issue";
 import { IssueImageGallery } from "@/components/issues/issue-image-gallery";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { UpdateIssueStatusSelect } from "@/components/admin/update-issue-status";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -56,7 +74,13 @@ export function IssueDetailDrawer({
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [isUploading, setIsUploading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Reset the form only when a different issue is opened, so refreshed server
+  // data after a save doesn't wipe the confirmation message.
+  const issueId = issue?.id;
   useEffect(() => {
     if (!issue) return;
     setTitle(issue.title);
@@ -67,7 +91,62 @@ export function IssueDetailDrawer({
     setDueDate(issue.due_date ?? "");
     setError(null);
     setSaved(false);
-  }, [issue]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [issueId]);
+
+  async function handleAddPhotos(selected: FileList | null) {
+    if (!issue || !selected || selected.length === 0) return;
+    const files = Array.from(selected);
+    const validationError = validateIssueImageFiles(files);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    setError(null);
+    setSaved(false);
+    setIsUploading(true);
+    try {
+      const uploads = await Promise.all(
+        files.map((file) => uploadIssueImageFile(issue.project_id, issue.id, file))
+      );
+      await addIssueImages(
+        issue.id,
+        uploads.map((upload) => ({
+          storage_path: upload.path,
+          file_name: upload.fileName,
+        }))
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to upload photos");
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  async function handleRemovePhoto(imageId: string) {
+    setError(null);
+    try {
+      await deleteIssueImage(imageId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to remove photo");
+    }
+  }
+
+  async function handleDelete() {
+    if (!issue) return;
+    setError(null);
+    setIsDeleting(true);
+    try {
+      await deleteIssue(issue.id);
+      onOpenChange(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete issue");
+    } finally {
+      setIsDeleting(false);
+    }
+  }
 
   function handleSave() {
     if (!issue) return;
@@ -212,12 +291,43 @@ export function IssueDetailDrawer({
             </div>
           )}
 
-          {activeImages.length > 0 && (
-            <div>
-              <Label className="mb-2 block">Photos</Label>
-              <IssueImageGallery images={activeImages} />
+          <div>
+            <div className="flex items-center justify-between">
+              <Label>
+                Photos {activeImages.length > 0 && `(${activeImages.length})`}
+              </Label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif,image/heic"
+                multiple
+                className="hidden"
+                onChange={(e) => handleAddPhotos(e.target.files)}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="cursor-pointer"
+                disabled={isUploading}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {isUploading ? (
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                ) : (
+                  <ImagePlus className="mr-1.5 h-4 w-4" />
+                )}
+                {isUploading ? "Uploading…" : "Add photos"}
+              </Button>
             </div>
-          )}
+            {activeImages.length > 0 ? (
+              <IssueImageGallery images={activeImages} onRemove={handleRemovePhoto} />
+            ) : (
+              <p className="mt-2 text-xs text-slate-500">
+                No photos yet. JPEG, PNG, WebP, GIF or HEIC — up to 10 MB each.
+              </p>
+            )}
+          </div>
 
           {issue.resolved_at && (
             <p className="text-sm text-emerald-600 dark:text-emerald-400">
@@ -242,6 +352,41 @@ export function IssueDetailDrawer({
             <Button variant="outline" size="sm" asChild>
               <Link href={`/admin/projects/${issue.project_id}`}>Open project</Link>
             </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="ml-auto cursor-pointer text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950/30"
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? (
+                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="mr-1.5 h-4 w-4" />
+                  )}
+                  Delete
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete this issue?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    &ldquo;{issue.title}&rdquo; and its photos will be removed from the admin
+                    board and the client portal. The record is archived, not permanently erased.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel className="cursor-pointer">Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="cursor-pointer bg-rose-600 hover:bg-rose-700"
+                    onClick={handleDelete}
+                  >
+                    Delete issue
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
       </SheetContent>

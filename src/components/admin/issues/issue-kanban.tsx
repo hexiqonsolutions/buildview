@@ -8,7 +8,6 @@ import { IssueDetailDrawer } from "@/components/admin/issues/issue-detail-drawer
 import { CreateIssueForm } from "@/components/admin/create-issue-form";
 import { updateIssueStatus } from "@/lib/actions/issues";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   ISSUE_PRIORITY_LABELS,
   ISSUE_STATUS_LABELS,
@@ -39,10 +38,16 @@ interface IssueKanbanProps {
 
 export function IssueKanban({ issues, projects, users }: IssueKanbanProps) {
   const { hydrated, scope, clientProjects, project } = useAdminWorkspace();
-  const [selectedIssue, setSelectedIssue] = useState<IssueRow | null>(null);
+  const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<IssueStatus | null>(null);
+  const [moveError, setMoveError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
+
+  // Derived from props so the drawer reflects revalidated data and closes if the issue is deleted.
+  const selectedIssue = selectedIssueId
+    ? issues.find((issue) => issue.id === selectedIssueId) ?? null
+    : null;
 
   const scopedProjectIds = useMemo(() => {
     if (scope.projectId) return new Set([scope.projectId]);
@@ -73,11 +78,14 @@ export function IssueKanban({ issues, projects, users }: IssueKanbanProps) {
     const issue = filtered.find((i) => i.id === issueId);
     if (!issue || issue.status === status) return;
 
+    setMoveError(null);
     startTransition(async () => {
       try {
         await updateIssueStatus(issueId, status);
-      } catch {
-        // Server revalidation will restore state on next navigation
+      } catch (err) {
+        setMoveError(
+          `Couldn't move "${issue.title}": ${err instanceof Error ? err.message : "unknown error"}`
+        );
       }
     });
   }
@@ -100,6 +108,15 @@ export function IssueKanban({ issues, projects, users }: IssueKanbanProps) {
           />
         )}
       </div>
+
+      {moveError && (
+        <p
+          role="alert"
+          className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300"
+        >
+          {moveError}
+        </p>
+      )}
 
       {filtered.length === 0 ? (
         <div className="ops-card flex min-h-[280px] flex-col items-center justify-center p-10 text-center">
@@ -156,7 +173,7 @@ export function IssueKanban({ issues, projects, users }: IssueKanbanProps) {
                       setDraggingId(issue.id);
                     }}
                     onDragEnd={() => setDraggingId(null)}
-                    onClick={() => setSelectedIssue(issue)}
+                    onClick={() => setSelectedIssueId(issue.id)}
                     className={cn(
                       "ops-card cursor-pointer p-3 transition-all hover:shadow-md",
                       draggingId === issue.id && "opacity-50"
@@ -175,12 +192,15 @@ export function IssueKanban({ issues, projects, users }: IssueKanbanProps) {
                           <Badge className={cn("text-[10px]", getStatusColor(issue.priority))}>
                             {ISSUE_PRIORITY_LABELS[issue.priority as IssuePriority]}
                           </Badge>
-                          {(issue.issue_images?.length ?? 0) > 0 && (
-                            <Badge variant="outline" className="text-[10px]">
-                              {issue.issue_images!.length} photo
-                              {issue.issue_images!.length === 1 ? "" : "s"}
-                            </Badge>
-                          )}
+                          {(() => {
+                            const photoCount =
+                              issue.issue_images?.filter((img) => !img.deleted_at).length ?? 0;
+                            return photoCount > 0 ? (
+                              <Badge variant="outline" className="text-[10px]">
+                                {photoCount} photo{photoCount === 1 ? "" : "s"}
+                              </Badge>
+                            ) : null;
+                          })()}
                         </div>
                         {issue.due_date && (
                           <p className="mt-2 text-[11px] text-slate-400">
@@ -208,7 +228,7 @@ export function IssueKanban({ issues, projects, users }: IssueKanbanProps) {
         users={users}
         open={Boolean(selectedIssue)}
         onOpenChange={(open) => {
-          if (!open) setSelectedIssue(null);
+          if (!open) setSelectedIssueId(null);
         }}
       />
     </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, ZoomIn } from "lucide-react";
+import { Loader2, X, ZoomIn } from "lucide-react";
 import { getIssueImageSignedUrl } from "@/lib/actions/issues";
 import type { IssueImage } from "@/lib/types";
 import {
@@ -15,14 +15,28 @@ import { Button } from "@/components/ui/button";
 interface IssueImageGalleryProps {
   images: IssueImage[];
   compact?: boolean;
+  /** When provided, each thumbnail shows a remove button. */
+  onRemove?: (imageId: string) => Promise<void>;
 }
 
-export function IssueImageGallery({ images, compact = false }: IssueImageGalleryProps) {
+export function IssueImageGallery({ images, compact = false, onRemove }: IssueImageGalleryProps) {
   const [urls, setUrls] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [lightboxId, setLightboxId] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+
+  async function handleRemove(imageId: string) {
+    if (!onRemove) return;
+    setRemovingId(imageId);
+    try {
+      await onRemove(imageId);
+    } finally {
+      setRemovingId(null);
+    }
+  }
 
   const sortedImages = [...images].sort((a, b) => a.sort_order - b.sort_order);
+  const imageKey = sortedImages.map((image) => image.id).join(",");
 
   useEffect(() => {
     let cancelled = false;
@@ -59,7 +73,8 @@ export function IssueImageGallery({ images, compact = false }: IssueImageGallery
     return () => {
       cancelled = true;
     };
-  }, [images]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refetch only when the set of photos changes
+  }, [imageKey]);
 
   if (sortedImages.length === 0) return null;
 
@@ -84,27 +99,43 @@ export function IssueImageGallery({ images, compact = false }: IssueImageGallery
               if (!url) return null;
 
               return (
-                <button
-                  key={image.id}
-                  type="button"
-                  className="group relative shrink-0 text-left"
-                  onClick={() => setLightboxId(image.id)}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={url}
-                    alt={image.caption || "Issue photo"}
-                    className={thumbClass}
-                  />
-                  <span className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/0 opacity-0 transition-opacity group-hover:bg-black/20 group-hover:opacity-100">
-                    <ZoomIn className="h-5 w-5 text-white drop-shadow" />
-                  </span>
-                  {image.caption && (
-                    <span className="mt-1 block max-w-32 truncate text-xs text-slate-500">
-                      {image.caption}
+                <div key={image.id} className="relative shrink-0">
+                  <button
+                    type="button"
+                    className="group relative text-left"
+                    onClick={() => setLightboxId(image.id)}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={url}
+                      alt={image.caption || "Issue photo"}
+                      className={thumbClass}
+                    />
+                    <span className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/0 opacity-0 transition-opacity group-hover:bg-black/20 group-hover:opacity-100">
+                      <ZoomIn className="h-5 w-5 text-white drop-shadow" />
                     </span>
+                    {image.caption && (
+                      <span className="mt-1 block max-w-32 truncate text-xs text-slate-500">
+                        {image.caption}
+                      </span>
+                    )}
+                  </button>
+                  {onRemove && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemove(image.id)}
+                      disabled={removingId !== null}
+                      aria-label="Remove photo"
+                      className="absolute right-1 top-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {removingId === image.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <X className="h-3.5 w-3.5" />
+                      )}
+                    </button>
                   )}
-                </button>
+                </div>
               );
             })}
           </div>

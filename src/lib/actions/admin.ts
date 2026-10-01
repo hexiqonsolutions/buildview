@@ -50,6 +50,7 @@ import {
   formatUploadNotifyMessage,
 } from "@/lib/portal/notification-links";
 import { getProjectNameForNotify } from "@/lib/actions/notifications";
+import { recordTimelineEntry } from "@/lib/timeline/auto-entry";
 import { DEFAULT_CURRENCY } from "@/lib/currency";
 import { isProjectVisibleInClientPortal } from "@/lib/portal/project-visibility";
 import {
@@ -398,16 +399,45 @@ export async function createTour(data: {
     created_by: user?.id ?? null,
   };
 
-  const { error } = await supabase.from("project_tours").insert(payload);
-  if (error) {
-    if (isRlsOrPermissionError(error.message)) {
+  let tourId: string;
+  const { data: inserted, error } = await supabase
+    .from("project_tours")
+    .insert(payload)
+    .select("id")
+    .single();
+  if (error || !inserted) {
+    if (error && isRlsOrPermissionError(error.message)) {
       const admin = createServiceRoleClient();
-      const { error: retryError } = await admin.from("project_tours").insert(payload);
-      if (retryError) throw new Error(retryError.message);
+      const { data: retryInserted, error: retryError } = await admin
+        .from("project_tours")
+        .insert(payload)
+        .select("id")
+        .single();
+      if (retryError || !retryInserted) {
+        throw new Error(retryError?.message ?? "Failed to create tour");
+      }
+      tourId = retryInserted.id;
     } else {
-      throw new Error(error.message);
+      throw new Error(error?.message ?? "Failed to create tour");
     }
+  } else {
+    tourId = inserted.id;
   }
+
+  await recordTimelineEntry(
+    {
+      project_id: parsed.data.project_id,
+      event_date: parsed.data.capture_date,
+      title: `Virtual tour scan — ${parsed.data.name}`,
+      progress_note:
+        parsed.data.description ||
+        `New virtual tour added${spatial.building ? ` for ${spatial.building}` : ""}${spatial.floor ? ` · ${spatial.floor}` : ""}.`,
+      tour_id: tourId,
+      building: spatial.building,
+      floor: spatial.floor,
+    },
+    "createTour"
+  );
 
   const projectName = await getProjectNameForNotify(parsed.data.project_id);
   await notifyClientsIfEnabled("onUpload", parsed.data.project_id, {
@@ -424,7 +454,7 @@ export async function createTour(data: {
   revalidatePath("/dashboard");
 }
 
-export async function createReport(data: {
+type CreateReportInput = {
   project_id: string;
   title: string;
   report_type: string;
@@ -438,7 +468,33 @@ export async function createReport(data: {
   floor?: string;
   /** When true, caller already notifies clients (e.g. upload orchestrator). */
   skipClientNotify?: boolean;
-}) {
+  /** When true, caller creates its own timeline entry (e.g. upload orchestrator). */
+  skipTimeline?: boolean;
+};
+
+export async function createReport(data: CreateReportInput) {
+  const reportId = await insertReport(data);
+
+  if (!data.skipTimeline) {
+    await recordTimelineEntry(
+      {
+        project_id: data.project_id,
+        event_date: data.report_date,
+        title: `Report uploaded — ${data.title}`,
+        progress_note:
+          data.description || `New ${data.report_type.replace(/_/g, " ")} added to project.`,
+        report_id: reportId,
+        building: data.building ?? null,
+        floor: data.floor ?? null,
+      },
+      "createReport"
+    );
+  }
+
+  return reportId;
+}
+
+async function insertReport(data: CreateReportInput) {
   const validation = createReportSchema.safeParse(data);
   if (!validation.success) {
     throw new Error(validation.error.errors[0]?.message ?? "Invalid report data");
@@ -623,7 +679,7 @@ export async function createDocumentFolder(data: {
   revalidatePath("/dashboard/documents");
 }
 
-export async function createDocument(data: {
+type CreateDocumentInput = {
   project_id: string;
   name: string;
   category: string;
@@ -637,7 +693,31 @@ export async function createDocument(data: {
   floor?: string;
   /** When true, caller already notifies clients (e.g. upload orchestrator). */
   skipClientNotify?: boolean;
-}) {
+  /** When true, caller creates its own timeline entry (e.g. upload orchestrator). */
+  skipTimeline?: boolean;
+};
+
+export async function createDocument(data: CreateDocumentInput) {
+  const documentId = await insertDocument(data);
+
+  if (!data.skipTimeline) {
+    await recordTimelineEntry(
+      {
+        project_id: data.project_id,
+        title: `Document uploaded — ${data.name}`,
+        progress_note:
+          data.description || `${data.category.replace(/_/g, " ")} document added to project.`,
+        building: data.building ?? null,
+        floor: data.floor ?? null,
+      },
+      "createDocument"
+    );
+  }
+
+  return documentId;
+}
+
+async function insertDocument(data: CreateDocumentInput) {
   try {
     const validation = createDocumentSchema.safeParse(data);
     if (!validation.success) {

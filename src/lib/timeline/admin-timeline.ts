@@ -1,8 +1,16 @@
-import type { IssueWithRelations, Project, ProjectTour, Report, TimelineEventWithRelations } from "@/lib/types";
+import type {
+  IssueWithRelations,
+  Project,
+  ProjectTour,
+  Report,
+  TimelineEventWithRelations,
+  TimelinePhoto,
+} from "@/lib/types";
 import {
   parseTourWorkspaceMeta,
   tourMatchesWorkspaceScope,
 } from "@/lib/admin/tour-metadata";
+import { matchesSpatialScope } from "@/lib/admin/scope";
 import type { WorkspaceScope } from "@/lib/admin/workspace";
 
 export type TimelineTradeProgress = {
@@ -11,15 +19,37 @@ export type TimelineTradeProgress = {
   color: string;
 };
 
-export type AdminTimelineMonth = {
+export type TimelineGranularity = "monthly" | "weekly";
+
+/** One saved milestone, as shown inside a period's detail panel. */
+export type TimelinePeriodEvent = {
   id: string;
+  title: string;
+  date: string;
+  status: "in_progress" | "completed";
+  progressNote: string | null;
+  progressPercent: number | null;
+  author: string | null;
+  location: string | null;
+  photos: TimelinePhoto[];
+  tour: { id: string; name: string; matterportUrl: string | null } | null;
+  report: { id: string; title: string } | null;
+};
+
+export type AdminTimelineMonth = {
+  /** Period key: `YYYY-MM` (monthly) or the week's Monday `YYYY-MM-DD` (weekly). */
+  id: string;
+  granularity: TimelineGranularity;
   eventId: string | null;
+  /** Calendar month (`YYYY-MM`) the period starts in, used for project deep links. */
   monthKey: string;
   label: string;
   title: string;
   date: string;
   status: "in_progress" | "completed";
+  /** Only set for already-public URLs (e.g. Matterport thumbnails); private photos use `thumbnailPhoto`. */
   thumbnailUrl: string | null;
+  thumbnailPhoto: TimelinePhoto | null;
   author: string;
   overview: string;
   counts: {
@@ -31,10 +61,13 @@ export type AdminTimelineMonth = {
   progress: {
     overall: number | null;
     previousOverall: number | null;
+    previousLabel: string | null;
     trades: TimelineTradeProgress[];
   };
   whatsNew: string[];
   topIssues: { id: string; title: string; priority: string }[];
+  /** Every milestone in this period, oldest first. */
+  events: TimelinePeriodEvent[];
 };
 
 export const DEFAULT_TRADE_NAMES = ["Structure", "Masonry", "Electrical", "Plumbing"] as const;
@@ -46,23 +79,70 @@ export const DEFAULT_TRADE_COLORS: Record<string, string> = {
   Plumbing: "bg-slate-400",
 };
 
-function monthKeyFromDate(date: string): string {
-  const d = new Date(date);
-  if (Number.isNaN(d.getTime())) return "";
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/**
+ * Reads the calendar date without timezone conversion. `new Date("2026-03-01")`
+ * is UTC midnight, which lands in February for users west of UTC.
+ */
+function calendarParts(value: string | null | undefined): { y: number; m: number; d: number } | null {
+  if (!value) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  if (match) return { y: Number(match[1]), m: Number(match[2]), d: Number(match[3]) };
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return { y: parsed.getFullYear(), m: parsed.getMonth() + 1, d: parsed.getDate() };
+}
+
+function pad(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+function monthKeyFromParts(p: { y: number; m: number }): string {
+  return `${p.y}-${pad(p.m)}`;
+}
+
+/** Monday of the ISO week containing the date, as `YYYY-MM-DD`. */
+function weekKeyFromParts(p: { y: number; m: number; d: number }): string {
+  const date = new Date(Date.UTC(p.y, p.m - 1, p.d));
+  const offset = (date.getUTCDay() + 6) % 7;
+  date.setUTCDate(date.getUTCDate() - offset);
+  return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`;
+}
+
+function periodKey(value: string | null | undefined, granularity: TimelineGranularity): string {
+  const parts = calendarParts(value);
+  if (!parts) return "";
+  return granularity === "weekly" ? weekKeyFromParts(parts) : monthKeyFromParts(parts);
 }
 
 export function formatMonthLabel(monthKey: string): string {
-  const [year, month] = monthKey.split("-");
-  const d = new Date(Number(year), Number(month) - 1, 1);
-  return d.toLocaleString("en-US", { month: "short", year: "numeric" });
+  const [year, month] = monthKey.split("-").map(Number);
+  if (!year || !month) return monthKey;
+  return `${MONTH_SHORT[month - 1]} ${year}`;
 }
 
-function tourMatchesFilters(
-  tour: ProjectTour,
-  scope: Pick<WorkspaceScope, "building" | "floor" | "buildingId" | "floorId">
-): boolean {
-  return tourMatchesWorkspaceScope(tour, scope as WorkspaceScope, new Set([tour.project_id]));
+function formatPeriodLabel(key: string, granularity: TimelineGranularity): string {
+  if (granularity === "monthly") return formatMonthLabel(key);
+  const [, month, day] = key.split("-").map(Number);
+  return `Wk ${MONTH_SHORT[month - 1]} ${day}`;
+}
+
+function formatPeriodLongLabel(key: string, granularity: TimelineGranularity): string {
+  if (granularity === "monthly") return formatMonthLabel(key);
+  const [year, month, day] = key.split("-").map(Number);
+  return `week of ${MONTH_SHORT[month - 1]} ${day}, ${year}`;
+}
+
+function tourMatchesFilters(tour: ProjectTour, scope: WorkspaceScope): boolean {
+  return tourMatchesWorkspaceScope(tour, scope, new Set([tour.project_id]));
+}
+
+/** Project-wide milestones (no building/floor) stay visible under every location filter. */
+function eventMatchesFilters(event: TimelineEventWithRelations, scope: WorkspaceScope): boolean {
+  const untagged = !event.building && !event.building_id && !event.floor && !event.floor_id;
+  if (untagged) return true;
+  return matchesSpatialScope(event, scope, new Set([event.project_id]));
 }
 
 function priorityWeight(priority: string): number {
@@ -92,7 +172,7 @@ function normalizeTrades(raw: unknown): TimelineTradeProgress[] {
 }
 
 function parseWhatsNew(raw: unknown, progressNote: string | null): string[] {
-  if (Array.isArray(raw)) {
+  if (Array.isArray(raw) && raw.length > 0) {
     return raw
       .map((s) => (typeof s === "string" ? s.trim() : ""))
       .filter(Boolean)
@@ -108,9 +188,51 @@ function parseWhatsNew(raw: unknown, progressNote: string | null): string[] {
   return [];
 }
 
+/** Oldest first: date, then manual sort order, then creation time. */
+function compareEventsChronologically(
+  a: TimelineEventWithRelations,
+  b: TimelineEventWithRelations
+): number {
+  const byDate = a.event_date.localeCompare(b.event_date);
+  if (byDate !== 0) return byDate;
+  const bySort = (a.sort_order ?? 0) - (b.sort_order ?? 0);
+  if (bySort !== 0) return bySort;
+  return (a.created_at ?? "").localeCompare(b.created_at ?? "");
+}
+
+function activePhotos(event: TimelineEventWithRelations): TimelinePhoto[] {
+  return (event.timeline_photos ?? [])
+    .filter((photo) => !photo.deleted_at)
+    .sort((a, b) => a.sort_order - b.sort_order);
+}
+
+function toPeriodEvent(event: TimelineEventWithRelations): TimelinePeriodEvent {
+  const location = [event.building, event.floor].filter(Boolean).join(" · ") || null;
+  const tour = event.tour && !event.tour.deleted_at ? event.tour : null;
+  const report = event.report && !event.report.deleted_at ? event.report : null;
+  return {
+    id: event.id,
+    title: event.title,
+    date: event.event_date,
+    status: event.status === "completed" ? "completed" : "in_progress",
+    progressNote: event.progress_note?.trim() || null,
+    progressPercent: typeof event.progress_percent === "number" ? event.progress_percent : null,
+    author: event.author_name?.trim() || null,
+    location,
+    photos: activePhotos(event),
+    tour: tour ? { id: tour.id, name: tour.name, matterportUrl: tour.matterport_url ?? null } : null,
+    report: report ? { id: report.id, title: report.title } : null,
+  };
+}
+
+function isPublicUrl(value: string | null | undefined): value is string {
+  return Boolean(value && /^https?:\/\//i.test(value));
+}
+
 /**
- * Build timeline months from saved timeline events only.
- * Does not invent placeholder months or fake progress percentages.
+ * Build timeline periods from saved timeline events only.
+ * Does not invent placeholder periods or fake progress percentages.
+ * Periods are returned newest first; events inside a period oldest first.
  */
 export function buildAdminTimelineMonths(
   project: Project,
@@ -121,7 +243,8 @@ export function buildAdminTimelineMonths(
   building: string = "all",
   floor: string = "all",
   buildingId: string | null = null,
-  floorId: string | null = null
+  floorId: string | null = null,
+  granularity: TimelineGranularity = "monthly"
 ): AdminTimelineMonth[] {
   const spatialScope: WorkspaceScope = {
     clientId: null,
@@ -133,100 +256,126 @@ export function buildAdminTimelineMonths(
   };
 
   const projectEvents = events
-    .filter((e) => e.project_id === project.id && !e.deleted_at)
-    .sort((a, b) => {
-      const byDate = b.event_date.localeCompare(a.event_date);
-      if (byDate !== 0) return byDate;
-      return (b.sort_order ?? 0) - (a.sort_order ?? 0);
-    });
+    .filter(
+      (e) => e.project_id === project.id && !e.deleted_at && eventMatchesFilters(e, spatialScope)
+    )
+    .sort(compareEventsChronologically);
 
   if (projectEvents.length === 0) return [];
 
   const projectTours = tours.filter(
-    (t) => t.project_id === project.id && tourMatchesFilters(t, spatialScope)
+    (t) => t.project_id === project.id && !t.deleted_at && tourMatchesFilters(t, spatialScope)
   );
-  const projectReports = reports.filter((r) => r.project_id === project.id);
-  const projectIssues = issues.filter((i) => i.project_id === project.id);
+  const projectReports = reports.filter((r) => r.project_id === project.id && !r.deleted_at);
+  const projectIssues = issues.filter(
+    (i) => i.project_id === project.id && !i.deleted_at && matchesSpatialScope(i, spatialScope, new Set([project.id]))
+  );
 
-  const byMonth = new Map<string, TimelineEventWithRelations[]>();
+  const byPeriod = new Map<string, TimelineEventWithRelations[]>();
   for (const event of projectEvents) {
-    const key = monthKeyFromDate(event.event_date);
+    const key = periodKey(event.event_date, granularity);
     if (!key) continue;
-    const list = byMonth.get(key) ?? [];
+    const list = byPeriod.get(key) ?? [];
     list.push(event);
-    byMonth.set(key, list);
+    byPeriod.set(key, list);
   }
 
-  const sortedKeys = Array.from(byMonth.keys()).sort((a, b) => b.localeCompare(a));
+  const sortedKeys = Array.from(byPeriod.keys()).sort((a, b) => b.localeCompare(a));
+
+  const latestProgressByKey = new Map<string, number | null>();
+  for (const key of sortedKeys) {
+    const withProgress = (byPeriod.get(key) ?? []).filter(
+      (e) => typeof e.progress_percent === "number"
+    );
+    const latest = withProgress[withProgress.length - 1];
+    latestProgressByKey.set(key, latest ? (latest.progress_percent as number) : null);
+  }
 
   return sortedKeys.map((key, index) => {
-    const label = formatMonthLabel(key);
-    const [year, month] = key.split("-").map(Number);
-    const date = `${year}-${String(month).padStart(2, "0")}-01`;
-    const monthEvents = byMonth.get(key) ?? [];
-    const primary = monthEvents[0];
+    const periodEvents = byPeriod.get(key) ?? [];
+    const primary = periodEvents[periodEvents.length - 1];
+    const label = formatPeriodLabel(key, granularity);
+    const parts = calendarParts(key)!;
+    const monthKey = monthKeyFromParts(parts);
 
-    const monthTours = projectTours.filter((t) => {
-      const d = t.capture_date ?? t.created_at;
-      return monthKeyFromDate(d) === key;
-    });
-    const monthReports = projectReports.filter((r) => monthKeyFromDate(r.report_date) === key);
-    const monthIssues = projectIssues.filter((i) => monthKeyFromDate(i.created_at) === key);
-    const photos = monthEvents.flatMap((e) => e.timeline_photos ?? []);
+    const periodTours = projectTours.filter(
+      (t) => periodKey(t.capture_date ?? t.created_at, granularity) === key
+    );
+    const periodReports = projectReports.filter(
+      (r) => periodKey(r.report_date, granularity) === key
+    );
+    const periodIssues = projectIssues.filter(
+      (i) => periodKey(i.created_at, granularity) === key
+    );
+    const photos = periodEvents.flatMap(activePhotos);
 
     const engineerFromTour =
-      monthTours.map((t) => parseTourWorkspaceMeta(t.description).engineer).find(Boolean) ?? null;
+      periodTours.map((t) => parseTourWorkspaceMeta(t.description).engineer).find(Boolean) ?? null;
 
+    const linkedTourThumb = [...periodEvents]
+      .reverse()
+      .map((e) => e.tour?.thumbnail_url)
+      .find(isPublicUrl);
+    const publicPhoto = photos.find((p) => isPublicUrl(p.image_url));
     const thumbnailUrl =
-      photos[0]?.image_url ??
-      monthTours[0]?.thumbnail_url ??
+      publicPhoto?.image_url ??
+      linkedTourThumb ??
+      periodTours.map((t) => t.thumbnail_url).find(isPublicUrl) ??
       null;
 
-    const status: AdminTimelineMonth["status"] =
-      primary.status === "completed" ? "completed" : "in_progress";
+    const overall = latestProgressByKey.get(key) ?? null;
+    let previousOverall: number | null = null;
+    let previousLabel: string | null = null;
+    for (const olderKey of sortedKeys.slice(index + 1)) {
+      const value = latestProgressByKey.get(olderKey);
+      if (typeof value === "number") {
+        previousOverall = value;
+        previousLabel = formatPeriodLongLabel(olderKey, granularity);
+        break;
+      }
+    }
 
-    const overall =
-      typeof primary.progress_percent === "number" ? primary.progress_percent : null;
-
-    const previousKey = sortedKeys[index + 1];
-    const previousPrimary = previousKey ? (byMonth.get(previousKey) ?? [])[0] : null;
-    const previousOverall =
-      previousPrimary && typeof previousPrimary.progress_percent === "number"
-        ? previousPrimary.progress_percent
-        : null;
-
-    const trades = normalizeTrades(primary.trades);
+    const tradesSource = [...periodEvents]
+      .reverse()
+      .find((e) => normalizeTrades(e.trades).length > 0);
+    const trades = tradesSource ? normalizeTrades(tradesSource.trades) : [];
     const whatsNew = parseWhatsNew(primary.whats_new, primary.progress_note);
 
-    const topIssues = monthIssues
+    const topIssues = [...periodIssues]
       .sort((a, b) => priorityWeight(b.priority) - priorityWeight(a.priority))
       .slice(0, 3)
       .map((i) => ({ id: i.id, title: i.title, priority: i.priority }));
 
     return {
       id: key,
+      granularity,
       eventId: primary.id,
-      monthKey: key,
+      monthKey,
       label,
       title: primary.title || `${label} — Construction Progress`,
-      date: primary.event_date || date,
-      status,
+      date: primary.event_date,
+      status: primary.status === "completed" ? "completed" : "in_progress",
       thumbnailUrl,
-      author: primary.author_name?.trim() || (typeof engineerFromTour === "string" ? engineerFromTour : "BuildView Team"),
+      thumbnailPhoto: thumbnailUrl ? null : photos[0] ?? null,
+      author:
+        primary.author_name?.trim() ||
+        (typeof engineerFromTour === "string" ? engineerFromTour : "BuildView Team"),
       overview: primary.progress_note?.trim() || "",
       counts: {
-        tours: monthTours.length,
-        reports: monthReports.length,
+        tours: periodTours.length,
+        reports: periodReports.length,
         photos: photos.length,
-        issues: monthIssues.length,
+        issues: periodIssues.length,
       },
       progress: {
         overall,
         previousOverall,
+        previousLabel,
         trades,
       },
       whatsNew,
       topIssues,
+      events: periodEvents.map(toPeriodEvent),
     };
   });
 }
