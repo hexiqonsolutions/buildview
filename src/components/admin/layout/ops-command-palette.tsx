@@ -13,7 +13,6 @@ import {
   Calendar,
   ReceiptIndianRupee,
   Search,
-  Bell,
   AlertTriangle,
   X,
 } from "lucide-react";
@@ -42,7 +41,6 @@ const routes = [
   { href: "/admin/photos", label: "Site Photos", icon: ImageIcon },
   { href: "/admin/issues", label: "Issue Manager", icon: FileText },
   { href: "/admin/invoices", label: "Invoices", icon: ReceiptIndianRupee },
-  { href: "/admin/notifications", label: "Notifications", icon: Bell },
   { href: "/admin/users", label: "User Manager", icon: Users },
   { href: "/admin/analytics", label: "Analytics", icon: FileText },
   { href: "/admin/storage", label: "Storage Manager", icon: FolderOpen },

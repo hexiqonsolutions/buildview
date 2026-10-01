@@ -9,7 +9,6 @@ import {
   FolderOpen,
   AlertTriangle,
   ReceiptIndianRupee,
-  Bell,
 } from "lucide-react";
 
 export const CLIENT_DASHBOARD_TYPES = ["construction", "portfolio"] as const;
@@ -43,14 +42,12 @@ const CONSTRUCTION_NAV: PortalNavItem[] = [
   { href: "/dashboard/documents", label: "Documents", icon: FolderOpen },
   { href: "/dashboard/issues", label: "Issues", icon: AlertTriangle },
   { href: "/dashboard/invoices", label: "Invoices", icon: ReceiptIndianRupee },
-  { href: "/dashboard/notifications", label: "Notifications", icon: Bell },
 ];
 
 const PORTFOLIO_NAV: PortalNavItem[] = [
   { href: "/dashboard", label: "Portfolio", icon: LayoutDashboard, exact: true },
   { href: "/dashboard/projects", label: "Projects", icon: FolderKanban },
   { href: "/dashboard/documents", label: "Documents", icon: FolderOpen },
-  { href: "/dashboard/notifications", label: "Notifications", icon: Bell },
 ];
 
 export function getPortalNavItems(

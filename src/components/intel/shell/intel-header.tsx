@@ -48,7 +48,6 @@ export function IntelHeader({
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const homeHref = usePortalWorkspaceHref("/dashboard");
-  const notificationsHref = "/dashboard/notifications";
   const { dashboardType } = usePortalWorkspace();
   const isPortfolio = dashboardType === "portfolio";
 
@@ -137,11 +136,7 @@ export function IntelHeader({
             </Button>
           )}
 
-          <NotificationBell
-            initialCount={unreadNotifications}
-            userId={user.id}
-            href={notificationsHref}
-          />
+          <NotificationBell initialCount={unreadNotifications} userId={user.id} />
 
           <Button
             variant="ghost"

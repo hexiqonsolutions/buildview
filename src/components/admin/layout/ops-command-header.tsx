@@ -82,8 +82,6 @@ export function OpsCommandHeader({
   const [isPending, startTransition] = useTransition();
   const homeHref = useAdminWorkspaceHref("/admin");
   const uploadHref = useAdminWorkspaceHref("/admin/upload");
-  const notificationsHref = useAdminWorkspaceHref("/admin/notifications");
-
   const displayName = user.full_name?.trim() || user.email?.split("@")[0] || "Admin";
   const initials = displayName
     .split(" ")
@@ -191,11 +189,7 @@ export function OpsCommandHeader({
               <Search className="h-4 w-4" />
             </Button>
 
-            <NotificationBell
-              initialCount={unreadNotifications}
-              userId={user.id}
-              href={notificationsHref}
-            />
+            <NotificationBell initialCount={unreadNotifications} userId={user.id} />
 
             <Button
               variant="ghost"
