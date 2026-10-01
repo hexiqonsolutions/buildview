@@ -1329,10 +1329,19 @@ export async function updateProjectRecord(data: {
   completion_date?: string | null;
   area_sqft?: number | null;
   portfolio_category?: "architecture" | "interior" | "real_estate" | null;
-}) {
-  const validation = updateProjectSchema.safeParse(data);
+}): Promise<{ error?: string }> {
+  const validation = updateProjectSchema.safeParse({
+    ...data,
+    name: data.name?.trim(),
+    location: data.location?.trim(),
+  });
   if (!validation.success) {
-    throw new Error(validation.error.errors[0]?.message ?? "Invalid project data");
+    const issue = validation.error.errors[0];
+    const field = issue?.path[0];
+    if (field === "name") return { error: "Project name must be at least 2 characters." };
+    if (field === "location") return { error: "Location is required." };
+    if (field === "client_id" || field === "client_name") return { error: "Select a client." };
+    return { error: issue?.message ?? "Invalid project data" };
   }
 
   const supabase = await createClient();
@@ -1356,35 +1365,44 @@ export async function updateProjectRecord(data: {
     updated_by: user?.id ?? null,
   };
 
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("projects")
     .update(payload)
     .eq("id", validated.id)
-    .is("deleted_at", null);
+    .is("deleted_at", null)
+    .select("id");
 
+  let updatedCount = updated?.length ?? 0;
   if (error) {
     const msg = error.message.toLowerCase();
     const missingPortfolioCols =
       (msg.includes("area_sqft") || msg.includes("portfolio_category")) &&
       (msg.includes("schema cache") || msg.includes("column") || msg.includes("could not find"));
 
-    if (missingPortfolioCols) {
-      const { area_sqft: _a, portfolio_category: _c, ...basePayload } = payload;
-      const { error: retryError } = await supabase
-        .from("projects")
-        .update(basePayload)
-        .eq("id", validated.id)
-        .is("deleted_at", null);
-      if (retryError) throw new Error(retryError.message);
-    } else {
-      throw new Error(error.message);
-    }
+    if (!missingPortfolioCols) return { error: error.message };
+
+    const { area_sqft: _a, portfolio_category: _c, ...basePayload } = payload;
+    const { data: retried, error: retryError } = await supabase
+      .from("projects")
+      .update(basePayload)
+      .eq("id", validated.id)
+      .is("deleted_at", null)
+      .select("id");
+    if (retryError) return { error: retryError.message };
+    updatedCount = retried?.length ?? 0;
+  }
+
+  // RLS filters out rows silently, so an empty result means nothing was saved.
+  if (updatedCount === 0) {
+    return { error: "Project was not updated. It may have been deleted or you lack permission." };
   }
 
   revalidatePath("/admin/projects");
+  revalidatePath(`/admin/projects/${validated.id}`);
   revalidatePath("/dashboard/projects");
   revalidatePath(`/dashboard/projects/${validated.id}`);
   revalidatePath("/dashboard");
+  return {};
 }
 
 function revalidateProjectPaths(projectId?: string) {

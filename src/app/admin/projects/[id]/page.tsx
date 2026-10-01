@@ -1,11 +1,13 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
+  getClients,
   getProjectWithClient,
   getProjectDetail,
   getProjectInvoices,
   getProjectTeam,
 } from "@/lib/actions/data";
+import { EditProjectDetailsDialog } from "@/components/admin/edit-project-details-dialog";
 import { getProjectSpatialHierarchy } from "@/lib/actions/buildings";
 import { getProjectMediaAdmin } from "@/lib/actions/project-media";
 import { ProjectMediaManager } from "@/components/admin/projects/project-media-manager";
@@ -17,7 +19,7 @@ import { ClientWorkspaceSync } from "@/components/admin/workspace/client-workspa
 import { OpsWorkspaceBanner } from "@/components/admin/ops/ops-workspace-banner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Building2, Upload } from "lucide-react";
+import { ArrowLeft, Building2, Pencil, Upload } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 export default async function AdminProjectDetailPage({
@@ -27,16 +29,25 @@ export default async function AdminProjectDetailPage({
 }) {
   const { id } = await params;
 
-  const [projectData, detail, invoices, spatialHierarchy, currentUser, team, projectMedia] =
-    await Promise.all([
-      getProjectWithClient(id),
-      getProjectDetail(id),
-      getProjectInvoices(id),
-      getProjectSpatialHierarchy(id),
-      getCurrentUser(),
-      getProjectTeam(id).catch(() => []),
-      getProjectMediaAdmin(id).catch(() => null),
-    ]);
+  const [
+    projectData,
+    detail,
+    invoices,
+    spatialHierarchy,
+    currentUser,
+    team,
+    projectMedia,
+    clients,
+  ] = await Promise.all([
+    getProjectWithClient(id),
+    getProjectDetail(id),
+    getProjectInvoices(id),
+    getProjectSpatialHierarchy(id),
+    getCurrentUser(),
+    getProjectTeam(id).catch(() => []),
+    getProjectMediaAdmin(id).catch(() => null),
+    getClients().catch(() => []),
+  ]);
 
   if (!projectData) notFound();
 
@@ -81,6 +92,16 @@ export default async function AdminProjectDetailPage({
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
+            <EditProjectDetailsDialog
+              project={project}
+              clients={clients}
+              trigger={
+                <Button variant="outline" size="sm" className="h-9">
+                  <Pencil className="mr-1.5 h-4 w-4" />
+                  Edit Project
+                </Button>
+              }
+            />
             {client && (
               <Button variant="outline" size="sm" asChild>
                 <Link href={`/admin/clients/${client.id}`}>Client workspace</Link>

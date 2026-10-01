@@ -126,7 +126,7 @@ export function EditProjectDialog({ project, clients, users }: EditProjectDialog
     const areaSqft = sqftRaw ? Number.parseInt(sqftRaw, 10) : null;
 
     try {
-      await updateProjectRecord({
+      const result = await updateProjectRecord({
         id: project.id,
         name: form.get("name") as string,
         client_id: clientId,
@@ -139,6 +139,11 @@ export function EditProjectDialog({ project, clients, users }: EditProjectDialog
         area_sqft: areaSqft && Number.isFinite(areaSqft) ? areaSqft : null,
         portfolio_category: (portfolioCategory || null) as PortfolioCategory | null,
       });
+      if (result.error) {
+        setError(result.error);
+        setLoading(false);
+        return;
+      }
 
       if (thumbnailFile) {
         const upload = await uploadProjectCoverFile(project.id, thumbnailFile);

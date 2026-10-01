@@ -23,12 +23,14 @@ import {
   Trash2,
   Loader2,
   Ban,
+  Pencil,
 } from "lucide-react";
 import type { AdminProjectRow, AdminProjectsListData } from "@/lib/actions/data";
 import type { Client, ProjectStatus } from "@/lib/types";
 import { softDeleteProject, restoreProject, suspendProject } from "@/lib/actions/admin";
 import { AdminMetricCard } from "@/components/admin/admin-metric-card";
 import { CreateProjectForm } from "@/components/admin/create-project-form";
+import { EditProjectDetailsDialog } from "@/components/admin/edit-project-details-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -353,7 +355,13 @@ export function AdminProjectsView({ data, clients, mode = "admin" }: AdminProjec
               </TableHeader>
               <TableBody>
                 {paginated.map((project) => (
-                  <ProjectTableRow key={project.id} project={project} projectBase={projectBase} isAdmin={isAdmin} />
+                  <ProjectTableRow
+                    key={project.id}
+                    project={project}
+                    projectBase={projectBase}
+                    isAdmin={isAdmin}
+                    clients={clients}
+                  />
                 ))}
               </TableBody>
             </Table>
@@ -361,7 +369,13 @@ export function AdminProjectsView({ data, clients, mode = "admin" }: AdminProjec
         ) : (
           <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 xl:grid-cols-3">
             {paginated.map((project) => (
-              <ProjectGridCard key={project.id} project={project} projectBase={projectBase} isAdmin={isAdmin} />
+              <ProjectGridCard
+                key={project.id}
+                project={project}
+                projectBase={projectBase}
+                isAdmin={isAdmin}
+                clients={clients}
+              />
             ))}
           </div>
         )}
@@ -434,13 +448,16 @@ function ProjectActionsMenu({
   project,
   projectBase,
   isAdmin,
+  clients,
 }: {
   project: AdminProjectRow;
   projectBase: string;
   isAdmin: boolean;
+  clients: Client[];
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<
     "restore" | "delete" | "suspend" | null
   >(null);
@@ -534,6 +551,17 @@ function ProjectActionsMenu({
             </Link>
           </DropdownMenuItem>
           {isAdmin && (
+            <DropdownMenuItem
+              onSelect={() => {
+                // Let the dropdown fully close first so Radix pointer-events unlock.
+                window.setTimeout(() => setEditOpen(true), 0);
+              }}
+            >
+              <Pencil className="mr-2 h-4 w-4" />
+              Edit Project
+            </DropdownMenuItem>
+          )}
+          {isAdmin && (
             <DropdownMenuItem asChild>
               <Link href={`/admin/tours?project=${project.id}`}>
                 <Camera className="mr-2 h-4 w-4" />
@@ -566,6 +594,15 @@ function ProjectActionsMenu({
           )}
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {isAdmin && (
+        <EditProjectDetailsDialog
+          project={project}
+          clients={clients}
+          open={editOpen}
+          onOpenChange={setEditOpen}
+        />
+      )}
 
       <AlertDialog
         open={!!confirmAction}
@@ -612,10 +649,12 @@ function ProjectTableRow({
   project,
   projectBase,
   isAdmin,
+  clients,
 }: {
   project: AdminProjectRow;
   projectBase: string;
   isAdmin: boolean;
+  clients: Client[];
 }) {
   return (
     <TableRow>
@@ -699,7 +738,12 @@ function ProjectTableRow({
         )}
       </TableCell>
       <TableCell className="text-right">
-        <ProjectActionsMenu project={project} projectBase={projectBase} isAdmin={isAdmin} />
+        <ProjectActionsMenu
+          project={project}
+          projectBase={projectBase}
+          isAdmin={isAdmin}
+          clients={clients}
+        />
       </TableCell>
     </TableRow>
   );
@@ -709,10 +753,12 @@ function ProjectGridCard({
   project,
   projectBase,
   isAdmin,
+  clients,
 }: {
   project: AdminProjectRow;
   projectBase: string;
   isAdmin: boolean;
+  clients: Client[];
 }) {
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200/70 bg-white dark:border-slate-800 dark:bg-slate-900">
@@ -751,7 +797,12 @@ function ProjectGridCard({
             </Link>
             <p className="text-xs text-slate-500">{project.projectCode} · {project.stage}</p>
           </div>
-          <ProjectActionsMenu project={project} projectBase={projectBase} isAdmin={isAdmin} />
+          <ProjectActionsMenu
+            project={project}
+            projectBase={projectBase}
+            isAdmin={isAdmin}
+            clients={clients}
+          />
         </div>
         <p className="mt-1 text-sm text-slate-500">{project.client_name}</p>
         <p className="mt-1 flex items-center gap-1 text-xs text-slate-400">
