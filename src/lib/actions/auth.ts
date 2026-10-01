@@ -1,7 +1,7 @@
 "use server";
 
 import { cookies, headers } from "next/headers";
-import { IMPERSONATOR_COOKIE } from "@/lib/auth/impersonation";
+import { ADMIN_RESTORE_COOKIE, IMPERSONATOR_COOKIE } from "@/lib/auth/impersonation";
 import { redirect } from "next/navigation";
 import { createClient, getUserProfile } from "@/lib/supabase/server";
 import { ensureUserProfile } from "@/lib/supabase/provision-user";
@@ -64,7 +64,9 @@ export async function signIn(
     }
   }
 
-  (await cookies()).delete(IMPERSONATOR_COOKIE);
+  const cookieStore = await cookies();
+  cookieStore.delete(IMPERSONATOR_COOKIE);
+  cookieStore.delete(ADMIN_RESTORE_COOKIE);
 
   const redirectTo = safeRedirectPath(
     formData.get("redirect")?.toString() ?? null
@@ -203,9 +205,13 @@ export async function signInWithGoogle(formData: FormData): Promise<void> {
 }
 
 export async function signOut() {
+  const cookieStore = await cookies();
+  const impersonating = cookieStore.has(ADMIN_RESTORE_COOKIE);
   const supabase = await createClient();
-  await supabase.auth.signOut();
-  (await cookies()).delete(IMPERSONATOR_COOKIE);
+  // While impersonating, a global sign-out would end the real client's sessions too.
+  await supabase.auth.signOut(impersonating ? { scope: "local" } : undefined);
+  cookieStore.delete(IMPERSONATOR_COOKIE);
+  cookieStore.delete(ADMIN_RESTORE_COOKIE);
   redirect("/login");
 }
 

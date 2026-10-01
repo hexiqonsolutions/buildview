@@ -6,15 +6,19 @@ import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { createClient, requireBuildViewStaff } from "@/lib/supabase/server";
 import { canImpersonate } from "@/lib/auth/permissions";
 import { isClientPortalRole } from "@/lib/auth/roles";
-import { IMPERSONATOR_COOKIE, IMPERSONATION_MAX_AGE_SECONDS } from "@/lib/auth/impersonation";
+import {
+  ADMIN_RESTORE_COOKIE,
+  IMPERSONATOR_COOKIE,
+  IMPERSONATION_MAX_AGE_SECONDS,
+} from "@/lib/auth/impersonation";
 import { logAuditEvent } from "@/lib/actions/activity";
 
 export type LoginAsClientResult = { error: string } | undefined;
 
 /**
- * Admin impersonation: signs the current browser in as the target client user
- * and opens the client portal. The staff session is replaced, so returning to
- * admin requires signing in again.
+ * Super admin impersonation: signs the current browser in as the target client
+ * user and opens the client portal. The super admin's refresh token is kept in an
+ * httpOnly cookie so endImpersonation can restore their session.
  *
  * Failures are returned rather than thrown so the caller can show them; on
  * success this redirects and never returns.
@@ -22,7 +26,7 @@ export type LoginAsClientResult = { error: string } | undefined;
 export async function loginAsClientUser(userId: string): Promise<LoginAsClientResult> {
   const actor = await requireBuildViewStaff();
   if (!canImpersonate(actor.role)) {
-    return { error: "You do not have permission to log in as clients." };
+    return { error: "Only Super Admins can log in as a client." };
   }
 
   const admin = createServiceRoleClient();
@@ -72,9 +76,18 @@ export async function loginAsClientUser(userId: string): Promise<LoginAsClientRe
     console.error("[loginAsClientUser] audit log failed:", err);
   }
 
-  // Verifying the token server-side writes the client's session cookies directly,
-  // so no email redirect URL or /auth/callback round trip is involved.
   const supabase = await createClient();
+  const {
+    data: { session: adminSession },
+  } = await supabase.auth.getSession();
+  const adminRefreshToken = adminSession?.refresh_token;
+  if (!adminRefreshToken) {
+    return { error: "Your admin session has expired. Sign in again and retry." };
+  }
+
+  // Verifying the token server-side writes the client's session cookies directly,
+  // so no email redirect URL or /auth/callback round trip is involved. The admin
+  // session is replaced in the browser but not revoked, so it can be restored.
   const { error: verifyError } = await supabase.auth.verifyOtp({
     type: "magiclink",
     token_hash: tokenHash,
@@ -85,22 +98,49 @@ export async function loginAsClientUser(userId: string): Promise<LoginAsClientRe
   }
 
   const cookieStore = await cookies();
-  cookieStore.set(IMPERSONATOR_COOKIE, actor.full_name?.trim() || actor.email, {
+  const cookieOptions = {
     path: "/",
-    sameSite: "lax",
+    sameSite: "lax" as const,
     secure: process.env.NODE_ENV === "production",
     maxAge: IMPERSONATION_MAX_AGE_SECONDS,
-  });
+  };
+  cookieStore.set(IMPERSONATOR_COOKIE, actor.full_name?.trim() || actor.email, cookieOptions);
+  cookieStore.set(ADMIN_RESTORE_COOKIE, adminRefreshToken, { ...cookieOptions, httpOnly: true });
 
   redirect("/dashboard");
 }
 
+/** Ends the client session and restores the super admin who started it. */
 export async function endImpersonation() {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
-
   const cookieStore = await cookies();
+  const adminRefreshToken = cookieStore.get(ADMIN_RESTORE_COOKIE)?.value;
+
+  const supabase = await createClient();
+  // Local scope: a global sign-out would also log the real client out on their own devices.
+  await supabase.auth.signOut({ scope: "local" });
   cookieStore.delete(IMPERSONATOR_COOKIE);
+  cookieStore.delete(ADMIN_RESTORE_COOKIE);
+
+  if (adminRefreshToken) {
+    const { data, error } = await supabase.auth.refreshSession({
+      refresh_token: adminRefreshToken,
+    });
+
+    if (!error && data.user) {
+      const { data: profile } = await createServiceRoleClient()
+        .from("users")
+        .select("role, is_active")
+        .eq("id", data.user.id)
+        .is("deleted_at", null)
+        .maybeSingle();
+
+      if (profile?.is_active && canImpersonate(profile.role)) {
+        redirect("/admin/clients");
+      }
+
+      await supabase.auth.signOut({ scope: "local" });
+    }
+  }
 
   redirect("/login?redirect=%2Fadmin%2Fclients");
 }

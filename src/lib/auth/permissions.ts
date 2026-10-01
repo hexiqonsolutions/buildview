@@ -171,6 +171,7 @@ export function can(
   return allowed.includes(action);
 }
 
+/** "Login as client" — granted to super_admin only. */
 export function canImpersonate(role: UserRole): boolean {
   return can(role, "impersonate", "users");
 }

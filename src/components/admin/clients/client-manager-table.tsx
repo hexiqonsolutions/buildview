@@ -50,7 +50,13 @@ function formatStorage(bytes: number): string {
   return `${(bytes / 1_073_741_824).toFixed(2)} GB`;
 }
 
-function ClientRowActions({ client }: { client: ClientManagerRow }) {
+function ClientRowActions({
+  client,
+  canLoginAsClient,
+}: {
+  client: ClientManagerRow;
+  canLoginAsClient: boolean;
+}) {
   const [isPending, startTransition] = useTransition();
   const [isSigningIn, startSignIn] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -125,7 +131,7 @@ function ClientRowActions({ client }: { client: ClientManagerRow }) {
               Manage Projects
             </Link>
           </DropdownMenuItem>
-          {client.primaryUserId ? (
+          {!canLoginAsClient ? null : client.primaryUserId ? (
             <DropdownMenuItem onClick={handleLoginAs} disabled={isPending || isSigningIn}>
               <LogIn className="mr-2 h-4 w-4" />
               Login As Client
@@ -164,7 +170,14 @@ function ClientRowActions({ client }: { client: ClientManagerRow }) {
   );
 }
 
-export function ClientManagerTable({ clients }: { clients: ClientManagerRow[] }) {
+export function ClientManagerTable({
+  clients,
+  canLoginAsClient = false,
+}: {
+  clients: ClientManagerRow[];
+  /** Super admins only. */
+  canLoginAsClient?: boolean;
+}) {
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {
@@ -292,7 +305,7 @@ export function ClientManagerTable({ clients }: { clients: ClientManagerRow[] })
                       <Button variant="outline" size="sm" asChild className="hidden lg:inline-flex">
                         <Link href={`/admin/clients/${client.id}`}>Workspace</Link>
                       </Button>
-                      <ClientRowActions client={client} />
+                      <ClientRowActions client={client} canLoginAsClient={canLoginAsClient} />
                     </div>
                   </TableCell>
                 </TableRow>

@@ -1,11 +1,14 @@
 import { Users } from "lucide-react";
 import { getClientsWithStats } from "@/lib/actions/data";
+import { getUserProfile } from "@/lib/supabase/server";
+import { canImpersonate } from "@/lib/auth/permissions";
 import { CreateClientForm } from "@/components/admin/create-client-form";
 import { ClientManagerTable } from "@/components/admin/clients/client-manager-table";
 import { OpsWorkspacePage } from "@/components/admin/ops/ops-workspace-page";
 
 export default async function AdminClientsPage() {
-  const clients = await getClientsWithStats();
+  const [clients, profile] = await Promise.all([getClientsWithStats(), getUserProfile()]);
+  const canLoginAsClient = Boolean(profile && canImpersonate(profile.role));
 
   return (
     <OpsWorkspacePage
@@ -18,7 +21,7 @@ export default async function AdminClientsPage() {
           <CreateClientForm />
         </div>
       )}
-      <ClientManagerTable clients={clients} />
+      <ClientManagerTable clients={clients} canLoginAsClient={canLoginAsClient} />
     </OpsWorkspacePage>
   );
 }

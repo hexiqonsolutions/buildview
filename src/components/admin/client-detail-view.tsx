@@ -47,6 +47,8 @@ interface ClientDetailViewProps {
   invoices: Invoice[];
   issues: Issue[];
   timeline: (TimelineEvent & { project?: { id: string; name: string } | null })[];
+  /** Super admins only. */
+  canLoginAsClient?: boolean;
 }
 
 export function ClientWorkspaceTabs({
@@ -59,6 +61,7 @@ export function ClientWorkspaceTabs({
   invoices,
   issues,
   timeline,
+  canLoginAsClient = false,
 }: ClientDetailViewProps) {
   const portalUsers = users.filter((u) => u.is_active && isClientPortalRole(u.role));
   const primaryUser =
@@ -108,7 +111,7 @@ export function ClientWorkspaceTabs({
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <LoginAsClientButton userId={primaryUser?.id ?? null} />
+            {canLoginAsClient && <LoginAsClientButton userId={primaryUser?.id ?? null} />}
             <Button asChild size="sm" className="ops-btn-primary h-9">
               <Link href="/admin/upload">
                 <Upload className="mr-1.5 h-4 w-4" />
@@ -274,7 +277,7 @@ export function ClientWorkspaceTabs({
                   <Badge variant={u.is_active ? "outline" : "destructive"}>
                     {u.is_active ? "Active" : "Inactive"}
                   </Badge>
-                  {u.is_active && isClientPortalRole(u.role) && (
+                  {canLoginAsClient && u.is_active && isClientPortalRole(u.role) && (
                     <LoginAsClientButton userId={u.id} />
                   )}
                 </div>
@@ -314,7 +317,7 @@ export function ClientWorkspaceTabs({
             </dl>
             <div className="mt-6 flex flex-wrap gap-2">
               <EditClientDialog client={client} />
-              <LoginAsClientButton userId={primaryUser?.id ?? null} />
+              {canLoginAsClient && <LoginAsClientButton userId={primaryUser?.id ?? null} />}
             </div>
           </div>
         </TabPanel>

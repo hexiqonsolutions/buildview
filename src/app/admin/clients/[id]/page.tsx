@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
 import { getClientDetail } from "@/lib/actions/data";
+import { getUserProfile } from "@/lib/supabase/server";
+import { canImpersonate } from "@/lib/auth/permissions";
 import { ClientWorkspaceTabs } from "@/components/admin/clients/client-workspace-tabs";
 
 export default async function AdminClientDetailPage({
@@ -8,7 +10,7 @@ export default async function AdminClientDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const detail = await getClientDetail(id);
+  const [detail, profile] = await Promise.all([getClientDetail(id), getUserProfile()]);
   if (!detail) notFound();
 
   return (
@@ -22,6 +24,7 @@ export default async function AdminClientDetailPage({
       invoices={detail.invoices}
       issues={detail.issues}
       timeline={detail.timeline}
+      canLoginAsClient={Boolean(profile && canImpersonate(profile.role))}
     />
   );
 }
