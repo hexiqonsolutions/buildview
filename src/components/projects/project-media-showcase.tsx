@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, Play } from "lucide-react";
+import { useCallback, useEffect, useState, useTransition } from "react";
+import { ChevronLeft, ChevronRight, Download, Loader2, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getProjectMediaDownloadUrl } from "@/lib/actions/project-media";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +16,50 @@ import {
   type ProjectMediaGroups,
   type ProjectMediaItem,
 } from "@/lib/project-media";
+
+function DownloadMediaButton({ item }: { item: ProjectMediaItem }) {
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  return (
+    <div className="flex flex-wrap items-center justify-end gap-3">
+      {error && (
+        <p role="alert" className="text-xs text-red-600">
+          {error}
+        </p>
+      )}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={isPending}
+        onClick={() => {
+          setError(null);
+          startTransition(async () => {
+            try {
+              const url = await getProjectMediaDownloadUrl(item.id);
+              const link = document.createElement("a");
+              link.href = url;
+              link.rel = "noopener";
+              document.body.appendChild(link);
+              link.click();
+              link.remove();
+            } catch (err) {
+              setError(err instanceof Error ? err.message : "Download failed");
+            }
+          });
+        }}
+      >
+        {isPending ? (
+          <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+        ) : (
+          <Download className="mr-1.5 h-4 w-4" />
+        )}
+        Download
+      </Button>
+    </div>
+  );
+}
 
 function VideoThumbnail({ item }: { item: ProjectMediaItem }) {
   if (!item.url) return null;
@@ -99,6 +144,7 @@ function VideosGrid({ videos }: { videos: ProjectMediaItem[] }) {
               />
             )
           ) : null}
+          {active ? <DownloadMediaButton key={active.id} item={active} /> : null}
         </DialogContent>
       </Dialog>
     </section>
@@ -206,6 +252,7 @@ function PhotosGrid({ photos }: { photos: ProjectMediaItem[] }) {
               )}
             </div>
           ) : null}
+          {active ? <DownloadMediaButton key={active.id} item={active} /> : null}
         </DialogContent>
       </Dialog>
     </section>

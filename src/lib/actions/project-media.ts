@@ -70,6 +70,29 @@ export async function getProjectMedia(projectId: string): Promise<ProjectMediaGr
   return groupWithUrls(data as ProjectMedia[]);
 }
 
+/**
+ * Short-lived URL that downloads the file under its original name. Cross-origin
+ * signed URLs ignore <a download>, so the attachment header must come from storage.
+ */
+export async function getProjectMediaDownloadUrl(id: string): Promise<string> {
+  const supabase = await createClient();
+  const { data: row } = await supabase
+    .from("project_media")
+    .select("storage_path, file_name")
+    .eq("id", id)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (!row) throw new Error("File not found.");
+
+  const { data, error } = await supabase.storage
+    .from(BUCKET)
+    .createSignedUrl(row.storage_path, 60, { download: row.file_name });
+  if (error || !data?.signedUrl) {
+    throw new Error(error?.message ?? "Could not prepare the download.");
+  }
+  return data.signedUrl;
+}
+
 /** Admin read: whether the project belongs to a portfolio client, plus its media. */
 export async function getProjectMediaAdmin(
   projectId: string

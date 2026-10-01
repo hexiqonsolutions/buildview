@@ -221,22 +221,27 @@ export async function createProject(data: {
   area_sqft?: number | null;
   portfolio_category?: "architecture" | "interior" | "real_estate" | null;
   cover_image_url?: string | null;
-}) {
+}): Promise<{ projectId: string } | { error: string }> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
+  const name = data.name?.trim();
+  if (!name) return { error: "Project name is required." };
+  if (!data.client_id) return { error: "Select a client." };
+
+  // Empty form fields arrive as "", which Postgres rejects for DATE columns.
   const payload: ProjectInsert = {
-    name: data.name,
+    name,
     client_id: data.client_id,
     client_name: data.client_name,
-    location: data.location,
+    location: data.location?.trim() ?? "",
     status: data.status as ProjectStatus,
-    description: data.description ?? null,
-    start_date: data.start_date ?? null,
-    completion_date: data.completion_date ?? null,
+    description: data.description?.trim() || null,
+    start_date: data.start_date || null,
+    completion_date: data.completion_date || null,
     area_sqft: data.area_sqft ?? null,
     portfolio_category: data.portfolio_category ?? null,
-    cover_image_url: data.cover_image_url ?? null,
+    cover_image_url: data.cover_image_url || null,
     created_by: user?.id ?? null,
   };
 
@@ -246,16 +251,20 @@ export async function createProject(data: {
     } catch {
       // Non-fatal: org-wide access still works after has_project_access SQL fix
     }
-    await notifyClientOrgIfEnabled("onProjectAssigned", data.client_id, {
-      title: "New project available",
-      message: `${data.name} has been added to your BuildView portal.`,
-      type: "project_update",
-      link: `/dashboard/projects/${projectId}`,
-    });
+    try {
+      await notifyClientOrgIfEnabled("onProjectAssigned", data.client_id, {
+        title: "New project available",
+        message: `${name} has been added to your BuildView portal.`,
+        type: "project_update",
+        link: `/dashboard/projects/${projectId}`,
+      });
+    } catch (err) {
+      console.error("[createProject] client notify failed:", err);
+    }
     revalidatePath("/admin/projects");
     revalidatePath("/dashboard/projects");
     revalidatePath("/dashboard");
-    return projectId;
+    return { projectId };
   };
 
   const { data: created, error } = await supabase.from("projects").insert(payload).select("id").single();
@@ -272,10 +281,12 @@ export async function createProject(data: {
         .insert(basePayload)
         .select("id")
         .single();
-      if (retryError || !retryCreated) throw new Error(retryError?.message ?? "Failed to create project");
+      if (retryError || !retryCreated) {
+        return { error: retryError?.message ?? "Failed to create project" };
+      }
       return finish(retryCreated.id);
     }
-    throw new Error(error?.message ?? "Failed to create project");
+    return { error: error?.message ?? "Failed to create project" };
   }
 
   return finish(created.id);
@@ -1337,9 +1348,9 @@ export async function updateProjectRecord(data: {
     client_name: validated.client_name,
     location: validated.location,
     status: validated.status as ProjectStatus,
-    description: validated.description ?? null,
-    start_date: validated.start_date ?? null,
-    completion_date: validated.completion_date ?? null,
+    description: validated.description || null,
+    start_date: validated.start_date || null,
+    completion_date: validated.completion_date || null,
     area_sqft: validated.area_sqft ?? null,
     portfolio_category: validated.portfolio_category ?? null,
     updated_by: user?.id ?? null,

@@ -106,7 +106,7 @@ export function CreateProjectForm({
     }
 
     try {
-      const projectId = await createProject({
+      const result = await createProject({
         name: form.get("name") as string,
         client_id: clientId,
         client_name: client?.company_name || client?.name || "",
@@ -118,6 +118,13 @@ export function CreateProjectForm({
         area_sqft: areaSqft && Number.isFinite(areaSqft) ? areaSqft : null,
         portfolio_category: (portfolioCategory || null) as PortfolioCategory | null,
       });
+
+      if ("error" in result) {
+        alert(`Could not create the project: ${result.error}`);
+        setLoading(false);
+        return;
+      }
+      const { projectId } = result;
 
       if (building) {
         try {
