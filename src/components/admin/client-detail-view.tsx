@@ -22,6 +22,7 @@ import { CLIENT_DASHBOARD_TYPE_LABELS } from "@/lib/portal/dashboard-type";
 import { ClientWorkspaceSync } from "@/components/admin/workspace/client-workspace-sync";
 import { OpsWorkspaceBanner } from "@/components/admin/ops/ops-workspace-banner";
 import { formatDate } from "@/lib/utils";
+import { isClientPortalRole } from "@/lib/auth/roles";
 import type {
   Client,
   Project,
@@ -59,7 +60,9 @@ export function ClientWorkspaceTabs({
   issues,
   timeline,
 }: ClientDetailViewProps) {
-  const primaryUser = users.find((u) => u.is_active) ?? users[0];
+  const portalUsers = users.filter((u) => u.is_active && isClientPortalRole(u.role));
+  const primaryUser =
+    portalUsers.find((u) => u.role === "client_admin") ?? portalUsers[0] ?? null;
   const displayName = client.company_name || client.name;
 
 
@@ -105,7 +108,7 @@ export function ClientWorkspaceTabs({
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            {primaryUser && <LoginAsClientButton userId={primaryUser.id} />}
+            <LoginAsClientButton userId={primaryUser?.id ?? null} />
             <Button asChild size="sm" className="ops-btn-primary h-9">
               <Link href="/admin/upload">
                 <Upload className="mr-1.5 h-4 w-4" />
@@ -271,7 +274,9 @@ export function ClientWorkspaceTabs({
                   <Badge variant={u.is_active ? "outline" : "destructive"}>
                     {u.is_active ? "Active" : "Inactive"}
                   </Badge>
-                  {u.is_active && <LoginAsClientButton userId={u.id} />}
+                  {u.is_active && isClientPortalRole(u.role) && (
+                    <LoginAsClientButton userId={u.id} />
+                  )}
                 </div>
               </div>
             ))
@@ -309,7 +314,7 @@ export function ClientWorkspaceTabs({
             </dl>
             <div className="mt-6 flex flex-wrap gap-2">
               <EditClientDialog client={client} />
-              {primaryUser && <LoginAsClientButton userId={primaryUser.id} />}
+              <LoginAsClientButton userId={primaryUser?.id ?? null} />
             </div>
           </div>
         </TabPanel>

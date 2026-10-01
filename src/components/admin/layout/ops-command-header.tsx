@@ -10,7 +10,6 @@ import {
   Sun,
   LogOut,
   User,
-  LayoutDashboard,
   Upload,
   Building2,
   Layers,
@@ -264,11 +263,6 @@ export function OpsCommandHeader({
                 <DropdownMenuItem asChild>
                   <Link href="/dashboard/support">
                     <LifeBuoy className="mr-2 h-4 w-4" /> Support
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/dashboard">
-                    <LayoutDashboard className="mr-2 h-4 w-4" /> Client Portal
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />

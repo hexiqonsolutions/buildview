@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { getProjectComments } from "@/lib/actions/comments";
-import { isBuildViewStaffRole, isClientPortalRole } from "@/lib/auth/roles";
+import { CLIENT_PORTAL_ROLES, isBuildViewStaffRole, isClientPortalRole } from "@/lib/auth/roles";
 import type {
   Client,
   ClientDashboardType,
@@ -1255,16 +1255,9 @@ export async function getClientsWithStats() {
     supabase.from("projects").select("id, client_id").is("deleted_at", null),
     supabase
       .from("users")
-      .select("id, client_id, updated_at, role")
+      .select("id, client_id, updated_at, role, is_active")
       .is("deleted_at", null)
-      .in("role", [
-        "client",
-        "client_admin",
-        "site_supervisor",
-        "client_user",
-        "read_only_client",
-        "consultant",
-      ]),
+      .in("role", [...CLIENT_PORTAL_ROLES]),
     supabase.from("documents").select("project_id, file_size").is("deleted_at", null),
     supabase.from("reports").select("project_id, file_size").is("deleted_at", null),
   ]);
@@ -1279,6 +1272,7 @@ export async function getClientsWithStats() {
   const usersByClient: Record<string, number> = {};
   const lastActivityByClient: Record<string, string> = {};
   const primaryUserByClient: Record<string, string> = {};
+  const primaryAdminByClient: Record<string, string> = {};
 
   usersRes.data?.forEach((u) => {
     if (!u.client_id) return;
@@ -1287,11 +1281,11 @@ export async function getClientsWithStats() {
     if (!prev || u.updated_at > prev) {
       lastActivityByClient[u.client_id] = u.updated_at;
     }
-    if (!primaryUserByClient[u.client_id] && u.role === "client_admin") {
-      primaryUserByClient[u.client_id] = u.id;
-    }
-    if (!primaryUserByClient[u.client_id]) {
-      primaryUserByClient[u.client_id] = u.id;
+    if (u.is_active) {
+      if (u.role === "client_admin") {
+        primaryAdminByClient[u.client_id] ??= u.id;
+      }
+      primaryUserByClient[u.client_id] ??= u.id;
     }
   });
 
@@ -1310,7 +1304,7 @@ export async function getClientsWithStats() {
     userCount: usersByClient[c.id] ?? 0,
     storageBytes: storageByClient[c.id] ?? 0,
     lastLoginAt: lastActivityByClient[c.id] ?? null,
-    primaryUserId: primaryUserByClient[c.id] ?? null,
+    primaryUserId: primaryAdminByClient[c.id] ?? primaryUserByClient[c.id] ?? null,
   }));
 }
 

@@ -52,6 +52,7 @@ function formatStorage(bytes: number): string {
 
 function ClientRowActions({ client }: { client: ClientManagerRow }) {
   const [isPending, startTransition] = useTransition();
+  const [isSigningIn, startSignIn] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
   function toggleSuspend() {
@@ -75,14 +76,12 @@ function ClientRowActions({ client }: { client: ClientManagerRow }) {
   }
 
   function handleLoginAs() {
-    if (!client.primaryUserId) return;
+    const userId = client.primaryUserId;
+    if (!userId) return;
     setError(null);
-    startTransition(async () => {
-      try {
-        await loginAsClientUser(client.primaryUserId!);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to login as client");
-      }
+    startSignIn(async () => {
+      const result = await loginAsClientUser(userId);
+      if (result?.error) setError(result.error);
     });
   }
 
@@ -107,7 +106,12 @@ function ClientRowActions({ client }: { client: ClientManagerRow }) {
     <div className="flex flex-col items-end gap-1">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8" disabled={isPending}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            disabled={isPending || isSigningIn}
+          >
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
@@ -121,10 +125,18 @@ function ClientRowActions({ client }: { client: ClientManagerRow }) {
               Manage Projects
             </Link>
           </DropdownMenuItem>
-          {client.primaryUserId && (
-            <DropdownMenuItem onClick={handleLoginAs} disabled={isPending}>
+          {client.primaryUserId ? (
+            <DropdownMenuItem onClick={handleLoginAs} disabled={isPending || isSigningIn}>
               <LogIn className="mr-2 h-4 w-4" />
               Login As Client
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem disabled className="flex-col items-start gap-0">
+              <span className="flex items-center">
+                <LogIn className="mr-2 h-4 w-4" />
+                Login As Client
+              </span>
+              <span className="pl-6 text-[11px]">Add an active portal user first</span>
             </DropdownMenuItem>
           )}
           <DropdownMenuSeparator />
@@ -142,7 +154,12 @@ function ClientRowActions({ client }: { client: ClientManagerRow }) {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      {error && <p className="max-w-[10rem] text-right text-[10px] text-red-500">{error}</p>}
+      {isSigningIn && <p className="text-right text-xs text-slate-500">Signing in…</p>}
+      {error && (
+        <p role="alert" className="max-w-[16rem] text-right text-xs text-red-600">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

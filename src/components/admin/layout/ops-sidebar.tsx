@@ -18,7 +18,6 @@ import {
   Bell,
   Activity,
   Settings,
-  ExternalLink,
   BarChart3,
   UserCog,
 } from "lucide-react";
@@ -149,17 +148,6 @@ export function OpsSidebar({ userRole, mobileOpen, onMobileClose }: OpsSidebarPr
           );
         })}
       </nav>
-
-      <div className="border-t border-slate-200/80 p-3 dark:border-slate-800">
-        <Link
-          href="/dashboard"
-          onClick={onMobileClose}
-          className="ops-nav-item text-xs text-slate-500"
-        >
-          <ExternalLink className="h-4 w-4" />
-          Client Portal Preview
-        </Link>
-      </div>
     </>
   );
 
