@@ -1,6 +1,7 @@
 "use server";
 
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { IMPERSONATOR_COOKIE } from "@/lib/auth/impersonation";
 import { redirect } from "next/navigation";
 import { createClient, getUserProfile } from "@/lib/supabase/server";
 import { ensureUserProfile } from "@/lib/supabase/provision-user";
@@ -62,6 +63,8 @@ export async function signIn(
       };
     }
   }
+
+  (await cookies()).delete(IMPERSONATOR_COOKIE);
 
   const redirectTo = safeRedirectPath(
     formData.get("redirect")?.toString() ?? null
@@ -202,6 +205,7 @@ export async function signInWithGoogle(formData: FormData): Promise<void> {
 export async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();
+  (await cookies()).delete(IMPERSONATOR_COOKIE);
   redirect("/login");
 }
 

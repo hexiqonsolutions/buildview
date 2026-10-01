@@ -1,15 +1,18 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
-import { requireBuildViewStaff } from "@/lib/supabase/server";
+import { createClient, requireBuildViewStaff } from "@/lib/supabase/server";
 import { canImpersonate } from "@/lib/auth/permissions";
 import { isClientPortalRole } from "@/lib/auth/roles";
+import { IMPERSONATOR_COOKIE, IMPERSONATION_MAX_AGE_SECONDS } from "@/lib/auth/impersonation";
 import { logAuditEvent } from "@/lib/actions/activity";
 
 /**
- * Admin impersonation: generates a magic link for the target client user
- * and redirects the admin into the client portal without a password.
+ * Admin impersonation: signs the current browser in as the target client user
+ * and opens the client portal. The staff session is replaced, so returning to
+ * admin requires signing in again.
  */
 export async function loginAsClientUser(userId: string) {
   const actor = await requireBuildViewStaff();
@@ -37,18 +40,10 @@ export async function loginAsClientUser(userId: string) {
   const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
     type: "magiclink",
     email: targetUser.email,
-    options: {
-      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/auth/callback?next=/dashboard`,
-      data: {
-        impersonated_by: actor.id,
-        impersonated_by_name: actor.full_name ?? actor.email,
-        impersonated_target_id: targetUser.id,
-        impersonated_target_email: targetUser.email,
-      },
-    },
   });
 
-  if (linkError || !linkData.properties?.action_link) {
+  const tokenHash = linkData?.properties?.hashed_token;
+  if (linkError || !tokenHash) {
     throw new Error(linkError?.message ?? "Failed to generate client login link.");
   }
 
@@ -65,5 +60,35 @@ export async function loginAsClientUser(userId: string) {
     },
   });
 
-  redirect(linkData.properties.action_link);
+  // Verifying the token server-side writes the client's session cookies directly,
+  // so no email redirect URL or /auth/callback round trip is involved.
+  const supabase = await createClient();
+  const { error: verifyError } = await supabase.auth.verifyOtp({
+    type: "magiclink",
+    token_hash: tokenHash,
+  });
+
+  if (verifyError) {
+    throw new Error(`Could not sign in as this client: ${verifyError.message}`);
+  }
+
+  const cookieStore = await cookies();
+  cookieStore.set(IMPERSONATOR_COOKIE, actor.full_name?.trim() || actor.email, {
+    path: "/",
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: IMPERSONATION_MAX_AGE_SECONDS,
+  });
+
+  redirect("/dashboard");
+}
+
+export async function endImpersonation() {
+  const supabase = await createClient();
+  await supabase.auth.signOut();
+
+  const cookieStore = await cookies();
+  cookieStore.delete(IMPERSONATOR_COOKIE);
+
+  redirect("/login?redirect=%2Fadmin%2Fclients");
 }
