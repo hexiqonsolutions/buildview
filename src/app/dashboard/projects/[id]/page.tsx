@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getProjectWithClient, getProjectDetail, getProjectInvoices, getProjectTeam } from "@/lib/actions/data";
 import { getProjectSpatialHierarchy } from "@/lib/actions/buildings";
+import { getProjectMedia } from "@/lib/actions/project-media";
 import { ProjectHeader } from "@/components/projects/project-header";
 import { ProjectHubTabs } from "@/components/intel/projects/project-hub-tabs";
 import { IntelProjectContextBridge } from "@/components/intel/shell/intel-project-context";
@@ -37,13 +38,14 @@ export default async function ProjectDetailPage({
 }) {
   const { id } = await params;
 
-  const [projectData, detail, invoices, user, spatialHierarchy, team] = await Promise.all([
+  const [projectData, detail, invoices, user, spatialHierarchy, team, media] = await Promise.all([
     getProjectWithClient(id).catch(() => null),
     getProjectDetail(id).catch(() => EMPTY_DETAIL),
     getProjectInvoices(id).catch(() => []),
     getCurrentUser().catch(() => null),
     getProjectSpatialHierarchy(id).catch(() => ({ buildings: [] as never[] })),
     getProjectTeam(id).catch(() => []),
+    getProjectMedia(id).catch(() => ({ videos: [], photos: [] })),
   ]);
 
   if (!projectData) notFound();
@@ -106,6 +108,7 @@ export default async function ProjectDetailPage({
           allowCreateIssue={allowCreateIssue}
           allowInvoices={allowInvoices}
           canUploadContent={canUploadContent}
+          media={media}
         />
       </div>
       {showComments && (

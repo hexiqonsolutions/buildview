@@ -7,6 +7,8 @@ import {
   getProjectTeam,
 } from "@/lib/actions/data";
 import { getProjectSpatialHierarchy } from "@/lib/actions/buildings";
+import { getProjectMediaAdmin } from "@/lib/actions/project-media";
+import { ProjectMediaManager } from "@/components/admin/projects/project-media-manager";
 import { getCurrentUser } from "@/lib/actions/auth";
 import { canUploadMatterport } from "@/lib/auth/permissions";
 import { ProjectWorkspaceTabs } from "@/components/admin/projects/project-workspace-tabs";
@@ -25,14 +27,16 @@ export default async function AdminProjectDetailPage({
 }) {
   const { id } = await params;
 
-  const [projectData, detail, invoices, spatialHierarchy, currentUser, team] = await Promise.all([
-    getProjectWithClient(id),
-    getProjectDetail(id),
-    getProjectInvoices(id),
-    getProjectSpatialHierarchy(id),
-    getCurrentUser(),
-    getProjectTeam(id).catch(() => []),
-  ]);
+  const [projectData, detail, invoices, spatialHierarchy, currentUser, team, projectMedia] =
+    await Promise.all([
+      getProjectWithClient(id),
+      getProjectDetail(id),
+      getProjectInvoices(id),
+      getProjectSpatialHierarchy(id),
+      getCurrentUser(),
+      getProjectTeam(id).catch(() => []),
+      getProjectMediaAdmin(id).catch(() => null),
+    ]);
 
   if (!projectData) notFound();
 
@@ -98,6 +102,10 @@ export default async function AdminProjectDetailPage({
           </div>
         </div>
       </div>
+
+      {projectMedia?.isPortfolio && (
+        <ProjectMediaManager projectId={project.id} initialMedia={projectMedia.media} />
+      )}
 
       <ProjectWorkspaceTabs
         projectId={project.id}

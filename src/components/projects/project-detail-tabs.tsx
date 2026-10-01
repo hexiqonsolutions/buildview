@@ -22,7 +22,9 @@ import { TimelineView } from "@/components/projects/timeline-view";
 import { BuildingsFloorsManager } from "@/components/admin/projects/buildings-floors-manager";
 import { ProjectTeamSection } from "@/components/projects/project-team-section";
 import { CreateIssueDialog } from "@/components/issues/create-issue-dialog";
+import { ProjectMediaShowcase } from "@/components/projects/project-media-showcase";
 import { useOptionalPortalWorkspace } from "@/components/portal/workspace/portal-workspace-provider";
+import type { ProjectMediaGroups } from "@/lib/project-media";
 import type { SpatialHierarchy } from "@/lib/actions/buildings";
 import type { ProjectTeamMember } from "@/lib/actions/data";
 import type {
@@ -58,6 +60,8 @@ interface ProjectDetailTabsProps {
   allowInvoices?: boolean;
   /** Show upload actions inside individual tabs */
   canUploadContent?: boolean;
+  /** Portfolio showcase Videos & Photos */
+  media?: ProjectMediaGroups;
 }
 
 export function ProjectDetailTabs({
@@ -78,6 +82,7 @@ export function ProjectDetailTabs({
   allowCreateIssue = false,
   allowInvoices = false,
   canUploadContent = false,
+  media,
 }: ProjectDetailTabsProps) {
   const portal = useOptionalPortalWorkspace();
   const isPortfolioIntel = variant === "intel" && portal?.dashboardType === "portfolio";
@@ -145,6 +150,8 @@ export function ProjectDetailTabs({
             canUpload={canUploadMatterport}
           />
         ) : null}
+
+        {isPortfolioIntel && media ? <ProjectMediaShowcase media={media} /> : null}
 
         {showConstructionTabs && (
           <ProjectOverview

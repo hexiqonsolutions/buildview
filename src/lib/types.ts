@@ -113,6 +113,7 @@ export const STORAGE_BUCKETS = {
   TIMELINE_PHOTOS: "timeline-photos",
   AVATARS: "avatars",
   PROJECT_COVERS: "project-covers",
+  PROJECT_MEDIA: "project-media",
 } as const;
 
 export type StorageBucket =
@@ -434,6 +435,20 @@ export interface Database {
             columns: ["report_id"];
             isOneToOne: false;
             referencedRelation: "reports";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      project_media: {
+        Row: ProjectMedia;
+        Insert: ProjectMediaInsert;
+        Update: ProjectMediaUpdate;
+        Relationships: [
+          {
+            foreignKeyName: "project_media_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
             referencedColumns: ["id"];
           },
         ];
@@ -859,6 +874,22 @@ export type TimelinePhoto = Timestamps &
     sort_order: number;
   };
 
+export type ProjectMediaType = "video" | "photo";
+
+/** Portfolio showcase Videos & Photos, stored in the project-media bucket. */
+export type ProjectMedia = Timestamps &
+  FullAuditFields & {
+    id: string;
+    project_id: string;
+    media_type: ProjectMediaType;
+    title: string;
+    storage_path: string;
+    file_name: string;
+    mime_type: string | null;
+    file_size: number | null;
+    sort_order: number;
+  };
+
 export type Invoice = Timestamps &
   FullAuditFields & {
     id: string;
@@ -1109,6 +1140,16 @@ export type TimelinePhotoInsert = Omit<
   updated_by?: string | null;
 };
 
+export type ProjectMediaInsert = Omit<
+  ProjectMedia,
+  "id" | "created_at" | "updated_at" | "deleted_at" | "deleted_by"
+> & {
+  id?: string;
+  sort_order?: number;
+  created_by?: string | null;
+  updated_by?: string | null;
+};
+
 export type NotificationInsert = Omit<
   Notification,
   "id" | "created_at" | "updated_at" | "deleted_at" | "deleted_by"
@@ -1159,6 +1200,7 @@ export type ProjectCommentUpdate = Partial<ProjectCommentInsert> &
   };
 export type TimelineEventUpdate = Partial<TimelineEventInsert> & Partial<SoftDeleteFields>;
 export type TimelinePhotoUpdate = Partial<TimelinePhotoInsert> & Partial<SoftDeleteFields>;
+export type ProjectMediaUpdate = Partial<ProjectMediaInsert> & Partial<SoftDeleteFields>;
 export type InvoiceUpdate = Partial<InvoiceInsert>;
 export type NotificationUpdate = Partial<NotificationInsert>;
 export type ActivityLogUpdate = Partial<ActivityLogInsert>;
