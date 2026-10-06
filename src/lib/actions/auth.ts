@@ -5,6 +5,7 @@ import { ADMIN_RESTORE_COOKIE, IMPERSONATOR_COOKIE } from "@/lib/auth/impersonat
 import { redirect } from "next/navigation";
 import { createClient, getUserProfile } from "@/lib/supabase/server";
 import { ensureUserProfile } from "@/lib/supabase/provision-user";
+import { authThrottle } from "@/lib/rate-limit/auth";
 import {
   forgotPasswordSchema,
   loginSchema,
@@ -34,6 +35,11 @@ function safeRedirectPath(path: string | null | undefined): string {
   return path;
 }
 
+function withSentence(message: string, extra: string): string {
+  const base = message.trim();
+  return `${/[.!?]$/.test(base) ? base : `${base}.`} ${extra}`;
+}
+
 export async function signIn(
   _prevState: AuthActionState,
   formData: FormData
@@ -47,12 +53,23 @@ export async function signIn(
     return { error: parsed.error.errors[0]?.message ?? "Invalid input" };
   }
 
+  const throttle = await authThrottle("login", parsed.data.email);
+  const wait = await throttle.retryAfter();
+  if (wait > 0) {
+    return { error: throttle.message(wait) };
+  }
+
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithPassword(parsed.data);
 
   if (error) {
-    return { error: error.message };
+    const delay = await throttle.record();
+    return {
+      error: delay > 0 ? withSentence(error.message, throttle.message(delay)) : error.message,
+    };
   }
+
+  await throttle.clearAccount();
 
   if (data.user) {
     const profileReady = await ensureUserProfile(data.user);
@@ -87,6 +104,13 @@ export async function signUp(
   if (!parsed.success) {
     return { error: parsed.error.errors[0]?.message ?? "Invalid input" };
   }
+
+  const throttle = await authThrottle("signup", parsed.data.email);
+  const wait = await throttle.retryAfter();
+  if (wait > 0) {
+    return { error: throttle.message(wait) };
+  }
+  await throttle.record();
 
   const supabase = await createClient();
   const origin = await getOrigin();
@@ -130,6 +154,13 @@ export async function forgotPassword(
     return { error: parsed.error.errors[0]?.message ?? "Invalid input" };
   }
 
+  const throttle = await authThrottle("passwordReset", parsed.data.email);
+  const wait = await throttle.retryAfter();
+  if (wait > 0) {
+    return { error: throttle.message(wait) };
+  }
+  await throttle.record();
+
   const supabase = await createClient();
   const origin = await getOrigin();
 
@@ -168,6 +199,13 @@ export async function resetPassword(
     return { error: "Your reset session has expired. Please request a new link." };
   }
 
+  const throttle = await authThrottle("passwordUpdate", user.id);
+  const wait = await throttle.retryAfter();
+  if (wait > 0) {
+    return { error: throttle.message(wait) };
+  }
+  await throttle.record();
+
   const { error } = await supabase.auth.updateUser({
     password: parsed.data.password,
   });
@@ -180,6 +218,12 @@ export async function resetPassword(
 }
 
 export async function signInWithGoogle(formData: FormData): Promise<void> {
+  const throttle = await authThrottle("oauth");
+  if ((await throttle.retryAfter()) > 0) {
+    redirect("/login?error=rate_limited");
+  }
+  await throttle.record();
+
   const supabase = await createClient();
   const origin = await getOrigin();
   const redirectTo = safeRedirectPath(

@@ -29,6 +29,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   profile_setup_failed:
     "Your login worked but the app profile is missing. Run the Supabase database migrations, then try signing in again.",
   unauthorized: "You do not have permission to access that page.",
+  rate_limited:
+    "Too many sign-in attempts from this network. Please wait a few minutes and try again.",
 };
 
 interface AuthFormProps {

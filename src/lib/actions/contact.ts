@@ -1,6 +1,8 @@
 "use server";
 
+import { headers } from "next/headers";
 import { integrations, isContactEmailEnabled } from "@/lib/integrations";
+import { consumeRateLimit, formatRetryAfter, getClientIp } from "@/lib/rate-limit";
 import { sendTransactionalEmail } from "@/lib/email/send";
 import { siteConfig } from "@/lib/site-config";
 import {
@@ -34,6 +36,13 @@ export async function submitContact(
 
   if (!parsed.success) {
     return { error: parsed.error.errors[0]?.message ?? "Invalid form data" };
+  }
+
+  const limit = await consumeRateLimit("publicContact", getClientIp(await headers()));
+  if (!limit.allowed) {
+    return {
+      error: `You've sent several messages recently. Please wait ${formatRetryAfter(limit.retryAfterSeconds)} or email us at ${siteConfig.contact.email}.`,
+    };
   }
 
   const data = parsed.data;

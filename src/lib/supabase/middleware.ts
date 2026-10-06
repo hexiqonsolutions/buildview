@@ -35,11 +35,7 @@ function redirectWithSessionCookies(
   url: URL | string,
   sessionResponse: NextResponse
 ): NextResponse {
-  const redirectResponse = NextResponse.redirect(url);
-  sessionResponse.cookies.getAll().forEach((cookie) => {
-    redirectResponse.cookies.set(cookie);
-  });
-  return redirectResponse;
+  return withSessionCookies(NextResponse.redirect(url), sessionResponse);
 }
 
 function safeRedirectPath(path: string | null): string {
@@ -52,11 +48,33 @@ function safeRedirectPath(path: string | null): string {
   return path;
 }
 
+export interface SessionResult {
+  response: NextResponse;
+  /** Signed-in Supabase user, if any (used for per-user rate limits). */
+  userId: string | null;
+}
+
+/** Copies refreshed/cleared auth cookies onto a response built outside updateSession. */
+export function withSessionCookies(
+  response: NextResponse,
+  sessionResponse: NextResponse
+): NextResponse {
+  sessionResponse.cookies.getAll().forEach((cookie) => {
+    response.cookies.set(cookie);
+  });
+  return response;
+}
+
 /**
  * Refreshes the Supabase session on every matched request and enforces
  * route-level auth rules. Called from src/middleware.ts.
  */
-export async function updateSession(request: NextRequest) {
+export async function updateSession(request: NextRequest): Promise<SessionResult> {
+  const result = await runSession(request);
+  return "response" in result ? result : { response: result, userId: null };
+}
+
+async function runSession(request: NextRequest): Promise<SessionResult | NextResponse> {
   let supabaseResponse = NextResponse.next({ request });
 
   let url: string;
@@ -96,12 +114,14 @@ export async function updateSession(request: NextRequest) {
 
   // Public routes — refresh session cookies but skip auth checks
   if (routeAccess === "public") {
+    let publicUserId: string | null = null;
     try {
-      await supabase.auth.getUser();
+      const { data } = await supabase.auth.getUser();
+      publicUserId = data.user?.id ?? null;
     } catch (error) {
       console.error("[middleware] public session refresh failed:", error);
     }
-    return supabaseResponse;
+    return { response: supabaseResponse, userId: publicUserId };
   }
 
   let user = null;
@@ -148,7 +168,7 @@ export async function updateSession(request: NextRequest) {
   if (user && isProtectedRoute(pathname)) {
     if (!profile) {
       // Profile is created in server layout/actions on this request.
-      return supabaseResponse;
+      return { response: supabaseResponse, userId: user.id };
     }
 
     if (!isActiveProfile(profile)) {
@@ -170,11 +190,7 @@ export async function updateSession(request: NextRequest) {
     supabaseResponse.headers.set("x-buildview-user-id", user.id);
   }
 
-  if (user && isSessionAuthRoute(pathname)) {
-    return supabaseResponse;
-  }
-
-  return supabaseResponse;
+  return { response: supabaseResponse, userId: user?.id ?? null };
 }
 
 async function fetchUserProfile(
