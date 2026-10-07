@@ -26,6 +26,8 @@ import { notifyClientsIfEnabled } from "@/lib/notifications/server";
 import { portalTimelineLink } from "@/lib/portal/notification-links";
 import { assertCanUploadToProject } from "@/lib/auth/upload-access";
 import { isBuildViewStaffRole } from "@/lib/auth/roles";
+import { PublicError } from "@/lib/errors/public";
+import { internalError } from "@/lib/errors/server";
 
 type TimelinePhotoInput = {
   storage_path: string;
@@ -99,7 +101,7 @@ async function requireTimelineStaff() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("You must be signed in");
+  if (!user) throw new PublicError("You must be signed in");
 
   const { data: me } = await supabase
     .from("users")
@@ -108,7 +110,7 @@ async function requireTimelineStaff() {
     .maybeSingle();
 
   if (!me?.role || !isBuildViewStaffRole(me.role as UserRole)) {
-    throw new Error("Only BuildView staff can edit or delete timeline milestones.");
+    throw new PublicError("Only BuildView staff can edit or delete timeline milestones.");
   }
   return { supabase, user };
 }
@@ -130,7 +132,7 @@ async function assertLinkedContentBelongsToProject(
       .is("deleted_at", null)
       .maybeSingle();
     if (!tour || tour.project_id !== projectId) {
-      throw new Error("The selected virtual tour does not belong to this project.");
+      throw new PublicError("The selected virtual tour does not belong to this project.");
     }
   }
 
@@ -142,7 +144,7 @@ async function assertLinkedContentBelongsToProject(
       .is("deleted_at", null)
       .maybeSingle();
     if (!report || report.project_id !== projectId) {
-      throw new Error("The selected report does not belong to this project.");
+      throw new PublicError("The selected report does not belong to this project.");
     }
   }
 }
@@ -156,7 +158,7 @@ async function getActiveEventProjectId(eventId: string): Promise<string> {
     .eq("id", eventId)
     .is("deleted_at", null)
     .maybeSingle();
-  if (!event) throw new Error("Timeline event not found");
+  if (!event) throw new PublicError("Timeline event not found");
   return event.project_id;
 }
 
@@ -171,7 +173,7 @@ async function insertTimelinePhotos(
   // inside this event's own folder.
   const expectedPrefix = `${projectId}/${eventId}/`;
   if (photos.some((photo) => !photo.storage_path.startsWith(expectedPrefix))) {
-    throw new Error("Invalid photo location for this milestone.");
+    throw new PublicError("Invalid photo location for this milestone.");
   }
 
   const admin = createServiceRoleClient();
@@ -197,10 +199,10 @@ async function insertTimelinePhotos(
   const { error } = await supabase.from("timeline_photos").insert(rows);
   if (!error) return;
 
-  if (!isRlsOrPermissionError(error.message)) throw new Error(error.message);
+  if (!isRlsOrPermissionError(error.message)) throw internalError("insertTimelinePhotos", error);
 
   const { error: retryError } = await admin.from("timeline_photos").insert(rows);
-  if (retryError) throw new Error(retryError.message);
+  if (retryError) throw internalError("insertTimelinePhotos", retryError);
 }
 
 export async function createTimelineEvent(data: {
@@ -266,7 +268,7 @@ export async function createTimelineEvent(data: {
     ({ id: eventId, error } = await insertEventRow(createServiceRoleClient(), payload));
   }
 
-  if (!eventId) throw new Error(error ?? "Failed to create timeline event");
+  if (!eventId) throw internalError("createTimelineEvent", error);
 
   if (validated.photos && validated.photos.length > 0) {
     await insertTimelinePhotos(eventId, validated.project_id, validated.photos, auth.userId);
@@ -304,7 +306,7 @@ export async function updateTimelineEvent(data: {
   author_name?: string | null;
 }) {
   const validation = validate(updateTimelineEventSchema, data);
-  if (!validation.success) throw new Error(validation.error);
+  if (!validation.success) throw new PublicError(validation.error);
 
   const { supabase, user } = await requireTimelineStaff();
 
@@ -315,7 +317,7 @@ export async function updateTimelineEvent(data: {
     .is("deleted_at", null)
     .single();
 
-  if (fetchError || !existing) throw new Error("Timeline event not found");
+  if (fetchError || !existing) throw new PublicError("Timeline event not found");
 
   await assertLinkedContentBelongsToProject(
     existing.project_id,
@@ -350,7 +352,7 @@ export async function updateTimelineEvent(data: {
     .update(update)
     .eq("id", validation.data.id);
 
-  if (error) throw new Error(error.message);
+  if (error) throw internalError("updateTimelineEvent", error);
 
   revalidateTimelinePaths(existing.project_id);
 }
@@ -380,7 +382,7 @@ export async function deleteTimelineEvent(eventId: string) {
     .is("deleted_at", null)
     .single();
 
-  if (fetchError || !event) throw new Error("Timeline event not found");
+  if (fetchError || !event) throw new PublicError("Timeline event not found");
 
   const now = new Date().toISOString();
 
@@ -388,7 +390,7 @@ export async function deleteTimelineEvent(eventId: string) {
     .from("timeline_events")
     .update({ deleted_at: now, updated_by: user.id })
     .eq("id", eventId);
-  if (error) throw new Error(error.message);
+  if (error) throw internalError("deleteTimelineEvent", error);
 
   const { error: photosError } = await supabase
     .from("timeline_photos")
@@ -411,13 +413,13 @@ export async function deleteTimelinePhoto(photoId: string) {
     .is("deleted_at", null)
     .single();
 
-  if (fetchError || !photo) throw new Error("Photo not found");
+  if (fetchError || !photo) throw new PublicError("Photo not found");
 
   const { error } = await supabase
     .from("timeline_photos")
     .update({ deleted_at: new Date().toISOString(), updated_by: user.id })
     .eq("id", photoId);
-  if (error) throw new Error(error.message);
+  if (error) throw internalError("deleteTimelinePhoto", error);
 
   const event = photo.event as unknown as { project_id: string } | null;
   if (event?.project_id) revalidateTimelinePaths(event.project_id);
@@ -426,7 +428,7 @@ export async function deleteTimelinePhoto(photoId: string) {
 export async function getTimelinePhotoSignedUrl(
   photoId: string
 ): Promise<{ url: string; caption: string | null }> {
-  if (!validate(uuid("Photo"), photoId).success) throw new Error("Photo not found");
+  if (!validate(uuid("Photo"), photoId).success) throw new PublicError("Photo not found");
 
   const supabase = await createClient();
 
@@ -438,7 +440,7 @@ export async function getTimelinePhotoSignedUrl(
     .single();
 
   if (error || !photo) {
-    throw new Error("Photo not found");
+    throw new PublicError("Photo not found");
   }
 
   const path = resolveTimelinePhotoStoragePath(photo.storage_path, photo.image_url);
@@ -447,7 +449,7 @@ export async function getTimelinePhotoSignedUrl(
     if (photo.image_url?.startsWith("http")) {
       return { url: photo.image_url, caption: photo.caption };
     }
-    throw new Error("Photo path not found");
+    throw new PublicError("File not found.");
   }
 
   const url = await createSignedStorageUrl(STORAGE_BUCKETS.TIMELINE_PHOTOS, path);

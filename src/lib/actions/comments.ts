@@ -12,6 +12,7 @@ import { validate } from "@/lib/validations/parse";
 import type { ProjectCommentInsert, ProjectCommentWithUser, UserRole } from "@/lib/types";
 import { canCommentOnProject, isBuildViewStaffRole } from "@/lib/auth/roles";
 import { currentUserCanViewProject } from "@/lib/auth/project-access";
+import { logServerError, toPublicMessage } from "@/lib/errors/server";
 
 export type CommentActionResult =
   | { ok: true }
@@ -102,13 +103,13 @@ export async function getProjectComments(
       .order("created_at", { ascending: true });
 
     if (error) {
-      console.error("[getProjectComments] failed:", error.message);
+      logServerError("getProjectComments", error, { projectId });
       return [];
     }
 
     return (data ?? []) as unknown as ProjectCommentWithUser[];
   } catch (err) {
-    console.error("[getProjectComments] unexpected failure:", err);
+    logServerError("getProjectComments", err, { projectId });
     return [];
   }
 }
@@ -189,25 +190,21 @@ export async function addProjectComment(data: {
 
     const { error } = await admin.from("project_comments").insert(payload);
     if (error) {
-      console.error("[addProjectComment] insert failed:", error.message, error.code);
       if (error.code === "42P01") {
-        return fail(
-          "Comments are not enabled in the database yet. Run supabase/FIX_project_comments.sql in Supabase."
-        );
+        logServerError("addProjectComment", error, { hint: "Apply supabase/FIX_project_comments.sql" });
+        return fail("Comments are not available yet. Contact BuildView support.");
       }
       if (
         error.message?.toLowerCase().includes("parent_id") ||
         error.code === "42703"
       ) {
-        return fail(
-          "Comment replies are not enabled yet. Run supabase/FIX_comment_replies.sql in Supabase."
-        );
+        logServerError("addProjectComment", error, { hint: "Apply supabase/FIX_comment_replies.sql" });
+        return fail("Comment replies are not available yet. Contact BuildView support.");
       }
-      return fail(error.message || "Failed to post comment");
+      return fail(toPublicMessage("addProjectComment", error, "Failed to post comment. Please try again."));
     }
   } catch (err) {
-    console.error("[addProjectComment] unexpected failure:", err);
-    return fail("Failed to post comment. Please try again.");
+    return fail(toPublicMessage("addProjectComment", err, "Failed to post comment. Please try again."));
   }
 
   return { ok: true };
@@ -250,10 +247,9 @@ export async function updateCommentStatus(
       .update({ status: validation.data.status, updated_by: user.id })
       .eq("id", validation.data.id);
 
-    if (error) return fail(error.message || "Failed to update comment");
+    if (error) return fail(toPublicMessage("updateCommentStatus", error, "Failed to update comment"));
   } catch (err) {
-    console.error("[updateCommentStatus] unexpected failure:", err);
-    return fail("Failed to update comment");
+    return fail(toPublicMessage("updateCommentStatus", err, "Failed to update comment"));
   }
 
   return { ok: true };
@@ -301,7 +297,7 @@ export async function deleteProjectComment(id: string): Promise<CommentActionRes
       .eq("id", id)
       .is("deleted_at", null);
 
-    if (error) return fail(error.message || "Failed to delete comment");
+    if (error) return fail(toPublicMessage("deleteProjectComment", error, "Failed to delete comment"));
 
     // Soft-delete nested replies when removing a root thread
     if (!comment.parent_id) {
@@ -312,8 +308,7 @@ export async function deleteProjectComment(id: string): Promise<CommentActionRes
         .is("deleted_at", null);
     }
   } catch (err) {
-    console.error("[deleteProjectComment] unexpected failure:", err);
-    return fail("Failed to delete comment");
+    return fail(toPublicMessage("deleteProjectComment", err, "Failed to delete comment"));
   }
 
   return { ok: true };

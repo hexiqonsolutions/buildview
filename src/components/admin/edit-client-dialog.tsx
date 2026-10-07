@@ -25,6 +25,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { getErrorMessage } from "@/lib/errors/public";
 
 export function EditClientDialog({ client }: { client: Client }) {
   const [open, setOpen] = useState(false);
@@ -58,7 +59,7 @@ export function EditClientDialog({ client }: { client: Client }) {
       });
       setOpen(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update client");
+      setError(getErrorMessage(err, "Failed to update client"));
     }
     setLoading(false);
   }
@@ -71,7 +72,7 @@ export function EditClientDialog({ client }: { client: Client }) {
       await softDeleteClient(client.id);
       setOpen(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to deactivate client");
+      setError(getErrorMessage(err, "Failed to deactivate client"));
     }
     setLoading(false);
   }

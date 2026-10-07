@@ -18,6 +18,7 @@ import {
   type User,
 } from "@/lib/types";
 import { cn, formatDate, getStatusColor } from "@/lib/utils";
+import { getErrorMessage } from "@/lib/errors/public";
 
 const COLUMNS: IssueStatus[] = ["open", "in_progress", "resolved", "closed"];
 
@@ -84,7 +85,7 @@ export function IssueKanban({ issues, projects, users }: IssueKanbanProps) {
         await updateIssueStatus(issueId, status);
       } catch (err) {
         setMoveError(
-          `Couldn't move "${issue.title}": ${err instanceof Error ? err.message : "unknown error"}`
+          `Couldn't move "${issue.title}": ${getErrorMessage(err, "unknown error")}`
         );
       }
     });

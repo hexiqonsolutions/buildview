@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { type StorageBucket } from "@/lib/types";
+import { internalError } from "@/lib/errors/server";
 
 /** Create a time-limited signed URL for private bucket access (server-side). */
 export async function createSignedStorageUrl(
@@ -14,7 +15,7 @@ export async function createSignedStorageUrl(
     .createSignedUrl(path, expiresInSeconds);
 
   if (error || !data?.signedUrl) {
-    throw new Error(error?.message ?? "Failed to generate download URL");
+    throw internalError("createSignedStorageUrl", error);
   }
 
   return data.signedUrl;

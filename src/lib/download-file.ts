@@ -1,8 +1,9 @@
+import { PublicError } from "@/lib/errors/public";
 /** Force a same-origin download so browsers don't open remote files in a new tab. */
 export async function downloadFileFromUrl(url: string, fileName: string) {
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error("Failed to download file");
+    throw new PublicError("Failed to download file");
   }
 
   const blob = await response.blob();

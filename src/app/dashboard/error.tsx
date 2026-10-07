@@ -1,6 +1,7 @@
 "use client";
 
 import { ErrorState } from "@/components/patterns/page-states";
+import { getBoundaryMessage } from "@/lib/errors/public";
 
 export default function DashboardError({
   error,
@@ -12,7 +13,7 @@ export default function DashboardError({
   return (
     <ErrorState
       title="Dashboard failed to load"
-      message={error.message || "Something went wrong while loading your portal."}
+      message={getBoundaryMessage(error, "Something went wrong while loading your portal.")}
       onRetry={reset}
       variant="intel"
     />

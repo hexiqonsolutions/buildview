@@ -31,6 +31,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { getErrorMessage } from "@/lib/errors/public";
 
 interface CreateIssueFormProps {
   projects: Project[];
@@ -120,7 +121,7 @@ export function CreateIssueForm({ projects, users = [] }: CreateIssueFormProps) 
       setOpen(false);
       resetForm();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create issue");
+      setError(getErrorMessage(err, "Failed to create issue"));
     }
 
     setLoading(false);

@@ -7,6 +7,8 @@ import { resolveStoragePath } from "@/lib/supabase/storage";
 import { STORAGE_BUCKETS } from "@/lib/types";
 import { parseOrThrow } from "@/lib/validations/parse";
 import { reportIdSchema } from "@/lib/validations/data";
+import { PublicError } from "@/lib/errors/public";
+import { internalError } from "@/lib/errors/server";
 
 /** Generate a signed URL for previewing or downloading a report PDF. */
 export async function getReportSignedUrl(
@@ -17,7 +19,7 @@ export async function getReportSignedUrl(
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("You must be signed in");
+  if (!user) throw new PublicError("You must be signed in");
 
   // RLS on reports enforces project access for the current user.
   const { data: report, error } = await supabase
@@ -28,7 +30,7 @@ export async function getReportSignedUrl(
     .single();
 
   if (error || !report) {
-    throw new Error("Report not found or you do not have access");
+    throw new PublicError("Report not found or you do not have access");
   }
 
   const path = resolveStoragePath(report.storage_path, report.file_url);
@@ -37,7 +39,7 @@ export async function getReportSignedUrl(
     if (report.file_url?.startsWith("http")) {
       return { url: report.file_url, fileName: report.file_name };
     }
-    throw new Error("Report file path not found");
+    throw new PublicError("File not found.");
   }
 
   try {
@@ -51,7 +53,7 @@ export async function getReportSignedUrl(
       .createSignedUrl(path, 3600);
 
     if (signError || !data?.signedUrl) {
-      throw new Error(signError?.message ?? "Failed to generate download URL");
+      throw internalError("getReportSignedUrl", signError);
     }
 
     return { url: data.signedUrl, fileName: report.file_name };

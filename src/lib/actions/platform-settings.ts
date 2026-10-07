@@ -11,6 +11,7 @@ import {
   type PlatformSettings,
 } from "@/lib/admin/platform-settings";
 
+import { toPublicMessage } from "@/lib/errors/server";
 import { validate } from "@/lib/validations/parse";
 import { updatePlatformSettingsSchema } from "@/lib/validations/platform-settings";
 
@@ -111,14 +112,19 @@ export async function updatePlatformSettings(
       })
       .eq("id", "default");
 
-    if (error) return { success: false, error: error.message };
+    if (error) {
+      return {
+        success: false,
+        error: toPublicMessage("updatePlatformSettings", error, "Failed to save settings"),
+      };
+    }
 
     revalidatePath("/admin/settings");
     return { success: true };
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : "Failed to save settings",
+      error: toPublicMessage("updatePlatformSettings", err, "Failed to save settings"),
     };
   }
 }

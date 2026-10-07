@@ -49,6 +49,7 @@ import {
   type User,
 } from "@/lib/types";
 import { formatDate, getStatusColor } from "@/lib/utils";
+import { getErrorMessage } from "@/lib/errors/public";
 
 type IssueRow = IssueWithRelations & { project?: { name: string; id?: string } | null };
 
@@ -118,7 +119,7 @@ export function IssueDetailDrawer({
         }))
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to upload photos");
+      setError(getErrorMessage(err, "Failed to upload photos"));
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -130,7 +131,7 @@ export function IssueDetailDrawer({
     try {
       await deleteIssueImage(imageId);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to remove photo");
+      setError(getErrorMessage(err, "Failed to remove photo"));
     }
   }
 
@@ -142,7 +143,7 @@ export function IssueDetailDrawer({
       await deleteIssue(issue.id);
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete issue");
+      setError(getErrorMessage(err, "Failed to delete issue"));
     } finally {
       setIsDeleting(false);
     }
@@ -166,7 +167,7 @@ export function IssueDetailDrawer({
         });
         setSaved(true);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to save issue");
+        setError(getErrorMessage(err, "Failed to save issue"));
       }
     });
   }

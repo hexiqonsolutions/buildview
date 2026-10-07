@@ -7,6 +7,8 @@ import { resolveNotificationHref } from "@/lib/portal/notification-links";
 import { parseOrThrow, validate } from "@/lib/validations/parse";
 import { uuid } from "@/lib/validations/primitives";
 import { notificationLimitSchema } from "@/lib/validations/notifications";
+import { PublicError } from "@/lib/errors/public";
+import { internalError } from "@/lib/errors/server";
 
 function revalidateNotificationPaths() {
   revalidatePath("/admin/notifications");
@@ -70,7 +72,7 @@ export async function markNotificationRead(notificationId: string) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
+  if (!user) throw new PublicError("Unauthorized");
 
   const { error } = await supabase
     .from("notifications")
@@ -82,7 +84,7 @@ export async function markNotificationRead(notificationId: string) {
     .eq("id", id)
     .eq("user_id", user.id);
 
-  if (error) throw new Error(error.message);
+  if (error) throw internalError("markNotificationRead", error);
   revalidateNotificationPaths();
 }
 
@@ -91,7 +93,7 @@ export async function markAllNotificationsRead() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("Unauthorized");
+  if (!user) throw new PublicError("Unauthorized");
 
   const { error } = await supabase
     .from("notifications")
@@ -104,6 +106,6 @@ export async function markAllNotificationsRead() {
     .eq("is_read", false)
     .is("deleted_at", null);
 
-  if (error) throw new Error(error.message);
+  if (error) throw internalError("markAllNotificationsRead", error);
   revalidateNotificationPaths();
 }

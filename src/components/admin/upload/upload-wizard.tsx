@@ -72,6 +72,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { getErrorMessage, isUnclassifiedServerError, PublicError } from "@/lib/errors/public";
 
 const ADMIN_CATEGORIES: {
   id: UploadCategory;
@@ -95,7 +96,7 @@ const ADMIN_CATEGORIES: {
 
 /** Rethrows a server-side rejection client-side so its message reaches the error banner. */
 function unwrapUploadResult(result: UploadResult): UploadResult {
-  if (result.error) throw new Error(result.error);
+  if (result.error) throw new PublicError(result.error);
   return result;
 }
 
@@ -280,13 +281,12 @@ export function UploadWizard({
       setResult(uploadResult);
       setStep("success");
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Upload failed";
       // Upload often succeeds; a follow-up page refresh can still throw opaque RSC errors.
-      if (/Server Components render|digest/i.test(msg)) {
+      if (isUnclassifiedServerError(err)) {
         setResult({});
         setStep("success");
       } else {
-        setError(msg);
+        setError(getErrorMessage(err, "Upload failed"));
       }
     }
 
@@ -407,7 +407,7 @@ export function UploadWizard({
     if (categoryIsInvoice(category)) {
       const file = files[0];
       const clientId = scope.clientId;
-      if (!clientId) throw new Error("Choose a client before uploading an invoice.");
+      if (!clientId) throw new PublicError("Choose a client before uploading an invoice.");
 
       const invoiceNumber =
         title.trim() || file.name.replace(/\.[^.]+$/, "") || `INV-${Date.now()}`;
@@ -420,7 +420,7 @@ export function UploadWizard({
         amount,
         description: progressNote || undefined,
       });
-      if ("error" in begun) throw new Error(begun.error);
+      if ("error" in begun) throw new PublicError(begun.error);
       const { invoiceId } = begun;
 
       const upload = await uploadInvoiceFile(clientId, invoiceId, file);
@@ -452,7 +452,7 @@ export function UploadWizard({
       }));
     }
 
-    throw new Error("Unsupported upload category.");
+    throw new PublicError("Unsupported upload category.");
   }
 
   function handleFilePick(selected: FileList | null) {

@@ -5,6 +5,7 @@ import { Download, Loader2 } from "lucide-react";
 import { getInvoiceDownloadUrl } from "@/lib/actions/admin";
 import { downloadFileFromUrl } from "@/lib/download-file";
 import { Button } from "@/components/ui/button";
+import { getErrorMessage } from "@/lib/errors/public";
 
 interface InvoiceDownloadButtonProps {
   invoiceId: string;
@@ -33,7 +34,7 @@ export function InvoiceDownloadButton({
         const { url, fileName } = await getInvoiceDownloadUrl(invoiceId);
         await downloadFileFromUrl(url, fileName);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Download failed");
+        setError(getErrorMessage(err, "Download failed"));
       }
     });
   }

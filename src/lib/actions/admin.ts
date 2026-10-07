@@ -74,6 +74,8 @@ import {
   buildInvoiceNotificationPayload,
   type InvoiceNotificationKind,
 } from "@/lib/portal/invoice-notifications";
+import { PublicError } from "@/lib/errors/public";
+import { internalError, logServerError, toPublicMessage } from "@/lib/errors/server";
 
 const CLIENT_EDITABLE_STATUSES: ProjectStatus[] = [
   "planning",
@@ -90,7 +92,7 @@ export async function updateProjectStatus(projectId: string, status: string) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("You must be signed in");
+  if (!user) throw new PublicError("You must be signed in");
 
   const { data: me } = await supabase
     .from("users")
@@ -99,14 +101,14 @@ export async function updateProjectStatus(projectId: string, status: string) {
     .maybeSingle();
 
   if (!me?.role || !can(me.role as UserRole, "update", "projects")) {
-    throw new Error("You do not have permission to update project status.");
+    throw new PublicError("You do not have permission to update project status.");
   }
 
   const role = me.role as UserRole;
   const isStaff = isBuildViewStaffRole(role);
 
   if (!isStaff && !CLIENT_EDITABLE_STATUSES.includes(nextStatus)) {
-    throw new Error("Clients can only set Planning, In Progress, On Hold, or Completed.");
+    throw new PublicError("Clients can only set Planning, In Progress, On Hold, or Completed.");
   }
 
   const admin = createServiceRoleClient();
@@ -117,11 +119,11 @@ export async function updateProjectStatus(projectId: string, status: string) {
     .is("deleted_at", null)
     .maybeSingle();
 
-  if (fetchError || !project) throw new Error("Project not found");
+  if (fetchError || !project) throw new PublicError("Project not found");
 
   if (isClientPortalRole(role)) {
     if (!isProjectVisibleInClientPortal(project)) {
-      throw new Error("This project is not available in your portal.");
+      throw new PublicError("This project is not available in your portal.");
     }
 
     let hasAccess = Boolean(me.client_id && project.client_id === me.client_id);
@@ -136,7 +138,7 @@ export async function updateProjectStatus(projectId: string, status: string) {
       hasAccess = Boolean(assignment);
     }
     if (!hasAccess) {
-      throw new Error("You do not have access to this project.");
+      throw new PublicError("You do not have access to this project.");
     }
   }
 
@@ -151,7 +153,7 @@ export async function updateProjectStatus(projectId: string, status: string) {
     .eq("id", projectId)
     .is("deleted_at", null);
 
-  if (error) throw new Error(error.message);
+  if (error) throw internalError("updateProjectStatus", error);
 
   revalidatePath("/admin/projects");
   revalidatePath("/dashboard/projects");
@@ -172,7 +174,7 @@ export async function createClientRecord(data: {
 
   const { supabase } = await requireStaffPermission("create", "clients");
   const { error } = await supabase.from("clients").insert(validated);
-  if (error) throw new Error(error.message);
+  if (error) throw internalError("createClientRecord", error);
   revalidatePath("/admin/clients");
 }
 
@@ -243,7 +245,7 @@ export async function createProject(data: {
   try {
     ({ supabase, user } = await requireStaffPermission("create", "projects"));
   } catch (err) {
-    return { error: err instanceof Error ? err.message : "Not allowed" };
+    return { error: toPublicMessage("createProject", err, "Not allowed") };
   }
 
   const payload: ProjectInsert = {
@@ -298,11 +300,11 @@ export async function createProject(data: {
         .select("id")
         .single();
       if (retryError || !retryCreated) {
-        return { error: retryError?.message ?? "Failed to create project" };
+        return { error: toPublicMessage("createProject", retryError, "Failed to create project") };
       }
       return finish(retryCreated.id);
     }
-    return { error: error?.message ?? "Failed to create project" };
+    return { error: toPublicMessage("createProject", error, "Failed to create project") };
   }
 
   return finish(created.id);
@@ -326,7 +328,7 @@ export async function updateProjectCoverImage(
     .eq("id", projectId)
     .is("deleted_at", null);
 
-  if (error) throw new Error(error.message);
+  if (error) throw internalError("updateProjectCoverImage", error);
 
   revalidatePath("/admin/projects");
   revalidatePath(`/admin/projects/${projectId}`);
@@ -347,8 +349,8 @@ export async function updateTourThumbnail(tourId: string, thumbnailUrl: string |
     .is("deleted_at", null)
     .maybeSingle();
 
-  if (tourError) throw new Error(tourError.message);
-  if (!tour) throw new Error("Tour not found.");
+  if (tourError) throw internalError("updateTourThumbnail", tourError);
+  if (!tour) throw new PublicError("Tour not found.");
 
   await assertCanUploadToProject(tour.project_id, "matterport");
 
@@ -362,7 +364,7 @@ export async function updateTourThumbnail(tourId: string, thumbnailUrl: string |
     .update({ thumbnail_url: validated.thumbnailUrl, updated_by: user?.id ?? null })
     .eq("id", tourId);
 
-  if (error) throw new Error(error.message);
+  if (error) throw internalError("updateTourThumbnail", error);
 
   revalidatePath("/admin/tours");
   revalidatePath(`/admin/projects/${tour.project_id}`);
@@ -435,11 +437,11 @@ export async function createTour(data: {
         .select("id")
         .single();
       if (retryError || !retryInserted) {
-        throw new Error(retryError?.message ?? "Failed to create tour");
+        throw internalError("createTour", retryError);
       }
       tourId = retryInserted.id;
     } else {
-      throw new Error(error?.message ?? "Failed to create tour");
+      throw internalError("createTour", error);
     }
   } else {
     tourId = inserted.id;
@@ -575,7 +577,7 @@ async function insertReport(validated: ValidatedReportInput) {
         .select("id")
         .single();
       if (retryError || !retryReport) {
-        throw new Error(retryError?.message ?? "Failed to create report");
+        throw internalError("insertReport", retryError);
       }
 
       if (!validated.skipClientNotify) {
@@ -625,7 +627,7 @@ async function insertReport(validated: ValidatedReportInput) {
       }
 
       if (retryError || !retryReport) {
-        throw new Error(retryError?.message ?? "Failed to create report");
+        throw internalError("insertReport", retryError);
       }
 
       if (!validated.skipClientNotify) {
@@ -644,7 +646,7 @@ async function insertReport(validated: ValidatedReportInput) {
       return retryReport.id;
     }
 
-    throw new Error(error?.message ?? "Failed to create report");
+    throw internalError("insertReport", error);
   }
 
   if (!validated.skipClientNotify) {
@@ -687,7 +689,7 @@ export async function createDocumentFolder(data: {
 
   const { error } = await supabase.from("document_folders").insert(payload);
 
-  if (error) throw new Error(error.message);
+  if (error) throw internalError("createDocumentFolder", error);
 
   revalidatePath("/admin/documents");
   revalidatePath(`/dashboard/projects/${validated.project_id}`);
@@ -805,14 +807,13 @@ async function insertDocument(validated: ValidatedDocumentInput) {
     revalidatePath(`/dashboard/projects/${validated.project_id}`);
     return document.id;
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Failed to create document";
-    if (/server components render/i.test(message)) {
-      throw new Error(
+    if (err instanceof PublicError) throw err;
+    if (err instanceof Error && /server components render/i.test(err.message)) {
+      throw new PublicError(
         "Document may have uploaded, but the page failed to refresh. Close this dialog and refresh the documents list."
       );
     }
-    throw new Error(message);
+    throw internalError("createDocument", err);
   }
 }
 
@@ -855,7 +856,7 @@ async function insertDocumentRow(
   }
 
   if (error || !data) {
-    throw new Error(error?.message ?? "Failed to create document");
+    throw internalError("insertDocumentRow", error);
   }
 
   return data;
@@ -896,7 +897,7 @@ export async function createInvoice(data: {
     .insert(payload)
     .select("id, client_id, project_id, invoice_number, amount, currency, due_date, status")
     .single();
-  if (error || !created) throw new Error(error?.message ?? "Failed to create invoice");
+  if (error || !created) throw internalError("createInvoice", error);
 
   if (created.status === "sent" || created.status === "paid" || created.status === "overdue") {
     const kind =
@@ -940,7 +941,7 @@ export async function attachInvoicePdf(
     })
     .eq("id", invoiceId);
 
-  if (error) throw new Error(error.message);
+  if (error) throw internalError("attachInvoicePdf", error);
   revalidatePath("/admin/invoices");
   revalidatePath("/dashboard/invoices");
 }
@@ -952,7 +953,7 @@ export async function getInvoiceDownloadUrl(invoiceId: string) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("You must be signed in");
+  if (!user) throw new PublicError("You must be signed in");
 
   // Table RLS: staff see all; client_admin see their org invoices only.
   const { data: invoice, error } = await supabase
@@ -963,7 +964,7 @@ export async function getInvoiceDownloadUrl(invoiceId: string) {
     .single();
 
   if (error || !invoice) {
-    throw new Error("Invoice not found or you do not have access");
+    throw new PublicError("Invoice not found or you do not have access");
   }
 
   const path = resolveInvoiceStoragePath(invoice.storage_path, invoice.file_url);
@@ -973,7 +974,7 @@ export async function getInvoiceDownloadUrl(invoiceId: string) {
     if (invoice.file_url?.startsWith("http")) {
       return { url: invoice.file_url, fileName };
     }
-    throw new Error("No PDF attached to this invoice");
+    throw new PublicError("No PDF attached to this invoice");
   }
 
   try {
@@ -988,7 +989,7 @@ export async function getInvoiceDownloadUrl(invoiceId: string) {
       .createSignedUrl(path, 3600);
 
     if (signError || !data?.signedUrl) {
-      throw new Error(signError?.message ?? "Failed to generate download URL");
+      throw internalError("getInvoiceDownloadUrl", signError);
     }
 
     return { url: data.signedUrl, fileName };
@@ -1003,7 +1004,7 @@ export async function assignUserToProject(projectId: string, userId: string) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("You must be signed in");
+  if (!user) throw new PublicError("You must be signed in");
 
   const { data: me } = await supabase
     .from("users")
@@ -1012,7 +1013,7 @@ export async function assignUserToProject(projectId: string, userId: string) {
     .maybeSingle();
 
   if (!me || !isBuildViewStaffRole(me.role)) {
-    throw new Error("Only BuildView staff can assign projects");
+    throw new PublicError("Only BuildView staff can assign projects");
   }
 
   // Service role avoids RLS edge cases when staff helpers/enums differ across DBs.
@@ -1037,7 +1038,7 @@ export async function assignUserToProject(projectId: string, userId: string) {
         })
         .eq("id", existing.id);
 
-      if (error) throw new Error(error.message);
+      if (error) throw internalError("assignUserToProject", error);
     }
   } else {
     const { error } = await admin.from("project_assignments").insert({
@@ -1047,7 +1048,7 @@ export async function assignUserToProject(projectId: string, userId: string) {
       created_by: user.id,
       updated_by: null,
     });
-    if (error) throw new Error(error.message);
+    if (error) throw internalError("assignUserToProject", error);
   }
 
   const { data: project } = await admin
@@ -1080,7 +1081,7 @@ export async function unassignUserFromProject(projectId: string, userId: string)
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("You must be signed in");
+  if (!user) throw new PublicError("You must be signed in");
 
   const { data: me } = await supabase
     .from("users")
@@ -1089,7 +1090,7 @@ export async function unassignUserFromProject(projectId: string, userId: string)
     .maybeSingle();
 
   if (!me || !isBuildViewStaffRole(me.role)) {
-    throw new Error("Only BuildView staff can update project access");
+    throw new PublicError("Only BuildView staff can update project access");
   }
 
   const admin = createServiceRoleClient();
@@ -1104,7 +1105,7 @@ export async function unassignUserFromProject(projectId: string, userId: string)
     .eq("user_id", userId)
     .is("deleted_at", null);
 
-  if (error) throw new Error(error.message);
+  if (error) throw internalError("unassignUserFromProject", error);
 
   revalidatePath("/admin/projects");
   revalidatePath(`/dashboard/projects/${projectId}`);
@@ -1125,7 +1126,7 @@ export async function updateUserProfile(data: {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("You must be signed in");
+  if (!user) throw new PublicError("You must be signed in");
 
   const { data: me } = await supabase
     .from("users")
@@ -1134,7 +1135,7 @@ export async function updateUserProfile(data: {
     .maybeSingle();
 
   if (!me || !isBuildViewStaffRole(me.role)) {
-    throw new Error("Only BuildView staff can manage users");
+    throw new PublicError("Only BuildView staff can manage users");
   }
 
   const actorRole = me.role as UserRole;
@@ -1146,7 +1147,7 @@ export async function updateUserProfile(data: {
     .eq("id", validated.id)
     .maybeSingle();
 
-  if (!existing) throw new Error("User not found");
+  if (!existing) throw new PublicError("User not found");
 
   const roleChanging = existing.role !== validated.role;
   const nextDashboard = isClientPortalRole(validated.role)
@@ -1157,11 +1158,11 @@ export async function updateUserProfile(data: {
     Boolean(validated.client_dashboard_type);
 
   if ((roleChanging || dashboardChanging) && !canAssignRoles(actorRole)) {
-    throw new Error("Only Super Admin can assign roles and dashboards");
+    throw new PublicError("Only Super Admin can assign roles and dashboards");
   }
 
   if (isClientPortalRole(validated.role) && !validated.client_id) {
-    throw new Error(
+    throw new PublicError(
       "Link a client organization before assigning Client Admin or other client portal roles."
     );
   }
@@ -1188,7 +1189,7 @@ export async function updateUserProfile(data: {
       const msg = clientError.message.toLowerCase();
       // Migration 017 not applied yet — still save on the user so portfolio can work.
       if (!(msg.includes("dashboard_type") && (msg.includes("schema cache") || msg.includes("column")))) {
-        throw new Error(clientError.message);
+        throw internalError("updateUserProfile", clientError);
       }
     }
   }
@@ -1209,16 +1210,17 @@ export async function updateUserProfile(data: {
   if (error) {
     const msg = error.message.toLowerCase();
     if (msg.includes("dashboard_type") && (msg.includes("schema cache") || msg.includes("column"))) {
-      throw new Error(
-        "Database migration required. Paste and run supabase/migrations/017_client_dashboard_type.sql in the Supabase SQL Editor, then Save again."
-      );
+      logServerError("updateUserProfile", error, { hint: "Apply migration 017_client_dashboard_type.sql" });
+      throw new PublicError("Dashboard settings can't be saved yet. Contact BuildView support.");
     }
     if (msg.includes("invalid input value for enum") || msg.includes("user_role")) {
-      throw new Error(
-        `Role "${validated.role}" is not available in the database yet. Run the role migrations in Supabase, then try again.`
-      );
+      logServerError("updateUserProfile", error, {
+        hint: "Apply supabase/FIX_user_roles_enum.sql",
+        role: validated.role,
+      });
+      throw new PublicError("This role can't be assigned yet. Contact BuildView support.");
     }
-    throw new Error(error.message);
+    throw internalError("updateUserProfile", error);
   }
 
   // Revalidate admin lists only — avoid cascading /dashboard RSC failures into the action result.
@@ -1250,7 +1252,7 @@ export async function updateClientRecord(data: {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("You must be signed in");
+  if (!user) throw new PublicError("You must be signed in");
 
   const { data: me } = await supabase
     .from("users")
@@ -1259,7 +1261,7 @@ export async function updateClientRecord(data: {
     .maybeSingle();
 
   if (!me || !isBuildViewStaffRole(me.role as UserRole)) {
-    throw new Error("Only BuildView staff can update clients");
+    throw new PublicError("Only BuildView staff can update clients");
   }
 
   if (validated.dashboard_type !== undefined && !canAssignRoles(me.role as UserRole)) {
@@ -1274,7 +1276,7 @@ export async function updateClientRecord(data: {
       (existingClient.dashboard_type ?? "construction") !==
         (validated.dashboard_type ?? "construction")
     ) {
-      throw new Error("Only Super Admin can assign client dashboards");
+      throw new PublicError("Only Super Admin can assign client dashboards");
     }
   }
 
@@ -1299,7 +1301,7 @@ export async function updateClientRecord(data: {
     .eq("id", validated.id)
     .is("deleted_at", null);
 
-  if (error) throw new Error(error.message);
+  if (error) throw internalError("updateClientRecord", error);
 
   // Keep linked portal users in sync so their session resolves the new dashboard.
   if (validated.dashboard_type) {
@@ -1341,7 +1343,7 @@ export async function updateProjectRecord(data: {
   try {
     ({ supabase, user } = await requireStaffPermission("update", "projects"));
   } catch (err) {
-    return { error: err instanceof Error ? err.message : "Not allowed" };
+    return { error: toPublicMessage("updateProjectRecord", err, "Not allowed") };
   }
 
   const payload: ProjectUpdate = {
@@ -1372,7 +1374,9 @@ export async function updateProjectRecord(data: {
       (msg.includes("area_sqft") || msg.includes("portfolio_category")) &&
       (msg.includes("schema cache") || msg.includes("column") || msg.includes("could not find"));
 
-    if (!missingPortfolioCols) return { error: error.message };
+    if (!missingPortfolioCols) {
+      return { error: toPublicMessage("updateProjectRecord", error, "Failed to update project") };
+    }
 
     const { area_sqft: _a, portfolio_category: _c, ...basePayload } = payload;
     const { data: retried, error: retryError } = await supabase
@@ -1381,7 +1385,9 @@ export async function updateProjectRecord(data: {
       .eq("id", validated.id)
       .is("deleted_at", null)
       .select("id");
-    if (retryError) return { error: retryError.message };
+    if (retryError) {
+      return { error: toPublicMessage("updateProjectRecord", retryError, "Failed to update project") };
+    }
     updatedCount = retried?.length ?? 0;
   }
 
@@ -1445,8 +1451,8 @@ async function getActiveProjectSummary(projectId: string) {
     .is("deleted_at", null)
     .maybeSingle();
 
-  if (error) throw new Error(error.message);
-  if (!data) throw new Error("Project not found");
+  if (error) throw internalError("getActiveProjectSummary", error);
+  if (!data) throw new PublicError("Project not found");
   return data;
 }
 
@@ -1467,7 +1473,7 @@ export async function softDeleteProject(projectId: string) {
     .eq("id", projectId)
     .is("deleted_at", null);
 
-  if (error) throw new Error(error.message);
+  if (error) throw internalError("softDeleteProject", error);
 
   await notifyProjectRemovedFromPortal(projectId, project.name, "deleted");
   revalidateProjectPaths(projectId);
@@ -1489,7 +1495,7 @@ export async function suspendProject(projectId: string) {
     .eq("id", projectId)
     .is("deleted_at", null);
 
-  if (error) throw new Error(error.message);
+  if (error) throw internalError("suspendProject", error);
 
   await notifyProjectRemovedFromPortal(projectId, project.name, "suspended");
   revalidateProjectPaths(projectId);
@@ -1510,7 +1516,7 @@ export async function restoreProject(projectId: string) {
     .eq("id", projectId)
     .is("deleted_at", null);
 
-  if (error) throw new Error(error.message);
+  if (error) throw internalError("restoreProject", error);
 
   revalidateProjectPaths(projectId);
 }
@@ -1534,7 +1540,7 @@ export async function softDeleteClient(clientId: string) {
     .eq("client_id", clientId)
     .is("deleted_at", null);
 
-  if (projectError) throw new Error(projectError.message);
+  if (projectError) throw internalError("softDeleteClient", projectError);
 
   // Unlink portal users from this client so they can be reassigned later.
   const { error: usersError } = await supabase
@@ -1546,7 +1552,7 @@ export async function softDeleteClient(clientId: string) {
     .eq("client_id", clientId)
     .is("deleted_at", null);
 
-  if (usersError) throw new Error(usersError.message);
+  if (usersError) throw internalError("softDeleteClient", usersError);
 
   const { error } = await supabase
     .from("clients")
@@ -1559,7 +1565,7 @@ export async function softDeleteClient(clientId: string) {
     .eq("id", clientId)
     .is("deleted_at", null);
 
-  if (error) throw new Error(error.message);
+  if (error) throw internalError("softDeleteClient", error);
 
   revalidatePath("/admin/clients");
   revalidatePath("/admin/projects");
@@ -1586,7 +1592,7 @@ export async function updateInvoiceStatus(invoiceId: string, status: string) {
     .update(update)
     .eq("id", invoiceId);
 
-  if (error) throw new Error(error.message);
+  if (error) throw internalError("updateInvoiceStatus", error);
 
   const admin = createServiceRoleClient();
   const { data: invoice } = await admin
@@ -1677,7 +1683,7 @@ export async function sendInvoiceNotification(
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : "Failed to send notification",
+      error: toPublicMessage("sendInvoiceNotification", err, "Failed to send notification"),
     };
   }
 }

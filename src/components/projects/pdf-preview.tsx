@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { getErrorMessage } from "@/lib/errors/public";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
@@ -36,7 +37,7 @@ export function PdfPreview({ reportId, fileName, title }: PdfPreviewProps) {
       setSignedUrl(url);
       return url;
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to load PDF";
+      const message = getErrorMessage(err, "Failed to load PDF");
       setError(message);
       return null;
     } finally {

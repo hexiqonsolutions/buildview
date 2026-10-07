@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { isValidMatterportUrl } from "@/lib/matterport";
 import type { Project, Building, Floor } from "@/lib/types";
+import { getErrorMessage } from "@/lib/errors/public";
 
 interface CreateTourFormProps {
   projects?: Project[];
@@ -88,7 +89,7 @@ export function CreateTourForm({
       setFloorId("");
       setShowPreview(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create tour");
+      setError(getErrorMessage(err, "Failed to create tour"));
     }
     setLoading(false);
   }

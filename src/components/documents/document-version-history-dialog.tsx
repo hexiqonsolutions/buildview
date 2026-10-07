@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import type { Document } from "@/lib/types";
 import { formatDate, formatFileSize } from "@/lib/utils";
+import { getErrorMessage } from "@/lib/errors/public";
 
 export function DocumentVersionHistoryDialog({
   document,
@@ -37,7 +38,7 @@ export function DocumentVersionHistoryDialog({
       const rows = await getDocumentVersionHistory(groupId);
       setVersions(rows);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load version history");
+      setError(getErrorMessage(err, "Failed to load version history"));
     } finally {
       setLoading(false);
     }

@@ -15,6 +15,8 @@ import {
 } from "@/lib/validations/data";
 import type { Document, DocumentInsert } from "@/lib/types";
 import { STORAGE_BUCKETS } from "@/lib/types";
+import { PublicError } from "@/lib/errors/public";
+import { internalError } from "@/lib/errors/server";
 
 /** Generate a signed URL for downloading a document. */
 export async function getDocumentSignedUrl(
@@ -31,7 +33,7 @@ export async function getDocumentSignedUrl(
     .single();
 
   if (error || !document) {
-    throw new Error("Document not found");
+    throw new PublicError("Document not found");
   }
 
   const path = resolveDocumentStoragePath(
@@ -43,7 +45,7 @@ export async function getDocumentSignedUrl(
     if (document.file_url?.startsWith("http")) {
       return { url: document.file_url, fileName: document.file_name };
     }
-    throw new Error("Document file path not found");
+    throw new PublicError("File not found.");
   }
 
   const url = await createSignedStorageUrl(STORAGE_BUCKETS.DOCUMENTS, path);
@@ -64,7 +66,7 @@ export async function getDocumentVersionHistory(
     .is("deleted_at", null)
     .order("version_number", { ascending: false });
 
-  if (error) throw new Error(error.message);
+  if (error) throw internalError("getDocumentVersionHistory", error);
   return (data ?? []) as Document[];
 }
 
@@ -79,7 +81,7 @@ export async function replaceDocumentVersion(data: {
   parseOrThrow(replaceDocumentVersionSchema, data);
   const validation = replaceDocumentSchema.safeParse(data);
   if (!validation.success) {
-    throw new Error(validation.error.errors[0]?.message ?? "Invalid replace data");
+    throw new PublicError(validation.error.errors[0]?.message ?? "Invalid replace data");
   }
 
   const supabase = await createClient();
@@ -96,13 +98,13 @@ export async function replaceDocumentVersion(data: {
     .single();
 
   if (currentError || !current) {
-    throw new Error("Current document version not found");
+    throw new PublicError("Current document version not found");
   }
 
   await assertCanUploadToProject(current.project_id, "documents");
 
   if (!validation.data.storage_path.startsWith(`${current.project_id}/`)) {
-    throw new Error("Storage path is outside the allowed folder");
+    throw new PublicError("This file cannot be replaced from here.");
   }
 
   const nextVersion = (current.version_number ?? 1) + 1;
@@ -113,7 +115,7 @@ export async function replaceDocumentVersion(data: {
     .update({ is_current: false, updated_by: user?.id ?? null })
     .eq("id", current.id);
 
-  if (retireError) throw new Error(retireError.message);
+  if (retireError) throw internalError("replaceDocumentVersion", retireError);
 
   const payload: DocumentInsert = {
     id: newId,
@@ -138,7 +140,7 @@ export async function replaceDocumentVersion(data: {
   };
 
   const { error: insertError } = await supabase.from("documents").insert(payload);
-  if (insertError) throw new Error(insertError.message);
+  if (insertError) throw internalError("replaceDocumentVersion", insertError);
 
   revalidatePath("/admin/documents");
   revalidatePath("/dashboard/documents");

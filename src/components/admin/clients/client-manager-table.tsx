@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/table";
 import { formatRelativeTime } from "@/lib/utils";
 import type { Client } from "@/lib/types";
+import { getErrorMessage } from "@/lib/errors/public";
 
 export type ClientManagerRow = Client & {
   projectCount: number;
@@ -76,7 +77,7 @@ function ClientRowActions({
           is_active: !client.is_active,
         });
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to update client");
+        setError(getErrorMessage(err, "Failed to update client"));
       }
     });
   }
@@ -103,7 +104,7 @@ function ClientRowActions({
       try {
         await softDeleteClient(client.id);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to delete client");
+        setError(getErrorMessage(err, "Failed to delete client"));
       }
     });
   }

@@ -51,6 +51,8 @@ import {
 import { assertCanUploadToProject } from "@/lib/auth/upload-access";
 import { isBuildViewStaffRole } from "@/lib/auth/roles";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
+import { PublicError } from "@/lib/errors/public";
+import { internalError } from "@/lib/errors/server";
 
 export type UploadCategory =
   | "matterport"
@@ -155,7 +157,7 @@ export async function uploadMatterportWithAutomation(data: {
   });
 
   if (!parsed.success) {
-    throw new Error(parsed.error.errors[0]?.message ?? "Invalid tour data");
+    throw new PublicError(parsed.error.errors[0]?.message ?? "Invalid tour data");
   }
 
   const {
@@ -182,7 +184,7 @@ export async function uploadMatterportWithAutomation(data: {
     .select("id")
     .single();
 
-  if (error || !tour) throw new Error(error?.message ?? "Failed to create tour");
+  if (error || !tour) throw internalError("uploadMatterportWithAutomation", error);
 
   await recordTimelineEntry(
     {
@@ -249,7 +251,7 @@ export async function uploadReportWithAutomation(data: {
   await assertCanUploadToProject(input.project_id, "reports");
   const validation = createReportSchema.safeParse(input);
   if (!validation.success) {
-    throw new Error(validation.error.errors[0]?.message ?? "Invalid report data");
+    throw new PublicError(validation.error.errors[0]?.message ?? "Invalid report data");
   }
 
   const reportId = await createReport({
@@ -317,7 +319,7 @@ export async function uploadDocumentWithAutomation(data: {
   await assertCanUploadToProject(input.project_id, "documents");
   const validation = createDocumentSchema.safeParse(input);
   if (!validation.success) {
-    throw new Error(validation.error.errors[0]?.message ?? "Invalid document data");
+    throw new PublicError(validation.error.errors[0]?.message ?? "Invalid document data");
   }
 
   const documentId = await createDocument({
@@ -377,7 +379,7 @@ export async function beginInvoiceUploadWithAutomation(data: {
   const input = parsedInput.data;
   const auth = await assertCanUploadToProject(input.project_id, "invoices");
   if (!isBuildViewStaffRole(auth.role)) {
-    throw new Error("Only BuildView staff can upload invoices");
+    throw new PublicError("Only BuildView staff can upload invoices");
   }
 
   const invoiceId = await createInvoice({
@@ -407,7 +409,7 @@ export async function finalizeInvoiceUploadWithAutomation(data: {
   const input = parsedInput.data;
   const auth = await assertCanUploadToProject(input.project_id, "invoices");
   if (!isBuildViewStaffRole(auth.role)) {
-    throw new Error("Only BuildView staff can upload invoices");
+    throw new PublicError("Only BuildView staff can upload invoices");
   }
   await attachInvoicePdf(input.invoice_id, { storage_path: input.storage_path });
 
@@ -643,7 +645,7 @@ export async function uploadIssueWithAutomation(data: {
   });
 
   if (!validation.success) {
-    throw new Error(validation.error.errors[0]?.message ?? "Invalid issue data");
+    throw new PublicError(validation.error.errors[0]?.message ?? "Invalid issue data");
   }
 
   const issueId = await createIssue({

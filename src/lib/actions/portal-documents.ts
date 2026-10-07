@@ -7,6 +7,7 @@ import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { isClientPortalRole } from "@/lib/auth/roles";
 import { isProjectVisibleInClientPortal } from "@/lib/portal/project-visibility";
 import { resolveClientDashboardType } from "@/lib/portal/dashboard-type";
+import { toPublicMessage } from "@/lib/errors/server";
 import { validate } from "@/lib/validations/parse";
 import {
   portalDocumentUploadUrlSchema,
@@ -111,7 +112,10 @@ export async function createPortalDocumentUploadUrl(fields: {
     .createSignedUploadUrl(path);
 
   if (error || !data?.token) {
-    return { ok: false, error: error?.message ?? "Could not start the upload." };
+    return {
+      ok: false,
+      error: toPublicMessage("createPortalDocumentUploadUrl", error, "Could not start the upload."),
+    };
   }
   return { ok: true, path: data.path, token: data.token };
 }
@@ -165,7 +169,10 @@ export async function recordPortalDocument(fields: {
   }
   if (error) {
     await admin.storage.from(STORAGE_BUCKETS.DOCUMENTS).remove([input.path]);
-    return { ok: false, error: error.message };
+    return {
+      ok: false,
+      error: toPublicMessage("recordPortalDocument", error, "Could not save the document."),
+    };
   }
 
   revalidatePath("/dashboard/documents");

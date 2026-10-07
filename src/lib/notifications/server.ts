@@ -23,6 +23,7 @@ import {
   notificationRuleSchema,
   notifyPayloadSchema,
 } from "@/lib/validations/notifications";
+import { internalError } from "@/lib/errors/server";
 
 type NotifyPayload = {
   title: string;
@@ -100,7 +101,7 @@ export async function insertNotificationSystem(data: {
     updated_by: null,
   });
 
-  if (error) throw new Error(error.message);
+  if (error) throw internalError("insertNotificationSystem", error);
 }
 
 export async function createNotification(data: {

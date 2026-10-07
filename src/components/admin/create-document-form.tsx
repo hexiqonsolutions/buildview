@@ -30,6 +30,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { getErrorMessage } from "@/lib/errors/public";
 
 interface CreateDocumentFormProps {
   projects?: Project[];
@@ -107,7 +108,7 @@ export function CreateDocumentForm({
       setFolderId("none");
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Failed to upload document";
+        getErrorMessage(err, "Failed to upload document");
       if (/server components render/i.test(message)) {
         setError(
           "Upload may have succeeded, but the page failed to refresh. Close this dialog and refresh the documents list."

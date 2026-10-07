@@ -1,11 +1,12 @@
 import { z } from "zod";
+import { PublicError } from "@/lib/errors/public";
 
 export type ValidationResult<T> =
   | { success: true; data: T }
   | { success: false; error: string };
 
 /** Thrown by `parseOrThrow` for actions whose contract is to throw on bad input. */
-export class InvalidInputError extends Error {
+export class InvalidInputError extends PublicError {
   constructor(message: string) {
     super(message);
     this.name = "InvalidInputError";

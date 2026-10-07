@@ -65,6 +65,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { formatDate, formatStatus } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { getErrorMessage } from "@/lib/errors/public";
 
 interface AdminTimelineWorkspaceFilters {
   projectId: string;
@@ -896,7 +897,7 @@ function PeriodEventItem({
     try {
       await deleteTimelineEvent(event.id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete milestone");
+      setError(getErrorMessage(err, "Failed to delete milestone"));
       setIsDeleting(false);
     }
   }
@@ -906,7 +907,7 @@ function PeriodEventItem({
     try {
       await deleteTimelinePhoto(photoId);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to remove photo");
+      setError(getErrorMessage(err, "Failed to remove photo"));
     }
   }
 

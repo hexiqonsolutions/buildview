@@ -21,6 +21,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import type { DocumentFolder, Project } from "@/lib/types";
+import { getErrorMessage } from "@/lib/errors/public";
 
 interface CreateFolderFormProps {
   projects: Project[];
@@ -54,7 +55,7 @@ export function CreateFolderForm({ projects, folders = [] }: CreateFolderFormPro
       setProjectId("");
       setParentId("none");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create folder");
+      setError(getErrorMessage(err, "Failed to create folder"));
     }
     setLoading(false);
   }

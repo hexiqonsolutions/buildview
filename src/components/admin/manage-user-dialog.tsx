@@ -36,6 +36,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { getErrorMessage, isUnclassifiedServerError } from "@/lib/errors/public";
 
 interface ManageUserDialogProps {
   user: User & {
@@ -50,10 +51,6 @@ interface ManageUserDialogProps {
   projects: Project[];
   /** Super Admin only — role & dashboard assignment */
   canAssignRoles?: boolean;
-}
-
-function isOpaqueRscError(message: string) {
-  return /Server Components render|digest/i.test(message);
 }
 
 function initialDashboardType(
@@ -175,13 +172,12 @@ export function ManageUserDialog({
         });
         finishSaveSuccess();
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "Failed to update user";
         // Mutation often succeeds; a follow-up RSC refresh can still throw opaque production errors.
-        if (isOpaqueRscError(msg)) {
+        if (isUnclassifiedServerError(err)) {
           finishSaveSuccess();
           return;
         }
-        setError(msg);
+        setError(getErrorMessage(err, "Failed to update user"));
       }
     });
   }
@@ -198,8 +194,8 @@ export function ManageUserDialog({
         );
         setAddProjectId("");
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "Failed to assign project";
-        if (isOpaqueRscError(msg)) {
+        const msg = getErrorMessage(err, "Failed to assign project");
+        if (isUnclassifiedServerError(err)) {
           try {
             const data = await getUserAssignments(user.id);
             setAssignments(
@@ -226,8 +222,8 @@ export function ManageUserDialog({
           data as Array<{ id: string; project: { id: string; name: string } | null }>
         );
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "Failed to remove assignment";
-        if (isOpaqueRscError(msg)) {
+        const msg = getErrorMessage(err, "Failed to remove assignment");
+        if (isUnclassifiedServerError(err)) {
           try {
             const data = await getUserAssignments(user.id);
             setAssignments(
@@ -438,14 +434,6 @@ export function ManageUserDialog({
           {error && (
             <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">
               <p>{error}</p>
-              {(error.includes("not available in the database") ||
-                error.includes("migration required") ||
-                error.includes("invalid input value for enum")) && (
-                <p className="mt-2 text-xs">
-                  Run <code className="rounded bg-white/80 px-1 dark:bg-slate-900">supabase/FIX_user_roles_enum.sql</code>{" "}
-                  in Supabase SQL Editor, then try Save again.
-                </p>
-              )}
             </div>
           )}
 

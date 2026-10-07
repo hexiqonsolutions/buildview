@@ -6,6 +6,8 @@ import { requireBuildViewStaff } from "@/lib/supabase/server";
 import type { Building, Floor } from "@/lib/types";
 import { parseOrThrow, validate } from "@/lib/validations/parse";
 import { LIMITS, text, uuid } from "@/lib/validations/primitives";
+import { PublicError } from "@/lib/errors/public";
+import { internalError } from "@/lib/errors/server";
 
 export type SpatialHierarchy = {
   buildings: Array<Building & { floors: Floor[] }>;
@@ -38,7 +40,7 @@ export async function getProjectSpatialHierarchy(projectId: string): Promise<Spa
 
   if (buildingsError) {
     if (isSpatialReadError(buildingsError)) return { buildings: [] };
-    throw new Error(buildingsError.message);
+    throw internalError("getProjectSpatialHierarchy", buildingsError);
   }
 
   const buildingIds = buildings?.map((b) => b.id) ?? [];
@@ -54,7 +56,7 @@ export async function getProjectSpatialHierarchy(projectId: string): Promise<Spa
 
   if (floorsError) {
     if (isSpatialReadError(floorsError)) return { buildings: [] };
-    throw new Error(floorsError.message);
+    throw internalError("getProjectSpatialHierarchy", floorsError);
   }
 
   const floorsByBuilding = new Map<string, Floor[]>();
@@ -96,7 +98,7 @@ export async function createBuilding(projectId: string, name: string) {
     .select("id")
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) throw internalError("createBuilding", error);
   revalidateSpatialPaths(projectId);
   return data.id;
 }
@@ -115,7 +117,7 @@ export async function createFloor(buildingId: string, name: string) {
     .is("deleted_at", null)
     .single();
 
-  if (buildingError || !building) throw new Error("Building not found.");
+  if (buildingError || !building) throw new PublicError("Building not found.");
 
   const { data, error } = await supabase
     .from("floors")
@@ -127,7 +129,7 @@ export async function createFloor(buildingId: string, name: string) {
     .select("id")
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) throw internalError("createFloor", error);
   revalidateSpatialPaths(building.project_id);
   return data.id;
 }
@@ -143,7 +145,7 @@ export async function deleteBuilding(buildingId: string) {
     .eq("id", buildingId)
     .single();
 
-  if (fetchError || !building) throw new Error("Building not found.");
+  if (fetchError || !building) throw new PublicError("Building not found.");
 
   const now = new Date().toISOString();
 
@@ -153,14 +155,14 @@ export async function deleteBuilding(buildingId: string) {
     .eq("building_id", buildingId)
     .is("deleted_at", null);
 
-  if (floorsError) throw new Error(floorsError.message);
+  if (floorsError) throw internalError("deleteBuilding", floorsError);
 
   const { error } = await supabase
     .from("buildings")
     .update({ deleted_at: now })
     .eq("id", buildingId);
 
-  if (error) throw new Error(error.message);
+  if (error) throw internalError("deleteBuilding", error);
   revalidateSpatialPaths(building.project_id);
 }
 
@@ -175,7 +177,7 @@ export async function deleteFloor(floorId: string) {
     .eq("id", floorId)
     .single();
 
-  if (fetchError || !floor) throw new Error("Floor not found.");
+  if (fetchError || !floor) throw new PublicError("Floor not found.");
 
   const { data: building, error: buildingError } = await supabase
     .from("buildings")
@@ -183,7 +185,7 @@ export async function deleteFloor(floorId: string) {
     .eq("id", floor.building_id)
     .single();
 
-  if (buildingError || !building) throw new Error("Building not found.");
+  if (buildingError || !building) throw new PublicError("Building not found.");
 
   const projectId = building.project_id;
 
@@ -192,6 +194,6 @@ export async function deleteFloor(floorId: string) {
     .update({ deleted_at: new Date().toISOString() })
     .eq("id", floorId);
 
-  if (error) throw new Error(error.message);
+  if (error) throw internalError("deleteFloor", error);
   revalidateSpatialPaths(projectId);
 }

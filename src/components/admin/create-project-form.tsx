@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import type { Client, PortfolioCategory } from "@/lib/types";
 import { PORTFOLIO_CATEGORY_LABELS } from "@/lib/types";
+import { getErrorMessage } from "@/lib/errors/public";
 
 function parseFloorNames(raw: string): string[] {
   return raw
@@ -133,8 +134,7 @@ export function CreateProjectForm({
             await createFloor(buildingId, floor);
           }
         } catch (spatialErr) {
-          const msg =
-            spatialErr instanceof Error ? spatialErr.message : "Failed to add building/floors";
+          const msg = getErrorMessage(spatialErr, "Failed to add building/floors");
           alert(
             `Project was created, but building/floors could not be saved: ${msg}\n\nYou can add them from the project Buildings tab.`
           );
@@ -146,13 +146,9 @@ export function CreateProjectForm({
           const upload = await uploadProjectCoverFile(projectId, thumbnailFile);
           await updateProjectCoverImage(projectId, upload.publicUrl);
         } catch (uploadErr) {
-          const msg =
-            uploadErr instanceof Error ? uploadErr.message : "Thumbnail upload failed";
-          const bucketMissing = /bucket not found/i.test(msg);
+          const msg = getErrorMessage(uploadErr, "Thumbnail upload failed");
           alert(
-            bucketMissing
-              ? "Project was created, but the thumbnail could not upload.\n\nRun supabase/FIX_project_covers_bucket.sql in the Supabase SQL Editor, then add the thumbnail from Manage Project."
-              : `Project was created, but the thumbnail failed: ${msg}\n\nYou can add it later from Manage Project.`
+            `Project was created, but the thumbnail failed: ${msg}\n\nYou can add it later from Manage Project.`
           );
           resetFormState();
           setOpen(false);
@@ -164,7 +160,7 @@ export function CreateProjectForm({
       resetFormState();
       setOpen(false);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to create project");
+      alert(getErrorMessage(err, "Failed to create project"));
     }
     setLoading(false);
   }

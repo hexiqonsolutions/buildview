@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { isValidMatterportUrl } from "@/lib/matterport";
 import type { Building, Floor } from "@/lib/types";
+import { getErrorMessage } from "@/lib/errors/public";
 
 /** Dialog-based 360° tour URL uploader — lives on the project overview. */
 export function ProjectMatterportUploader({
@@ -93,7 +94,7 @@ export function ProjectMatterportUploader({
         resetForm();
         setOpen(false);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to add tour link");
+        setError(getErrorMessage(err, "Failed to add tour link"));
       }
     });
   }

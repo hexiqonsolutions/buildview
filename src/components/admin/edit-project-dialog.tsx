@@ -35,6 +35,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getErrorMessage } from "@/lib/errors/public";
 
 interface EditProjectDialogProps {
   project: Project;
@@ -154,7 +155,7 @@ export function EditProjectDialog({ project, clients, users }: EditProjectDialog
 
       setOpen(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update project");
+      setError(getErrorMessage(err, "Failed to update project"));
     }
     setLoading(false);
   }
@@ -166,7 +167,7 @@ export function EditProjectDialog({ project, clients, users }: EditProjectDialog
       await softDeleteProject(project.id);
       setOpen(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete project");
+      setError(getErrorMessage(err, "Failed to delete project"));
     }
     setLoading(false);
   }
@@ -185,7 +186,7 @@ export function EditProjectDialog({ project, clients, users }: EditProjectDialog
         );
         setAddUserId("");
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to assign user");
+        setError(getErrorMessage(err, "Failed to assign user"));
       }
     });
   }
@@ -202,7 +203,7 @@ export function EditProjectDialog({ project, clients, users }: EditProjectDialog
           }>
         );
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to remove user");
+        setError(getErrorMessage(err, "Failed to remove user"));
       }
     });
   }

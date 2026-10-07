@@ -12,6 +12,7 @@ import {
   IMPERSONATION_MAX_AGE_SECONDS,
 } from "@/lib/auth/impersonation";
 import { logAuditEvent } from "@/lib/activity/audit";
+import { toPublicMessage } from "@/lib/errors/server";
 import { validate } from "@/lib/validations/parse";
 import { text, uuid } from "@/lib/validations/primitives";
 
@@ -66,7 +67,11 @@ export async function loginAsClientUser(userId: string): Promise<LoginAsClientRe
   const tokenHash = linkData?.properties?.hashed_token;
   if (linkError || !tokenHash) {
     return {
-      error: `Could not create a login for ${targetUser.email}: ${linkError?.message ?? "no token returned"}`,
+      error: toPublicMessage(
+        "loginAsClientUser",
+        linkError,
+        `Could not create a login for ${targetUser.email}.`
+      ),
     };
   }
 
@@ -105,7 +110,13 @@ export async function loginAsClientUser(userId: string): Promise<LoginAsClientRe
   });
 
   if (verifyError) {
-    return { error: `Could not sign in as ${targetUser.email}: ${verifyError.message}` };
+    return {
+      error: toPublicMessage(
+        "loginAsClientUser",
+        verifyError,
+        `Could not sign in as ${targetUser.email}.`
+      ),
+    };
   }
 
   const cookieStore = await cookies();

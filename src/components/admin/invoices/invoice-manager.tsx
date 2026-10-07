@@ -21,6 +21,7 @@ import {
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { downloadFileFromUrl } from "@/lib/download-file";
 import type { Client, Invoice, InvoiceStatus, Project } from "@/lib/types";
+import { getErrorMessage } from "@/lib/errors/public";
 
 type InvoiceRow = Invoice & {
   client?: { id: string; name: string; company_name: string | null } | null;
@@ -80,7 +81,7 @@ export function InvoiceManager({ invoices, clients, projects }: InvoiceManagerPr
       const upload = await uploadInvoiceFile(invoice.client_id, invoiceId, file);
       await attachInvoicePdf(invoiceId, { storage_path: upload.path });
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to attach PDF");
+      alert(getErrorMessage(err, "Failed to attach PDF"));
     }
     setPendingId(null);
   }
@@ -91,7 +92,7 @@ export function InvoiceManager({ invoices, clients, projects }: InvoiceManagerPr
       const { url, fileName } = await getInvoiceDownloadUrl(invoiceId);
       await downloadFileFromUrl(url, fileName);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "No PDF available");
+      alert(getErrorMessage(err, "No PDF available"));
     }
     setDownloadingId(null);
   }

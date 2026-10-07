@@ -16,6 +16,7 @@ import { ProfileAvatarCropDialog } from "@/components/dashboard/profile-avatar-c
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import type { User } from "@/lib/types";
+import { getErrorMessage } from "@/lib/errors/public";
 
 function initials(name?: string | null, email?: string | null) {
   const source = name?.trim() || email?.trim() || "?";
@@ -101,13 +102,7 @@ export function ProfileAvatarEditor({ user }: { user: User }) {
         setSuccess("Profile photo updated.");
         router.refresh();
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "Upload failed";
-        const bucketMissing = /bucket not found/i.test(msg);
-        setError(
-          bucketMissing
-            ? "Photo storage is not set up yet. Ask your admin to run supabase/FIX_avatars_bucket.sql in Supabase."
-            : msg
-        );
+        setError(getErrorMessage(err, "Could not upload your photo. Please try again."));
       }
     });
   }

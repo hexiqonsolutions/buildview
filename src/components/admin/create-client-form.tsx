@@ -13,6 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { getErrorMessage } from "@/lib/errors/public";
 
 export function CreateClientForm() {
   const [open, setOpen] = useState(false);
@@ -33,7 +34,7 @@ export function CreateClientForm() {
       });
       setOpen(false);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to create client");
+      alert(getErrorMessage(err, "Failed to create client"));
     }
     setLoading(false);
   }

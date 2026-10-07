@@ -11,6 +11,7 @@ import {
 } from "@/lib/actions/buildings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { getErrorMessage } from "@/lib/errors/public";
 
 export function BuildingsFloorsManager({
   projectId,
@@ -34,7 +35,7 @@ export function BuildingsFloorsManager({
         setBuildingName("");
         window.location.reload();
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to add building");
+        setError(getErrorMessage(err, "Failed to add building"));
       }
     });
   }
@@ -49,7 +50,7 @@ export function BuildingsFloorsManager({
         setFloorNames((prev) => ({ ...prev, [buildingId]: "" }));
         window.location.reload();
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to add floor");
+        setError(getErrorMessage(err, "Failed to add floor"));
       }
     });
   }
@@ -64,7 +65,7 @@ export function BuildingsFloorsManager({
           buildings: prev.buildings.filter((b) => b.id !== buildingId),
         }));
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to delete building");
+        setError(getErrorMessage(err, "Failed to delete building"));
       }
     });
   }
@@ -83,7 +84,7 @@ export function BuildingsFloorsManager({
           ),
         }));
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to delete floor");
+        setError(getErrorMessage(err, "Failed to delete floor"));
       }
     });
   }

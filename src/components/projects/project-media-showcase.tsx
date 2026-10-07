@@ -16,6 +16,7 @@ import {
   type ProjectMediaGroups,
   type ProjectMediaItem,
 } from "@/lib/project-media";
+import { getErrorMessage } from "@/lib/errors/public";
 
 function DownloadMediaButton({ item }: { item: ProjectMediaItem }) {
   const [isPending, startTransition] = useTransition();
@@ -45,7 +46,7 @@ function DownloadMediaButton({ item }: { item: ProjectMediaItem }) {
               link.click();
               link.remove();
             } catch (err) {
-              setError(err instanceof Error ? err.message : "Download failed");
+              setError(getErrorMessage(err, "Download failed"));
             }
           });
         }}

@@ -33,6 +33,7 @@ import {
   type ProjectMediaItem,
 } from "@/lib/project-media";
 import { STORAGE_BUCKETS, type ProjectMediaType } from "@/lib/types";
+import { getErrorMessage } from "@/lib/errors/public";
 
 function MediaTile({
   item,
@@ -58,7 +59,7 @@ function MediaTile({
       try {
         await action();
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Something went wrong");
+        setError(getErrorMessage(err, "Something went wrong"));
       }
     });
   }
@@ -238,7 +239,7 @@ function MediaSection({
         onAdded(item);
         added += 1;
       } catch (err) {
-        nextErrors.push(`${file.name}: ${err instanceof Error ? err.message : "upload failed"}`);
+        nextErrors.push(`${file.name}: ${getErrorMessage(err, "upload failed")}`);
       }
     }
     setProgress(null);

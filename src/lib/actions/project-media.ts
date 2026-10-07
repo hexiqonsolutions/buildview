@@ -19,6 +19,8 @@ import {
   projectMediaProjectIdSchema,
   projectMediaTitleSchema,
 } from "@/lib/validations/project-media";
+import { PublicError } from "@/lib/errors/public";
+import { internalError } from "@/lib/errors/server";
 
 const BUCKET = STORAGE_BUCKETS.PROJECT_MEDIA;
 /** Long enough to watch a video after the page has been open for a while. */
@@ -88,13 +90,13 @@ export async function getProjectMediaDownloadUrl(id: string): Promise<string> {
     .eq("id", id)
     .is("deleted_at", null)
     .maybeSingle();
-  if (!row) throw new Error("File not found.");
+  if (!row) throw new PublicError("File not found.");
 
   const { data, error } = await supabase.storage
     .from(BUCKET)
     .createSignedUrl(row.storage_path, 60, { download: row.file_name });
   if (error || !data?.signedUrl) {
-    throw new Error(error?.message ?? "Could not prepare the download.");
+    throw internalError("getProjectMediaDownloadUrl", error);
   }
   return data.signedUrl;
 }
@@ -163,7 +165,7 @@ export async function addProjectMedia(fields: {
       .select("*")
       .single());
   }
-  if (error || !data) throw new Error(error?.message ?? "Failed to save media.");
+  if (error || !data) throw internalError("addProjectMedia", error);
 
   revalidateProjectMedia(input.project_id);
   const [item] = await withSignedUrls([data as ProjectMedia]);
@@ -177,7 +179,7 @@ async function getMediaRow(id: string): Promise<ProjectMedia> {
     .eq("id", id)
     .is("deleted_at", null)
     .single();
-  if (error || !data) throw new Error("Media not found.");
+  if (error || !data) throw new PublicError("Media not found.");
   return data as ProjectMedia;
 }
 
@@ -191,7 +193,7 @@ export async function renameProjectMedia(id: string, title: string) {
     .from("project_media")
     .update({ title: trimmed, updated_by: actor.id })
     .eq("id", id);
-  if (error) throw new Error(error.message);
+  if (error) throw internalError("renameProjectMedia", error);
 
   revalidateProjectMedia(row.project_id);
 }
@@ -209,7 +211,7 @@ export async function moveProjectMedia(id: string, direction: "up" | "down") {
     .eq("project_id", row.project_id)
     .eq("media_type", row.media_type)
     .is("deleted_at", null);
-  if (error || !siblings) throw new Error(error?.message ?? "Failed to reorder.");
+  if (error || !siblings) throw internalError("moveProjectMedia", error);
 
   const ordered = sortMedia(siblings as ProjectMedia[]);
   const index = ordered.findIndex((item) => item.id === id);
@@ -242,7 +244,7 @@ export async function deleteProjectMedia(id: string) {
     .from("project_media")
     .update({ deleted_at: new Date().toISOString(), deleted_by: actor.id })
     .eq("id", id);
-  if (error) throw new Error(error.message);
+  if (error) throw internalError("deleteProjectMedia", error);
 
   const { error: removeError } = await admin.storage.from(BUCKET).remove([row.storage_path]);
   if (removeError) console.error("[deleteProjectMedia] storage remove failed:", removeError);

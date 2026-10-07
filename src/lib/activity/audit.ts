@@ -2,6 +2,8 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { parseOrThrow } from "@/lib/validations/parse";
 import { auditEventSchema } from "@/lib/validations/data";
+import { PublicError } from "@/lib/errors/public";
+import { internalError } from "@/lib/errors/server";
 
 /**
  * Server-internal audit writer (not a server action, so clients cannot forge
@@ -20,7 +22,7 @@ export async function logAuditEvent(data: {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("You must be signed in");
+  if (!user) throw new PublicError("You must be signed in");
 
   const { error } = await supabase.from("activity_logs").insert({
     user_id: user.id,
@@ -33,5 +35,5 @@ export async function logAuditEvent(data: {
     user_agent: null,
   });
 
-  if (error) throw new Error(error.message);
+  if (error) throw internalError("logAuditEvent", error);
 }

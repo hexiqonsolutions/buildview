@@ -24,6 +24,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import type { Client, Project } from "@/lib/types";
+import { getErrorMessage } from "@/lib/errors/public";
 
 export function CreateInvoiceForm({
   clients,
@@ -67,7 +68,7 @@ export function CreateInvoiceForm({
       setClientId("");
       setStatus("draft");
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to create invoice");
+      alert(getErrorMessage(err, "Failed to create invoice"));
     }
     setLoading(false);
   }

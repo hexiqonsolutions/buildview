@@ -34,6 +34,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { getErrorMessage } from "@/lib/errors/public";
 
 function formatSize(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
@@ -104,7 +105,7 @@ export function PortalDocumentUploadButton({
         .storage.from(STORAGE_BUCKETS.DOCUMENTS)
         .uploadToSignedUrl(ticket.path, ticket.token, file, { contentType });
       if (uploadError) {
-        setError(uploadError.message);
+        setError("Upload failed. Please try again.");
         return;
       }
 
@@ -127,7 +128,7 @@ export function PortalDocumentUploadButton({
       setOpen(false);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed. Please try again.");
+      setError(getErrorMessage(err, "Upload failed. Please try again."));
     } finally {
       setUploading(false);
     }

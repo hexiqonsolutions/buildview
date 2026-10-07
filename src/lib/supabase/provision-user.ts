@@ -1,6 +1,9 @@
 import "server-only";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
+import { logServerError, toPublicMessage } from "@/lib/errors/server";
 import type { UserInsert, UserRole } from "@/lib/types";
+
+const SYNC_FAILED_MESSAGE = "Could not sync users from Supabase Auth.";
 
 type AuthUserLike = {
   id: string;
@@ -64,7 +67,7 @@ export async function ensureUserProfile(authUser: AuthUserLike): Promise<boolean
         .update({ deleted_at: null, deleted_by: null, is_active: true })
         .eq("id", authUser.id);
       if (error) {
-        console.error("[ensureUserProfile] restore failed:", error.message);
+        logServerError("ensureUserProfile.restore", error, { userId: authUser.id });
         return false;
       }
     }
@@ -88,7 +91,7 @@ export async function ensureUserProfile(authUser: AuthUserLike): Promise<boolean
   const { error } = await admin.from("users").insert(payload);
 
   if (error) {
-    console.error("[ensureUserProfile] failed:", error.message);
+    logServerError("ensureUserProfile.insert", error, { userId: authUser.id });
     return false;
   }
 
@@ -123,13 +126,12 @@ export async function syncUserProfilesFromAuthDetailed(): Promise<SyncUsersResul
     });
 
     if (listError) {
-      console.error("[syncUserProfilesFromAuth] list users failed:", listError.message);
       return {
         inserted: 0,
         restored: 0,
         authCount: 0,
         profileCount: 0,
-        error: listError.message,
+        error: toPublicMessage("syncUserProfilesFromAuth.listUsers", listError, SYNC_FAILED_MESSAGE),
       };
     }
 
@@ -147,8 +149,11 @@ export async function syncUserProfilesFromAuthDetailed(): Promise<SyncUsersResul
         restored: 0,
         authCount: 0,
         profileCount: profileCount ?? 0,
-        error:
-          "Supabase Auth returned 0 users. Check that SUPABASE_SERVICE_ROLE_KEY matches this project (service_role, not anon).",
+        error: toPublicMessage(
+          "syncUserProfilesFromAuth.listUsers",
+          "Supabase Auth returned 0 users; check that the service role key belongs to this project",
+          SYNC_FAILED_MESSAGE
+        ),
       };
     }
 
@@ -168,24 +173,17 @@ export async function syncUserProfilesFromAuthDetailed(): Promise<SyncUsersResul
             }),
       ]);
 
-    if (byIdError) {
-      console.error("[syncUserProfilesFromAuth] fetch by id failed:", byIdError.message);
+    if (byIdError || byEmailError) {
       return {
         inserted: 0,
         restored: 0,
         authCount,
         profileCount: profileCount ?? 0,
-        error: byIdError.message,
-      };
-    }
-    if (byEmailError) {
-      console.error("[syncUserProfilesFromAuth] fetch by email failed:", byEmailError.message);
-      return {
-        inserted: 0,
-        restored: 0,
-        authCount,
-        profileCount: profileCount ?? 0,
-        error: byEmailError.message,
+        error: toPublicMessage(
+          "syncUserProfilesFromAuth.fetchProfiles",
+          byIdError ?? byEmailError,
+          SYNC_FAILED_MESSAGE
+        ),
       };
     }
 
@@ -211,13 +209,12 @@ export async function syncUserProfilesFromAuthDetailed(): Promise<SyncUsersResul
             })
             .eq("id", authUser.id);
           if (error) {
-            console.error("[syncUserProfilesFromAuth] restore failed:", error.message);
             return {
               inserted: 0,
               restored,
               authCount,
               profileCount: profileCount ?? 0,
-              error: error.message,
+              error: toPublicMessage("syncUserProfilesFromAuth.restore", error, SYNC_FAILED_MESSAGE),
             };
           }
           restored += 1;
@@ -231,16 +228,16 @@ export async function syncUserProfilesFromAuthDetailed(): Promise<SyncUsersResul
         if (emailHit && emailHit.id !== authUser.id) {
           const { error: delError } = await admin.from("users").delete().eq("id", emailHit.id);
           if (delError) {
-            console.error(
-              "[syncUserProfilesFromAuth] stale email cleanup failed:",
-              delError.message
-            );
             return {
               inserted: 0,
               restored,
               authCount,
               profileCount: profileCount ?? 0,
-              error: delError.message,
+              error: toPublicMessage(
+                "syncUserProfilesFromAuth.staleEmailCleanup",
+                delError,
+                SYNC_FAILED_MESSAGE
+              ),
             };
           }
         }
@@ -261,13 +258,12 @@ export async function syncUserProfilesFromAuthDetailed(): Promise<SyncUsersResul
 
     const { error: insertError } = await admin.from("users").insert(toInsert);
     if (insertError) {
-      console.error("[syncUserProfilesFromAuth] insert failed:", insertError.message);
       return {
         inserted: 0,
         restored,
         authCount,
         profileCount: profileCount ?? 0,
-        error: insertError.message,
+        error: toPublicMessage("syncUserProfilesFromAuth.insert", insertError, SYNC_FAILED_MESSAGE),
       };
     }
 
@@ -278,14 +274,12 @@ export async function syncUserProfilesFromAuthDetailed(): Promise<SyncUsersResul
       profileCount: (profileCount ?? 0) + toInsert.length + restored,
     };
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Sync failed";
-    console.error("[syncUserProfilesFromAuth]", message);
     return {
       inserted: 0,
       restored: 0,
       authCount: 0,
       profileCount: 0,
-      error: message,
+      error: toPublicMessage("syncUserProfilesFromAuth", err, SYNC_FAILED_MESSAGE),
     };
   }
 }

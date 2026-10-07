@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient, getUserProfile } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { getSupabaseUrl } from "@/lib/supabase/env";
+import { logServerError, toPublicMessage } from "@/lib/errors/server";
 import { validate, validateFormData } from "@/lib/validations/parse";
 import { avatarUrlSchema, updateProfileSchema } from "@/lib/validations/profile";
 
@@ -52,11 +53,8 @@ export async function updateProfile(
     .is("deleted_at", null);
 
   if (error) {
-    console.error("[updateProfile] failed:", error.message);
-    return {
-      error:
-        "Could not save your profile. If this keeps happening, ask your admin to run migration 005_fix_users_update_rls.sql in Supabase.",
-    };
+    logServerError("updateProfile", error, { userId: user.id });
+    return { error: "Could not save your profile. Please try again." };
   }
 
   revalidateProfileSurfaces();
@@ -99,17 +97,20 @@ export async function updateAvatarUrl(avatarUrl: string): Promise<{ error?: stri
       .maybeSingle();
 
     if (error) {
-      console.error("[updateAvatarUrl] failed:", error.message);
-      return { error: `Could not save your profile photo: ${error.message}` };
+      logServerError("updateAvatarUrl", error, { userId: user.id });
+      return { error: "Could not save your profile photo. Please try again." };
     }
     if (!data) {
-      console.error("[updateAvatarUrl] no row updated for", user.id);
+      logServerError("updateAvatarUrl", "No row updated", { userId: user.id });
       return { error: "Could not save your profile photo. Please try again." };
     }
   } catch (err) {
-    console.error("[updateAvatarUrl] exception:", err);
     return {
-      error: err instanceof Error ? err.message : "Could not save your profile photo.",
+      error: toPublicMessage(
+        "updateAvatarUrl",
+        err,
+        "Could not save your profile photo. Please try again."
+      ),
     };
   }
 
@@ -141,16 +142,19 @@ export async function removeAvatarUrl(): Promise<{ error?: string }> {
       .maybeSingle();
 
     if (error) {
-      console.error("[removeAvatarUrl] failed:", error.message);
-      return { error: `Could not remove your profile photo: ${error.message}` };
+      logServerError("removeAvatarUrl", error, { userId: user.id });
+      return { error: "Could not remove your profile photo. Please try again." };
     }
     if (!data) {
       return { error: "Could not remove your profile photo. Please try again." };
     }
   } catch (err) {
-    console.error("[removeAvatarUrl] exception:", err);
     return {
-      error: err instanceof Error ? err.message : "Could not remove your profile photo.",
+      error: toPublicMessage(
+        "removeAvatarUrl",
+        err,
+        "Could not remove your profile photo. Please try again."
+      ),
     };
   }
 

@@ -18,6 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { formatDate } from "@/lib/utils";
+import { getErrorMessage } from "@/lib/errors/public";
 
 export function DocumentVersionPanel({
   document,
@@ -42,7 +43,7 @@ export function DocumentVersionPanel({
       const rows = await getDocumentVersionHistory(groupId);
       setVersions(rows);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load versions");
+      setError(getErrorMessage(err, "Failed to load versions"));
     } finally {
       setLoading(false);
     }
@@ -78,7 +79,7 @@ export function DocumentVersionPanel({
         setChangeNote("");
         window.location.reload();
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Replace failed");
+        setError(getErrorMessage(err, "Replace failed"));
       }
     });
   }

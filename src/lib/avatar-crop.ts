@@ -1,4 +1,5 @@
 import type { Area } from "react-easy-crop";
+import { PublicError } from "@/lib/errors/public";
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -25,7 +26,7 @@ export async function getCroppedAvatarBlob(
   canvas.height = exportSize;
 
   const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Could not prepare the crop canvas.");
+  if (!ctx) throw new PublicError("Could not prepare the crop canvas.");
 
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";

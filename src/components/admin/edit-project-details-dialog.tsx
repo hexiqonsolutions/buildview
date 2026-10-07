@@ -25,6 +25,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { getErrorMessage } from "@/lib/errors/public";
 
 type EditableProject = Pick<
   Project,
@@ -110,7 +111,7 @@ export function EditProjectDetailsDialog({
       area_sqft: areaSqft && Number.isFinite(areaSqft) && areaSqft > 0 ? areaSqft : null,
       portfolio_category: (portfolioCategory || null) as PortfolioCategory | null,
     }).catch((err: unknown) => ({
-      error: err instanceof Error ? err.message : "Failed to update project",
+      error: getErrorMessage(err, "Failed to update project"),
     }));
     setSaving(false);
 

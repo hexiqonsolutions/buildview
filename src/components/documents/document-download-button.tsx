@@ -5,6 +5,7 @@ import { Download, Loader2 } from "lucide-react";
 import { getDocumentSignedUrl } from "@/lib/actions/documents";
 import { downloadFileFromUrl } from "@/lib/download-file";
 import { Button } from "@/components/ui/button";
+import { getErrorMessage } from "@/lib/errors/public";
 
 interface DocumentDownloadButtonProps {
   documentId: string;
@@ -31,7 +32,7 @@ export function DocumentDownloadButton({
         const { url, fileName: name } = await getDocumentSignedUrl(documentId);
         await downloadFileFromUrl(url, name || fileName);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Download failed");
+        setError(getErrorMessage(err, "Download failed"));
       }
     });
   }

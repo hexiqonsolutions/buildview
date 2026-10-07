@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { ensureUserProfile } from "@/lib/supabase/provision-user";
+import { logServerError } from "@/lib/errors/server";
 import { authCallbackSchema } from "@/lib/validations/auth";
 import { validate } from "@/lib/validations/parse";
 /**
@@ -27,6 +28,7 @@ export async function GET(request: Request) {
       }
       return NextResponse.redirect(`${origin}${parsed.data.next ?? "/dashboard"}`);
     }
+    logServerError("authCallback", error);
   }
 
   return NextResponse.redirect(

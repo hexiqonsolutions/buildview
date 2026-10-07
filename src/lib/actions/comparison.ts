@@ -37,6 +37,7 @@ import type {
 } from "@/lib/comparison/types";
 import type { Project, ProjectTour } from "@/lib/types";
 import { createClient } from "@/lib/supabase/server";
+import { logServerError, toPublicMessage } from "@/lib/errors/server";
 import { validate } from "@/lib/validations/parse";
 import { uuid } from "@/lib/validations/primitives";
 import { saveComparisonSchema } from "@/lib/validations/saved-comparison";
@@ -51,8 +52,21 @@ function isMissingSchemaError(error: { message?: string; code?: string } | null)
   );
 }
 
-const MIGRATION_HINT =
-  "Saved comparisons need a database update. Apply supabase/pending-apply.sql in the Supabase SQL Editor.";
+const SCHEMA_MISSING_MESSAGE =
+  "Saved comparisons aren't available yet. Contact BuildView support.";
+
+/** Logs a saved-comparison failure and returns the message to show the user. */
+function savedComparisonError(
+  scope: string,
+  error: { message?: string; code?: string } | null,
+  fallback: string
+): string {
+  if (isMissingSchemaError(error)) {
+    logServerError(scope, error, { hint: "Apply supabase/pending-apply.sql" });
+    return SCHEMA_MISSING_MESSAGE;
+  }
+  return toPublicMessage(scope, error, fallback);
+}
 
 export async function getComparisonProjectsData(): Promise<ComparisonProjectsData> {
   const [projects, toursRaw] = await Promise.all([getProjects(), getAccessibleTours()]);
@@ -241,7 +255,7 @@ export async function listSavedComparisons(): Promise<SavedComparison[]> {
 
   if (error) {
     if (!isMissingSchemaError(error)) {
-      console.error("listSavedComparisons:", error.message);
+      logServerError("listSavedComparisons", error);
     }
     return [];
   }
@@ -287,14 +301,9 @@ export async function saveComparison(
     .single();
 
   if (error || !row) {
-    if (!isMissingSchemaError(error ?? null)) {
-      console.error("saveComparison:", error?.message);
-    }
     return {
       success: false,
-      error: isMissingSchemaError(error ?? null)
-        ? MIGRATION_HINT
-        : error?.message ?? "Failed to save comparison",
+      error: savedComparisonError("saveComparison", error ?? null, "Failed to save comparison"),
     };
   }
 
@@ -324,12 +333,9 @@ export async function deleteSavedComparison(
     .eq("user_id", user.id);
 
   if (error) {
-    if (!isMissingSchemaError(error)) {
-      console.error("deleteSavedComparison:", error.message);
-    }
     return {
       success: false,
-      error: isMissingSchemaError(error) ? MIGRATION_HINT : error.message,
+      error: savedComparisonError("deleteSavedComparison", error, "Failed to delete comparison"),
     };
   }
 

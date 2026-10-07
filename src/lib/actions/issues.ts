@@ -32,6 +32,8 @@ import { resolveSpatialForWrite } from "@/lib/admin/spatial-resolve";
 import { formatUploadNotifyMessage, portalIssuesLink } from "@/lib/portal/notification-links";
 import { isBuildViewStaffRole, canCreateProjectIssue, canUpdateIssueStatus } from "@/lib/auth/roles";
 import { recordTimelineEntry } from "@/lib/timeline/auto-entry";
+import { PublicError } from "@/lib/errors/public";
+import { internalError } from "@/lib/errors/server";
 
 function revalidateIssuePaths(projectId: string) {
   revalidatePath("/admin/issues");
@@ -84,7 +86,7 @@ async function getSignedInUserWithRole() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("You must be signed in");
+  if (!user) throw new PublicError("You must be signed in");
 
   const { data: me } = await supabase
     .from("users")
@@ -92,7 +94,7 @@ async function getSignedInUserWithRole() {
     .eq("id", user.id)
     .maybeSingle();
 
-  if (!me?.role) throw new Error("Your account profile could not be found.");
+  if (!me?.role) throw new PublicError("Your account profile could not be found.");
   return { supabase, user, role: me.role as UserRole };
 }
 
@@ -171,7 +173,7 @@ async function findAccessibleIssue(
     .maybeSingle();
 
   if (!hidden || !(await userCanAccessProject(userId, role, hidden.project_id))) {
-    throw new Error("Issue not found");
+    throw new PublicError("Issue not found");
   }
 
   return { issue: hidden as IssueWriteRow, rlsVisible: false };
@@ -180,7 +182,7 @@ async function findAccessibleIssue(
 async function requireIssueStaff() {
   const context = await getSignedInUserWithRole();
   if (!isBuildViewStaffRole(context.role)) {
-    throw new Error("Only BuildView staff can edit or delete issues.");
+    throw new PublicError("Only BuildView staff can edit or delete issues.");
   }
   return context;
 }
@@ -212,7 +214,7 @@ export async function createIssue(data: {
   const { supabase, user, role } = await getSignedInUserWithRole();
 
   if (!canCreateProjectIssue(role)) {
-    throw new Error("You do not have permission to create issues.");
+    throw new PublicError("You do not have permission to create issues.");
   }
 
   let projectAccessVerified: boolean | null = null;
@@ -285,7 +287,7 @@ export async function createIssue(data: {
           !retryMsg.includes("permission denied") &&
           !msg.includes("row-level")
         ) {
-          throw new Error(retryError?.message ?? error?.message ?? "Failed to create issue");
+          throw internalError("createIssue", retryError ?? error);
         }
       }
     }
@@ -293,7 +295,7 @@ export async function createIssue(data: {
     if (!issueId) {
       // RLS only covers assigned projects; Client Admins also see org-wide projects.
       if (!(await verifyProjectAccess())) {
-        throw new Error("You do not have access to this project.");
+        throw new PublicError("You do not have access to this project.");
       }
 
       const admin = createServiceRoleClient();
@@ -317,7 +319,7 @@ export async function createIssue(data: {
         .single();
 
       if (staffError || !staffIssue) {
-        throw new Error(staffError?.message ?? error?.message ?? "Failed to create issue");
+        throw internalError("createIssue", staffError ?? error);
       }
       issueId = staffIssue.id;
     }
@@ -336,10 +338,10 @@ export async function createIssue(data: {
 
     const { error: imageError } = await supabase.from("issue_images").insert(imageRows);
     if (imageError) {
-      if (!(await verifyProjectAccess())) throw new Error(imageError.message);
+      if (!(await verifyProjectAccess())) throw internalError("createIssue", imageError);
       const admin = createServiceRoleClient();
       const { error: fallbackImageError } = await admin.from("issue_images").insert(imageRows);
-      if (fallbackImageError) throw new Error(fallbackImageError.message);
+      if (fallbackImageError) throw internalError("createIssue", fallbackImageError);
     }
   }
 
@@ -402,7 +404,7 @@ export async function updateIssue(data: {
   due_date?: string | null;
 }) {
   const validation = validate(updateIssueSchema, data);
-  if (!validation.success) throw new Error(validation.error);
+  if (!validation.success) throw new PublicError(validation.error);
 
   const { supabase, user } = await requireIssueStaff();
 
@@ -413,7 +415,7 @@ export async function updateIssue(data: {
     .is("deleted_at", null)
     .single();
 
-  if (fetchError || !existing) throw new Error("Issue not found");
+  if (fetchError || !existing) throw new PublicError("Issue not found");
 
   const update: IssueUpdate = {
     updated_by: user.id,
@@ -440,7 +442,7 @@ export async function updateIssue(data: {
     .update(update)
     .eq("id", validation.data.id);
 
-  if (error) throw new Error(error.message);
+  if (error) throw internalError("updateIssue", error);
 
   const nextStatus = validation.data.status;
   if (
@@ -471,12 +473,12 @@ export async function updateIssue(data: {
 
 export async function updateIssueStatus(issueId: string, status: string) {
   const validation = validate(updateIssueStatusSchema, { id: issueId, status });
-  if (!validation.success) throw new Error(validation.error);
+  if (!validation.success) throw new PublicError(validation.error);
 
   const { supabase, user, role } = await getSignedInUserWithRole();
 
   if (!canUpdateIssueStatus(role)) {
-    throw new Error("You do not have permission to update issue status.");
+    throw new PublicError("You do not have permission to update issue status.");
   }
 
   const { issue: existing, rlsVisible } = await findAccessibleIssue(
@@ -499,7 +501,7 @@ export async function updateIssueStatus(issueId: string, status: string) {
       .update(statusUpdate)
       .eq("id", issueId)
       .select("id");
-    if (error) throw new Error(error.message);
+    if (error) throw internalError("updateIssueStatus", error);
     updated = Boolean(updatedRows && updatedRows.length > 0);
   }
 
@@ -507,14 +509,14 @@ export async function updateIssueStatus(issueId: string, status: string) {
   // or the check below has already verified project access at the app level.
   if (!updated) {
     if (rlsVisible && !(await userCanAccessProject(user.id, role, existing.project_id))) {
-      throw new Error("You do not have access to this project.");
+      throw new PublicError("You do not have access to this project.");
     }
     const admin = createServiceRoleClient();
     const { error: fallbackError } = await admin
       .from("issues")
       .update(statusUpdate)
       .eq("id", issueId);
-    if (fallbackError) throw new Error(fallbackError.message);
+    if (fallbackError) throw internalError("updateIssueStatus", fallbackError);
   }
 
   const nextStatus = validation.data.status;
@@ -562,7 +564,7 @@ export async function addIssueImages(
 
   const { supabase, user, role } = await getSignedInUserWithRole();
   if (!canCreateProjectIssue(role)) {
-    throw new Error("You do not have permission to add photos to issues.");
+    throw new PublicError("You do not have permission to add photos to issues.");
   }
 
   const { issue, rlsVisible } = await findAccessibleIssue(supabase, user.id, role, issueId);
@@ -571,7 +573,7 @@ export async function addIssueImages(
   // inside this issue's own folder.
   const expectedPrefix = `${issue.project_id}/${issueId}/`;
   if (images.some((img) => !img.storage_path.startsWith(expectedPrefix))) {
-    throw new Error("Invalid photo location for this issue.");
+    throw new PublicError("Invalid photo location for this issue.");
   }
 
   const reader = rlsVisible ? supabase : createServiceRoleClient();
@@ -599,14 +601,14 @@ export async function addIssueImages(
     if (!error) {
       inserted = true;
     } else if (!(await userCanAccessProject(user.id, role, issue.project_id))) {
-      throw new Error(error.message);
+      throw internalError("addIssueImages", error);
     }
   }
 
   if (!inserted) {
     const admin = createServiceRoleClient();
     const { error: fallbackError } = await admin.from("issue_images").insert(imageRows);
-    if (fallbackError) throw new Error(fallbackError.message);
+    if (fallbackError) throw internalError("addIssueImages", fallbackError);
   }
 
   revalidateIssuePaths(issue.project_id);
@@ -623,7 +625,7 @@ export async function deleteIssue(issueId: string) {
     .is("deleted_at", null)
     .single();
 
-  if (fetchError || !issue) throw new Error("Issue not found");
+  if (fetchError || !issue) throw new PublicError("Issue not found");
 
   const now = new Date().toISOString();
 
@@ -631,7 +633,7 @@ export async function deleteIssue(issueId: string) {
     .from("issues")
     .update({ deleted_at: now, updated_by: user.id })
     .eq("id", issueId);
-  if (error) throw new Error(error.message);
+  if (error) throw internalError("deleteIssue", error);
 
   const { error: imagesError } = await supabase
     .from("issue_images")
@@ -654,13 +656,13 @@ export async function deleteIssueImage(imageId: string) {
     .is("deleted_at", null)
     .single();
 
-  if (fetchError || !image) throw new Error("Photo not found");
+  if (fetchError || !image) throw new PublicError("Photo not found");
 
   const { error } = await supabase
     .from("issue_images")
     .update({ deleted_at: new Date().toISOString(), updated_by: user.id })
     .eq("id", imageId);
-  if (error) throw new Error(error.message);
+  if (error) throw internalError("deleteIssueImage", error);
 
   const issue = image.issue as unknown as { project_id: string } | null;
   if (issue?.project_id) revalidateIssuePaths(issue.project_id);
@@ -669,7 +671,7 @@ export async function deleteIssueImage(imageId: string) {
 export async function getIssueImageSignedUrl(
   imageId: string
 ): Promise<{ url: string; caption: string | null }> {
-  if (!validate(uuid("Image"), imageId).success) throw new Error("Image not found");
+  if (!validate(uuid("Image"), imageId).success) throw new PublicError("Image not found");
 
   const supabase = await createClient();
 
@@ -681,7 +683,7 @@ export async function getIssueImageSignedUrl(
     .single();
 
   if (error || !image) {
-    throw new Error("Image not found");
+    throw new PublicError("Image not found");
   }
 
   const path = resolveIssueImageStoragePath(image.storage_path, image.image_url);
@@ -690,7 +692,7 @@ export async function getIssueImageSignedUrl(
     if (image.image_url?.startsWith("http")) {
       return { url: image.image_url, caption: image.caption };
     }
-    throw new Error("Image path not found");
+    throw new PublicError("File not found.");
   }
 
   const url = await createSignedStorageUrl(STORAGE_BUCKETS.ISSUE_IMAGES, path);

@@ -6,6 +6,8 @@ import { redirect } from "next/navigation";
 import { createClient, getUserProfile } from "@/lib/supabase/server";
 import { ensureUserProfile } from "@/lib/supabase/provision-user";
 import { authThrottle } from "@/lib/rate-limit/auth";
+import { authErrorMessage } from "@/lib/errors/auth";
+import { logServerError } from "@/lib/errors/server";
 import {
   forgotPasswordSchema,
   googleSignInSchema,
@@ -63,8 +65,9 @@ export async function signIn(
 
   if (error) {
     const delay = await throttle.record();
+    const message = authErrorMessage("signIn", error, "Sign-in failed. Please try again.");
     return {
-      error: delay > 0 ? withSentence(error.message, throttle.message(delay)) : error.message,
+      error: delay > 0 ? withSentence(message, throttle.message(delay)) : message,
     };
   }
 
@@ -73,9 +76,10 @@ export async function signIn(
   if (data.user) {
     const profileReady = await ensureUserProfile(data.user);
     if (!profileReady) {
+      logServerError("signIn", "ensureUserProfile returned false", { userId: data.user.id });
       return {
         error:
-          "Your account signed in but the profile could not be created. Run the database migrations in Supabase (see README), then try again.",
+          "You signed in, but your account profile could not be loaded. Please try again or contact BuildView support.",
       };
     }
   }
@@ -117,7 +121,7 @@ export async function signUp(
   });
 
   if (error) {
-    return { error: error.message };
+    return { error: authErrorMessage("signUp", error, "Registration failed. Please try again.") };
   }
 
   if (data.user && !data.session) {
@@ -159,7 +163,13 @@ export async function forgotPassword(
   });
 
   if (error) {
-    return { error: error.message };
+    return {
+      error: authErrorMessage(
+        "forgotPassword",
+        error,
+        "Could not send the reset link. Please try again."
+      ),
+    };
   }
 
   return {
@@ -198,7 +208,13 @@ export async function resetPassword(
   });
 
   if (error) {
-    return { error: error.message };
+    return {
+      error: authErrorMessage(
+        "resetPassword",
+        error,
+        "Could not update your password. Please try again."
+      ),
+    };
   }
 
   redirect("/dashboard");
@@ -232,6 +248,7 @@ export async function signInWithGoogle(formData: FormData): Promise<void> {
   });
 
   if (error || !data.url) {
+    logServerError("signInWithGoogle", error);
     redirect("/login?error=google_signin_failed");
   }
 

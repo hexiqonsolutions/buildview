@@ -16,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { getErrorMessage } from "@/lib/errors/public";
 
 type ThumbnailDraft =
   | { kind: "url"; url: string }
@@ -94,7 +95,7 @@ export function TourThumbnailDialog({ tour, onOpenChange }: TourThumbnailDialogP
       await updateTourThumbnail(tour.id, nextUrl);
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update thumbnail");
+      setError(getErrorMessage(err, "Failed to update thumbnail"));
     }
     setSaving(false);
   }

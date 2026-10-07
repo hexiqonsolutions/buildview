@@ -1,3 +1,4 @@
+import { PublicError } from "@/lib/errors/public";
 /**
  * Matterport URL parsing and embed utilities.
  * Supports common Matterport share URL formats.
@@ -67,7 +68,7 @@ export function isValidMatterportUrl(url: string): boolean {
 export function normalizeMatterportUrl(url: string): string {
   const modelId = extractMatterportModelId(url);
   if (!modelId) {
-    throw new Error("Enter a valid 360° tour share URL.");
+    throw new PublicError("Enter a valid 360° tour share URL.");
   }
   return `https://${MATTERPORT_SHOW_HOST}/show/?m=${modelId}`;
 }

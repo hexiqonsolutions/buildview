@@ -24,6 +24,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { getErrorMessage } from "@/lib/errors/public";
 
 interface CreateReportFormProps {
   projects?: Project[];
@@ -94,7 +95,7 @@ export function CreateReportForm({
       setFile(null);
       setProjectId(fixedProjectId ?? "");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to upload report");
+      setError(getErrorMessage(err, "Failed to upload report"));
     }
     setLoading(false);
   }

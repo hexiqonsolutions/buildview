@@ -39,10 +39,8 @@ export default async function AdminUsersPage() {
     >
       {syncResult.error && (
         <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
-          Could not sync from Supabase Auth: {syncResult.error}. Check{" "}
-          <code className="text-xs">SUPABASE_SERVICE_ROLE_KEY</code> in{" "}
-          <code className="text-xs">.env.local</code>, then use{" "}
-          <strong>Sync from Supabase Auth</strong>.
+          {syncResult.error} Try <strong>Sync from Supabase Auth</strong> again, or contact
+          BuildView support if it keeps failing.
         </div>
       )}
 
@@ -61,9 +59,8 @@ export default async function AdminUsersPage() {
           Sync sees <strong>{syncResult.authCount}</strong> Auth login
           {syncResult.authCount === 1 ? "" : "s"} and{" "}
           <strong>{syncResult.profileCount}</strong> BuildView profile
-          {syncResult.profileCount === 1 ? "" : "s"}. If Auth is &gt; 0 but this list is
-          empty, run the SQL below in Supabase, then refresh.
-          <pre className="mt-2 overflow-x-auto rounded bg-white p-2 text-xs dark:bg-slate-950">{`SELECT id, email, role, deleted_at FROM public.users ORDER BY created_at;`}</pre>
+          {syncResult.profileCount === 1 ? "" : "s"}. If there are Auth logins but this list
+          is empty, contact BuildView support.
         </div>
       )}
 

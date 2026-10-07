@@ -29,6 +29,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { getErrorMessage } from "@/lib/errors/public";
 
 type TradeDraft = { name: string; percent: string };
 
@@ -274,7 +275,7 @@ export function CreateTimelineEventForm({
       setOpen(false);
       if (!isEdit) resetForm();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save timeline milestone");
+      setError(getErrorMessage(err, "Failed to save timeline milestone"));
     }
 
     setLoading(false);

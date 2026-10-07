@@ -5,6 +5,7 @@ import { requireBuildViewStaff } from "@/lib/supabase/server";
 import type { ActivityLogWithUser } from "@/lib/types";
 import { validate } from "@/lib/validations/parse";
 import { activityLogFiltersSchema } from "@/lib/validations/data";
+import { internalError } from "@/lib/errors/server";
 
 export type ActivityLogFilters = {
   projectId?: string | null;
@@ -44,6 +45,6 @@ export async function getActivityLogs(
   if (f.query) query = query.ilike("action", `%${f.query}%`);
 
   const { data, error } = await query;
-  if (error) throw new Error(error.message);
+  if (error) throw internalError("getActivityLogs", error);
   return (data ?? []) as ActivityLogWithUser[];
 }

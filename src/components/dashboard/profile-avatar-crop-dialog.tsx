@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { getErrorMessage } from "@/lib/errors/public";
 
 interface ProfileAvatarCropDialogProps {
   open: boolean;
@@ -65,7 +66,7 @@ export function ProfileAvatarCropDialog({
       onCropped(file);
       handleOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not crop the photo.");
+      setError(getErrorMessage(err, "Could not crop the photo."));
     } finally {
       setBusy(false);
     }

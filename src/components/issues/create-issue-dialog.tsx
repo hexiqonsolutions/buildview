@@ -26,6 +26,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { getErrorMessage } from "@/lib/errors/public";
 
 type ProjectOption = { id: string; name: string };
 
@@ -123,7 +124,7 @@ export function CreateIssueDialog({
       setOpen(false);
       resetForm();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create issue");
+      setError(getErrorMessage(err, "Failed to create issue"));
     }
 
     setLoading(false);

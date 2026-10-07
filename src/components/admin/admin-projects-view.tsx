@@ -68,6 +68,7 @@ import {
 import { formatDate, formatRelativeTime, formatStatus } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { UpdateProjectStatusSelect } from "@/components/shared/update-project-status-select";
+import { getErrorMessage } from "@/lib/errors/public";
 
 type ViewMode = "list" | "grid";
 
@@ -498,7 +499,7 @@ function ProjectActionsMenu({
       }
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Action failed. Please try again.");
+      setError(getErrorMessage(err, "Action failed. Please try again."));
       // Re-open so the user can retry / see the error.
       setConfirmAction(action);
     } finally {

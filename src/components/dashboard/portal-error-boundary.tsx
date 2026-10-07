@@ -3,6 +3,7 @@
 import { Component, type ReactNode } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { getBoundaryMessage } from "@/lib/errors/public";
 
 interface PortalErrorBoundaryProps {
   children: ReactNode;
@@ -20,13 +21,10 @@ export class PortalErrorBoundary extends Component<
   state: PortalErrorBoundaryState = { hasError: false, message: "" };
 
   static getDerivedStateFromError(error: unknown): PortalErrorBoundaryState {
-    const message =
-      error instanceof Error
-        ? error.message
-        : typeof error === "string"
-          ? error
-          : "Something went wrong loading the portal.";
-    return { hasError: true, message };
+    return {
+      hasError: true,
+      message: getBoundaryMessage(error, "Something went wrong loading the portal."),
+    };
   }
 
   componentDidCatch(error: unknown) {

@@ -15,6 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { getErrorMessage } from "@/lib/errors/public";
 
 const NOTIFICATION_OPTIONS: {
   kind: InvoiceNotificationKind;
@@ -62,7 +63,7 @@ export function SendInvoiceNotificationMenu({
         alert(result.error ?? "Failed to send notification");
       }
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to send notification");
+      alert(getErrorMessage(err, "Failed to send notification"));
     } finally {
       setPending(null);
     }

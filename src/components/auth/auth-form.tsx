@@ -27,7 +27,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   account_inactive:
     "Your account could not be loaded. If you just signed up, confirm your email or ask an admin to activate your account.",
   profile_setup_failed:
-    "Your login worked but the app profile is missing. Run the Supabase database migrations, then try signing in again.",
+    "You signed in, but your account profile could not be loaded. Please try again or contact BuildView support.",
   unauthorized: "You do not have permission to access that page.",
   rate_limited:
     "Too many sign-in attempts from this network. Please wait a few minutes and try again.",

@@ -9,6 +9,7 @@ import {
   isClientPortalRole,
 } from "@/lib/auth/roles";
 import type { UserRole } from "@/lib/types";
+import { PublicError } from "@/lib/errors/public";
 
 export type UploadAuthContext = {
   userId: string;
@@ -28,7 +29,7 @@ export async function assertCanUploadToProject(
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("You must be signed in");
+  if (!user) throw new PublicError("You must be signed in");
 
   const { data: profile } = await supabase
     .from("users")
@@ -36,21 +37,21 @@ export async function assertCanUploadToProject(
     .eq("id", user.id)
     .maybeSingle();
 
-  if (!profile?.is_active) throw new Error("Account is inactive");
+  if (!profile?.is_active) throw new PublicError("Account is inactive");
   const role = profile.role as UserRole;
 
   if (resource === "matterport") {
     if (!canUploadMatterport(role)) {
-      throw new Error("Only BuildView Super Admin and Admin can upload virtual tours");
+      throw new PublicError("Only BuildView Super Admin and Admin can upload virtual tours");
     }
     if (!isBuildViewStaffRole(role)) {
-      throw new Error("You do not have permission to upload virtual tours");
+      throw new PublicError("You do not have permission to upload virtual tours");
     }
     return { userId: user.id, role, clientId: profile.client_id };
   }
 
   if (!can(role, "upload", resource) && !canManageClientUploads(role)) {
-    throw new Error("You do not have permission to upload");
+    throw new PublicError("You do not have permission to upload");
   }
 
   if (isBuildViewStaffRole(role)) {
@@ -58,7 +59,7 @@ export async function assertCanUploadToProject(
   }
 
   if (!isClientPortalRole(role)) {
-    throw new Error("You do not have permission to upload");
+    throw new PublicError("You do not have permission to upload");
   }
 
   // Verify project access for client roles.
@@ -70,7 +71,7 @@ export async function assertCanUploadToProject(
       .select("id, client_id, deleted_at")
       .eq("id", projectId)
       .maybeSingle();
-    if (!project || project.deleted_at) throw new Error("Project not found");
+    if (!project || project.deleted_at) throw new PublicError("Project not found");
     projectClientId = project.client_id;
   } catch (err) {
     if (err instanceof Error && err.message === "Project not found") throw err;
@@ -79,13 +80,13 @@ export async function assertCanUploadToProject(
       .select("id, client_id, deleted_at")
       .eq("id", projectId)
       .maybeSingle();
-    if (!project || project.deleted_at) throw new Error("Project not found");
+    if (!project || project.deleted_at) throw new PublicError("Project not found");
     projectClientId = project.client_id;
   }
 
   if (role === "client_admin") {
     if (!profile.client_id || profile.client_id !== projectClientId) {
-      throw new Error("You can only upload to your organization's projects");
+      throw new PublicError("You can only upload to your organization's projects");
     }
     return { userId: user.id, role, clientId: profile.client_id };
   }
@@ -103,10 +104,10 @@ export async function assertCanUploadToProject(
       if (profile.client_id && profile.client_id === projectClientId) {
         return { userId: user.id, role, clientId: profile.client_id };
       }
-      throw new Error("You can only upload to projects assigned to you");
+      throw new PublicError("You can only upload to projects assigned to you");
     }
     return { userId: user.id, role, clientId: profile.client_id };
   }
 
-  throw new Error("You do not have permission to upload");
+  throw new PublicError("You do not have permission to upload");
 }

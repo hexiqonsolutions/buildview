@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { getErrorMessage } from "@/lib/errors/public";
 
 const CLIENT_STATUSES: ProjectStatus[] = [
   "planning",
@@ -88,7 +89,7 @@ export function UpdateProjectStatusSelect({
         router.refresh();
       } catch (err) {
         setStatus(currentStatus);
-        setError(err instanceof Error ? err.message : "Failed to update status");
+        setError(getErrorMessage(err, "Failed to update status"));
       }
     });
   }

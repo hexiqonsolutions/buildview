@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { getErrorMessage } from "@/lib/errors/public";
 
 interface UpdateIssueStatusSelectProps {
   issueId: string;
@@ -41,7 +42,7 @@ export function UpdateIssueStatusSelect({
         await updateIssueStatus(issueId, next);
       } catch (err) {
         setStatus(currentStatus);
-        setError(err instanceof Error ? err.message : "Failed to update status");
+        setError(getErrorMessage(err, "Failed to update status"));
       }
     });
   }
