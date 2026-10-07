@@ -8,6 +8,7 @@ import { isClientPortalRole } from "@/lib/auth/roles";
 import { isProjectVisibleInClientPortal } from "@/lib/portal/project-visibility";
 import { resolveClientDashboardType } from "@/lib/portal/dashboard-type";
 import { toPublicMessage } from "@/lib/errors/server";
+import { UPLOAD_RULES, verifyStoredUpload, type VerifiedUpload } from "@/lib/uploads/verify";
 import { validate } from "@/lib/validations/parse";
 import {
   portalDocumentUploadUrlSchema,
@@ -137,6 +138,13 @@ export async function recordPortalDocument(fields: {
   const auth = await authorizePortfolioUpload(input.projectId);
   if (!auth.ok) return auth;
 
+  let stored: VerifiedUpload;
+  try {
+    stored = await verifyStoredUpload(UPLOAD_RULES.document, input.path, "recordPortalDocument");
+  } catch (err) {
+    return { ok: false, error: toPublicMessage("recordPortalDocument", err, "Could not save the document.") };
+  }
+
   const documentId = randomUUID();
   const fullPayload: DocumentInsert = {
     id: documentId,
@@ -146,8 +154,8 @@ export async function recordPortalDocument(fields: {
     storage_path: input.path,
     file_url: input.path,
     file_name: input.fileName,
-    file_size: input.fileSize,
-    mime_type: input.mimeType,
+    file_size: stored.size,
+    mime_type: stored.mimeType,
     folder_id: null,
     description: input.description,
     document_group_id: documentId,

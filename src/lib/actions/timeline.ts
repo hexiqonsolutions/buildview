@@ -28,6 +28,7 @@ import { assertCanUploadToProject } from "@/lib/auth/upload-access";
 import { isBuildViewStaffRole } from "@/lib/auth/roles";
 import { PublicError } from "@/lib/errors/public";
 import { internalError } from "@/lib/errors/server";
+import { UPLOAD_RULES, verifyStoredUploads } from "@/lib/uploads/verify";
 
 type TimelinePhotoInput = {
   storage_path: string;
@@ -175,6 +176,11 @@ async function insertTimelinePhotos(
   if (photos.some((photo) => !photo.storage_path.startsWith(expectedPrefix))) {
     throw new PublicError("Invalid photo location for this milestone.");
   }
+  await verifyStoredUploads(
+    UPLOAD_RULES.timelinePhoto,
+    photos.map((photo) => photo.storage_path),
+    "insertTimelinePhotos"
+  );
 
   const admin = createServiceRoleClient();
   const { count } = await admin

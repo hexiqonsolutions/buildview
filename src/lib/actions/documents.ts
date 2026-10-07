@@ -17,6 +17,7 @@ import type { Document, DocumentInsert } from "@/lib/types";
 import { STORAGE_BUCKETS } from "@/lib/types";
 import { PublicError } from "@/lib/errors/public";
 import { internalError } from "@/lib/errors/server";
+import { UPLOAD_RULES, verifyStoredUpload } from "@/lib/uploads/verify";
 
 /** Generate a signed URL for downloading a document. */
 export async function getDocumentSignedUrl(
@@ -107,6 +108,12 @@ export async function replaceDocumentVersion(data: {
     throw new PublicError("This file cannot be replaced from here.");
   }
 
+  const stored = await verifyStoredUpload(
+    UPLOAD_RULES.document,
+    validation.data.storage_path,
+    "replaceDocumentVersion"
+  );
+
   const nextVersion = (current.version_number ?? 1) + 1;
   const newId = randomUUID();
 
@@ -126,8 +133,8 @@ export async function replaceDocumentVersion(data: {
     description: validation.data.change_note ?? current.description,
     file_url: validation.data.storage_path,
     file_name: validation.data.file_name,
-    file_size: validation.data.file_size ?? null,
-    mime_type: validation.data.mime_type ?? current.mime_type,
+    file_size: stored.size,
+    mime_type: stored.mimeType,
     storage_path: validation.data.storage_path,
     building: current.building,
     floor: current.floor,

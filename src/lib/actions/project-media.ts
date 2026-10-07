@@ -21,6 +21,7 @@ import {
 } from "@/lib/validations/project-media";
 import { PublicError } from "@/lib/errors/public";
 import { internalError } from "@/lib/errors/server";
+import { UPLOAD_RULES, verifyStoredUpload } from "@/lib/uploads/verify";
 
 const BUCKET = STORAGE_BUCKETS.PROJECT_MEDIA;
 /** Long enough to watch a video after the page has been open for a while. */
@@ -135,6 +136,15 @@ export async function addProjectMedia(fields: {
   const input = parseOrThrow(addProjectMediaSchema, fields);
   const actor = await requireBuildViewStaff();
 
+  if (!input.storage_path.startsWith(`${input.project_id}/`)) {
+    throw new PublicError("File upload is outside the project folder.");
+  }
+  const stored = await verifyStoredUpload(
+    input.media_type === "video" ? UPLOAD_RULES.projectVideo : UPLOAD_RULES.projectPhoto,
+    input.storage_path,
+    "addProjectMedia"
+  );
+
   const supabase = await createClient();
 
   const { count } = await supabase
@@ -150,8 +160,8 @@ export async function addProjectMedia(fields: {
     title: input.title,
     storage_path: input.storage_path,
     file_name: input.file_name,
-    mime_type: input.mime_type,
-    file_size: input.file_size,
+    mime_type: stored.mimeType,
+    file_size: stored.size,
     sort_order: count ?? 0,
     created_by: actor.id,
     updated_by: actor.id,

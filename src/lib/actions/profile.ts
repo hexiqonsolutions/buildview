@@ -7,6 +7,8 @@ import { getSupabaseUrl } from "@/lib/supabase/env";
 import { logServerError, toPublicMessage } from "@/lib/errors/server";
 import { validate, validateFormData } from "@/lib/validations/parse";
 import { avatarUrlSchema, updateProfileSchema } from "@/lib/validations/profile";
+import { publicObjectPath, UPLOAD_RULES, verifyStoredUpload } from "@/lib/uploads/verify";
+import { STORAGE_BUCKETS } from "@/lib/types";
 
 export type ProfileActionState = {
   error?: string;
@@ -84,6 +86,10 @@ export async function updateAvatarUrl(avatarUrl: string): Promise<{ error?: stri
   }
 
   try {
+    const path = publicObjectPath(url, STORAGE_BUCKETS.AVATARS);
+    if (!path) return { error: "Invalid photo URL." };
+    await verifyStoredUpload(UPLOAD_RULES.avatar, path, "updateAvatarUrl");
+
     const admin = createServiceRoleClient();
     const { data, error } = await admin
       .from("users")

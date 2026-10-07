@@ -76,6 +76,8 @@ import {
 } from "@/lib/portal/invoice-notifications";
 import { PublicError } from "@/lib/errors/public";
 import { internalError, logServerError, toPublicMessage } from "@/lib/errors/server";
+import { publicObjectPath, UPLOAD_RULES, verifyStoredUpload } from "@/lib/uploads/verify";
+import { STORAGE_BUCKETS } from "@/lib/types";
 
 const CLIENT_EDITABLE_STATUSES: ProjectStatus[] = [
   "planning",
@@ -233,7 +235,6 @@ export async function createProject(data: {
   description?: string | null;
   area_sqft?: number | null;
   portfolio_category?: "architecture" | "interior" | "real_estate" | null;
-  cover_image_url?: string | null;
 }): Promise<{ projectId: string } | { error: string }> {
   const validation = validate(createProjectSchema, data);
   if (!validation.success) return { error: validation.error };
@@ -259,7 +260,6 @@ export async function createProject(data: {
     completion_date: validated.completion_date,
     area_sqft: validated.area_sqft,
     portfolio_category: validated.portfolio_category,
-    cover_image_url: validated.cover_image_url,
     created_by: user?.id ?? null,
   };
 
@@ -319,6 +319,12 @@ export async function updateProjectCoverImage(
 
   const { supabase, user } = await requireStaffPermission("update", "projects");
 
+  if (validated.coverImageUrl) {
+    const path = publicObjectPath(validated.coverImageUrl, STORAGE_BUCKETS.PROJECT_COVERS);
+    if (!path) throw new PublicError("Cover image must be uploaded to this project's cover folder");
+    await verifyStoredUpload(UPLOAD_RULES.projectCover, path, "updateProjectCoverImage");
+  }
+
   const { error } = await supabase
     .from("projects")
     .update({
@@ -353,6 +359,14 @@ export async function updateTourThumbnail(tourId: string, thumbnailUrl: string |
   if (!tour) throw new PublicError("Tour not found.");
 
   await assertCanUploadToProject(tour.project_id, "matterport");
+
+  if (validated.thumbnailUrl) {
+    const path = publicObjectPath(validated.thumbnailUrl, STORAGE_BUCKETS.PROJECT_COVERS);
+    if (!path?.startsWith(`${tour.project_id}/`)) {
+      throw new PublicError("Thumbnail must be uploaded to this project's cover folder.");
+    }
+    await verifyStoredUpload(UPLOAD_RULES.projectCover, path, "updateTourThumbnail");
+  }
 
   const supabase = await createClient();
   const {
@@ -501,7 +515,8 @@ export async function createReport(input: CreateReportInput) {
   const data = parseOrThrow(createReportActionSchema, input);
   // insertReport may fall back to the service role, so authorize first.
   await assertCanUploadToProject(data.project_id, "reports");
-  const reportId = await insertReport(data);
+  const stored = await verifyStoredUpload(UPLOAD_RULES.report, data.storage_path, "createReport");
+  const reportId = await insertReport({ ...data, file_size: stored.size, mime_type: "application/pdf" });
 
   if (!data.skipTimeline) {
     await recordTimelineEntry(
@@ -720,7 +735,8 @@ export async function createDocument(input: CreateDocumentInput) {
   const data = parseOrThrow(createDocumentActionSchema, input);
   // insertDocument may fall back to the service role, so authorize first.
   await assertCanUploadToProject(data.project_id, "documents");
-  const documentId = await insertDocument(data);
+  const stored = await verifyStoredUpload(UPLOAD_RULES.document, data.storage_path, "createDocument");
+  const documentId = await insertDocument({ ...data, file_size: stored.size, mime_type: stored.mimeType });
 
   if (!data.skipTimeline) {
     await recordTimelineEntry(
@@ -878,6 +894,10 @@ export async function createInvoice(data: {
 
   const { supabase, user } = await requireStaffPermission("create", "invoices");
 
+  if (validated.storage_path) {
+    await verifyStoredUpload(UPLOAD_RULES.invoice, validated.storage_path, "createInvoice");
+  }
+
   const payload: InvoiceInsert = {
     client_id: validated.client_id,
     project_id: validated.project_id,
@@ -931,6 +951,8 @@ export async function attachInvoicePdf(
   const validated = parseOrThrow(attachInvoicePdfSchema, { invoiceId, data }).data;
 
   const { supabase, user } = await requireStaffPermission("update", "invoices");
+
+  await verifyStoredUpload(UPLOAD_RULES.invoice, validated.storage_path, "attachInvoicePdf");
 
   const { error } = await supabase
     .from("invoices")

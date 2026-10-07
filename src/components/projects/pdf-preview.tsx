@@ -13,7 +13,12 @@ import {
 } from "@/components/ui/dialog";
 import { getErrorMessage } from "@/lib/errors/public";
 
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  "pdfjs-dist/build/pdf.worker.min.mjs",
+  import.meta.url
+).toString();
+
+const PDF_OPTIONS = { isEvalSupported: false };
 
 interface PdfPreviewProps {
   reportId: string;
@@ -148,6 +153,7 @@ export function PdfPreview({ reportId, fileName, title }: PdfPreviewProps) {
               <div className="flex justify-center overflow-x-auto">
                 <Document
                   file={signedUrl}
+                  options={PDF_OPTIONS}
                   onLoadSuccess={({ numPages: n }) => setNumPages(n)}
                   onLoadError={() => setError("Failed to render PDF.")}
                   loading={

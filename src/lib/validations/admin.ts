@@ -17,7 +17,6 @@ import {
   money,
   oneOf,
   optional,
-  optionalHttpsUrl,
   optionalIsoDate,
   optionalPhone,
   optionalText,
@@ -122,12 +121,7 @@ const projectFields = {
   portfolio_category: optional(oneOf("Category", portfolioCategories)),
 };
 
-export const createProjectSchema = z
-  .object({
-    ...projectFields,
-    cover_image_url: optionalHttpsUrl("Cover image URL"),
-  })
-  .strict();
+export const createProjectSchema = z.object(projectFields).strict();
 
 export const updateProjectSchema = z
   .object({

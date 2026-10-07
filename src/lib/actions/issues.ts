@@ -34,6 +34,7 @@ import { isBuildViewStaffRole, canCreateProjectIssue, canUpdateIssueStatus } fro
 import { recordTimelineEntry } from "@/lib/timeline/auto-entry";
 import { PublicError } from "@/lib/errors/public";
 import { internalError } from "@/lib/errors/server";
+import { UPLOAD_RULES, verifyStoredUploads } from "@/lib/uploads/verify";
 
 function revalidateIssuePaths(projectId: string) {
   revalidatePath("/admin/issues");
@@ -223,6 +224,17 @@ export async function createIssue(data: {
     return projectAccessVerified;
   };
   const status = (validated.status ?? "open") as IssueStatus;
+
+  if (validated.images && validated.images.length > 0) {
+    if (!(await verifyProjectAccess())) {
+      throw new PublicError("You do not have access to this project.");
+    }
+    await verifyStoredUploads(
+      UPLOAD_RULES.issueImage,
+      validated.images.map((img) => img.storage_path),
+      "createIssue"
+    );
+  }
 
   const spatial = await resolveSpatialForWrite(supabase, validated.project_id, {
     building: validated.building,
@@ -575,6 +587,11 @@ export async function addIssueImages(
   if (images.some((img) => !img.storage_path.startsWith(expectedPrefix))) {
     throw new PublicError("Invalid photo location for this issue.");
   }
+  await verifyStoredUploads(
+    UPLOAD_RULES.issueImage,
+    images.map((img) => img.storage_path),
+    "addIssueImages"
+  );
 
   const reader = rlsVisible ? supabase : createServiceRoleClient();
   const { count } = await reader
