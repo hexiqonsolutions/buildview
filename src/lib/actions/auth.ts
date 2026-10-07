@@ -8,10 +8,12 @@ import { ensureUserProfile } from "@/lib/supabase/provision-user";
 import { authThrottle } from "@/lib/rate-limit/auth";
 import {
   forgotPasswordSchema,
+  googleSignInSchema,
   loginSchema,
   registerSchema,
   resetPasswordSchema,
 } from "@/lib/validations/auth";
+import { validateFormData } from "@/lib/validations/parse";
 
 export type AuthActionState = {
   error?: string;
@@ -22,17 +24,14 @@ async function getOrigin(): Promise<string> {
   const headersList = await headers();
   const host = headersList.get("x-forwarded-host") ?? headersList.get("host");
   const protocol = headersList.get("x-forwarded-proto") ?? "http";
-  if (host) {
+  if (
+    host &&
+    /^[A-Za-z0-9.-]{1,253}(:\d{1,5})?$/.test(host) &&
+    (protocol === "http" || protocol === "https")
+  ) {
     return `${protocol}://${host}`;
   }
   return process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-}
-
-function safeRedirectPath(path: string | null | undefined): string {
-  if (!path || !path.startsWith("/") || path.startsWith("//")) {
-    return "/dashboard";
-  }
-  return path;
 }
 
 function withSentence(message: string, extra: string): string {
@@ -44,13 +43,10 @@ export async function signIn(
   _prevState: AuthActionState,
   formData: FormData
 ): Promise<AuthActionState> {
-  const parsed = loginSchema.safeParse({
-    email: formData.get("email"),
-    password: formData.get("password"),
-  });
+  const parsed = validateFormData(loginSchema, formData);
 
   if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? "Invalid input" };
+    return { error: parsed.error };
   }
 
   const throttle = await authThrottle("login", parsed.data.email);
@@ -60,7 +56,10 @@ export async function signIn(
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.signInWithPassword(parsed.data);
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: parsed.data.email,
+    password: parsed.data.password,
+  });
 
   if (error) {
     const delay = await throttle.record();
@@ -85,24 +84,17 @@ export async function signIn(
   cookieStore.delete(IMPERSONATOR_COOKIE);
   cookieStore.delete(ADMIN_RESTORE_COOKIE);
 
-  const redirectTo = safeRedirectPath(
-    formData.get("redirect")?.toString() ?? null
-  );
-  redirect(redirectTo);
+  redirect(parsed.data.redirect ?? "/dashboard");
 }
 
 export async function signUp(
   _prevState: AuthActionState,
   formData: FormData
 ): Promise<AuthActionState> {
-  const parsed = registerSchema.safeParse({
-    fullName: formData.get("fullName"),
-    email: formData.get("email"),
-    password: formData.get("password"),
-  });
+  const parsed = validateFormData(registerSchema, formData);
 
   if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? "Invalid input" };
+    return { error: parsed.error };
   }
 
   const throttle = await authThrottle("signup", parsed.data.email);
@@ -146,12 +138,10 @@ export async function forgotPassword(
   _prevState: AuthActionState,
   formData: FormData
 ): Promise<AuthActionState> {
-  const parsed = forgotPasswordSchema.safeParse({
-    email: formData.get("email"),
-  });
+  const parsed = validateFormData(forgotPasswordSchema, formData);
 
   if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? "Invalid input" };
+    return { error: parsed.error };
   }
 
   const throttle = await authThrottle("passwordReset", parsed.data.email);
@@ -181,13 +171,10 @@ export async function resetPassword(
   _prevState: AuthActionState,
   formData: FormData
 ): Promise<AuthActionState> {
-  const parsed = resetPasswordSchema.safeParse({
-    password: formData.get("password"),
-    confirmPassword: formData.get("confirmPassword"),
-  });
+  const parsed = validateFormData(resetPasswordSchema, formData);
 
   if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? "Invalid input" };
+    return { error: parsed.error };
   }
 
   const supabase = await createClient();
@@ -218,6 +205,11 @@ export async function resetPassword(
 }
 
 export async function signInWithGoogle(formData: FormData): Promise<void> {
+  const parsed = validateFormData(googleSignInSchema, formData);
+  if (!parsed.success) {
+    redirect("/login?error=google_signin_failed");
+  }
+
   const throttle = await authThrottle("oauth");
   if ((await throttle.retryAfter()) > 0) {
     redirect("/login?error=rate_limited");
@@ -226,9 +218,7 @@ export async function signInWithGoogle(formData: FormData): Promise<void> {
 
   const supabase = await createClient();
   const origin = await getOrigin();
-  const redirectTo = safeRedirectPath(
-    formData.get("redirect")?.toString() ?? null
-  );
+  const redirectTo = parsed.data.redirect ?? "/dashboard";
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",

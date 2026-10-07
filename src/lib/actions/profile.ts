@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { createClient, getUserProfile } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
-import { updateProfileSchema } from "@/lib/validations/profile";
+import { getSupabaseUrl } from "@/lib/supabase/env";
+import { validate, validateFormData } from "@/lib/validations/parse";
+import { avatarUrlSchema, updateProfileSchema } from "@/lib/validations/profile";
 
 export type ProfileActionState = {
   error?: string;
@@ -24,13 +26,10 @@ export async function updateProfile(
   _prevState: ProfileActionState,
   formData: FormData
 ): Promise<ProfileActionState> {
-  const parsed = updateProfileSchema.safeParse({
-    full_name: formData.get("full_name"),
-    phone: formData.get("phone"),
-  });
+  const parsed = validateFormData(updateProfileSchema, formData);
 
   if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? "Invalid profile data" };
+    return { error: parsed.error };
   }
 
   const supabase = await createClient();
@@ -42,13 +41,11 @@ export async function updateProfile(
     return { error: "You must be signed in to update your profile." };
   }
 
-  const phone = parsed.data.phone?.trim() || null;
-
   const { error } = await supabase
     .from("users")
     .update({
       full_name: parsed.data.full_name,
-      phone,
+      phone: parsed.data.phone,
       updated_by: user.id,
     })
     .eq("id", user.id)
@@ -69,10 +66,11 @@ export async function updateProfile(
 
 /** Persist avatar_url for the signed-in user (service role — client RLS can silently block). */
 export async function updateAvatarUrl(avatarUrl: string): Promise<{ error?: string }> {
-  const url = avatarUrl.trim();
-  if (!url || !/^https?:\/\//i.test(url) || url.length > 2000) {
-    return { error: "Invalid photo URL." };
+  const parsed = validate(avatarUrlSchema(getSupabaseUrl()), avatarUrl);
+  if (!parsed.success) {
+    return { error: parsed.error };
   }
+  const { url, userId: ownerId } = parsed.data;
 
   const supabase = await createClient();
   const {
@@ -81,6 +79,10 @@ export async function updateAvatarUrl(avatarUrl: string): Promise<{ error?: stri
 
   if (!user) {
     return { error: "You must be signed in to update your photo." };
+  }
+
+  if (ownerId !== user.id.toLowerCase()) {
+    return { error: "Invalid photo URL." };
   }
 
   try {

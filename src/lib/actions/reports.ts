@@ -5,11 +5,14 @@ import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { createSignedStorageUrl } from "@/lib/supabase/storage-server";
 import { resolveStoragePath } from "@/lib/supabase/storage";
 import { STORAGE_BUCKETS } from "@/lib/types";
+import { parseOrThrow } from "@/lib/validations/parse";
+import { reportIdSchema } from "@/lib/validations/data";
 
 /** Generate a signed URL for previewing or downloading a report PDF. */
 export async function getReportSignedUrl(
   reportId: string
 ): Promise<{ url: string; fileName: string }> {
+  const id = parseOrThrow(reportIdSchema, reportId);
   const supabase = await createClient();
   const {
     data: { user },
@@ -20,7 +23,7 @@ export async function getReportSignedUrl(
   const { data: report, error } = await supabase
     .from("reports")
     .select("storage_path, file_url, file_name")
-    .eq("id", reportId)
+    .eq("id", id)
     .is("deleted_at", null)
     .single();
 

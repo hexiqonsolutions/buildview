@@ -9,6 +9,23 @@ import type { NotificationRuleKey } from "@/lib/admin/platform-settings";
 import type { Notification, NotificationType } from "@/lib/types";
 import { resolveNotificationHref } from "@/lib/portal/notification-links";
 import type { InvoiceNotifyFields, InvoiceNotifyPayload } from "@/lib/portal/invoice-notifications";
+import { parseOrThrow, validate, type ValidationResult } from "@/lib/validations/parse";
+import { uuid } from "@/lib/validations/primitives";
+import {
+  createNotificationSchema,
+  invoiceNotifyFieldsSchema,
+  notificationLimitSchema,
+  notificationRecipientIdsSchema,
+  notificationRuleSchema,
+  notifyPayloadSchema,
+} from "@/lib/validations/notifications";
+
+function warnInvalidInput(fn: string, ...results: ValidationResult<unknown>[]) {
+  const failed = results.find(
+    (result): result is { success: false; error: string } => !result.success
+  );
+  console.warn(`[${fn}] rejected invalid input:`, failed?.error ?? "Invalid input");
+}
 
 function revalidateNotificationPaths() {
   revalidatePath("/admin/notifications");
@@ -28,6 +45,9 @@ function withResolvedLinks(notifications: Notification[]): Notification[] {
 }
 
 export async function getNotifications(limit = 50): Promise<Notification[]> {
+  const parsedLimit = validate(notificationLimitSchema, limit);
+  if (!parsedLimit.success) return [];
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -40,18 +60,21 @@ export async function getNotifications(limit = 50): Promise<Notification[]> {
     .eq("user_id", user.id)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .limit(parsedLimit.data);
 
   return withResolvedLinks(data ?? []);
 }
 
 /** Project name for clear upload notification copy. */
 export async function getProjectNameForNotify(projectId: string): Promise<string> {
+  const parsedId = validate(uuid("Project ID"), projectId);
+  if (!parsedId.success) return "your project";
+
   const admin = createServiceRoleClient();
   const { data } = await admin
     .from("projects")
     .select("name")
-    .eq("id", projectId)
+    .eq("id", parsedId.data)
     .maybeSingle();
   return data?.name?.trim() || "your project";
 }
@@ -74,6 +97,8 @@ export async function getUnreadNotificationCount(): Promise<number> {
 }
 
 export async function markNotificationRead(notificationId: string) {
+  const id = parseOrThrow(uuid("Notification ID"), notificationId);
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -87,7 +112,7 @@ export async function markNotificationRead(notificationId: string) {
       read_at: new Date().toISOString(),
       updated_by: user.id,
     })
-    .eq("id", notificationId)
+    .eq("id", id)
     .eq("user_id", user.id);
 
   if (error) throw new Error(error.message);
@@ -123,6 +148,12 @@ export async function createNotification(data: {
   type?: NotificationType;
   link?: string | null;
 }) {
+  const parsed = validate(createNotificationSchema, data);
+  if (!parsed.success) {
+    warnInvalidInput("createNotification", parsed);
+    return;
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -131,11 +162,11 @@ export async function createNotification(data: {
   // Always write via service role — RLS only allows inserting notifications for
   // yourself / super_admin, which blocks admin→client upload alerts.
   await insertNotificationSystem({
-    user_id: data.user_id,
-    title: data.title,
-    message: data.message,
-    type: data.type,
-    link: data.link,
+    user_id: parsed.data.user_id,
+    title: parsed.data.title,
+    message: parsed.data.message,
+    type: parsed.data.type,
+    link: parsed.data.link,
     created_by: user?.id ?? null,
   });
 }
@@ -181,23 +212,32 @@ export async function notifyUsers(
     sendEmail?: boolean;
   }
 ) {
-  const uniqueIds = [...new Set(userIds.filter(Boolean))];
+  const parsedIds = validate(notificationRecipientIdsSchema, userIds);
+  const parsedPayload = validate(notifyPayloadSchema, payload);
+  if (!parsedIds.success || !parsedPayload.success) {
+    warnInvalidInput("notifyUsers", parsedIds, parsedPayload);
+    return;
+  }
+
+  const uniqueIds = [...new Set(parsedIds.data)];
   if (uniqueIds.length === 0) {
     console.warn("[notifyUsers] no recipient user ids");
     return;
   }
 
+  const { sendEmail, ...notification } = parsedPayload.data;
+
   await Promise.all(
     uniqueIds.map((userId) =>
       createNotification({
         user_id: userId,
-        ...payload,
+        ...notification,
       })
     )
   );
 
-  if (payload.sendEmail !== false) {
-    await emailNotificationRecipients(uniqueIds, payload);
+  if (sendEmail !== false) {
+    await emailNotificationRecipients(uniqueIds, notification);
   }
 
   revalidateNotificationPaths();
@@ -208,16 +248,23 @@ export async function notifyInvoiceRecipients(
   invoice: InvoiceNotifyFields,
   payload: InvoiceNotifyPayload
 ) {
+  const parsedInvoice = validate(invoiceNotifyFieldsSchema, invoice);
+  const parsedPayload = validate(notifyPayloadSchema, payload);
+  if (!parsedInvoice.success || !parsedPayload.success) {
+    warnInvalidInput("notifyInvoiceRecipients", parsedInvoice, parsedPayload);
+    return;
+  }
+
   const admin = createServiceRoleClient();
   const { data: admins } = await admin
     .from("users")
     .select("id")
-    .eq("client_id", invoice.client_id)
+    .eq("client_id", parsedInvoice.data.client_id)
     .eq("role", "client_admin")
     .eq("is_active", true)
     .is("deleted_at", null);
 
-  await notifyUsers(admins?.map((u) => u.id) ?? [], payload);
+  await notifyUsers(admins?.map((u) => u.id) ?? [], parsedPayload.data);
 }
 
 export async function notifyClientUsers(
@@ -230,15 +277,22 @@ export async function notifyClientUsers(
     sendEmail?: boolean;
   }
 ) {
+  const parsedClientId = validate(uuid("Client ID"), clientId);
+  const parsedPayload = validate(notifyPayloadSchema, payload);
+  if (!parsedClientId.success || !parsedPayload.success) {
+    warnInvalidInput("notifyClientUsers", parsedClientId, parsedPayload);
+    return;
+  }
+
   const admin = createServiceRoleClient();
   const { data: users } = await admin
     .from("users")
     .select("id")
-    .eq("client_id", clientId)
+    .eq("client_id", parsedClientId.data)
     .eq("is_active", true)
     .is("deleted_at", null);
 
-  await notifyUsers(users?.map((u) => u.id) ?? [], payload);
+  await notifyUsers(users?.map((u) => u.id) ?? [], parsedPayload.data);
 }
 
 export async function notifyProjectClientUsers(
@@ -251,14 +305,21 @@ export async function notifyProjectClientUsers(
     sendEmail?: boolean;
   }
 ) {
+  const parsedProjectId = validate(uuid("Project ID"), projectId);
+  const parsedPayload = validate(notifyPayloadSchema, payload);
+  if (!parsedProjectId.success || !parsedPayload.success) {
+    warnInvalidInput("notifyProjectClientUsers", parsedProjectId, parsedPayload);
+    return;
+  }
+
   const admin = createServiceRoleClient();
 
   const [{ data: project }, { data: assignments }] = await Promise.all([
-    admin.from("projects").select("client_id").eq("id", projectId).maybeSingle(),
+    admin.from("projects").select("client_id").eq("id", parsedProjectId.data).maybeSingle(),
     admin
       .from("project_assignments")
       .select("user_id")
-      .eq("project_id", projectId)
+      .eq("project_id", parsedProjectId.data)
       .is("deleted_at", null),
   ]);
 
@@ -284,12 +345,12 @@ export async function notifyProjectClientUsers(
   if (recipientIds.size === 0) {
     console.warn(
       "[notifyProjectClientUsers] no client recipients for project",
-      projectId
+      parsedProjectId.data
     );
     return;
   }
 
-  await notifyUsers([...recipientIds], payload);
+  await notifyUsers([...recipientIds], parsedPayload.data);
 }
 
 export async function notifySuperAdmins(payload: {
@@ -299,6 +360,12 @@ export async function notifySuperAdmins(payload: {
   link?: string | null;
   sendEmail?: boolean;
 }) {
+  const parsedPayload = validate(notifyPayloadSchema, payload);
+  if (!parsedPayload.success) {
+    warnInvalidInput("notifySuperAdmins", parsedPayload);
+    return;
+  }
+
   const admin = createServiceRoleClient();
   const { data: admins } = await admin
     .from("users")
@@ -307,7 +374,7 @@ export async function notifySuperAdmins(payload: {
     .eq("is_active", true)
     .is("deleted_at", null);
 
-  await notifyUsers(admins?.map((a) => a.id) ?? [], payload);
+  await notifyUsers(admins?.map((a) => a.id) ?? [], parsedPayload.data);
 }
 
 type ClientNotifyPayload = {
@@ -326,9 +393,17 @@ export async function notifyClientsIfEnabled(
   projectId: string,
   payload: ClientNotifyPayload
 ) {
+  const parsedRule = validate(notificationRuleSchema, rule);
+  const parsedProjectId = validate(uuid("Project ID"), projectId);
+  const parsedPayload = validate(notifyPayloadSchema, payload);
+  if (!parsedRule.success || !parsedProjectId.success || !parsedPayload.success) {
+    warnInvalidInput("notifyClientsIfEnabled", parsedRule, parsedProjectId, parsedPayload);
+    return;
+  }
+
   try {
-    if (!(await isNotificationRuleEnabled(rule))) return;
-    await notifyProjectClientUsers(projectId, payload);
+    if (!(await isNotificationRuleEnabled(parsedRule.data))) return;
+    await notifyProjectClientUsers(parsedProjectId.data, parsedPayload.data);
   } catch (err) {
     console.error("[notifyClientsIfEnabled]", rule, projectId, err);
   }
@@ -339,9 +414,17 @@ export async function notifyClientOrgIfEnabled(
   clientId: string,
   payload: ClientNotifyPayload
 ) {
+  const parsedRule = validate(notificationRuleSchema, rule);
+  const parsedClientId = validate(uuid("Client ID"), clientId);
+  const parsedPayload = validate(notifyPayloadSchema, payload);
+  if (!parsedRule.success || !parsedClientId.success || !parsedPayload.success) {
+    warnInvalidInput("notifyClientOrgIfEnabled", parsedRule, parsedClientId, parsedPayload);
+    return;
+  }
+
   try {
-    if (!(await isNotificationRuleEnabled(rule))) return;
-    await notifyClientUsers(clientId, payload);
+    if (!(await isNotificationRuleEnabled(parsedRule.data))) return;
+    await notifyClientUsers(parsedClientId.data, parsedPayload.data);
   } catch (err) {
     console.error("[notifyClientOrgIfEnabled]", rule, clientId, err);
   }
@@ -352,9 +435,17 @@ export async function notifyUsersIfEnabled(
   userIds: string[],
   payload: ClientNotifyPayload
 ) {
+  const parsedRule = validate(notificationRuleSchema, rule);
+  const parsedIds = validate(notificationRecipientIdsSchema, userIds);
+  const parsedPayload = validate(notifyPayloadSchema, payload);
+  if (!parsedRule.success || !parsedIds.success || !parsedPayload.success) {
+    warnInvalidInput("notifyUsersIfEnabled", parsedRule, parsedIds, parsedPayload);
+    return;
+  }
+
   try {
-    if (!(await isNotificationRuleEnabled(rule))) return;
-    await notifyUsers(userIds, payload);
+    if (!(await isNotificationRuleEnabled(parsedRule.data))) return;
+    await notifyUsers(parsedIds.data, parsedPayload.data);
   } catch (err) {
     console.error("[notifyUsersIfEnabled]", rule, err);
   }

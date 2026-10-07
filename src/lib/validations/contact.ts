@@ -1,14 +1,19 @@
 import { z } from "zod";
+import { email, optionalText, personName, text } from "@/lib/validations/primitives";
 
-export const contactFormSchema = z.object({
-  name: z.string().min(2, "Please enter your full name"),
-  email: z.string().email("Please enter a valid email address"),
-  company: z.string().optional(),
-  interest: z.enum(["demo", "quote", "enterprise", "matterport", "partnership", "support", "other"], {
-    required_error: "Please select what you're interested in",
-  }),
-  message: z.string().min(10, "Please provide a bit more detail in your message"),
-});
+export const contactFormSchema = z
+  .object({
+    name: personName("Full name"),
+    email: email(),
+    company: optionalText("Company", { max: 120 }),
+    interest: z.enum(["demo", "quote", "enterprise", "matterport", "partnership", "support", "other"], {
+      errorMap: () => ({ message: "Please select what you're interested in" }),
+    }),
+    message: text("Message", { min: 10, max: 5000, multiline: true }),
+    /** Honeypot — must be empty (filled-in submissions are dropped before validation). */
+    _gotcha: z.literal("").optional(),
+  })
+  .strict();
 
 export type ContactFormInput = z.infer<typeof contactFormSchema>;
 

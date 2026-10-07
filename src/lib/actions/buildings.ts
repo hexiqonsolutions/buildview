@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireBuildViewStaff } from "@/lib/supabase/server";
 import type { Building, Floor } from "@/lib/types";
+import { parseOrThrow, validate } from "@/lib/validations/parse";
+import { LIMITS, text, uuid } from "@/lib/validations/primitives";
 
 export type SpatialHierarchy = {
   buildings: Array<Building & { floors: Floor[] }>;
@@ -22,6 +24,8 @@ function isSpatialReadError(error: { message?: string; code?: string } | null): 
 }
 
 export async function getProjectSpatialHierarchy(projectId: string): Promise<SpatialHierarchy> {
+  if (!validate(uuid("Project"), projectId).success) return { buildings: [] };
+
   const supabase = await createClient();
 
   const { data: buildings, error: buildingsError } = await supabase
@@ -77,9 +81,9 @@ function revalidateSpatialPaths(projectId: string) {
 }
 
 export async function createBuilding(projectId: string, name: string) {
+  parseOrThrow(uuid("Project"), projectId);
+  const trimmed = parseOrThrow(text("Building name", { max: LIMITS.name }), name);
   await requireBuildViewStaff();
-  const trimmed = name.trim();
-  if (!trimmed) throw new Error("Building name is required.");
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -98,9 +102,9 @@ export async function createBuilding(projectId: string, name: string) {
 }
 
 export async function createFloor(buildingId: string, name: string) {
+  parseOrThrow(uuid("Building"), buildingId);
+  const trimmed = parseOrThrow(text("Floor name", { max: LIMITS.name }), name);
   await requireBuildViewStaff();
-  const trimmed = name.trim();
-  if (!trimmed) throw new Error("Floor name is required.");
 
   const supabase = await createClient();
 
@@ -129,6 +133,7 @@ export async function createFloor(buildingId: string, name: string) {
 }
 
 export async function deleteBuilding(buildingId: string) {
+  parseOrThrow(uuid("Building"), buildingId);
   await requireBuildViewStaff();
   const supabase = await createClient();
 
@@ -160,6 +165,7 @@ export async function deleteBuilding(buildingId: string) {
 }
 
 export async function deleteFloor(floorId: string) {
+  parseOrThrow(uuid("Floor"), floorId);
   await requireBuildViewStaff();
   const supabase = await createClient();
 

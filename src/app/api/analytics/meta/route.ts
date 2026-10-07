@@ -1,15 +1,13 @@
 import { createHash } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
-import {
-  analyticsEvents,
-  type AnalyticsEventName,
-} from "@/lib/analytics/events";
+import { type AnalyticsEventName } from "@/lib/analytics/events";
+import { metaEventBodySchema } from "@/lib/validations/analytics";
+import { validate } from "@/lib/validations/parse";
 
 const PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID ?? "";
 const ACCESS_TOKEN = process.env.META_CAPI_ACCESS_TOKEN ?? "";
 const TEST_EVENT_CODE = process.env.META_CAPI_TEST_EVENT_CODE ?? "";
-
-const allowedEvents = new Set<string>(Object.values(analyticsEvents));
+const MAX_BODY_BYTES = 16 * 1024;
 
 const metaEventMap: Record<AnalyticsEventName, string> = {
   PageView: "PageView",
@@ -36,26 +34,35 @@ export async function POST(request: NextRequest) {
     return new NextResponse(null, { status: 204 });
   }
 
-  let body: {
-    eventName?: string;
-    eventId?: string;
-    eventSourceUrl?: string;
-    params?: Record<string, unknown>;
-    email?: string;
-  };
+  const contentLength = Number(request.headers.get("content-length") ?? "0");
+  if (contentLength > MAX_BODY_BYTES) {
+    return NextResponse.json({ error: "Request body too large" }, { status: 413 });
+  }
 
+  let raw: string;
   try {
-    body = (await request.json()) as typeof body;
+    raw = await request.text();
+  } catch {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  }
+  if (raw.length > MAX_BODY_BYTES) {
+    return NextResponse.json({ error: "Request body too large" }, { status: 413 });
+  }
+
+  let json: unknown;
+  try {
+    json = JSON.parse(raw);
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const eventName = body.eventName;
-  if (!eventName || !allowedEvents.has(eventName)) {
-    return NextResponse.json({ error: "Unsupported event" }, { status: 400 });
+  const parsed = validate(metaEventBodySchema, json);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
+  const body = parsed.data;
 
-  const mappedName = metaEventMap[eventName as AnalyticsEventName];
+  const mappedName = metaEventMap[body.eventName as AnalyticsEventName];
   const userAgent = request.headers.get("user-agent") ?? undefined;
   const clientIp = firstIp(request);
   const fbp = request.cookies.get("_fbp")?.value;

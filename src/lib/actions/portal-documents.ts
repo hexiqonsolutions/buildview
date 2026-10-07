@@ -7,29 +7,20 @@ import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { isClientPortalRole } from "@/lib/auth/roles";
 import { isProjectVisibleInClientPortal } from "@/lib/portal/project-visibility";
 import { resolveClientDashboardType } from "@/lib/portal/dashboard-type";
+import { validate } from "@/lib/validations/parse";
 import {
-  PORTAL_DOCUMENT_MAX_BYTES,
-  PORTAL_DOCUMENT_MIME_TYPES,
-} from "@/lib/portal/document-upload";
+  portalDocumentUploadUrlSchema,
+  recordPortalDocumentSchema,
+} from "@/lib/validations/upload";
 import {
   STORAGE_BUCKETS,
   type ClientDashboardType,
-  type DocumentCategory,
   type DocumentInsert,
   type ProjectStatus,
   type UserRole,
 } from "@/lib/types";
 
 type Result<T> = ({ ok: true } & T) | { ok: false; error: string };
-
-const CATEGORIES: DocumentCategory[] = [
-  "drawings",
-  "boqs",
-  "contracts",
-  "approvals",
-  "technical_documents",
-  "other",
-];
 
 /**
  * Portfolio Showcase clients upload documents through the service role so every
@@ -101,18 +92,14 @@ async function authorizePortfolioUpload(
   return { ok: true, userId: user.id };
 }
 
-export async function createPortalDocumentUploadUrl(input: {
+export async function createPortalDocumentUploadUrl(fields: {
   projectId: string;
   fileName: string;
   fileSize: number;
 }): Promise<Result<{ path: string; token: string }>> {
-  if (!input.fileName?.trim()) return { ok: false, error: "Choose a file to upload." };
-  if (!Number.isFinite(input.fileSize) || input.fileSize <= 0) {
-    return { ok: false, error: "The selected file is empty." };
-  }
-  if (input.fileSize > PORTAL_DOCUMENT_MAX_BYTES) {
-    return { ok: false, error: "Files must be 100 MB or smaller." };
-  }
+  const parsed = validate(portalDocumentUploadUrlSchema, fields);
+  if (!parsed.success) return { ok: false, error: parsed.error };
+  const input = parsed.data;
 
   const auth = await authorizePortfolioUpload(input.projectId);
   if (!auth.ok) return auth;
@@ -129,7 +116,7 @@ export async function createPortalDocumentUploadUrl(input: {
   return { ok: true, path: data.path, token: data.token };
 }
 
-export async function recordPortalDocument(input: {
+export async function recordPortalDocument(fields: {
   projectId: string;
   path: string;
   name: string;
@@ -139,33 +126,26 @@ export async function recordPortalDocument(input: {
   fileSize: number;
   mimeType: string;
 }): Promise<Result<{ documentId: string }>> {
+  const parsed = validate(recordPortalDocumentSchema, fields);
+  if (!parsed.success) return { ok: false, error: parsed.error };
+  const input = parsed.data;
+
   const auth = await authorizePortfolioUpload(input.projectId);
   if (!auth.ok) return auth;
-
-  if (!input.path.startsWith(`${input.projectId}/`)) {
-    return { ok: false, error: "File does not belong to this project." };
-  }
-  const category = CATEGORIES.includes(input.category as DocumentCategory)
-    ? (input.category as DocumentCategory)
-    : "other";
-  const name = input.name.trim().slice(0, 200) || input.fileName;
-  const mimeType = PORTAL_DOCUMENT_MIME_TYPES.includes(input.mimeType)
-    ? input.mimeType
-    : "application/octet-stream";
 
   const documentId = randomUUID();
   const fullPayload: DocumentInsert = {
     id: documentId,
     project_id: input.projectId,
-    name,
-    category,
+    name: input.name,
+    category: input.category,
     storage_path: input.path,
     file_url: input.path,
     file_name: input.fileName,
     file_size: input.fileSize,
-    mime_type: mimeType,
+    mime_type: input.mimeType,
     folder_id: null,
-    description: input.description?.trim() || null,
+    description: input.description,
     document_group_id: documentId,
     version_number: 1,
     is_current: true,

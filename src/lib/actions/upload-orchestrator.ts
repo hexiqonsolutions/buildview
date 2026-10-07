@@ -7,6 +7,18 @@ import { createTourSchema } from "@/lib/validations/tour";
 import { createReportSchema } from "@/lib/validations/report";
 import { createDocumentSchema } from "@/lib/validations/document";
 import { createIssueSchema } from "@/lib/validations/issue";
+import { validate } from "@/lib/validations/parse";
+import {
+  attachSitePhotosSchema,
+  beginInvoiceUploadSchema,
+  finalizeInvoiceUploadSchema,
+  uploadDocumentSchema,
+  uploadIssueSchema,
+  uploadMatterportSchema,
+  uploadReportSchema,
+  uploadSitePhotosSchema,
+  uploadTimelineUpdateSchema,
+} from "@/lib/validations/upload";
 import { createTimelineEvent } from "@/lib/actions/timeline";
 import { recordTimelineEntry } from "@/lib/timeline/auto-entry";
 import { DEFAULT_CURRENCY } from "@/lib/currency";
@@ -52,6 +64,8 @@ export type UploadCategory =
   | "other";
 
 export type UploadResult = {
+  /** Set when the input was rejected; thrown errors are masked in production, returned ones are not. */
+  error?: string;
   tourId?: string;
   reportId?: string;
   documentId?: string;
@@ -109,28 +123,31 @@ export async function uploadMatterportWithAutomation(data: {
   engineer?: string;
   progress_note?: string;
 }): Promise<UploadResult> {
-  await assertCanUploadToProject(data.project_id, "matterport");
+  const parsedInput = validate(uploadMatterportSchema, data);
+  if (!parsedInput.success) return { error: parsedInput.error };
+  const input = parsedInput.data;
+  await assertCanUploadToProject(input.project_id, "matterport");
   const supabase = await createClient();
 
-  const spatial = await resolveSpatialForWrite(supabase, data.project_id, {
-    building: data.building,
-    floor: data.floor,
-    building_id: data.building_id,
-    floor_id: data.floor_id,
+  const spatial = await resolveSpatialForWrite(supabase, input.project_id, {
+    building: input.building,
+    floor: input.floor,
+    building_id: input.building_id,
+    floor_id: input.floor_id,
   });
 
   const parsed = createTourSchema.safeParse({
-    project_id: data.project_id,
-    name: data.name,
-    matterport_url: data.matterport_url,
-    capture_date: data.capture_date,
+    project_id: input.project_id,
+    name: input.name,
+    matterport_url: input.matterport_url,
+    capture_date: input.capture_date,
     description: buildTourDescription({
       building: spatial.building ?? undefined,
       floor: spatial.floor ?? undefined,
       building_id: spatial.building_id,
       floor_id: spatial.floor_id,
-      engineer: data.engineer,
-      notes: data.progress_note,
+      engineer: input.engineer,
+      notes: input.progress_note,
     }),
   });
 
@@ -170,7 +187,7 @@ export async function uploadMatterportWithAutomation(data: {
       event_date: parsed.data.capture_date,
       title: `Virtual tour scan — ${parsed.data.name}`,
       progress_note:
-        data.progress_note ??
+        input.progress_note ??
         `New virtual tour uploaded${spatial.building ? ` for ${spatial.building}` : ""}${spatial.floor ? ` · ${spatial.floor}` : ""}.`,
       tour_id: tour.id,
       building: spatial.building,
@@ -223,8 +240,11 @@ export async function uploadReportWithAutomation(data: {
   building?: string;
   floor?: string;
 }): Promise<UploadResult> {
-  await assertCanUploadToProject(data.project_id, "reports");
-  const validation = createReportSchema.safeParse(data);
+  const parsedInput = validate(uploadReportSchema, data);
+  if (!parsedInput.success) return { error: parsedInput.error };
+  const input = parsedInput.data;
+  await assertCanUploadToProject(input.project_id, "reports");
+  const validation = createReportSchema.safeParse(input);
   if (!validation.success) {
     throw new Error(validation.error.errors[0]?.message ?? "Invalid report data");
   }
@@ -239,38 +259,38 @@ export async function uploadReportWithAutomation(data: {
 
   await recordTimelineEntry(
     {
-      project_id: data.project_id,
-      event_date: data.report_date,
-      title: `Report uploaded — ${data.title}`,
-      progress_note: data.description ?? `New ${data.report_type.replace(/_/g, " ")} added to project.`,
+      project_id: input.project_id,
+      event_date: input.report_date,
+      title: `Report uploaded — ${input.title}`,
+      progress_note: input.description ?? `New ${input.report_type.replace(/_/g, " ")} added to project.`,
       report_id: reportId,
-      building: data.building ?? null,
-      floor: data.floor ?? null,
+      building: input.building ?? null,
+      floor: input.floor ?? null,
     },
     "uploadReportWithAutomation"
   );
 
   try {
-    await logActivity(data.project_id, `Report uploaded: ${data.title}`, "report", reportId);
+    await logActivity(input.project_id, `Report uploaded: ${input.title}`, "report", reportId);
   } catch (err) {
     console.error("[uploadReportWithAutomation] activity log failed:", err);
   }
 
   try {
     if (await isNotificationRuleEnabled("onUpload")) {
-      const projectName = await getProjectNameForNotify(data.project_id);
-      await notifyProjectClientUsers(data.project_id, {
+      const projectName = await getProjectNameForNotify(input.project_id);
+      await notifyProjectClientUsers(input.project_id, {
         title: "New report uploaded",
-        message: formatUploadNotifyMessage(data.title, projectName, "Reports"),
+        message: formatUploadNotifyMessage(input.title, projectName, "Reports"),
         type: "project_update",
-        link: portalReportLink(data.project_id, reportId),
+        link: portalReportLink(input.project_id, reportId),
       });
     }
   } catch (err) {
     console.error("[uploadReportWithAutomation] notify failed:", err);
   }
 
-  revalidatePaths(data.project_id);
+  revalidatePaths(input.project_id);
   return { reportId };
 }
 
@@ -288,8 +308,11 @@ export async function uploadDocumentWithAutomation(data: {
   building?: string;
   floor?: string;
 }): Promise<UploadResult> {
-  await assertCanUploadToProject(data.project_id, "documents");
-  const validation = createDocumentSchema.safeParse(data);
+  const parsedInput = validate(uploadDocumentSchema, data);
+  if (!parsedInput.success) return { error: parsedInput.error };
+  const { event_date: eventDate, ...input } = parsedInput.data;
+  await assertCanUploadToProject(input.project_id, "documents");
+  const validation = createDocumentSchema.safeParse(input);
   if (!validation.success) {
     throw new Error(validation.error.errors[0]?.message ?? "Invalid document data");
   }
@@ -305,35 +328,35 @@ export async function uploadDocumentWithAutomation(data: {
 
   const eventId = await recordTimelineEntry(
     {
-      project_id: data.project_id,
-      event_date: data.event_date,
-      title: `Document uploaded — ${data.name}`,
-      progress_note: data.description ?? `${data.category.replace(/_/g, " ")} document added to project.`,
-      building: data.building ?? null,
-      floor: data.floor ?? null,
+      project_id: input.project_id,
+      event_date: eventDate,
+      title: `Document uploaded — ${input.name}`,
+      progress_note: input.description ?? `${input.category.replace(/_/g, " ")} document added to project.`,
+      building: input.building ?? null,
+      floor: input.floor ?? null,
     },
     "uploadDocumentWithAutomation"
   );
 
-  await logActivity(data.project_id, `Document uploaded: ${data.name}`, "document", documentId, {
-    category: data.category,
+  await logActivity(input.project_id, `Document uploaded: ${input.name}`, "document", documentId, {
+    category: input.category,
   });
 
   try {
     if (await isNotificationRuleEnabled("onUpload")) {
-      const projectName = await getProjectNameForNotify(data.project_id);
-      await notifyProjectClientUsers(data.project_id, {
+      const projectName = await getProjectNameForNotify(input.project_id);
+      await notifyProjectClientUsers(input.project_id, {
         title: "New document uploaded",
-        message: formatUploadNotifyMessage(data.name, projectName, "Documents"),
+        message: formatUploadNotifyMessage(input.name, projectName, "Documents"),
         type: "project_update",
-        link: portalDocumentLink(data.project_id, documentId),
+        link: portalDocumentLink(input.project_id, documentId),
       });
     }
   } catch (err) {
     console.error("[uploadDocumentWithAutomation] notify failed:", err);
   }
 
-  revalidatePaths(data.project_id);
+  revalidatePaths(input.project_id);
   return { documentId, eventId };
 }
 
@@ -345,23 +368,23 @@ export async function beginInvoiceUploadWithAutomation(data: {
   amount?: number;
   currency?: string;
   description?: string;
-}): Promise<{ invoiceId: string }> {
-  const auth = await assertCanUploadToProject(data.project_id, "invoices");
+}): Promise<{ invoiceId: string } | { error: string }> {
+  const parsedInput = validate(beginInvoiceUploadSchema, data);
+  if (!parsedInput.success) return { error: parsedInput.error };
+  const input = parsedInput.data;
+  const auth = await assertCanUploadToProject(input.project_id, "invoices");
   if (!isBuildViewStaffRole(auth.role)) {
     throw new Error("Only BuildView staff can upload invoices");
   }
-  const invoiceNumber = data.invoice_number.trim();
-  if (!invoiceNumber) throw new Error("Invoice number is required.");
-  if (!data.client_id) throw new Error("Client is required for invoice upload.");
 
   const invoiceId = await createInvoice({
-    client_id: data.client_id,
-    project_id: data.project_id,
-    invoice_number: invoiceNumber,
-    amount: data.amount ?? 0,
+    client_id: input.client_id,
+    project_id: input.project_id,
+    invoice_number: input.invoice_number,
+    amount: input.amount ?? 0,
     currency: DEFAULT_CURRENCY,
     status: "sent",
-    description: data.description,
+    description: input.description,
   });
 
   return { invoiceId };
@@ -376,28 +399,31 @@ export async function finalizeInvoiceUploadWithAutomation(data: {
   description?: string;
   event_date?: string;
 }): Promise<UploadResult> {
-  const auth = await assertCanUploadToProject(data.project_id, "invoices");
+  const parsedInput = validate(finalizeInvoiceUploadSchema, data);
+  if (!parsedInput.success) return { error: parsedInput.error };
+  const input = parsedInput.data;
+  const auth = await assertCanUploadToProject(input.project_id, "invoices");
   if (!isBuildViewStaffRole(auth.role)) {
     throw new Error("Only BuildView staff can upload invoices");
   }
-  await attachInvoicePdf(data.invoice_id, { storage_path: data.storage_path });
+  await attachInvoicePdf(input.invoice_id, { storage_path: input.storage_path });
 
   await recordTimelineEntry(
     {
-      project_id: data.project_id,
-      event_date: data.event_date,
-      title: `Invoice uploaded — ${data.invoice_number}`,
-      progress_note: data.description ?? "Invoice PDF added to project billing.",
+      project_id: input.project_id,
+      event_date: input.event_date,
+      title: `Invoice uploaded — ${input.invoice_number}`,
+      progress_note: input.description ?? "Invoice PDF added to project billing.",
     },
     "finalizeInvoiceUploadWithAutomation"
   );
 
   try {
     await logActivity(
-      data.project_id,
-      `Invoice uploaded: ${data.invoice_number}`,
+      input.project_id,
+      `Invoice uploaded: ${input.invoice_number}`,
       "invoice",
-      data.invoice_id
+      input.invoice_id
     );
   } catch (err) {
     console.error("[finalizeInvoiceUploadWithAutomation] activity log failed:", err);
@@ -405,26 +431,26 @@ export async function finalizeInvoiceUploadWithAutomation(data: {
 
   try {
     if (await isNotificationRuleEnabled("onUpload")) {
-      const projectName = await getProjectNameForNotify(data.project_id);
-      await notifyProjectClientUsers(data.project_id, {
+      const projectName = await getProjectNameForNotify(input.project_id);
+      await notifyProjectClientUsers(input.project_id, {
         title: "New invoice available",
         message: formatUploadNotifyMessage(
-          `Invoice ${data.invoice_number}`,
+          `Invoice ${input.invoice_number}`,
           projectName,
           "Invoices"
         ),
         type: "invoice_update",
-        link: portalInvoiceLink(data.project_id, data.invoice_id),
+        link: portalInvoiceLink(input.project_id, input.invoice_id),
       });
     }
   } catch (err) {
     console.error("[finalizeInvoiceUploadWithAutomation] notify failed:", err);
   }
 
-  revalidatePaths(data.project_id);
+  revalidatePaths(input.project_id);
   revalidatePath("/admin/invoices");
   revalidatePath("/dashboard/invoices");
-  return { invoiceId: data.invoice_id };
+  return { invoiceId: input.invoice_id };
 }
 
 export async function uploadTimelineUpdateWithAutomation(data: {
@@ -441,37 +467,40 @@ export async function uploadTimelineUpdateWithAutomation(data: {
   /** When true, skip onUpload notify (e.g. prelude to site-photo attach). */
   skipClientNotify?: boolean;
 }): Promise<UploadResult> {
-  await assertCanUploadToProject(data.project_id, "upload");
+  const parsedInput = validate(uploadTimelineUpdateSchema, data);
+  if (!parsedInput.success) return { error: parsedInput.error };
+  const input = parsedInput.data;
+  await assertCanUploadToProject(input.project_id, "upload");
   const eventId = await createTimelineEvent({
-    project_id: data.project_id,
-    event_date: data.event_date,
-    title: data.title,
-    progress_note: data.progress_note,
-    progress_percent: data.progress_percent ?? null,
-    tour_id: data.tour_id,
-    report_id: data.report_id,
-    building: data.building ?? null,
-    floor: data.floor ?? null,
+    project_id: input.project_id,
+    event_date: input.event_date,
+    title: input.title,
+    progress_note: input.progress_note,
+    progress_percent: input.progress_percent ?? null,
+    tour_id: input.tour_id,
+    report_id: input.report_id,
+    building: input.building ?? null,
+    floor: input.floor ?? null,
     skipClientNotify: true,
   });
 
   await logActivity(
-    data.project_id,
-    `Timeline updated: ${data.title}`,
+    input.project_id,
+    `Timeline updated: ${input.title}`,
     "timeline_event",
     eventId,
-    { building: data.building, floor: data.floor, engineer: data.engineer }
+    { building: input.building, floor: input.floor, engineer: input.engineer }
   );
 
-  if (!data.skipClientNotify) {
+  if (!input.skipClientNotify) {
     try {
       if (await isNotificationRuleEnabled("onUpload")) {
-        const projectName = await getProjectNameForNotify(data.project_id);
-        await notifyProjectClientUsers(data.project_id, {
+        const projectName = await getProjectNameForNotify(input.project_id);
+        await notifyProjectClientUsers(input.project_id, {
           title: "Timeline updated",
-          message: formatUploadNotifyMessage(data.title, projectName, "Timeline"),
+          message: formatUploadNotifyMessage(input.title, projectName, "Timeline"),
           type: "project_update",
-          link: portalTimelineLink(data.project_id),
+          link: portalTimelineLink(input.project_id),
         });
       }
     } catch (err) {
@@ -479,7 +508,7 @@ export async function uploadTimelineUpdateWithAutomation(data: {
     }
   }
 
-  revalidatePaths(data.project_id);
+  revalidatePaths(input.project_id);
   return { eventId };
 }
 
@@ -491,14 +520,14 @@ export async function attachSitePhotosWithAutomation(data: {
   building?: string;
   floor?: string;
 }): Promise<UploadResult> {
-  await assertCanUploadToProject(data.project_id, "upload");
-  if (data.photos.length === 0) {
-    throw new Error("Select at least one photo.");
-  }
+  const parsedInput = validate(attachSitePhotosSchema, data);
+  if (!parsedInput.success) return { error: parsedInput.error };
+  const input = parsedInput.data;
+  await assertCanUploadToProject(input.project_id, "upload");
 
   await addTimelinePhotos(
-    data.event_id,
-    data.photos.map((photo) => ({
+    input.event_id,
+    input.photos.map((photo) => ({
       storage_path: photo.storage_path,
       file_name: photo.file_name,
       caption: photo.caption,
@@ -506,33 +535,33 @@ export async function attachSitePhotosWithAutomation(data: {
   );
 
   await logActivity(
-    data.project_id,
-    `Site photos uploaded: ${data.title}`,
+    input.project_id,
+    `Site photos uploaded: ${input.title}`,
     "timeline_photo",
-    data.event_id,
-    { building: data.building, floor: data.floor, count: String(data.photos.length) }
+    input.event_id,
+    { building: input.building, floor: input.floor, count: String(input.photos.length) }
   );
 
   try {
     if (await isNotificationRuleEnabled("onUpload")) {
-      const projectName = await getProjectNameForNotify(data.project_id);
-      await notifyProjectClientUsers(data.project_id, {
+      const projectName = await getProjectNameForNotify(input.project_id);
+      await notifyProjectClientUsers(input.project_id, {
         title: "New site photos uploaded",
         message: formatUploadNotifyMessage(
-          `${data.title} (${data.photos.length} photo${data.photos.length === 1 ? "" : "s"})`,
+          `${input.title} (${input.photos.length} photo${input.photos.length === 1 ? "" : "s"})`,
           projectName,
           "Site Photos"
         ),
         type: "project_update",
-        link: portalPhotosLink(data.project_id),
+        link: portalPhotosLink(input.project_id),
       });
     }
   } catch (err) {
     console.error("[attachSitePhotosWithAutomation] notify failed:", err);
   }
 
-  revalidatePaths(data.project_id);
-  return { eventId: data.event_id };
+  revalidatePaths(input.project_id);
+  return { eventId: input.event_id };
 }
 
 export async function uploadSitePhotosWithAutomation(data: {
@@ -544,23 +573,23 @@ export async function uploadSitePhotosWithAutomation(data: {
   building?: string;
   floor?: string;
 }): Promise<UploadResult> {
-  await assertCanUploadToProject(data.project_id, "upload");
-  if (data.photos.length === 0) {
-    throw new Error("Select at least one photo.");
-  }
+  const parsedInput = validate(uploadSitePhotosSchema, data);
+  if (!parsedInput.success) return { error: parsedInput.error };
+  const input = parsedInput.data;
+  await assertCanUploadToProject(input.project_id, "upload");
 
   const eventId = await createTimelineEvent({
-    project_id: data.project_id,
-    event_date: data.event_date,
-    title: data.title,
+    project_id: input.project_id,
+    event_date: input.event_date,
+    title: input.title,
     progress_note:
-      data.progress_note ??
-      `${data.photos.length} site photo${data.photos.length === 1 ? "" : "s"} uploaded via Upload Center.`,
+      input.progress_note ??
+      `${input.photos.length} site photo${input.photos.length === 1 ? "" : "s"} uploaded via Upload Center.`,
   });
 
   await addTimelinePhotos(
     eventId,
-    data.photos.map((photo) => ({
+    input.photos.map((photo) => ({
       storage_path: photo.storage_path,
       file_name: photo.file_name,
       caption: photo.caption,
@@ -568,14 +597,14 @@ export async function uploadSitePhotosWithAutomation(data: {
   );
 
   await logActivity(
-    data.project_id,
-    `Site photos uploaded: ${data.title}`,
+    input.project_id,
+    `Site photos uploaded: ${input.title}`,
     "timeline_photo",
     eventId,
-    { building: data.building, floor: data.floor, count: String(data.photos.length) }
+    { building: input.building, floor: input.floor, count: String(input.photos.length) }
   );
 
-  revalidatePaths(data.project_id);
+  revalidatePaths(input.project_id);
   return { eventId };
 }
 
@@ -595,17 +624,19 @@ export async function uploadIssueWithAutomation(data: {
     sort_order?: number;
   }>;
 }): Promise<UploadResult> {
-  await assertCanUploadToProject(data.project_id, "issues");
+  const parsedInput = validate(uploadIssueSchema, data);
+  if (!parsedInput.success) return { error: parsedInput.error };
+  const input = parsedInput.data;
+  await assertCanUploadToProject(input.project_id, "issues");
   const validation = createIssueSchema.safeParse({
-    project_id: data.project_id,
-    title: data.title,
-    description: data.description,
-    priority: data.priority,
+    project_id: input.project_id,
+    title: input.title,
+    description: input.description,
+    priority: input.priority,
     status: "open",
-    location: data.location,
-    building: data.building,
-    floor: data.floor,
-    images: data.images,
+    location: input.location,
+    building: input.building,
+    floor: input.floor,
   });
 
   if (!validation.success) {
@@ -613,35 +644,35 @@ export async function uploadIssueWithAutomation(data: {
   }
 
   const issueId = await createIssue({
-    project_id: data.project_id,
-    title: data.title,
-    description: data.description,
-    priority: data.priority,
+    project_id: input.project_id,
+    title: input.title,
+    description: input.description,
+    priority: input.priority,
     status: "open",
-    location: data.location,
-    building: data.building,
-    floor: data.floor,
-    images: data.images,
+    location: input.location,
+    building: input.building,
+    floor: input.floor,
+    images: input.images,
     skipClientNotify: true,
     skipTimeline: true,
   });
 
   const eventId = await recordTimelineEntry(
     {
-      project_id: data.project_id,
-      event_date: data.event_date,
-      title: `Issue reported — ${data.title}`,
-      progress_note: data.description ?? `New ${data.priority} priority issue logged.`,
-      building: data.building ?? null,
-      floor: data.floor ?? null,
+      project_id: input.project_id,
+      event_date: input.event_date,
+      title: `Issue reported — ${input.title}`,
+      progress_note: input.description ?? `New ${input.priority} priority issue logged.`,
+      building: input.building ?? null,
+      floor: input.floor ?? null,
     },
     "uploadIssueWithAutomation"
   );
 
   try {
-    await logActivity(data.project_id, `Issue reported: ${data.title}`, "issue", issueId, {
-      priority: data.priority,
-      location: data.location,
+    await logActivity(input.project_id, `Issue reported: ${input.title}`, "issue", issueId, {
+      priority: input.priority,
+      location: input.location,
     });
   } catch (err) {
     console.error("[uploadIssueWithAutomation] activity log failed:", err);
@@ -650,19 +681,19 @@ export async function uploadIssueWithAutomation(data: {
   // Notify clients on upload (same path as reports/documents) so Issues reach the portal inbox.
   try {
     if (await isNotificationRuleEnabled("onUpload")) {
-      const projectName = await getProjectNameForNotify(data.project_id);
-      await notifyProjectClientUsers(data.project_id, {
+      const projectName = await getProjectNameForNotify(input.project_id);
+      await notifyProjectClientUsers(input.project_id, {
         title: "New issue reported",
-        message: formatUploadNotifyMessage(data.title, projectName, "Issues"),
+        message: formatUploadNotifyMessage(input.title, projectName, "Issues"),
         type: "issue_update",
-        link: portalIssuesLink(data.project_id, issueId),
+        link: portalIssuesLink(input.project_id, issueId),
       });
     }
   } catch (err) {
     console.error("[uploadIssueWithAutomation] notify failed:", err);
   }
 
-  revalidatePaths(data.project_id);
+  revalidatePaths(input.project_id);
   return { issueId, eventId };
 }
 

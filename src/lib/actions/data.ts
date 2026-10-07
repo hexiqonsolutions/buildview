@@ -34,6 +34,8 @@ import {
   resolveProjectProgressValues,
 } from "@/lib/portal/progress-metrics";
 import { getCurrentUser } from "@/lib/actions/auth";
+import { validate } from "@/lib/validations/parse";
+import { clientIdSchema, projectIdSchema, userIdSchema } from "@/lib/validations/data";
 
 export type AdminDashboardStats = {
   totalClients: number;
@@ -730,6 +732,8 @@ export async function getAccessibleTimeline() {
 }
 
 export async function getProjectInvoices(projectId: string) {
+  if (!validate(projectIdSchema, projectId).success) return [];
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -849,6 +853,8 @@ export async function getProjects(): Promise<Project[]> {
 }
 
 export async function getProject(id: string) {
+  if (!validate(projectIdSchema, id).success) return null;
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -883,6 +889,8 @@ export async function getProject(id: string) {
 }
 
 export async function getProjectWithClient(id: string) {
+  if (!validate(projectIdSchema, id).success) return null;
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -927,6 +935,10 @@ export async function getProjectWithClient(id: string) {
 }
 
 export async function getProjectDetail(projectId: string) {
+  if (!validate(projectIdSchema, projectId).success) {
+    return { tours: [], reports: [], folders: [], documents: [], issues: [], timeline: [], comments: [] };
+  }
+
   const [tours, reports, documentsData, issues, timeline, comments] = await Promise.all([
     getProjectTours(projectId).catch(() => []),
     getProjectReports(projectId).catch(() => []),
@@ -948,6 +960,8 @@ export async function getProjectDetail(projectId: string) {
 }
 
 export async function getProjectTours(projectId: string) {
+  if (!validate(projectIdSchema, projectId).success) return [];
+
   const supabase = await createClient();
   const { data } = await supabase
     .from("project_tours")
@@ -1043,6 +1057,8 @@ export async function getAccessibleTours() {
 }
 
 export async function getProjectReports(projectId: string) {
+  if (!validate(projectIdSchema, projectId).success) return [];
+
   const supabase = await createClient();
   const { data } = await supabase
     .from("reports")
@@ -1054,6 +1070,8 @@ export async function getProjectReports(projectId: string) {
 }
 
 export async function getProjectFolders(projectId: string) {
+  if (!validate(projectIdSchema, projectId).success) return [];
+
   const supabase = await createClient();
   const { data } = await supabase
     .from("document_folders")
@@ -1076,6 +1094,8 @@ export async function getAllFolders() {
 }
 
 export async function getProjectDocuments(projectId: string) {
+  if (!validate(projectIdSchema, projectId).success) return { folders: [], documents: [] };
+
   const supabase = await createClient();
   const { data: folders } = await supabase
     .from("document_folders")
@@ -1097,6 +1117,8 @@ export async function getProjectDocuments(projectId: string) {
 }
 
 export async function getProjectIssues(projectId: string) {
+  if (!validate(projectIdSchema, projectId).success) return [];
+
   const supabase = await createClient();
   const { data } = await supabase
     .from("issues")
@@ -1117,6 +1139,8 @@ export async function getProjectIssues(projectId: string) {
 }
 
 export async function getProjectTimeline(projectId: string) {
+  if (!validate(projectIdSchema, projectId).success) return [];
+
   const supabase = await createClient();
   const { data } = await supabase
     .from("timeline_events")
@@ -1190,6 +1214,8 @@ export async function getClients() {
 }
 
 export async function getClientDetail(clientId: string) {
+  if (!validate(clientIdSchema, clientId).success) return null;
+
   const supabase = await createClient();
 
   const { data: client } = await supabase
@@ -1457,6 +1483,8 @@ export async function getAllUsers(): Promise<AdminUserRow[]> {
 }
 
 export async function getUserAssignments(userId: string) {
+  if (!validate(userIdSchema, userId).success) return [];
+
   try {
     const admin = createServiceRoleClient();
     const { data } = await admin
@@ -1486,6 +1514,8 @@ export type ProjectTeamMember = {
 };
 
 export async function getProjectAssignments(projectId: string) {
+  if (!validate(projectIdSchema, projectId).success) return [];
+
   const supabase = await createClient();
   const { data } = await supabase
     .from("project_assignments")
@@ -1497,6 +1527,8 @@ export async function getProjectAssignments(projectId: string) {
 
 /** Team members assigned to a project — name, email, role, avatar. */
 export async function getProjectTeam(projectId: string): Promise<ProjectTeamMember[]> {
+  if (!validate(projectIdSchema, projectId).success) return [];
+
   const mapRows = (
     rows: Array<{
       id: string;

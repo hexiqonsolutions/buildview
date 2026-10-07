@@ -8,11 +8,14 @@ import { resolveIssueImageStoragePath } from "@/lib/supabase/storage";
 import { notifyClientsIfEnabled, notifySuperAdmins, getProjectNameForNotify } from "@/lib/actions/notifications";
 import { isNotificationRuleEnabled } from "@/lib/actions/platform-settings";
 import {
-  MAX_ISSUE_IMAGES,
-  createIssueSchema,
+  addIssueImagesSchema,
+  createIssueActionSchema,
+  issueImageIdsSchema,
   updateIssueSchema,
   updateIssueStatusSchema,
 } from "@/lib/validations/issue";
+import { parseOrThrow, validate } from "@/lib/validations/parse";
+import { uuid } from "@/lib/validations/primitives";
 import type {
   IssueImageInsert,
   IssueInsert,
@@ -200,10 +203,7 @@ export async function createIssue(data: {
   /** When true, caller creates its own timeline entry (e.g. upload orchestrator). */
   skipTimeline?: boolean;
 }) {
-  const validation = createIssueSchema.safeParse(data);
-  if (!validation.success) {
-    throw new Error(validation.error.errors[0]?.message ?? "Invalid issue data");
-  }
+  const validated = parseOrThrow(createIssueActionSchema, data);
 
   const { supabase, user, role } = await getSignedInUserWithRole();
 
@@ -211,7 +211,6 @@ export async function createIssue(data: {
     throw new Error("You do not have permission to create issues.");
   }
 
-  const validated = validation.data;
   let projectAccessVerified: boolean | null = null;
   const verifyProjectAccess = async () => {
     projectAccessVerified ??= await userCanAccessProject(user.id, role, validated.project_id);
@@ -320,8 +319,8 @@ export async function createIssue(data: {
     }
   }
 
-  if (data.images && data.images.length > 0) {
-    const imageRows: IssueImageInsert[] = data.images.map((img, index) => ({
+  if (validated.images && validated.images.length > 0) {
+    const imageRows: IssueImageInsert[] = validated.images.map((img, index) => ({
       issue_id: issueId,
       image_url: img.storage_path,
       storage_path: img.storage_path,
@@ -356,7 +355,7 @@ export async function createIssue(data: {
     }
   }
 
-  if (!data.skipClientNotify) {
+  if (!validated.skipClientNotify) {
     try {
       const projectName = await getProjectNameForNotify(validated.project_id);
       await notifyClientsIfEnabled("onIssueUpdate", validated.project_id, {
@@ -370,7 +369,7 @@ export async function createIssue(data: {
     }
   }
 
-  if (!data.skipTimeline) {
+  if (!validated.skipTimeline) {
     await recordTimelineEntry(
       {
         project_id: validated.project_id,
@@ -398,10 +397,8 @@ export async function updateIssue(data: {
   assigned_to?: string | null;
   due_date?: string | null;
 }) {
-  const validation = updateIssueSchema.safeParse(data);
-  if (!validation.success) {
-    throw new Error(validation.error.errors[0]?.message ?? "Invalid issue data");
-  }
+  const validation = validate(updateIssueSchema, data);
+  if (!validation.success) throw new Error(validation.error);
 
   const { supabase, user } = await requireIssueStaff();
 
@@ -469,10 +466,8 @@ export async function updateIssue(data: {
 }
 
 export async function updateIssueStatus(issueId: string, status: string) {
-  const validation = updateIssueStatusSchema.safeParse({ id: issueId, status });
-  if (!validation.success) {
-    throw new Error(validation.error.errors[0]?.message ?? "Invalid status");
-  }
+  const validation = validate(updateIssueStatusSchema, { id: issueId, status });
+  if (!validation.success) throw new Error(validation.error);
 
   const { supabase, user, role } = await getSignedInUserWithRole();
 
@@ -547,18 +542,19 @@ export async function updateIssueStatus(issueId: string, status: string) {
 }
 
 export async function addIssueImages(
-  issueId: string,
-  images: Array<{
+  rawIssueId: string,
+  rawImages: Array<{
     storage_path: string;
     file_name: string;
     caption?: string;
     sort_order?: number;
   }>
 ) {
+  const { issueId, images } = parseOrThrow(addIssueImagesSchema, {
+    issueId: rawIssueId,
+    images: rawImages,
+  });
   if (images.length === 0) return;
-  if (images.length > MAX_ISSUE_IMAGES) {
-    throw new Error(`You can upload up to ${MAX_ISSUE_IMAGES} images at a time.`);
-  }
 
   const { supabase, user, role } = await getSignedInUserWithRole();
   if (!canCreateProjectIssue(role)) {
@@ -613,6 +609,7 @@ export async function addIssueImages(
 }
 
 export async function deleteIssue(issueId: string) {
+  parseOrThrow(uuid("Issue"), issueId);
   const { supabase, user } = await requireIssueStaff();
 
   const { data: issue, error: fetchError } = await supabase
@@ -643,6 +640,7 @@ export async function deleteIssue(issueId: string) {
 }
 
 export async function deleteIssueImage(imageId: string) {
+  parseOrThrow(uuid("Photo"), imageId);
   const { supabase, user } = await requireIssueStaff();
 
   const { data: image, error: fetchError } = await supabase
@@ -667,6 +665,8 @@ export async function deleteIssueImage(imageId: string) {
 export async function getIssueImageSignedUrl(
   imageId: string
 ): Promise<{ url: string; caption: string | null }> {
+  if (!validate(uuid("Image"), imageId).success) throw new Error("Image not found");
+
   const supabase = await createClient();
 
   const { data: image, error } = await supabase
@@ -697,9 +697,11 @@ export async function getIssueImageSignedUrls(
   imageIds: string[]
 ): Promise<Record<string, string>> {
   const results: Record<string, string> = {};
+  const validation = validate(issueImageIdsSchema, imageIds);
+  if (!validation.success) return results;
 
   await Promise.all(
-    imageIds.map(async (id) => {
+    validation.data.map(async (id) => {
       try {
         const { url } = await getIssueImageSignedUrl(id);
         results[id] = url;

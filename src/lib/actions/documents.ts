@@ -6,6 +6,12 @@ import { createClient } from "@/lib/supabase/server";
 import { createSignedStorageUrl } from "@/lib/supabase/storage-server";
 import { resolveDocumentStoragePath } from "@/lib/supabase/storage";
 import { replaceDocumentSchema } from "@/lib/validations/document";
+import { parseOrThrow, validate } from "@/lib/validations/parse";
+import {
+  documentGroupIdSchema,
+  documentIdSchema,
+  replaceDocumentVersionSchema,
+} from "@/lib/validations/data";
 import type { Document, DocumentInsert } from "@/lib/types";
 import { STORAGE_BUCKETS } from "@/lib/types";
 
@@ -13,12 +19,13 @@ import { STORAGE_BUCKETS } from "@/lib/types";
 export async function getDocumentSignedUrl(
   documentId: string
 ): Promise<{ url: string; fileName: string }> {
+  const id = parseOrThrow(documentIdSchema, documentId);
   const supabase = await createClient();
 
   const { data: document, error } = await supabase
     .from("documents")
     .select("storage_path, file_url, file_name")
-    .eq("id", documentId)
+    .eq("id", id)
     .is("deleted_at", null)
     .single();
 
@@ -45,11 +52,14 @@ export async function getDocumentSignedUrl(
 export async function getDocumentVersionHistory(
   documentGroupId: string
 ): Promise<Document[]> {
+  const parsedGroupId = validate(documentGroupIdSchema, documentGroupId);
+  if (!parsedGroupId.success) return [];
+
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("documents")
     .select("*")
-    .eq("document_group_id", documentGroupId)
+    .eq("document_group_id", parsedGroupId.data)
     .is("deleted_at", null)
     .order("version_number", { ascending: false });
 
@@ -65,6 +75,7 @@ export async function replaceDocumentVersion(data: {
   mime_type?: string;
   change_note?: string;
 }): Promise<string> {
+  parseOrThrow(replaceDocumentVersionSchema, data);
   const validation = replaceDocumentSchema.safeParse(data);
   if (!validation.success) {
     throw new Error(validation.error.errors[0]?.message ?? "Invalid replace data");
@@ -85,6 +96,10 @@ export async function replaceDocumentVersion(data: {
 
   if (currentError || !current) {
     throw new Error("Current document version not found");
+  }
+
+  if (!validation.data.storage_path.startsWith(`${current.project_id}/`)) {
+    throw new Error("Storage path is outside the allowed folder");
   }
 
   const nextVersion = (current.version_number ?? 1) + 1;

@@ -2,6 +2,8 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { canAccessAdmin } from "@/lib/auth/permissions";
+import { validate } from "@/lib/validations/parse";
+import { globalSearchQuerySchema } from "@/lib/validations/data";
 
 export type GlobalSearchResult = {
   clients: Array<{ id: string; name: string; company_name: string | null; href: string }>;
@@ -22,7 +24,9 @@ const EMPTY: GlobalSearchResult = {
 };
 
 export async function globalSearch(query: string): Promise<GlobalSearchResult> {
-  const q = query.trim();
+  const parsed = validate(globalSearchQuerySchema, query);
+  if (!parsed.success) return EMPTY;
+  const q = parsed.data;
   if (q.length < 2) return EMPTY;
 
   const supabase = await createClient();

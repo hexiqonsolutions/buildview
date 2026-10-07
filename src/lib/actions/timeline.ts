@@ -7,10 +7,13 @@ import { isRlsOrPermissionError } from "@/lib/supabase/rls";
 import { createSignedStorageUrl } from "@/lib/supabase/storage-server";
 import { resolveTimelinePhotoStoragePath } from "@/lib/supabase/storage";
 import {
-  MAX_TIMELINE_PHOTOS,
+  addTimelinePhotosSchema,
   createTimelineEventSchema,
   updateTimelineEventSchema,
+  type TimelinePhotoData,
 } from "@/lib/validations/timeline";
+import { parseOrThrow, validate } from "@/lib/validations/parse";
+import { uuid } from "@/lib/validations/primitives";
 import type {
   TimelineEventInsert,
   TimelineEventUpdate,
@@ -42,13 +45,6 @@ function revalidateTimelinePaths(projectId: string) {
   revalidatePath("/dashboard/projects");
   revalidatePath("/dashboard");
   revalidatePath("/admin");
-}
-
-/** Accepts `2026-03-14` or a full ISO timestamp and keeps only the calendar date. */
-function normalizeEventDate(value: string | undefined): string | undefined {
-  if (!value) return value;
-  const match = /^(\d{4}-\d{2}-\d{2})(T.*)?$/.exec(value.trim());
-  return match ? match[1] : value;
 }
 
 function isMissingColumnError(message: string | undefined): boolean {
@@ -168,13 +164,9 @@ async function getActiveEventProjectId(eventId: string): Promise<string> {
 async function insertTimelinePhotos(
   eventId: string,
   projectId: string,
-  photos: TimelinePhotoInput[],
+  photos: TimelinePhotoData[],
   userId: string
 ) {
-  if (photos.length > MAX_TIMELINE_PHOTOS) {
-    throw new Error(`You can upload up to ${MAX_TIMELINE_PHOTOS} photos at a time.`);
-  }
-
   // Signed URLs are issued for whatever path a row stores, so rows must point
   // inside this event's own folder.
   const expectedPrefix = `${projectId}/${eventId}/`;
@@ -230,14 +222,7 @@ export async function createTimelineEvent(data: {
   /** When true, caller already notifies clients (e.g. upload orchestrator). */
   skipClientNotify?: boolean;
 }) {
-  const validation = createTimelineEventSchema.safeParse({
-    ...data,
-    event_date: normalizeEventDate(data.event_date),
-  });
-  if (!validation.success) {
-    throw new Error(validation.error.errors[0]?.message ?? "Invalid timeline data");
-  }
-  const validated = validation.data;
+  const validated = parseOrThrow(createTimelineEventSchema, data);
 
   const auth = await assertCanUploadToProject(validated.project_id, "upload");
   await assertLinkedContentBelongsToProject(
@@ -283,11 +268,11 @@ export async function createTimelineEvent(data: {
 
   if (!eventId) throw new Error(error ?? "Failed to create timeline event");
 
-  if (data.photos && data.photos.length > 0) {
-    await insertTimelinePhotos(eventId, validated.project_id, data.photos, auth.userId);
+  if (validated.photos && validated.photos.length > 0) {
+    await insertTimelinePhotos(eventId, validated.project_id, validated.photos, auth.userId);
   }
 
-  if (!data.skipClientNotify) {
+  if (!validated.skipClientNotify) {
     try {
       await notifyClientsIfEnabled("onTimeline", validated.project_id, {
         title: "Timeline updated",
@@ -318,13 +303,8 @@ export async function updateTimelineEvent(data: {
   whats_new?: string[];
   author_name?: string | null;
 }) {
-  const validation = updateTimelineEventSchema.safeParse({
-    ...data,
-    event_date: normalizeEventDate(data.event_date),
-  });
-  if (!validation.success) {
-    throw new Error(validation.error.errors[0]?.message ?? "Invalid timeline data");
-  }
+  const validation = validate(updateTimelineEventSchema, data);
+  if (!validation.success) throw new Error(validation.error);
 
   const { supabase, user } = await requireTimelineStaff();
 
@@ -375,7 +355,11 @@ export async function updateTimelineEvent(data: {
   revalidateTimelinePaths(existing.project_id);
 }
 
-export async function addTimelinePhotos(eventId: string, photos: TimelinePhotoInput[]) {
+export async function addTimelinePhotos(rawEventId: string, rawPhotos: TimelinePhotoInput[]) {
+  const { eventId, photos } = parseOrThrow(addTimelinePhotosSchema, {
+    eventId: rawEventId,
+    photos: rawPhotos,
+  });
   if (photos.length === 0) return;
 
   const projectId = await getActiveEventProjectId(eventId);
@@ -386,6 +370,7 @@ export async function addTimelinePhotos(eventId: string, photos: TimelinePhotoIn
 }
 
 export async function deleteTimelineEvent(eventId: string) {
+  parseOrThrow(uuid("Timeline event"), eventId);
   const { supabase, user } = await requireTimelineStaff();
 
   const { data: event, error: fetchError } = await supabase
@@ -416,6 +401,7 @@ export async function deleteTimelineEvent(eventId: string) {
 }
 
 export async function deleteTimelinePhoto(photoId: string) {
+  parseOrThrow(uuid("Photo"), photoId);
   const { supabase, user } = await requireTimelineStaff();
 
   const { data: photo, error: fetchError } = await supabase
@@ -440,6 +426,8 @@ export async function deleteTimelinePhoto(photoId: string) {
 export async function getTimelinePhotoSignedUrl(
   photoId: string
 ): Promise<{ url: string; caption: string | null }> {
+  if (!validate(uuid("Photo"), photoId).success) throw new Error("Photo not found");
+
   const supabase = await createClient();
 
   const { data: photo, error } = await supabase

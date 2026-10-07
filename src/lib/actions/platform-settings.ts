@@ -12,6 +12,12 @@ import {
 } from "@/lib/admin/platform-settings";
 
 import type { NotificationType } from "@/lib/types";
+import { validate } from "@/lib/validations/parse";
+import { insertNotificationSystemSchema } from "@/lib/validations/notifications";
+import {
+  notificationRuleSchema,
+  updatePlatformSettingsSchema,
+} from "@/lib/validations/platform-settings";
 
 type SettingsRow = {
   company_name: string;
@@ -85,6 +91,10 @@ export async function getPlatformSettings(): Promise<PlatformSettings> {
 export async function updatePlatformSettings(
   settings: PlatformSettings
 ): Promise<{ success: boolean; error?: string }> {
+  const parsed = validate(updatePlatformSettingsSchema, settings);
+  if (!parsed.success) return { success: false, error: parsed.error };
+  const valid = parsed.data;
+
   try {
     await requireBuildViewStaff();
     const supabase = await createClient();
@@ -95,11 +105,11 @@ export async function updatePlatformSettings(
     const { error } = await supabase
       .from("platform_settings")
       .update({
-        company_name: settings.companyName.trim() || DEFAULT_PLATFORM_SETTINGS.companyName,
-        support_email: settings.supportEmail.trim() || DEFAULT_PLATFORM_SETTINGS.supportEmail,
-        default_currency: settings.defaultCurrency.trim().toUpperCase() || DEFAULT_CURRENCY,
-        timezone: settings.timezone.trim() || DEFAULT_PLATFORM_SETTINGS.timezone,
-        notification_rules: settings.notifications,
+        company_name: valid.companyName ?? DEFAULT_PLATFORM_SETTINGS.companyName,
+        support_email: valid.supportEmail ?? DEFAULT_PLATFORM_SETTINGS.supportEmail,
+        default_currency: valid.defaultCurrency?.toUpperCase() ?? DEFAULT_CURRENCY,
+        timezone: valid.timezone ?? DEFAULT_PLATFORM_SETTINGS.timezone,
+        notification_rules: valid.notifications,
         updated_by: user?.id ?? null,
         updated_at: new Date().toISOString(),
       })
@@ -120,8 +130,14 @@ export async function updatePlatformSettings(
 export async function isNotificationRuleEnabled(
   rule: keyof PlatformSettings["notifications"]
 ): Promise<boolean> {
+  const parsedRule = validate(notificationRuleSchema, rule);
+  if (!parsedRule.success) {
+    console.warn("[isNotificationRuleEnabled] rejected invalid input:", parsedRule.error);
+    return false;
+  }
+
   const settings = await getPlatformSettings();
-  return settings.notifications[rule];
+  return settings.notifications[parsedRule.data];
 }
 
 /** Service-role insert — bypasses RLS when non-admin actors trigger system alerts. */
@@ -133,16 +149,23 @@ export async function insertNotificationSystem(data: {
   link?: string | null;
   created_by?: string | null;
 }) {
+  const parsed = validate(insertNotificationSystemSchema, data);
+  if (!parsed.success) {
+    console.warn("[insertNotificationSystem] rejected invalid input:", parsed.error);
+    return;
+  }
+  const valid = parsed.data;
+
   const admin = createServiceRoleClient();
   const { error } = await admin.from("notifications").insert({
-    user_id: data.user_id,
-    title: data.title,
-    message: data.message,
-    type: data.type ?? "info",
-    link: data.link ?? null,
+    user_id: valid.user_id,
+    title: valid.title,
+    message: valid.message,
+    type: valid.type ?? "info",
+    link: valid.link ?? null,
     is_read: false,
     read_at: null,
-    created_by: data.created_by ?? null,
+    created_by: valid.created_by ?? null,
     updated_by: null,
   });
 

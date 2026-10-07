@@ -58,6 +58,7 @@ import { isValidMatterportUrl } from "@/lib/matterport";
 import { validateDocumentFile } from "@/lib/validations/document";
 import { validateIssueImageFiles } from "@/lib/validations/issue";
 import { validateReportFile } from "@/lib/validations/report";
+import { LIMITS } from "@/lib/validations/primitives";
 import { ISSUE_PRIORITY_LABELS, type DocumentCategory, type IssuePriority, type ReportType } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -91,6 +92,12 @@ const ADMIN_CATEGORIES: {
   { id: "issue", label: "Issue", icon: AlertTriangle, description: "Report a site issue" },
   { id: "other", label: "Other", icon: FolderOpen, description: "General document" },
 ];
+
+/** Rethrows a server-side rejection client-side so its message reaches the error banner. */
+function unwrapUploadResult(result: UploadResult): UploadResult {
+  if (result.error) throw new Error(result.error);
+  return result;
+}
 
 const PORTAL_CATEGORIES = ADMIN_CATEGORIES.filter(
   (c) => c.id !== "invoices_doc" && c.id !== "matterport"
@@ -238,7 +245,7 @@ export function UploadWizard({
     }
     if (categoryIsInvoice(category) && invoiceAmount.trim()) {
       const amount = Number(invoiceAmount);
-      if (!Number.isFinite(amount) || amount < 0) {
+      if (!Number.isFinite(amount) || amount < 0 || !/^\d+(\.\d{1,2})?$/.test(invoiceAmount.trim())) {
         return "Enter a valid invoice amount.";
       }
     }
@@ -287,38 +294,41 @@ export function UploadWizard({
   }
 
   async function executeUpload(): Promise<UploadResult> {
-    const scopeMeta = {
+    const spatialMeta = {
       building: building || undefined,
       floor: floor || undefined,
+    };
+    const scopeMeta = {
+      ...spatialMeta,
       engineer: engineer || undefined,
     };
 
     if (category === "matterport") {
-      return uploadMatterportWithAutomation({
+      return unwrapUploadResult(await uploadMatterportWithAutomation({
         project_id: projectId,
         name: tourName,
         matterport_url: matterportUrl,
         capture_date: captureDate || undefined,
         ...scopeMeta,
         progress_note: progressNote || undefined,
-      });
+      }));
     }
 
     if (category === "timeline_update") {
-      return uploadTimelineUpdateWithAutomation({
+      return unwrapUploadResult(await uploadTimelineUpdateWithAutomation({
         project_id: projectId,
         title,
         event_date: eventDate,
         progress_note: progressNote || undefined,
         progress_percent: progressPercent.trim() ? Number(progressPercent) : undefined,
         ...scopeMeta,
-      });
+      }));
     }
 
     if (REPORT_TYPE_CATEGORIES.has(category)) {
       const file = files[0];
       const upload = await uploadReportFile(projectId, file);
-      return uploadReportWithAutomation({
+      return unwrapUploadResult(await uploadReportWithAutomation({
         project_id: projectId,
         title: title || file.name,
         report_type: category as ReportType,
@@ -328,13 +338,13 @@ export function UploadWizard({
         file_size: upload.fileSize,
         mime_type: upload.mimeType,
         description: progressNote || undefined,
-        ...scopeMeta,
-      });
+        ...spatialMeta,
+      }));
     }
 
     if (category === "site_photos") {
       const photoTitle = title || `Site photos — ${eventDate}`;
-      const { eventId } = await uploadTimelineUpdateWithAutomation({
+      const { eventId } = unwrapUploadResult(await uploadTimelineUpdateWithAutomation({
         project_id: projectId,
         title: photoTitle,
         event_date: eventDate,
@@ -343,7 +353,7 @@ export function UploadWizard({
           `${files.length} site photo${files.length === 1 ? "" : "s"} uploaded via Upload Center.`,
         skipClientNotify: true,
         ...scopeMeta,
-      });
+      }));
 
       const photos = await Promise.all(
         files.map(async (file) => {
@@ -356,26 +366,26 @@ export function UploadWizard({
         })
       );
 
-      return attachSitePhotosWithAutomation({
+      return unwrapUploadResult(await attachSitePhotosWithAutomation({
         project_id: projectId,
         event_id: eventId!,
         title: photoTitle,
         photos,
         building: scopeMeta.building,
         floor: scopeMeta.floor,
-      });
+      }));
     }
 
     if (categoryIsIssue(category)) {
-      const upload = await uploadIssueWithAutomation({
+      const upload = unwrapUploadResult(await uploadIssueWithAutomation({
         project_id: projectId,
         title,
         description: progressNote || undefined,
         priority: issuePriority,
         location: issueLocation || undefined,
         event_date: eventDate,
-        ...scopeMeta,
-      });
+        ...spatialMeta,
+      }));
 
       if (files.length > 0 && upload.issueId) {
         const images = await Promise.all(
@@ -403,30 +413,32 @@ export function UploadWizard({
         title.trim() || file.name.replace(/\.[^.]+$/, "") || `INV-${Date.now()}`;
       const amount = invoiceAmount.trim() ? Number(invoiceAmount) : 0;
 
-      const { invoiceId } = await beginInvoiceUploadWithAutomation({
+      const begun = await beginInvoiceUploadWithAutomation({
         project_id: projectId,
         client_id: clientId,
         invoice_number: invoiceNumber,
         amount,
         description: progressNote || undefined,
       });
+      if ("error" in begun) throw new Error(begun.error);
+      const { invoiceId } = begun;
 
       const upload = await uploadInvoiceFile(clientId, invoiceId, file);
-      return finalizeInvoiceUploadWithAutomation({
+      return unwrapUploadResult(await finalizeInvoiceUploadWithAutomation({
         invoice_id: invoiceId,
         project_id: projectId,
         invoice_number: invoiceNumber,
         storage_path: upload.path,
         description: progressNote || undefined,
         event_date: eventDate,
-      });
+      }));
     }
 
     if (category in DOC_CATEGORY_MAP) {
       const file = files[0];
       const docCat = (DOC_CATEGORY_MAP[category] ?? "other") as DocumentCategory;
       const upload = await uploadDocumentFile(projectId, file);
-      return uploadDocumentWithAutomation({
+      return unwrapUploadResult(await uploadDocumentWithAutomation({
         project_id: projectId,
         name: title || file.name,
         category: docCat,
@@ -436,8 +448,8 @@ export function UploadWizard({
         mime_type: upload.mimeType,
         description: progressNote || undefined,
         event_date: eventDate,
-        ...scopeMeta,
-      });
+        ...spatialMeta,
+      }));
     }
 
     throw new Error("Unsupported upload category.");
@@ -476,7 +488,7 @@ export function UploadWizard({
     setError(null);
     setFiles(next);
     if (fileRef.current) fileRef.current.value = "";
-    if (!title && next[0]) setTitle(next[0].name.replace(/\.[^.]+$/, ""));
+    if (!title && next[0]) setTitle(next[0].name.replace(/\.[^.]+$/, "").slice(0, LIMITS.title));
   }
 
   function goNext() {

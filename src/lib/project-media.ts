@@ -1,4 +1,5 @@
 import type { ProjectMedia, ProjectMediaType } from "@/lib/types";
+import { LIMITS } from "@/lib/validations/primitives";
 
 export type ProjectMediaItem = ProjectMedia & { url: string | null };
 
@@ -51,5 +52,6 @@ export function validateProjectMediaFile(file: File, type: ProjectMediaType): st
 
 /** "LONG INTRO - 480p.mp4" → "LONG INTRO - 480p" */
 export function titleFromFileName(name: string): string {
-  return name.replace(/\.[^.]+$/, "").replace(/[_]+/g, " ").trim() || name;
+  const title = name.replace(/\.[^.]+$/, "").replace(/[_]+/g, " ").trim() || name;
+  return title.slice(0, LIMITS.title).trim();
 }

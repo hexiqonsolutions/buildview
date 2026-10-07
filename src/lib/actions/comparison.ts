@@ -37,6 +37,8 @@ import type {
 } from "@/lib/comparison/types";
 import type { Project, ProjectTour } from "@/lib/types";
 import { createClient } from "@/lib/supabase/server";
+import { validate } from "@/lib/validations/parse";
+import { uuid } from "@/lib/validations/primitives";
 import { saveComparisonSchema } from "@/lib/validations/saved-comparison";
 
 function isMissingSchemaError(error: { message?: string; code?: string } | null): boolean {
@@ -109,7 +111,8 @@ export async function fetchComparisonSnapshot(
   tourAId: string,
   tourBId: string
 ): Promise<ComparisonSnapshot | null> {
-  if (!tourAId || !tourBId || tourAId === tourBId) return null;
+  if (!validate(uuid(), tourAId).success || !validate(uuid(), tourBId).success) return null;
+  if (tourAId === tourBId) return null;
 
   const { projects, tours } = await getComparisonProjectsData();
   const rawA = tours.find((t) => t.id === tourAId);
@@ -249,12 +252,9 @@ export async function listSavedComparisons(): Promise<SavedComparison[]> {
 export async function saveComparison(
   input: unknown
 ): Promise<{ success: true; item: SavedComparison } | { success: false; error: string }> {
-  const parsed = saveComparisonSchema.safeParse(input);
+  const parsed = validate(saveComparisonSchema, input);
   if (!parsed.success) {
-    return {
-      success: false,
-      error: parsed.error.errors[0]?.message ?? "Invalid comparison data",
-    };
+    return { success: false, error: parsed.error };
   }
 
   const supabase = await createClient();
@@ -271,15 +271,15 @@ export async function saveComparison(
     .from("saved_comparisons")
     .insert({
       user_id: user.id,
-      name: data.name.trim(),
+      name: data.name,
       project_id: data.projectId,
       tour_a_id: data.tourAId,
       tour_b_id: data.tourBId,
       building: data.building,
       floor: data.floor,
-      building_id: data.buildingId ?? null,
-      floor_id: data.floorId ?? null,
-      client_id: data.clientId ?? null,
+      building_id: data.buildingId,
+      floor_id: data.floorId,
+      client_id: data.clientId,
     })
     .select(
       "id, name, project_id, tour_a_id, tour_b_id, building, floor, building_id, floor_id, created_at"
@@ -304,6 +304,11 @@ export async function saveComparison(
 export async function deleteSavedComparison(
   id: string
 ): Promise<{ success: boolean; error?: string }> {
+  const parsedId = validate(uuid("Saved comparison ID"), id);
+  if (!parsedId.success) {
+    return { success: false, error: parsedId.error };
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -315,7 +320,7 @@ export async function deleteSavedComparison(
   const { error } = await supabase
     .from("saved_comparisons")
     .update({ deleted_at: new Date().toISOString() })
-    .eq("id", id)
+    .eq("id", parsedId.data)
     .eq("user_id", user.id);
 
   if (error) {

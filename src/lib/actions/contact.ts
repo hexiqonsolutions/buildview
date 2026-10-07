@@ -3,6 +3,7 @@
 import { headers } from "next/headers";
 import { integrations, isContactEmailEnabled } from "@/lib/integrations";
 import { consumeRateLimit, formatRetryAfter, getClientIp } from "@/lib/rate-limit";
+import { validateFormData } from "@/lib/validations/parse";
 import { sendTransactionalEmail } from "@/lib/email/send";
 import { siteConfig } from "@/lib/site-config";
 import {
@@ -26,16 +27,10 @@ export async function submitContact(
     };
   }
 
-  const parsed = contactFormSchema.safeParse({
-    name: formData.get("name"),
-    email: formData.get("email"),
-    company: formData.get("company") || undefined,
-    interest: formData.get("interest"),
-    message: formData.get("message"),
-  });
+  const parsed = validateFormData(contactFormSchema, formData);
 
   if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? "Invalid form data" };
+    return { error: parsed.error };
   }
 
   const limit = await consumeRateLimit("publicContact", getClientIp(await headers()));

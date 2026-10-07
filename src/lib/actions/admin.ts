@@ -11,12 +11,15 @@ import { isNotificationRuleEnabled } from "@/lib/actions/platform-settings";
 import { normalizeMatterportUrl, resolveMatterportThumbnailUrl } from "@/lib/matterport";
 import { resolveSpatialForWrite } from "@/lib/admin/spatial-resolve";
 import { buildTourDescription } from "@/lib/admin/tour-metadata";
-import { createTourSchema } from "@/lib/validations/tour";
-import { createReportSchema } from "@/lib/validations/report";
+import { createTourActionSchema } from "@/lib/validations/tour";
+import { createReportActionSchema } from "@/lib/validations/report";
 import {
-  createDocumentSchema,
+  createDocumentActionSchema,
   createFolderSchema,
 } from "@/lib/validations/document";
+import { parseOrThrow, validate } from "@/lib/validations/parse";
+import { uuid } from "@/lib/validations/primitives";
+import type { z } from "zod";
 import type {
   ClientDashboardType,
   ClientUpdate,
@@ -34,9 +37,17 @@ import type {
   UserUpdate,
 } from "@/lib/types";
 import {
+  attachInvoicePdfSchema,
+  createClientSchema,
+  createInvoiceSchema,
+  createProjectSchema,
+  sendInvoiceNotificationSchema,
   updateClientSchema,
   updateInvoiceStatusSchema,
+  updateProjectCoverImageSchema,
   updateProjectSchema,
+  updateProjectStatusSchema,
+  updateTourThumbnailSchema,
   updateUserSchema,
 } from "@/lib/validations/admin";
 import { isBuildViewStaffRole, isClientPortalRole, canAssignRoles } from "@/lib/auth/roles";
@@ -65,17 +76,9 @@ const CLIENT_EDITABLE_STATUSES: ProjectStatus[] = [
   "completed",
 ];
 
-const STAFF_EDITABLE_STATUSES: ProjectStatus[] = [
-  ...CLIENT_EDITABLE_STATUSES,
-  "suspended",
-];
-
 /** Update only project status — available to staff and client portal users with access. */
 export async function updateProjectStatus(projectId: string, status: string) {
-  const nextStatus = status as ProjectStatus;
-  if (!STAFF_EDITABLE_STATUSES.includes(nextStatus)) {
-    throw new Error("Invalid project status.");
-  }
+  const { status: nextStatus } = parseOrThrow(updateProjectStatusSchema, { projectId, status });
 
   const supabase = await createClient();
   const {
@@ -154,13 +157,15 @@ export async function updateProjectStatus(projectId: string, status: string) {
 
 export async function createClientRecord(data: {
   name: string;
-  company_name?: string;
+  company_name?: string | null;
   email: string;
-  phone?: string;
-  address?: string;
+  phone?: string | null;
+  address?: string | null;
 }) {
+  const validated = parseOrThrow(createClientSchema, data);
+
   const supabase = await createClient();
-  const { error } = await supabase.from("clients").insert(data);
+  const { error } = await supabase.from("clients").insert(validated);
   if (error) throw new Error(error.message);
   revalidatePath("/admin/clients");
 }
@@ -214,45 +219,45 @@ export async function createProject(data: {
   client_id: string;
   client_name: string;
   location: string;
-  start_date?: string;
-  completion_date?: string;
+  start_date?: string | null;
+  completion_date?: string | null;
   status: string;
-  description?: string;
+  description?: string | null;
   area_sqft?: number | null;
   portfolio_category?: "architecture" | "interior" | "real_estate" | null;
   cover_image_url?: string | null;
 }): Promise<{ projectId: string } | { error: string }> {
+  const validation = validate(createProjectSchema, data);
+  if (!validation.success) return { error: validation.error };
+  const validated = validation.data;
+  const name = validated.name;
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  const name = data.name?.trim();
-  if (!name) return { error: "Project name is required." };
-  if (!data.client_id) return { error: "Select a client." };
-
-  // Empty form fields arrive as "", which Postgres rejects for DATE columns.
   const payload: ProjectInsert = {
     name,
-    client_id: data.client_id,
-    client_name: data.client_name,
-    location: data.location?.trim() ?? "",
-    status: data.status as ProjectStatus,
-    description: data.description?.trim() || null,
-    start_date: data.start_date || null,
-    completion_date: data.completion_date || null,
-    area_sqft: data.area_sqft ?? null,
-    portfolio_category: data.portfolio_category ?? null,
-    cover_image_url: data.cover_image_url || null,
+    client_id: validated.client_id,
+    client_name: validated.client_name,
+    location: validated.location,
+    status: validated.status,
+    description: validated.description,
+    start_date: validated.start_date,
+    completion_date: validated.completion_date,
+    area_sqft: validated.area_sqft,
+    portfolio_category: validated.portfolio_category,
+    cover_image_url: validated.cover_image_url,
     created_by: user?.id ?? null,
   };
 
   const finish = async (projectId: string) => {
     try {
-      await assignClientOrgUsersToProject(projectId, data.client_id, user?.id ?? null);
+      await assignClientOrgUsersToProject(projectId, validated.client_id, user?.id ?? null);
     } catch {
       // Non-fatal: org-wide access still works after has_project_access SQL fix
     }
     try {
-      await notifyClientOrgIfEnabled("onProjectAssigned", data.client_id, {
+      await notifyClientOrgIfEnabled("onProjectAssigned", validated.client_id, {
         title: "New project available",
         message: `${name} has been added to your BuildView portal.`,
         type: "project_update",
@@ -297,6 +302,8 @@ export async function updateProjectCoverImage(
   projectId: string,
   coverImageUrl: string | null
 ) {
+  const validated = parseOrThrow(updateProjectCoverImageSchema, { projectId, coverImageUrl });
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -305,7 +312,7 @@ export async function updateProjectCoverImage(
   const { error } = await supabase
     .from("projects")
     .update({
-      cover_image_url: coverImageUrl,
+      cover_image_url: validated.coverImageUrl,
       updated_by: user?.id ?? null,
     } satisfies ProjectUpdate)
     .eq("id", projectId)
@@ -322,6 +329,8 @@ export async function updateProjectCoverImage(
 
 /** Set, replace, or clear a tour's thumbnail. */
 export async function updateTourThumbnail(tourId: string, thumbnailUrl: string | null) {
+  const validated = parseOrThrow(updateTourThumbnailSchema, { tourId, thumbnailUrl });
+
   const admin = createServiceRoleClient();
   const { data: tour, error: tourError } = await admin
     .from("project_tours")
@@ -335,10 +344,6 @@ export async function updateTourThumbnail(tourId: string, thumbnailUrl: string |
 
   await assertCanUploadToProject(tour.project_id, "matterport");
 
-  if (thumbnailUrl !== null && !/^https:\/\//i.test(thumbnailUrl)) {
-    throw new Error("Thumbnail must be an https:// image URL.");
-  }
-
   const supabase = await createClient();
   const {
     data: { user },
@@ -346,7 +351,7 @@ export async function updateTourThumbnail(tourId: string, thumbnailUrl: string |
 
   const { error } = await admin
     .from("project_tours")
-    .update({ thumbnail_url: thumbnailUrl, updated_by: user?.id ?? null })
+    .update({ thumbnail_url: validated.thumbnailUrl, updated_by: user?.id ?? null })
     .eq("id", tourId);
 
   if (error) throw new Error(error.message);
@@ -362,32 +367,29 @@ export async function createTour(data: {
   project_id: string;
   name: string;
   matterport_url: string;
-  capture_date?: string;
-  description?: string;
-  building?: string;
-  floor?: string;
-  building_id?: string;
-  floor_id?: string;
+  capture_date?: string | null;
+  description?: string | null;
+  building?: string | null;
+  floor?: string | null;
+  building_id?: string | null;
+  floor_id?: string | null;
 }) {
-  await assertCanUploadToProject(data.project_id, "matterport");
+  const validated = parseOrThrow(createTourActionSchema, data);
 
-  const parsed = createTourSchema.safeParse(data);
-  if (!parsed.success) {
-    throw new Error(parsed.error.errors[0]?.message ?? "Invalid tour data");
-  }
+  await assertCanUploadToProject(validated.project_id, "matterport");
 
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const normalizedUrl = normalizeMatterportUrl(parsed.data.matterport_url);
+  const normalizedUrl = normalizeMatterportUrl(validated.matterport_url);
 
-  const spatial = await resolveSpatialForWrite(supabase, parsed.data.project_id, {
-    building: data.building,
-    floor: data.floor,
-    building_id: data.building_id,
-    floor_id: data.floor_id,
+  const spatial = await resolveSpatialForWrite(supabase, validated.project_id, {
+    building: validated.building,
+    floor: validated.floor,
+    building_id: validated.building_id,
+    floor_id: validated.floor_id,
   });
 
   const structuredDescription = buildTourDescription({
@@ -395,16 +397,16 @@ export async function createTour(data: {
     floor: spatial.floor ?? undefined,
     building_id: spatial.building_id,
     floor_id: spatial.floor_id,
-    notes: parsed.data.description,
+    notes: validated.description ?? undefined,
   });
 
   const payload: ProjectTourInsert = {
-    project_id: parsed.data.project_id,
-    name: parsed.data.name,
+    project_id: validated.project_id,
+    name: validated.name,
     matterport_url: normalizedUrl,
     thumbnail_url: await resolveMatterportThumbnailUrl(normalizedUrl),
-    capture_date: parsed.data.capture_date ?? null,
-    description: structuredDescription ?? parsed.data.description ?? null,
+    capture_date: validated.capture_date ?? null,
+    description: structuredDescription ?? validated.description ?? null,
     building_id: spatial.building_id,
     floor_id: spatial.floor_id,
     created_by: user?.id ?? null,
@@ -437,11 +439,11 @@ export async function createTour(data: {
 
   await recordTimelineEntry(
     {
-      project_id: parsed.data.project_id,
-      event_date: parsed.data.capture_date,
-      title: `Virtual tour scan — ${parsed.data.name}`,
+      project_id: validated.project_id,
+      event_date: validated.capture_date,
+      title: `Virtual tour scan — ${validated.name}`,
       progress_note:
-        parsed.data.description ||
+        validated.description ||
         `New virtual tour added${spatial.building ? ` for ${spatial.building}` : ""}${spatial.floor ? ` · ${spatial.floor}` : ""}.`,
       tour_id: tourId,
       building: spatial.building,
@@ -450,17 +452,17 @@ export async function createTour(data: {
     "createTour"
   );
 
-  const projectName = await getProjectNameForNotify(parsed.data.project_id);
-  await notifyClientsIfEnabled("onUpload", parsed.data.project_id, {
+  const projectName = await getProjectNameForNotify(validated.project_id);
+  await notifyClientsIfEnabled("onUpload", validated.project_id, {
     title: "New virtual tour scan available",
-    message: formatUploadNotifyMessage(parsed.data.name, projectName, "project"),
+    message: formatUploadNotifyMessage(validated.name, projectName, "project"),
     type: "project_update",
-    link: portalMatterportLink(parsed.data.project_id),
+    link: portalMatterportLink(validated.project_id),
   });
 
   revalidatePath("/admin/tours");
-  revalidatePath(`/admin/projects/${parsed.data.project_id}`);
-  revalidatePath(`/dashboard/projects/${parsed.data.project_id}`);
+  revalidatePath(`/admin/projects/${validated.project_id}`);
+  revalidatePath(`/dashboard/projects/${validated.project_id}`);
   revalidatePath("/dashboard/projects");
   revalidatePath("/dashboard");
 }
@@ -470,20 +472,23 @@ type CreateReportInput = {
   title: string;
   report_type: string;
   report_date: string;
-  description?: string;
+  description?: string | null;
   storage_path: string;
   file_name: string;
-  file_size?: number;
-  mime_type?: string;
-  building?: string;
-  floor?: string;
+  file_size?: number | null;
+  mime_type?: string | null;
+  building?: string | null;
+  floor?: string | null;
   /** When true, caller already notifies clients (e.g. upload orchestrator). */
   skipClientNotify?: boolean;
   /** When true, caller creates its own timeline entry (e.g. upload orchestrator). */
   skipTimeline?: boolean;
 };
 
-export async function createReport(data: CreateReportInput) {
+type ValidatedReportInput = z.output<typeof createReportActionSchema>;
+
+export async function createReport(input: CreateReportInput) {
+  const data = parseOrThrow(createReportActionSchema, input);
   const reportId = await insertReport(data);
 
   if (!data.skipTimeline) {
@@ -505,18 +510,11 @@ export async function createReport(data: CreateReportInput) {
   return reportId;
 }
 
-async function insertReport(data: CreateReportInput) {
-  const validation = createReportSchema.safeParse(data);
-  if (!validation.success) {
-    throw new Error(validation.error.errors[0]?.message ?? "Invalid report data");
-  }
-
+async function insertReport(validated: ValidatedReportInput) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  const validated = validation.data;
 
   const spatial = await resolveSpatialForWrite(supabase, validated.project_id, {
     building: validated.building,
@@ -570,7 +568,7 @@ async function insertReport(data: CreateReportInput) {
         throw new Error(retryError?.message ?? "Failed to create report");
       }
 
-      if (!data.skipClientNotify) {
+      if (!validated.skipClientNotify) {
         const projectName = await getProjectNameForNotify(validated.project_id);
         await notifyClientsIfEnabled("onUpload", validated.project_id, {
           title: "New report uploaded",
@@ -620,7 +618,7 @@ async function insertReport(data: CreateReportInput) {
         throw new Error(retryError?.message ?? "Failed to create report");
       }
 
-      if (!data.skipClientNotify) {
+      if (!validated.skipClientNotify) {
         const projectName = await getProjectNameForNotify(validated.project_id);
         await notifyClientsIfEnabled("onUpload", validated.project_id, {
           title: "New report uploaded",
@@ -639,7 +637,7 @@ async function insertReport(data: CreateReportInput) {
     throw new Error(error?.message ?? "Failed to create report");
   }
 
-  if (!data.skipClientNotify) {
+  if (!validated.skipClientNotify) {
     const projectName = await getProjectNameForNotify(validated.project_id);
     await notifyClientsIfEnabled("onUpload", validated.project_id, {
       title: "New report uploaded",
@@ -658,19 +656,14 @@ async function insertReport(data: CreateReportInput) {
 export async function createDocumentFolder(data: {
   project_id: string;
   name: string;
-  parent_id?: string;
+  parent_id?: string | null;
 }) {
-  const validation = createFolderSchema.safeParse(data);
-  if (!validation.success) {
-    throw new Error(validation.error.errors[0]?.message ?? "Invalid folder data");
-  }
+  const validated = parseOrThrow(createFolderSchema, data);
 
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  const validated = validation.data;
 
   const payload: DocumentFolderInsert = {
     project_id: validated.project_id,
@@ -696,19 +689,22 @@ type CreateDocumentInput = {
   category: string;
   storage_path: string;
   file_name: string;
-  file_size?: number;
-  mime_type?: string;
-  folder_id?: string;
-  description?: string;
-  building?: string;
-  floor?: string;
+  file_size?: number | null;
+  mime_type?: string | null;
+  folder_id?: string | null;
+  description?: string | null;
+  building?: string | null;
+  floor?: string | null;
   /** When true, caller already notifies clients (e.g. upload orchestrator). */
   skipClientNotify?: boolean;
   /** When true, caller creates its own timeline entry (e.g. upload orchestrator). */
   skipTimeline?: boolean;
 };
 
-export async function createDocument(data: CreateDocumentInput) {
+type ValidatedDocumentInput = z.output<typeof createDocumentActionSchema>;
+
+export async function createDocument(input: CreateDocumentInput) {
+  const data = parseOrThrow(createDocumentActionSchema, input);
   const documentId = await insertDocument(data);
 
   if (!data.skipTimeline) {
@@ -728,19 +724,13 @@ export async function createDocument(data: CreateDocumentInput) {
   return documentId;
 }
 
-async function insertDocument(data: CreateDocumentInput) {
+async function insertDocument(validated: ValidatedDocumentInput) {
   try {
-    const validation = createDocumentSchema.safeParse(data);
-    if (!validation.success) {
-      throw new Error(validation.error.errors[0]?.message ?? "Invalid document data");
-    }
-
     const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
-    const validated = validation.data;
     const documentId = randomUUID();
 
     const spatial = await resolveSpatialForWrite(supabase, validated.project_id, {
@@ -787,7 +777,7 @@ async function insertDocument(data: CreateDocumentInput) {
 
     const document = await insertDocumentRow(supabase, fullPayload, corePayload);
 
-    if (!data.skipClientNotify) {
+    if (!validated.skipClientNotify) {
       const projectName = await getProjectNameForNotify(validated.project_id);
       await notifyClientsIfEnabled("onUpload", validated.project_id, {
         title: "New document uploaded",
@@ -860,30 +850,32 @@ async function insertDocumentRow(
 
 export async function createInvoice(data: {
   client_id: string;
-  project_id?: string;
+  project_id?: string | null;
   invoice_number: string;
   amount: number;
-  currency?: string;
+  currency?: string | null;
   status: string;
-  due_date?: string;
-  description?: string;
-  storage_path?: string;
-  file_url?: string;
+  due_date?: string | null;
+  description?: string | null;
+  storage_path?: string | null;
+  file_url?: string | null;
 }) {
+  const validated = parseOrThrow(createInvoiceSchema, data);
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   const payload: InvoiceInsert = {
-    client_id: data.client_id,
-    project_id: data.project_id ?? null,
-    invoice_number: data.invoice_number,
-    amount: data.amount,
+    client_id: validated.client_id,
+    project_id: validated.project_id,
+    invoice_number: validated.invoice_number,
+    amount: validated.amount,
     currency: DEFAULT_CURRENCY,
-    status: data.status as InvoiceStatus,
-    due_date: data.due_date ?? null,
-    description: data.description ?? null,
-    storage_path: data.storage_path ?? null,
-    file_url: data.file_url ?? data.storage_path ?? null,
+    status: validated.status,
+    due_date: validated.due_date,
+    description: validated.description,
+    storage_path: validated.storage_path,
+    file_url: validated.file_url ?? validated.storage_path,
     created_by: user?.id ?? null,
   };
 
@@ -921,8 +913,10 @@ export async function createInvoice(data: {
 
 export async function attachInvoicePdf(
   invoiceId: string,
-  data: { storage_path: string; file_url?: string }
+  data: { storage_path: string; file_url?: string | null }
 ) {
+  const validated = parseOrThrow(attachInvoicePdfSchema, { invoiceId, data }).data;
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -931,8 +925,8 @@ export async function attachInvoicePdf(
   const { error } = await supabase
     .from("invoices")
     .update({
-      storage_path: data.storage_path,
-      file_url: data.file_url ?? data.storage_path,
+      storage_path: validated.storage_path,
+      file_url: validated.file_url ?? validated.storage_path,
       updated_by: user?.id ?? null,
     })
     .eq("id", invoiceId);
@@ -943,6 +937,8 @@ export async function attachInvoicePdf(
 }
 
 export async function getInvoiceDownloadUrl(invoiceId: string) {
+  parseOrThrow(uuid("Invoice ID"), invoiceId);
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -991,6 +987,9 @@ export async function getInvoiceDownloadUrl(invoiceId: string) {
 }
 
 export async function assignUserToProject(projectId: string, userId: string) {
+  parseOrThrow(uuid("Project ID"), projectId);
+  parseOrThrow(uuid("User ID"), userId);
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -1065,6 +1064,9 @@ export async function assignUserToProject(projectId: string, userId: string) {
 }
 
 export async function unassignUserFromProject(projectId: string, userId: string) {
+  parseOrThrow(uuid("Project ID"), projectId);
+  parseOrThrow(uuid("User ID"), userId);
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -1108,10 +1110,7 @@ export async function updateUserProfile(data: {
   dashboard_type?: ClientDashboardType | null;
   client_dashboard_type?: ClientDashboardType;
 }): Promise<{ success: true }> {
-  const validation = updateUserSchema.safeParse(data);
-  if (!validation.success) {
-    throw new Error(validation.error.errors[0]?.message ?? "Invalid user data");
-  }
+  const validated = parseOrThrow(updateUserSchema, data);
 
   const supabase = await createClient();
   const {
@@ -1129,7 +1128,6 @@ export async function updateUserProfile(data: {
     throw new Error("Only BuildView staff can manage users");
   }
 
-  const validated = validation.data;
   const actorRole = me.role as UserRole;
 
   // Load current profile so we can detect role / dashboard changes.
@@ -1237,10 +1235,7 @@ export async function updateClientRecord(data: {
   is_active: boolean;
   dashboard_type?: ClientDashboardType;
 }) {
-  const validation = updateClientSchema.safeParse(data);
-  if (!validation.success) {
-    throw new Error(validation.error.errors[0]?.message ?? "Invalid client data");
-  }
+  const validated = parseOrThrow(updateClientSchema, data);
 
   const supabase = await createClient();
   const {
@@ -1257,8 +1252,6 @@ export async function updateClientRecord(data: {
   if (!me || !isBuildViewStaffRole(me.role as UserRole)) {
     throw new Error("Only BuildView staff can update clients");
   }
-
-  const validated = validation.data;
 
   if (validated.dashboard_type !== undefined && !canAssignRoles(me.role as UserRole)) {
     // Staff can edit client details; only Super Admin changes dashboard type.
@@ -1330,36 +1323,24 @@ export async function updateProjectRecord(data: {
   area_sqft?: number | null;
   portfolio_category?: "architecture" | "interior" | "real_estate" | null;
 }): Promise<{ error?: string }> {
-  const validation = updateProjectSchema.safeParse({
-    ...data,
-    name: data.name?.trim(),
-    location: data.location?.trim(),
-  });
-  if (!validation.success) {
-    const issue = validation.error.errors[0];
-    const field = issue?.path[0];
-    if (field === "name") return { error: "Project name must be at least 2 characters." };
-    if (field === "location") return { error: "Location is required." };
-    if (field === "client_id" || field === "client_name") return { error: "Select a client." };
-    return { error: issue?.message ?? "Invalid project data" };
-  }
+  const validation = validate(updateProjectSchema, data);
+  if (!validation.success) return { error: validation.error };
+  const validated = validation.data;
 
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const validated = validation.data;
-
   const payload: ProjectUpdate = {
     name: validated.name,
     client_id: validated.client_id,
     client_name: validated.client_name,
     location: validated.location,
-    status: validated.status as ProjectStatus,
-    description: validated.description || null,
-    start_date: validated.start_date || null,
-    completion_date: validated.completion_date || null,
+    status: validated.status,
+    description: validated.description,
+    start_date: validated.start_date,
+    completion_date: validated.completion_date,
     area_sqft: validated.area_sqft ?? null,
     portfolio_category: validated.portfolio_category ?? null,
     updated_by: user?.id ?? null,
@@ -1458,6 +1439,8 @@ async function getActiveProjectSummary(projectId: string) {
 }
 
 export async function softDeleteProject(projectId: string) {
+  parseOrThrow(uuid("Project ID"), projectId);
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -1482,6 +1465,8 @@ export async function softDeleteProject(projectId: string) {
 }
 
 export async function suspendProject(projectId: string) {
+  parseOrThrow(uuid("Project ID"), projectId);
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -1506,6 +1491,8 @@ export async function suspendProject(projectId: string) {
 
 /** Restore suspended projects back to On Hold. */
 export async function restoreProject(projectId: string) {
+  parseOrThrow(uuid("Project ID"), projectId);
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -1526,6 +1513,8 @@ export async function restoreProject(projectId: string) {
 }
 
 export async function softDeleteClient(clientId: string) {
+  parseOrThrow(uuid("Client ID"), clientId);
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -1579,10 +1568,7 @@ export async function softDeleteClient(clientId: string) {
 }
 
 export async function updateInvoiceStatus(invoiceId: string, status: string) {
-  const validation = updateInvoiceStatusSchema.safeParse({ id: invoiceId, status });
-  if (!validation.success) {
-    throw new Error(validation.error.errors[0]?.message ?? "Invalid invoice status");
-  }
+  const validated = parseOrThrow(updateInvoiceStatusSchema, { id: invoiceId, status });
 
   const supabase = await createClient();
   const {
@@ -1590,11 +1576,11 @@ export async function updateInvoiceStatus(invoiceId: string, status: string) {
   } = await supabase.auth.getUser();
 
   const update: InvoiceUpdate = {
-    status: validation.data.status as InvoiceStatus,
+    status: validated.status as InvoiceStatus,
     updated_by: user?.id ?? null,
   };
 
-  if (validation.data.status === "paid") {
+  if (validated.status === "paid") {
     update.paid_date = new Date().toISOString().split("T")[0];
   }
 
@@ -1613,11 +1599,11 @@ export async function updateInvoiceStatus(invoiceId: string, status: string) {
     .maybeSingle();
 
   if (invoice) {
-  if (validation.data.status === "sent" || validation.data.status === "paid" || validation.data.status === "overdue") {
+  if (validated.status === "sent" || validated.status === "paid" || validated.status === "overdue") {
       const kind =
-        validation.data.status === "sent"
+        validated.status === "sent"
           ? "sent"
-          : validation.data.status === "paid"
+          : validated.status === "paid"
             ? "paid"
             : "overdue";
       const rule =
@@ -1647,6 +1633,9 @@ export async function sendInvoiceNotification(
   invoiceId: string,
   kind: InvoiceNotificationKind
 ): Promise<{ success: boolean; error?: string }> {
+  const validation = validate(sendInvoiceNotificationSchema, { invoiceId, kind });
+  if (!validation.success) return { success: false, error: validation.error };
+
   const supabase = await createClient();
   const {
     data: { user },

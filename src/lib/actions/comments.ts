@@ -3,9 +3,12 @@
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import {
+  commentIdSchema,
+  commentProjectIdSchema,
   createCommentSchema,
   updateCommentStatusSchema,
 } from "@/lib/validations/comment";
+import { validate } from "@/lib/validations/parse";
 import type { ProjectCommentInsert, ProjectCommentWithUser, UserRole } from "@/lib/types";
 import { canCommentOnProject, isBuildViewStaffRole } from "@/lib/auth/roles";
 
@@ -83,6 +86,8 @@ async function canAccessProjectForComment(
 export async function getProjectComments(
   projectId: string
 ): Promise<ProjectCommentWithUser[]> {
+  if (!validate(commentProjectIdSchema, projectId).success) return [];
+
   try {
     const admin = createServiceRoleClient();
     const { data, error } = await admin
@@ -113,10 +118,8 @@ export async function addProjectComment(data: {
   context_label?: string;
   parent_id?: string | null;
 }): Promise<CommentActionResult> {
-  const validation = createCommentSchema.safeParse(data);
-  if (!validation.success) {
-    return fail(validation.error.errors[0]?.message ?? "Invalid comment");
-  }
+  const validation = validate(createCommentSchema, data);
+  if (!validation.success) return fail(validation.error);
 
   const supabase = await createClient();
   const {
@@ -212,10 +215,8 @@ export async function updateCommentStatus(
   id: string,
   status: "open" | "resolved"
 ): Promise<CommentActionResult> {
-  const validation = updateCommentStatusSchema.safeParse({ id, status });
-  if (!validation.success) {
-    return fail(validation.error.errors[0]?.message ?? "Invalid request");
-  }
+  const validation = validate(updateCommentStatusSchema, { id, status });
+  if (!validation.success) return fail(validation.error);
 
   const supabase = await createClient();
   const {
@@ -257,6 +258,9 @@ export async function updateCommentStatus(
 }
 
 export async function deleteProjectComment(id: string): Promise<CommentActionResult> {
+  const validation = validate(commentIdSchema, id);
+  if (!validation.success) return fail(validation.error);
+
   const supabase = await createClient();
   const {
     data: { user },

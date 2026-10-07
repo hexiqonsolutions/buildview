@@ -12,6 +12,13 @@ import {
   IMPERSONATION_MAX_AGE_SECONDS,
 } from "@/lib/auth/impersonation";
 import { logAuditEvent } from "@/lib/actions/activity";
+import { validate } from "@/lib/validations/parse";
+import { text, uuid } from "@/lib/validations/primitives";
+
+const refreshTokenSchema = text("Refresh token", {
+  max: 2048,
+  pattern: /^[A-Za-z0-9._~+/=-]+$/,
+});
 
 export type LoginAsClientResult = { error: string } | undefined;
 
@@ -24,6 +31,11 @@ export type LoginAsClientResult = { error: string } | undefined;
  * success this redirects and never returns.
  */
 export async function loginAsClientUser(userId: string): Promise<LoginAsClientResult> {
+  const parsedUserId = validate(uuid("User ID"), userId);
+  if (!parsedUserId.success) {
+    return { error: parsedUserId.error };
+  }
+
   const actor = await requireBuildViewStaff();
   if (!canImpersonate(actor.role)) {
     return { error: "Only Super Admins can log in as a client." };
@@ -34,7 +46,7 @@ export async function loginAsClientUser(userId: string): Promise<LoginAsClientRe
   const { data: targetUser, error: userError } = await admin
     .from("users")
     .select("id, email, role, is_active")
-    .eq("id", userId)
+    .eq("id", parsedUserId.data)
     .is("deleted_at", null)
     .single();
 
@@ -113,7 +125,9 @@ export async function loginAsClientUser(userId: string): Promise<LoginAsClientRe
 /** Ends the client session and restores the super admin who started it. */
 export async function endImpersonation() {
   const cookieStore = await cookies();
-  const adminRefreshToken = cookieStore.get(ADMIN_RESTORE_COOKIE)?.value;
+  const restoreCookie = cookieStore.get(ADMIN_RESTORE_COOKIE)?.value;
+  const parsedToken = restoreCookie ? validate(refreshTokenSchema, restoreCookie) : null;
+  const adminRefreshToken = parsedToken?.success ? parsedToken.data : undefined;
 
   const supabase = await createClient();
   // Local scope: a global sign-out would also log the real client out on their own devices.

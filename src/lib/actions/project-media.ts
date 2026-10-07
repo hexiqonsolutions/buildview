@@ -10,11 +10,15 @@ import {
   type ProjectMediaInsert,
   type ProjectMediaType,
 } from "@/lib/types";
+import { type ProjectMediaGroups, type ProjectMediaItem } from "@/lib/project-media";
+import { parseOrThrow, validate } from "@/lib/validations/parse";
 import {
-  PROJECT_MEDIA_MIME_TYPES,
-  type ProjectMediaGroups,
-  type ProjectMediaItem,
-} from "@/lib/project-media";
+  addProjectMediaSchema,
+  projectMediaDirectionSchema,
+  projectMediaIdSchema,
+  projectMediaProjectIdSchema,
+  projectMediaTitleSchema,
+} from "@/lib/validations/project-media";
 
 const BUCKET = STORAGE_BUCKETS.PROJECT_MEDIA;
 /** Long enough to watch a video after the page has been open for a while. */
@@ -58,6 +62,7 @@ async function groupWithUrls(rows: ProjectMedia[]): Promise<ProjectMediaGroups> 
 
 /** Portal read: RLS limits rows to projects the viewer can access. */
 export async function getProjectMedia(projectId: string): Promise<ProjectMediaGroups> {
+  if (!validate(projectMediaProjectIdSchema, projectId).success) return EMPTY_GROUPS;
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("project_media")
@@ -75,6 +80,7 @@ export async function getProjectMedia(projectId: string): Promise<ProjectMediaGr
  * signed URLs ignore <a download>, so the attachment header must come from storage.
  */
 export async function getProjectMediaDownloadUrl(id: string): Promise<string> {
+  parseOrThrow(projectMediaIdSchema, id);
   const supabase = await createClient();
   const { data: row } = await supabase
     .from("project_media")
@@ -97,6 +103,9 @@ export async function getProjectMediaDownloadUrl(id: string): Promise<string> {
 export async function getProjectMediaAdmin(
   projectId: string
 ): Promise<{ isPortfolio: boolean; media: ProjectMediaGroups }> {
+  if (!validate(projectMediaProjectIdSchema, projectId).success) {
+    return { isPortfolio: false, media: EMPTY_GROUPS };
+  }
   await requireBuildViewStaff();
   const admin = createServiceRoleClient();
 
@@ -112,7 +121,7 @@ export async function getProjectMediaAdmin(
   return { isPortfolio, media: await getProjectMedia(projectId) };
 }
 
-export async function addProjectMedia(input: {
+export async function addProjectMedia(fields: {
   project_id: string;
   media_type: ProjectMediaType;
   title: string;
@@ -121,19 +130,9 @@ export async function addProjectMedia(input: {
   mime_type: string;
   file_size: number;
 }): Promise<ProjectMediaItem> {
+  const input = parseOrThrow(addProjectMediaSchema, fields);
   const actor = await requireBuildViewStaff();
 
-  if (input.media_type !== "video" && input.media_type !== "photo") {
-    throw new Error("Invalid media type.");
-  }
-  if (!PROJECT_MEDIA_MIME_TYPES[input.media_type].includes(input.mime_type)) {
-    throw new Error("This file type is not allowed here.");
-  }
-  if (!input.storage_path.startsWith(`${input.project_id}/`)) {
-    throw new Error("File path does not belong to this project.");
-  }
-
-  const title = input.title.trim().slice(0, 200) || input.file_name;
   const supabase = await createClient();
 
   const { count } = await supabase
@@ -146,7 +145,7 @@ export async function addProjectMedia(input: {
   const payload: ProjectMediaInsert = {
     project_id: input.project_id,
     media_type: input.media_type,
-    title,
+    title: input.title,
     storage_path: input.storage_path,
     file_name: input.file_name,
     mime_type: input.mime_type,
@@ -183,9 +182,9 @@ async function getMediaRow(id: string): Promise<ProjectMedia> {
 }
 
 export async function renameProjectMedia(id: string, title: string) {
+  parseOrThrow(projectMediaIdSchema, id);
+  const trimmed = parseOrThrow(projectMediaTitleSchema, title);
   const actor = await requireBuildViewStaff();
-  const trimmed = title.trim().slice(0, 200);
-  if (!trimmed) throw new Error("Title is required.");
 
   const row = await getMediaRow(id);
   const { error } = await createServiceRoleClient()
@@ -198,6 +197,8 @@ export async function renameProjectMedia(id: string, title: string) {
 }
 
 export async function moveProjectMedia(id: string, direction: "up" | "down") {
+  parseOrThrow(projectMediaIdSchema, id);
+  parseOrThrow(projectMediaDirectionSchema, direction);
   const actor = await requireBuildViewStaff();
   const row = await getMediaRow(id);
   const admin = createServiceRoleClient();
@@ -232,6 +233,7 @@ export async function moveProjectMedia(id: string, direction: "up" | "down") {
 }
 
 export async function deleteProjectMedia(id: string) {
+  parseOrThrow(projectMediaIdSchema, id);
   const actor = await requireBuildViewStaff();
   const row = await getMediaRow(id);
   const admin = createServiceRoleClient();
