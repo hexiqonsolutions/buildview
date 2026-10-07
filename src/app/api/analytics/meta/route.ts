@@ -99,9 +99,11 @@ export async function POST(request: NextRequest) {
       },
     ],
     ...(TEST_EVENT_CODE ? { test_event_code: TEST_EVENT_CODE } : {}),
+    // In the body rather than the query string so the token never lands in URL logs.
+    access_token: ACCESS_TOKEN,
   };
 
-  const graphUrl = `https://graph.facebook.com/v21.0/${PIXEL_ID}/events?access_token=${encodeURIComponent(ACCESS_TOKEN)}`;
+  const graphUrl = `https://graph.facebook.com/v21.0/${encodeURIComponent(PIXEL_ID)}/events`;
 
   try {
     const response = await fetch(graphUrl, {

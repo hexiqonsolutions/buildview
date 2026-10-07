@@ -1,9 +1,6 @@
-import {
-  isCalendlyEnabled,
-  isContactEmailEnabled,
-  isGoogleAnalyticsEnabled,
-  isTransactionalEmailEnabled,
-} from "@/lib/integrations";
+import "server-only";
+import { isCalendlyEnabled, isGoogleAnalyticsEnabled } from "@/lib/integrations";
+import { isContactEmailEnabled, isTransactionalEmailEnabled } from "@/lib/email/config";
 import { hasStaffPermission } from "@/lib/auth/staff";
 
 export type IntegrationsStatus = {

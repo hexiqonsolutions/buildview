@@ -1,5 +1,3 @@
-import { siteConfig } from "@/lib/site-config";
-
 export const marketingRoutes = [
   "",
   "/about",
@@ -12,14 +10,14 @@ export const marketingRoutes = [
   "/cookies",
 ] as const;
 
+/**
+ * Public (browser-safe) integration settings only. Client components import this
+ * module, so never add non-NEXT_PUBLIC_ values here — see lib/email/config.ts.
+ */
 export const integrations = {
   calendlyUrl: process.env.NEXT_PUBLIC_CALENDLY_URL ?? "",
   gaMeasurementId: process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ?? "",
   metaPixelId: process.env.NEXT_PUBLIC_META_PIXEL_ID ?? "",
-  resendApiKey: process.env.RESEND_API_KEY ?? "",
-  contactToEmail: process.env.CONTACT_TO_EMAIL ?? siteConfig.contact.email,
-  contactFromEmail:
-    process.env.CONTACT_FROM_EMAIL ?? `BuildView <onboarding@resend.dev>`,
 } as const;
 
 export function isCalendlyEnabled(): boolean {
@@ -36,12 +34,4 @@ export function isMetaPixelEnabled(): boolean {
 
 export function isAnalyticsConfigured(): boolean {
   return isGoogleAnalyticsEnabled() || isMetaPixelEnabled();
-}
-
-export function isContactEmailEnabled(): boolean {
-  return Boolean(integrations.resendApiKey);
-}
-
-export function isTransactionalEmailEnabled(): boolean {
-  return isContactEmailEnabled();
 }

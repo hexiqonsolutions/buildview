@@ -1,3 +1,4 @@
+import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { parseOrThrow } from "@/lib/validations/parse";
 import { auditEventSchema } from "@/lib/validations/data";

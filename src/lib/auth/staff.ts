@@ -1,3 +1,4 @@
+import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { can, type PermissionAction, type PermissionResource } from "@/lib/auth/permissions";
 import { isBuildViewStaffRole } from "@/lib/auth/roles";

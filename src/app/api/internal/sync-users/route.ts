@@ -1,24 +1,25 @@
+import { createHash, timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
 import { syncMissingUserProfilesFromAuth } from "@/lib/supabase/provision-user";
 
+function digest(value: string): Buffer {
+  return createHash("sha256").update(value).digest();
+}
+
+/**
+ * Requires `Authorization: Bearer $CRON_SECRET` (Vercel Cron sends this automatically
+ * when CRON_SECRET is set). Headers like x-vercel-cron are client-controlled, so the
+ * endpoint stays closed when no secret is configured.
+ */
 function isAuthorized(request: Request): boolean {
-  const authHeader = request.headers.get("authorization");
-  const bearer = authHeader?.startsWith("Bearer ")
-    ? authHeader.slice("Bearer ".length)
-    : null;
-
   const cronSecret = process.env.CRON_SECRET?.trim();
-  if (cronSecret && bearer === cronSecret) {
-    return true;
-  }
+  if (!cronSecret) return false;
 
-  // Allow Vercel Cron invocations when no explicit secret is set.
-  const vercelCron = request.headers.get("x-vercel-cron");
-  if (!cronSecret && vercelCron === "1") {
-    return true;
-  }
+  const authHeader = request.headers.get("authorization") ?? "";
+  if (!authHeader.startsWith("Bearer ")) return false;
+  const bearer = authHeader.slice("Bearer ".length);
 
-  return false;
+  return timingSafeEqual(digest(bearer), digest(cronSecret));
 }
 
 export async function GET(request: Request) {
@@ -37,4 +38,3 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   return GET(request);
 }
-

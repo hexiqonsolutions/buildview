@@ -1,7 +1,7 @@
 "use server";
 
 import { headers } from "next/headers";
-import { integrations, isContactEmailEnabled } from "@/lib/integrations";
+import { emailConfig, isContactEmailEnabled } from "@/lib/email/config";
 import { consumeRateLimit, formatRetryAfter, getClientIp } from "@/lib/rate-limit";
 import { validateFormData } from "@/lib/validations/parse";
 import { sendTransactionalEmail } from "@/lib/email/send";
@@ -44,7 +44,7 @@ export async function submitContact(
 
   if (isContactEmailEnabled()) {
     const sent = await sendTransactionalEmail({
-      to: integrations.contactToEmail,
+      to: emailConfig.contactToEmail,
       replyTo: data.email,
       subject: `[BuildView] ${data.interest === "demo" ? "Demo request" : "Contact"} from ${data.name}`,
       text: formatContactEmailBody(data),

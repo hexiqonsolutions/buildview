@@ -33,15 +33,3 @@ export function getSupabasePublicConfig() {
     anonKey: getSupabaseAnonKey(),
   };
 }
-
-/**
- * Service role key — server-only. Never expose to the browser.
- * Used for admin operations that bypass RLS (e.g. user provisioning).
- */
-export function getServiceRoleKey(): string {
-  const value = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!value) {
-    throw new Error(missingEnvMessage("SUPABASE_SERVICE_ROLE_KEY"));
-  }
-  return value;
-}

@@ -4,6 +4,7 @@
  * with the service role on behalf of whoever triggered the event. Only call them
  * from server code that has already authorized the triggering action.
  */
+import "server-only";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/admin";

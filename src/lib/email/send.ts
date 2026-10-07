@@ -1,4 +1,5 @@
-import { integrations, isContactEmailEnabled } from "@/lib/integrations";
+import "server-only";
+import { emailConfig, isContactEmailEnabled } from "@/lib/email/config";
 
 export type SendEmailParams = {
   to: string | string[];
@@ -15,16 +16,13 @@ export async function sendTransactionalEmail(params: SendEmailParams): Promise<b
   const valid = recipients.filter((email) => email?.includes("@"));
   if (valid.length === 0) return false;
 
-  const from =
-    process.env.NOTIFICATION_FROM_EMAIL ??
-    process.env.CONTACT_FROM_EMAIL ??
-    integrations.contactFromEmail;
+  const from = emailConfig.notificationFromEmail || emailConfig.contactFromEmail;
 
   try {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${integrations.resendApiKey}`,
+        Authorization: `Bearer ${emailConfig.resendApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -47,8 +45,4 @@ export async function sendTransactionalEmail(params: SendEmailParams): Promise<b
     console.error("Transactional email failed:", error);
     return false;
   }
-}
-
-export function isTransactionalEmailEnabled(): boolean {
-  return isContactEmailEnabled();
 }
