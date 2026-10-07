@@ -19,7 +19,7 @@ export function AuthShell({ children }: AuthShellProps) {
       <div className="relative hidden overflow-hidden mesh-gradient text-white lg:flex lg:flex-col lg:justify-between">
         <div className="dot-pattern absolute inset-0 opacity-30" />
         <div className="relative site-px py-10 xl:py-14">
-          <BrandLogo href="/" size="lg" tone="onDark" className="max-w-[11rem] overflow-hidden" />
+          <BrandLogo href="/" size="lg" tone="onDark" className="max-w-44 overflow-hidden" />
           <h1 className="mt-12 font-display text-3xl font-bold leading-tight xl:text-4xl">
             Construction visibility,
             <br />
@@ -47,7 +47,7 @@ export function AuthShell({ children }: AuthShellProps) {
 
       <div className="flex flex-col bg-white dark:bg-slate-950">
         <div className="site-px flex items-center justify-between py-6 lg:hidden">
-          <BrandLogo href="/" size="md" tone="default" className="max-w-[10rem] overflow-hidden" />
+          <BrandLogo href="/" size="md" tone="default" className="max-w-40 overflow-hidden" />
           <Link
             href="/"
             className="text-xs font-medium text-slate-500 transition-colors hover:text-brand-accent"

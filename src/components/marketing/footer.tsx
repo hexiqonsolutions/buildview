@@ -32,7 +32,7 @@ export function MarketingFooter() {
       <div className="site-container py-16">
         <div className="grid grid-cols-1 gap-12 md:grid-cols-2 lg:grid-cols-12">
           <div className="lg:col-span-4">
-            <BrandLogo href="/" size="lg" tone="onDark" className="mb-5 max-w-[11rem] overflow-hidden" />
+            <BrandLogo href="/" size="lg" tone="onDark" className="mb-5 max-w-44 overflow-hidden" />
             <p className="max-w-sm text-sm leading-relaxed text-slate-400">
               {siteConfig.description}
             </p>

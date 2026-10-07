@@ -40,12 +40,12 @@ export function MarketingHeader() {
       )}
     >
       <div className="site-container">
-        <div className="flex h-[4.5rem] items-center justify-between lg:h-20">
+        <div className="flex h-18 items-center justify-between lg:h-20">
           <BrandLogo
             href="/"
             size="xl"
             tone={overHero ? "onDark" : "auto"}
-            className="mt-1 max-w-[12rem] overflow-hidden transition-opacity duration-300"
+            className="mt-1 max-w-48 overflow-hidden transition-opacity duration-300"
           />
 
           <nav className="hidden items-center gap-1 lg:flex" aria-label="Main navigation">
@@ -115,7 +115,7 @@ export function MarketingHeader() {
           className={cn(
             "overflow-hidden transition-all duration-300 lg:hidden",
             mobileOpen
-              ? "max-h-[28rem] border-t border-slate-200/80 bg-white/95 pb-5 pt-3 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/95"
+              ? "max-h-112 border-t border-slate-200/80 bg-white/95 pb-5 pt-3 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/95"
               : "max-h-0"
           )}
         >

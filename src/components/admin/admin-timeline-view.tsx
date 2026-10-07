@@ -155,7 +155,7 @@ function MilestoneThumbnail({ month }: { month: AdminTimelineMonth }) {
     );
   }
   return (
-    <div className="flex h-[72px] w-[104px] shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-slate-700 to-slate-900 ring-1 ring-slate-200/80 dark:ring-slate-700">
+    <div className="flex h-[72px] w-[104px] shrink-0 items-center justify-center rounded-lg bg-linear-to-br from-slate-700 to-slate-900 ring-1 ring-slate-200/80 dark:ring-slate-700">
       <Calendar className="h-7 w-7 text-white/30" />
     </div>
   );
@@ -438,7 +438,7 @@ export function AdminTimelineView({
                   >
                     <div
                       className={cn(
-                        "absolute -left-[13px] top-8 z-10 h-3.5 w-3.5 rounded-full border-[3px] border-white shadow-sm dark:border-slate-900",
+                        "absolute left-[-13px] top-8 z-10 h-3.5 w-3.5 rounded-full border-[3px] border-white shadow-xs dark:border-slate-900",
                         isSelected || isCurrent
                           ? "bg-emerald-500 ring-4 ring-emerald-500/15"
                           : "bg-slate-300 dark:bg-slate-600"
@@ -926,7 +926,7 @@ function PeriodEventItem({
 
   return (
     <li className="relative">
-      <span className="absolute -left-[21px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-slate-400 dark:border-slate-900" />
+      <span className="absolute left-[-21px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-slate-400 dark:border-slate-900" />
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-xs font-medium text-slate-500">{formatDate(event.date)}</p>

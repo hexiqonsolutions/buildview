@@ -60,7 +60,7 @@ export function ServiceSection({
           </Link>
         </div>
         <div className="relative flex min-h-[240px] items-center justify-center overflow-hidden bg-slate-100 dark:bg-slate-800/80 lg:min-h-full">
-          <div className="absolute inset-0 bg-gradient-to-br from-brand-accent/10 via-transparent to-brand-primary/5" />
+          <div className="absolute inset-0 bg-linear-to-br from-brand-accent/10 via-transparent to-brand-primary/5" />
           <Icon className="relative h-28 w-28 text-brand-accent/25" strokeWidth={1} />
         </div>
       </div>

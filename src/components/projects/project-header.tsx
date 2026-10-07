@@ -107,10 +107,10 @@ export function ProjectHeader({
               className="absolute inset-0 h-full w-full object-cover"
             />
           ) : (
-            <div className="absolute inset-0 bg-gradient-to-br from-slate-700 via-slate-900 to-black" />
+            <div className="absolute inset-0 bg-linear-to-br from-slate-700 via-slate-900 to-black" />
           )}
-          <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/50 to-black/20" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+          <div className="absolute inset-0 bg-linear-to-r from-black/85 via-black/50 to-black/20" />
+          <div className="absolute inset-0 bg-linear-to-t from-black/70 via-transparent to-transparent" />
 
           <div className="relative flex min-h-[220px] flex-col justify-end p-5 md:min-h-[280px] md:p-6">
             <div className="mb-2 flex flex-wrap items-center gap-1.5">
@@ -119,7 +119,7 @@ export function ProjectHeader({
                   projectId={project.id}
                   currentStatus={project.status}
                   allowStaffStatuses={allowStaffStatuses}
-                  triggerClassName="h-7 w-[7.75rem] border-white/20 bg-white/95 text-[11px] shadow-sm"
+                  triggerClassName="h-7 w-31 border-white/20 bg-white/95 text-[11px] shadow-xs"
                 />
               ) : (
                 <span className="rounded-full bg-white/95 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-slate-900">
@@ -286,7 +286,7 @@ export function ProjectHeader({
             </div>
 
             {metaItems.length > 0 && (
-              <div className="grid w-full shrink-0 gap-2 sm:grid-cols-3 lg:w-[22rem] lg:grid-cols-1">
+              <div className="grid w-full shrink-0 gap-2 sm:grid-cols-3 lg:w-88 lg:grid-cols-1">
                 {metaItems.map((item) => (
                   <div
                     key={item.key}

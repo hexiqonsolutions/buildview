@@ -101,7 +101,7 @@ function VideosGrid({ videos }: { videos: ProjectMediaItem[] }) {
             type="button"
             onClick={() => setActiveId(video.id)}
             aria-label={`Play ${video.title}`}
-            className="group cursor-pointer text-left focus-visible:outline-none"
+            className="group cursor-pointer text-left focus-visible:outline-hidden"
           >
             <div className="relative aspect-video overflow-hidden rounded-xl border border-slate-200 bg-slate-100 transition-shadow duration-200 group-hover:shadow-md group-focus-visible:ring-2 group-focus-visible:ring-slate-900 group-focus-visible:ring-offset-2 dark:border-slate-800 dark:bg-slate-900 dark:group-focus-visible:ring-white">
               <VideoThumbnail item={video} />
@@ -189,7 +189,7 @@ function PhotosGrid({ photos }: { photos: ProjectMediaItem[] }) {
             type="button"
             onClick={() => setIndex(photoIndex)}
             aria-label={`View photo: ${photo.title}`}
-            className="group cursor-pointer text-left focus-visible:outline-none"
+            className="group cursor-pointer text-left focus-visible:outline-hidden"
           >
             <div className="aspect-square overflow-hidden rounded-lg border border-slate-200 bg-slate-100 transition-shadow duration-200 group-hover:shadow-md group-focus-visible:ring-2 group-focus-visible:ring-slate-900 group-focus-visible:ring-offset-2 dark:border-slate-800 dark:bg-slate-900 dark:group-focus-visible:ring-white">
               {/* eslint-disable-next-line @next/next/no-img-element */}

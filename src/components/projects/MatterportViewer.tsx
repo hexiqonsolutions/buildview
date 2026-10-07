@@ -108,7 +108,7 @@ export function MatterportViewer({
         <div
           className={cn(
             "relative w-full sm:aspect-video sm:h-auto sm:max-h-none",
-            fill ? "h-full" : "aspect-[3/4] max-h-[75dvh]"
+            fill ? "h-full" : "aspect-3/4 max-h-[75dvh]"
           )}
         >
           {iframe}
@@ -138,7 +138,7 @@ export function MatterportViewer({
       {viewer}
 
       <Dialog open={fullscreen} onOpenChange={setFullscreen}>
-        <DialogContent className="flex h-[100dvh] w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none border-0 p-0 sm:h-auto sm:max-h-[95vh] sm:w-full sm:max-w-6xl sm:rounded-lg sm:border">
+        <DialogContent className="flex h-dvh w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none border-0 p-0 sm:h-auto sm:max-h-[95vh] sm:w-full sm:max-w-6xl sm:rounded-lg sm:border">
           <DialogHeader className="shrink-0 border-b px-4 py-3 pr-12 text-left">
             <DialogTitle className="truncate">{title}</DialogTitle>
           </DialogHeader>

@@ -428,7 +428,7 @@ export function AdminProjectsView({ data, clients, mode = "admin" }: AdminProjec
 
 function ProjectThumbnail({ project }: { project: AdminProjectRow }) {
   return (
-    <div className="relative h-11 w-14 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-slate-700 to-slate-900">
+    <div className="relative h-11 w-14 shrink-0 overflow-hidden rounded-lg bg-linear-to-br from-slate-700 to-slate-900">
       {project.cover_image_url ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -763,7 +763,7 @@ function ProjectGridCard({
 }) {
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200/70 bg-white dark:border-slate-800 dark:bg-slate-900">
-      <div className="relative h-32 bg-gradient-to-br from-slate-800 to-slate-900">
+      <div className="relative h-32 bg-linear-to-br from-slate-800 to-slate-900">
         {project.cover_image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -783,7 +783,7 @@ function ProjectGridCard({
             projectId={project.id}
             currentStatus={project.status}
             allowStaffStatuses={isAdmin}
-            triggerClassName="h-7 w-[7.75rem] text-[11px]"
+            triggerClassName="h-7 w-31 text-[11px]"
           />
         </div>
       </div>

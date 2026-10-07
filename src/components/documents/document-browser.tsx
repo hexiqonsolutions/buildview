@@ -171,7 +171,7 @@ export function DocumentBrowser({
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
           Folders
         </p>
-        <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           {mobileFolderOptions.map((option) => (
             <span key={String(option.id)} className="contents">
               {folderButton(option.id, option.label, option.count, option.icon, true)}

@@ -118,7 +118,7 @@ export function TimelinePhotoGallery({
                       className={thumbClass}
                     />
                     <span className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/0 opacity-0 transition-opacity group-hover:bg-black/20 group-hover:opacity-100">
-                      <ZoomIn className="h-5 w-5 text-white drop-shadow" />
+                      <ZoomIn className="h-5 w-5 text-white drop-shadow-sm" />
                     </span>
                     {photo.caption && (
                       <span className="mt-1 block max-w-32 truncate text-xs text-slate-500">

@@ -76,7 +76,7 @@ export function ProfileAvatarCropDialog({
     <Dialog open={open && Boolean(imageSrc)} onOpenChange={handleOpenChange}>
       <DialogContent
         className={cn(
-          "!flex max-h-[92vh] w-[min(100vw-1.5rem,420px)] max-w-[420px] flex-col gap-0 overflow-hidden p-0 sm:rounded-2xl"
+          "flex! max-h-[92vh] w-[min(100vw-1.5rem,420px)] max-w-[420px] flex-col gap-0 overflow-hidden p-0 sm:rounded-2xl"
         )}
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}

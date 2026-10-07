@@ -10,9 +10,9 @@ interface SponsorLogoProps {
 }
 
 const sizeClasses = {
-  sm: { box: "h-8 max-w-[5.5rem]", text: "text-xs", image: "h-7" },
-  md: { box: "h-9 max-w-[7.5rem]", text: "text-sm", image: "h-8" },
-  lg: { box: "h-11 max-w-[9rem]", text: "text-base", image: "h-10" },
+  sm: { box: "h-8 max-w-22", text: "text-xs", image: "h-7" },
+  md: { box: "h-9 max-w-30", text: "text-sm", image: "h-8" },
+  lg: { box: "h-11 max-w-36", text: "text-base", image: "h-10" },
 } as const;
 
 function SponsorWordmark({
@@ -84,7 +84,7 @@ export function SponsorLogo({
       target="_blank"
       rel="sponsored noopener noreferrer"
       className={cn(
-        "flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-lg outline-none",
+        "flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-lg outline-hidden",
         "transition-opacity duration-200 motion-reduce:transition-none",
         "focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2"
       )}

@@ -37,7 +37,7 @@ export function CookieConsent() {
 
   return (
     <div
-      className="fixed bottom-4 z-[60] mx-auto max-w-2xl animate-slide-up"
+      className="fixed bottom-4 z-60 mx-auto max-w-2xl animate-slide-up"
       style={{
         left: "var(--site-gutter)",
         right: "var(--site-gutter)",

@@ -132,7 +132,7 @@ export function SitePhotosGallery({ photos }: SitePhotosGalleryProps) {
                     className="h-full w-full object-cover transition-transform group-hover:scale-105"
                   />
                   <span className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-opacity group-hover:bg-black/20 group-hover:opacity-100">
-                    <ZoomIn className="h-6 w-6 text-white drop-shadow" />
+                    <ZoomIn className="h-6 w-6 text-white drop-shadow-sm" />
                   </span>
                 </div>
                 <div className="p-3">

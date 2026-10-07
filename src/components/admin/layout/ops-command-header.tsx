@@ -153,7 +153,7 @@ export function OpsCommandHeader({
             >
               {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
-            <BrandLogo href={homeHref} size="xl" className="min-w-0 max-w-[11rem] shrink overflow-hidden" />
+            <BrandLogo href={homeHref} size="xl" className="min-w-0 max-w-44 shrink overflow-hidden" />
           </div>
 
           {/* Desktop: client → project → building → floor → Upload */}
@@ -418,7 +418,7 @@ function WorkspaceScopeControls({
         {clients.length === 0 ? (
           <Link
             href="/admin/clients"
-            className="inline-flex h-9 min-w-[9rem] shrink-0 items-center gap-1.5 px-2.5 text-xs font-medium text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
+            className="inline-flex h-9 min-w-36 shrink-0 items-center gap-1.5 px-2.5 text-xs font-medium text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
           >
             <Building2 className="h-3.5 w-3.5 text-slate-400" />
             Add a client
@@ -430,7 +430,7 @@ function WorkspaceScopeControls({
             onChange={onClientChange}
             options={clientOptions}
             placeholder="All clients"
-            className="w-[7.25rem] shrink-0 xl:w-44"
+            className="w-29 shrink-0 xl:w-44"
             leading={
               clientLogoUrl && scope.clientId ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -450,7 +450,7 @@ function WorkspaceScopeControls({
           placeholder="Project"
           disabled={!scope.clientId}
           emptyHint={!scope.clientId ? "Select client" : "No projects"}
-          className="w-[7rem] shrink-0 xl:w-40"
+          className="w-28 shrink-0 xl:w-40"
         />
         <ScopeDivider />
         <ScopeSelect
@@ -461,7 +461,7 @@ function WorkspaceScopeControls({
           placeholder="Building"
           disabled={!scope.projectId}
           emptyHint="Select project"
-          className="w-[7.5rem] shrink-0 xl:w-[8.25rem]"
+          className="w-30 shrink-0 xl:w-33"
           leading={<Layers className="h-3.5 w-3.5 text-slate-400" />}
         />
         <ScopeDivider />
@@ -473,7 +473,7 @@ function WorkspaceScopeControls({
           placeholder="Floor"
           disabled={!scope.projectId}
           emptyHint="Select project"
-          className="w-[6.5rem] shrink-0 xl:w-[7.25rem]"
+          className="w-26 shrink-0 xl:w-29"
         />
       </div>
       {uploadHref ? (

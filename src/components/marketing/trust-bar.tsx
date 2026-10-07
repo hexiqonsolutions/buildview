@@ -42,7 +42,7 @@ export function TrustBar() {
                 <li key={sponsor.id}>
                   <div
                     className={cn(
-                      "group flex min-h-[4.25rem] items-center justify-center rounded-xl border border-slate-200/80 bg-slate-50/50 px-3 py-3",
+                      "group flex min-h-17 items-center justify-center rounded-xl border border-slate-200/80 bg-slate-50/50 px-3 py-3",
                       "transition-all duration-200 motion-reduce:transition-none",
                       "hover:border-brand-accent/35 hover:bg-white hover:shadow-soft",
                       "dark:border-slate-800 dark:bg-slate-900/40 dark:hover:border-brand-accent/25 dark:hover:bg-slate-900"

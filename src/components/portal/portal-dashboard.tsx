@@ -69,7 +69,7 @@ export function PortalWelcomeBanner({
       <div className="flex min-w-0 flex-1 items-center gap-4 sm:gap-5">
         <Link
           href={profileHref}
-          className="shrink-0 self-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
+          className="shrink-0 self-center rounded-full focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
           aria-label="Open profile"
         >
           <Avatar className="h-16 w-16 ring-2 ring-white shadow-soft dark:ring-slate-800 sm:h-20 sm:w-20">

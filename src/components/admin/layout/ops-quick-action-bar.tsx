@@ -31,7 +31,7 @@ export function OpsQuickActionBar() {
 
   return (
     <div className="ops-quick-bar">
-      <div className="flex items-center gap-1.5 overflow-x-auto px-3 py-2 [scrollbar-width:none] [-ms-overflow-style:none] lg:gap-2 lg:px-5 [&::-webkit-scrollbar]:hidden">
+      <div className="flex items-center gap-1.5 overflow-x-auto px-3 py-2 scrollbar-none [-ms-overflow-style:none] lg:gap-2 lg:px-5 [&::-webkit-scrollbar]:hidden">
         <span className="hidden shrink-0 pr-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400 md:inline">
           Quick add
         </span>

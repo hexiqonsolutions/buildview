@@ -104,7 +104,7 @@ export function UpdateProjectStatusSelect({
         >
           <SelectTrigger
             className={cn(
-              "h-8 w-[8.5rem] border font-medium shadow-none focus:ring-1",
+              "h-8 w-34 border font-medium shadow-none focus:ring-1",
               statusTriggerClass(status),
               triggerClassName
             )}

@@ -75,7 +75,7 @@ export default function InstagramLinksPage() {
       <ViewContentTracker contentName="instagram_landing" contentCategory="social" />
       <section className="site-container flex min-h-svh flex-col py-12 lg:py-16">
         <div className="mx-auto w-full max-w-xl">
-          <BrandLogo href="/" size="lg" tone="onDark" className="max-w-[10rem]" />
+          <BrandLogo href="/" size="lg" tone="onDark" className="max-w-40" />
           <p className="mt-6 text-xs font-semibold uppercase tracking-[0.2em] text-brand-accent">
             {siteConfig.tagline}
           </p>

@@ -22,7 +22,7 @@ export function MatterportTourCard({ tour }: { tour: ProjectTour }) {
     <>
       <Card className="glass-card group overflow-hidden border-0 transition-shadow hover:shadow-lg">
         <div
-          className="relative flex h-48 cursor-pointer items-center justify-center bg-gradient-to-br from-brand-primary to-brand-secondary"
+          className="relative flex h-48 cursor-pointer items-center justify-center bg-linear-to-br from-brand-primary to-brand-secondary"
           onClick={() => setOpen(true)}
           role="button"
           tabIndex={0}
@@ -41,7 +41,7 @@ export function MatterportTourCard({ tour }: { tour: ProjectTour }) {
           )}
           <Camera className="relative z-10 h-12 w-12 text-slate-400" />
           <div className="absolute bottom-3 left-3 right-3 z-10">
-            <p className="truncate text-sm font-medium text-white drop-shadow">
+            <p className="truncate text-sm font-medium text-white drop-shadow-sm">
               {tour.name}
             </p>
           </div>

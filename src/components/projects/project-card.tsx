@@ -10,7 +10,7 @@ export function ProjectCard({ project }: { project: Project }) {
   return (
     <Link href={`/dashboard/projects/${project.id}`}>
       <Card className="intel-card dashboard-card-hover overflow-hidden border-0 group cursor-pointer">
-        <div className="h-40 bg-gradient-to-br from-brand-primary to-brand-secondary flex items-center justify-center relative">
+        <div className="h-40 bg-linear-to-br from-brand-primary to-brand-secondary flex items-center justify-center relative">
           {project.cover_image_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img

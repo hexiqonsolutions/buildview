@@ -199,7 +199,7 @@ export function ProjectToursSection({
                   className={cn(
                     "group flex min-h-[96px] w-full cursor-pointer items-stretch gap-4 overflow-hidden rounded-2xl border bg-white p-2 pr-4 text-left",
                     "transition-[border-color,box-shadow,background-color] duration-200 motion-reduce:transition-none",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/30 dark:focus-visible:ring-white/30",
+                    "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-slate-900/30 dark:focus-visible:ring-white/30",
                     "dark:bg-slate-900/60",
                     selected
                       ? "border-slate-900 shadow-md ring-1 ring-slate-900 dark:border-white dark:ring-white"
@@ -215,7 +215,7 @@ export function ProjectToursSection({
                         className="h-full w-full object-cover"
                       />
                     ) : (
-                      <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+                      <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-linear-to-br from-slate-900 via-slate-800 to-slate-900">
                         <Rotate3d className="h-6 w-6 text-brand-accent" aria-hidden />
                         <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300">
                           360° tour

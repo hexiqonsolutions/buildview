@@ -112,7 +112,7 @@ function PortfolioGridCard({
       href={href}
       className="group relative block overflow-hidden rounded-2xl bg-slate-900 ring-1 ring-black/5 transition duration-500 hover:-translate-y-0.5 hover:shadow-[0_20px_40px_-20px_rgba(15,23,42,0.4)]"
     >
-      <div className="relative aspect-[4/5] overflow-hidden sm:aspect-[4/3]">
+      <div className="relative aspect-4/5 overflow-hidden sm:aspect-4/3">
         {cover ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -121,17 +121,17 @@ function PortfolioGridCard({
             className="h-full w-full object-cover transition duration-700 ease-out group-hover:scale-[1.04]"
           />
         ) : (
-          <div className="flex h-full items-end bg-gradient-to-br from-slate-600 via-slate-900 to-black p-5">
+          <div className="flex h-full items-end bg-linear-to-br from-slate-600 via-slate-900 to-black p-5">
             <span className="font-display text-4xl font-bold text-white/10">
               {project.name.charAt(0)}
             </span>
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
+        <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/25 to-transparent" />
         <div className="absolute left-3 top-3">
           <span
             className={cn(
-              "rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-white",
+              "rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-white",
               project.status === "completed" ? "bg-slate-800/95" : "bg-black/50 backdrop-blur-sm"
             )}
           >
@@ -203,7 +203,7 @@ export function PortfolioShowcaseShell({
       <div className="intel-hero-strip flex items-center gap-4 sm:gap-5">
         <Link
           href="/dashboard/profile"
-          className="shrink-0 self-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
+          className="shrink-0 self-center rounded-full focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
           aria-label="Open profile"
         >
           <Avatar className="h-16 w-16 ring-2 ring-white shadow-soft dark:ring-slate-800 sm:h-20 sm:w-20">
@@ -242,10 +242,10 @@ export function PortfolioShowcaseShell({
             className="absolute inset-0 h-full w-full object-cover transition duration-1000 ease-out group-hover:scale-[1.03]"
           />
         ) : (
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-slate-600 via-slate-900 to-black" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,var(--tw-gradient-stops))] from-slate-600 via-slate-900 to-black" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/55 to-black/15" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30" />
+        <div className="absolute inset-0 bg-linear-to-r from-black/90 via-black/55 to-black/15" />
+        <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-black/30" />
 
         <div className="relative flex h-full min-h-[320px] flex-col justify-between p-5 md:min-h-[400px] md:p-8">
           <div className="flex items-start justify-between gap-4">
@@ -405,7 +405,7 @@ export function PortfolioShowcaseShell({
       </section>
 
       <Dialog open={tourOpen} onOpenChange={setTourOpen}>
-        <DialogContent className="flex h-[100dvh] w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none border-0 p-0 sm:h-auto sm:w-full sm:max-w-5xl sm:rounded-2xl sm:border">
+        <DialogContent className="flex h-dvh w-screen max-w-none flex-col gap-0 overflow-hidden rounded-none border-0 p-0 sm:h-auto sm:w-full sm:max-w-5xl sm:rounded-2xl sm:border">
           <DialogHeader className="shrink-0 border-b border-slate-100 px-5 py-3 pr-12 text-left dark:border-slate-800">
             <DialogTitle className="truncate font-display text-base">
               {featured?.latestTour?.name ?? featured?.name ?? "Virtual walkthrough"}

@@ -17,7 +17,7 @@ export function LifecycleTimeline({ phases, className }: LifecycleTimelineProps)
       {phases.map((item, index) => (
         <div key={item.phase} className="relative">
           {index < phases.length - 1 && (
-            <div className="absolute left-[calc(50%+2rem)] top-8 hidden h-px w-[calc(100%-4rem)] bg-gradient-to-r from-brand-accent/60 to-brand-accent/10 lg:block" />
+            <div className="absolute left-[calc(50%+2rem)] top-8 hidden h-px w-[calc(100%-4rem)] bg-linear-to-r from-brand-accent/60 to-brand-accent/10 lg:block" />
           )}
           <div className="surface-card h-full p-6 lg:p-8">
             <span className="inline-flex rounded-full bg-brand-accent/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-brand-accent-dark">

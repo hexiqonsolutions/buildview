@@ -22,7 +22,7 @@ export function LegalDocument({ title, lastUpdated, children }: LegalDocumentPro
           <p className="mt-3 text-sm text-slate-500">Last updated: {lastUpdated}</p>
         </div>
       </section>
-      <Section className="!pt-12">
+      <Section className="pt-12!">
         <div className="prose-legal mx-auto max-w-3xl">{children}</div>
       </Section>
     </>

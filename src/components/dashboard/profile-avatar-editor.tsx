@@ -139,7 +139,7 @@ export function ProfileAvatarEditor({ user }: { user: User }) {
             type="button"
             onClick={handlePick}
             disabled={isPending}
-            className="group relative shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2"
+            className="group relative shrink-0 rounded-full focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2"
             aria-label={previewUrl ? "Change profile photo" : "Upload profile photo"}
           >
             <Avatar className="h-24 w-24 ring-1 ring-slate-200 dark:ring-slate-700">
@@ -179,7 +179,7 @@ export function ProfileAvatarEditor({ user }: { user: User }) {
                 size="sm"
                 onClick={handlePick}
                 disabled={isPending}
-                className="min-w-[8.5rem]"
+                className="min-w-34"
               >
                 {isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

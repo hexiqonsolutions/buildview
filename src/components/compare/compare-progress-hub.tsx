@@ -618,13 +618,13 @@ export function CompareProgressHub({
                       "group overflow-hidden rounded-2xl border bg-white text-left transition-all duration-200",
                       "hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md",
                       "dark:bg-slate-900/60 dark:hover:border-slate-600",
-                      "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/40",
+                      "cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-slate-400/40",
                       isA || isB
                         ? "border-slate-900 ring-2 ring-slate-900/20 dark:border-white dark:ring-white/20"
                         : "border-slate-200/80 dark:border-slate-800"
                     )}
                   >
-                    <div className="relative aspect-[16/10] bg-slate-100 dark:bg-slate-800">
+                    <div className="relative aspect-16/10 bg-slate-100 dark:bg-slate-800">
                       {tour.thumbnail_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img

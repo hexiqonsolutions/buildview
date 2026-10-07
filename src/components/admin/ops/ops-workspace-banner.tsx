@@ -27,7 +27,7 @@ export function OpsWorkspaceBanner() {
   return (
     <div className="ops-workspace-banner">
       <div className="flex min-w-0 items-center gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white shadow-sm dark:bg-slate-800">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white shadow-xs dark:bg-slate-800">
           {client.logo_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={client.logo_url} alt="" className="h-8 w-8 rounded object-cover" />

@@ -185,7 +185,7 @@ export function ProfileForm({ user, client }: ProfileFormProps) {
               >
                 <span
                   className={cn(
-                    "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform dark:bg-slate-900",
+                    "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform dark:bg-slate-900",
                     emailNotifications ? "left-5" : "left-0.5"
                   )}
                 />
@@ -208,7 +208,7 @@ export function ProfileForm({ user, client }: ProfileFormProps) {
               >
                 <span
                   className={cn(
-                    "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform dark:bg-slate-900",
+                    "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform dark:bg-slate-900",
                     issueAlerts ? "left-5" : "left-0.5"
                   )}
                 />
@@ -243,7 +243,7 @@ export function ProfileForm({ user, client }: ProfileFormProps) {
               >
                 <span
                   className={cn(
-                    "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform dark:bg-slate-900",
+                    "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform dark:bg-slate-900",
                     darkMode ? "left-5" : "left-0.5"
                   )}
                 />

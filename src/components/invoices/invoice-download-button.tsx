@@ -56,7 +56,7 @@ export function InvoiceDownloadButton({
         )}
         Download
       </Button>
-      {error ? <span className="max-w-[14rem] text-right text-xs text-red-500">{error}</span> : null}
+      {error ? <span className="max-w-56 text-right text-xs text-red-500">{error}</span> : null}
     </div>
   );
 }

@@ -39,7 +39,7 @@ export function SidebarBrandHeader({
             <BrandLogo
               href={homeHref}
               size="xl"
-              className="max-w-[15rem] overflow-hidden"
+              className="max-w-60 overflow-hidden"
             />
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
               {tagline}

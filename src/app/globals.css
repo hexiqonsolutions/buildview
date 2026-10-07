@@ -1,8 +1,648 @@
-@import "../design-system/tokens.css";
+@import '../design-system/tokens.css' layer(base);
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+/* next/font sets these variables on <body>, so they must resolve at the element, not on :root. */
+@theme inline {
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+}
+
+@theme {
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --color-brand-primary: #050505;
+  --color-brand-secondary: #1a1a1a;
+  --color-brand-accent: #a4cf30;
+  --color-brand-accent-dark: #76b82d;
+  --color-brand-background: #f8fafc;
+
+  --shadow-soft:
+    0 4px 16px rgba(15, 23, 42, 0.06), 0 1px 0 rgba(15, 23, 42, 0.03);
+  --shadow-glow: 0 0 40px rgba(164, 207, 48, 0.18);
+  --shadow-lift: 0 12px 40px -12px rgba(15, 23, 42, 0.14);
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --animate-fade-in: fadeIn 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-slide-up: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-slide-in-right: slideInRight 0.3s ease-out;
+  --animate-hero-ken: heroKen 28s ease-in-out infinite alternate;
+  --animate-hero-rise: heroRise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+
+  --backdrop-blur-xs: 2px;
+
+  @keyframes fadeIn {
+    0% {
+      opacity: 0;
+    }
+    100% {
+      opacity: 1;
+    }
+  }
+  @keyframes slideUp {
+    0% {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes slideInRight {
+    0% {
+      opacity: 0;
+      transform: translateX(20px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  @keyframes heroKen {
+    0% {
+      transform: scale(1.05) translate3d(0, 0, 0);
+    }
+    100% {
+      transform: scale(1.12) translate3d(-1.5%, -1%, 0);
+    }
+  }
+  @keyframes heroRise {
+    0% {
+      opacity: 0;
+      transform: translateY(18px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-gray-400);
+  }
+
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+@utility font-display {
+  font-family: var(--font-display), var(--font-inter), system-ui, sans-serif;
+}
+
+@utility section-padding {
+  @apply py-20 md:py-24 lg:py-28;
+}
+
+@utility surface-card {
+  border-radius: var(--bv-radius-card);
+  box-shadow: var(--bv-shadow-sm);
+  @apply border border-slate-200/70 bg-white dark:border-slate-800/80 dark:bg-slate-950;
+}
+
+@utility glass {
+  @apply border border-white/30 bg-white/75 backdrop-blur-xl dark:border-slate-700/40 dark:bg-slate-950/75;
+}
+
+@utility glass-nav {
+  @apply border-b border-slate-200/60 bg-white/85 backdrop-blur-xl dark:border-slate-800/60 dark:bg-slate-950/85;
+}
+
+@utility glass-nav-scrolled {
+  @apply border-slate-200/80 bg-white/95 shadow-[0_4px_24px_rgba(5,5,5,0.06)] dark:border-slate-800 dark:bg-slate-950/95;
+}
+
+@utility glass-card {
+  @apply rounded-2xl border border-slate-200/50 bg-white/80 shadow-lg backdrop-blur-md dark:border-slate-700/50 dark:bg-slate-900/80;
+}
+
+@utility gradient-text {
+  @apply bg-linear-to-r from-brand-accent to-brand-accent-dark bg-clip-text text-transparent;
+}
+
+@utility hero-gradient {
+  background: linear-gradient(
+    152deg,
+    #050505 0%,
+    #0d100c 38%,
+    #141810 58%,
+    #1a1a1a 78%,
+    #050505 100%
+  );
+}
+
+@utility mesh-gradient {
+  background:
+    radial-gradient(
+      ellipse 80% 50% at 20% 40%,
+      rgba(164, 207, 48, 0.12),
+      transparent
+    ),
+    radial-gradient(
+      ellipse 60% 40% at 80% 20%,
+      rgba(118, 184, 45, 0.08),
+      transparent
+    ),
+    linear-gradient(152deg, #050505 0%, #0f120d 50%, #050505 100%);
+}
+
+@utility dot-pattern {
+  background-image: radial-gradient(
+    rgba(164, 207, 48, 0.15) 1px,
+    transparent 1px
+  );
+  background-size: 24px 24px;
+}
+
+@utility accent-gradient {
+  background: linear-gradient(135deg, #a4cf30 0%, #8bc427 50%, #76b82d 100%);
+}
+
+@utility nav-link {
+  @apply relative text-sm font-medium text-slate-600 transition-colors hover:text-brand-primary dark:text-slate-300 dark:hover:text-white;
+}
+
+@utility nav-link-active {
+  @apply text-brand-primary dark:text-white;
+
+  &::after {
+    content: '';
+    @apply absolute -bottom-1 left-0 h-0.5 w-full rounded-full bg-brand-accent;
+  }
+}
+
+@utility prose-legal {
+  & strong {
+    @apply font-semibold text-brand-primary dark:text-white;
+  }
+}
+
+@utility site-container {
+  @apply container mx-auto;
+  padding-inline: var(--site-gutter);
+}
+
+@utility site-px {
+  padding-inline: var(--site-gutter);
+}
+
+@utility admin-shell {
+  /* Premium admin shell */
+  @apply min-h-screen bg-[#F4F6F9] dark:bg-slate-950;
+}
+
+@utility admin-sidebar {
+  @apply fixed inset-y-0 left-0 z-30 flex w-[260px] flex-col border-r border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900;
+}
+
+@utility admin-main {
+  @apply min-h-screen lg:pl-[260px];
+}
+
+@utility admin-topbar {
+  @apply sticky top-0 z-20 border-b border-slate-200/80 bg-white/95 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95;
+}
+
+@utility ops-card {
+  @apply rounded-2xl border border-slate-200/80 bg-white shadow-[0_1px_0_rgba(15,23,42,0.04)] dark:border-slate-800 dark:bg-slate-950;
+}
+
+@utility admin-card {
+  @apply ops-card transition-shadow hover:shadow-[0_8px_28px_rgba(15,23,42,0.08)];
+}
+
+@utility admin-nav-item {
+  @apply flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium text-slate-600 transition-all hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white;
+}
+
+@utility admin-nav-item-active {
+  @apply bg-slate-900 text-white shadow-xs hover:bg-slate-800 hover:text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 dark:hover:text-slate-900;
+}
+
+@utility admin-metric-label {
+  @apply text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400;
+}
+
+@utility dashboard-metric-label {
+  @apply text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400;
+}
+
+@utility admin-table-head {
+  @apply text-[11px] font-semibold uppercase tracking-wider text-slate-500;
+}
+
+@utility ops-shell {
+  /* Shared dashboard shell — portfolio showcase baseline */
+  @apply min-h-screen bg-[hsl(var(--bv-canvas))] dark:bg-slate-950;
+}
+
+@utility ops-sidebar {
+  @apply fixed inset-y-0 left-0 w-[260px] flex-col border-r border-slate-200/80 bg-white/95 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/95;
+}
+
+@utility ops-main {
+  @apply min-h-screen lg:pl-[260px];
+}
+
+@utility ops-header-stack {
+  @apply sticky top-0 z-30 border-b border-slate-200/70 bg-white/90 backdrop-blur-2xl dark:border-slate-800 dark:bg-slate-950/90;
+}
+
+@utility intel-shell {
+  /* Client Intelligence Platform — minimal clean surfaces */
+  @apply relative min-h-screen bg-[hsl(var(--bv-canvas))] dark:bg-slate-950;
+}
+
+@utility intel-sidebar {
+  width: var(--bv-intel-sidebar-width);
+  @apply fixed inset-y-0 left-0 flex-col border-r border-slate-200/70 bg-white dark:border-slate-800 dark:bg-slate-950;
+
+  @media print {
+    display: none !important;
+  }
+}
+
+@utility intel-main {
+  min-height: 100vh;
+  padding-left: 0;
+
+  @media (min-width: 1024px) {
+    padding-left: var(--bv-intel-sidebar-width);
+  }
+
+  @media print {
+    padding-left: 0 !important;
+  }
+}
+
+@utility intel-header-stack {
+  @apply sticky top-0 z-30;
+
+  @media print {
+    display: none !important;
+  }
+}
+
+@utility intel-header {
+  @apply border-b border-slate-200/70 bg-white/95 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/95;
+}
+
+@utility intel-quick-access {
+  @apply border-b border-slate-100/80 bg-linear-to-r from-slate-50/80 via-white/50 to-transparent dark:border-slate-800/50 dark:from-slate-900/50 dark:via-slate-950/30 dark:to-transparent;
+}
+
+@utility intel-context-bar {
+  @apply border-b border-slate-100/70 bg-slate-50/50 dark:border-slate-800/40 dark:bg-slate-900/30;
+}
+
+@utility intel-content {
+  @apply px-4 py-6 lg:px-8 lg:py-8;
+}
+
+@utility intel-card {
+  border-radius: var(--bv-radius-card);
+  box-shadow: var(--bv-shadow-sm);
+  transition-property: box-shadow, border-color;
+  transition-duration: var(--bv-duration-normal);
+  transition-timing-function: var(--bv-ease-out);
+  @apply border border-slate-200/70 bg-white dark:border-slate-800/80 dark:bg-slate-950;
+
+  &:hover {
+    box-shadow: var(--bv-shadow-md);
+    @apply border-slate-300/80 dark:border-slate-700;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+@utility dashboard-page {
+  @apply space-y-6 pb-8;
+}
+
+@utility dashboard-section-eyebrow {
+  @apply text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400;
+}
+
+@utility dashboard-section-title {
+  @apply font-display text-lg font-semibold tracking-tight text-slate-900 dark:text-white md:text-xl;
+}
+
+@utility dashboard-card-hover {
+  transition-property: box-shadow, border-color;
+  transition-duration: var(--bv-duration-normal);
+  transition-timing-function: var(--bv-ease-out);
+
+  &:hover {
+    box-shadow: var(--bv-shadow-md);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none !important;
+    transform: none !important;
+
+    &:hover {
+      transform: none !important;
+    }
+  }
+}
+
+@utility dashboard-tabs-list {
+  @apply flex h-auto flex-wrap justify-start gap-1 rounded-xl border border-slate-200/80 bg-white/90 p-1 shadow-[0_1px_0_rgba(15,23,42,0.04)] backdrop-blur-sm dark:border-slate-800 dark:bg-slate-950;
+}
+
+@utility dashboard-tabs-trigger {
+  @apply rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 transition-all duration-150 data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-xs dark:text-slate-300 dark:data-[state=active]:bg-slate-100 dark:data-[state=active]:text-slate-950 sm:text-sm;
+}
+
+@utility dashboard-list-row {
+  @apply rounded-lg bg-slate-50/90 px-3 py-2 transition-colors duration-150 hover:bg-slate-100 dark:bg-slate-900/50 dark:hover:bg-slate-800/60;
+}
+
+@utility dashboard-ghost-link {
+  @apply h-8 text-xs text-slate-600;
+}
+
+@utility intel-nav-item {
+  transition-duration: var(--bv-duration-fast);
+  transition-timing-function: var(--bv-ease-out);
+  @apply relative flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium text-slate-500 transition-all hover:bg-slate-100/90 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900/60 dark:hover:text-white;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+@utility intel-nav-item-active {
+  box-shadow: var(--bv-shadow-nav);
+  @apply bg-slate-900 text-white hover:bg-slate-800 hover:text-white dark:bg-white dark:text-slate-900 dark:shadow-none dark:hover:bg-slate-100 dark:hover:text-slate-900;
+}
+
+@utility intel-hero-strip {
+  border-radius: var(--bv-radius-card);
+  box-shadow: var(--bv-shadow-sm);
+  @apply border border-slate-200/70 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-950 md:px-6 md:py-5;
+}
+
+@utility portal-shell {
+  /* Legacy portal aliases → intel (backward compat) */
+  @apply intel-shell;
+}
+
+@utility portal-sidebar {
+  @apply intel-sidebar;
+
+  @media print {
+    display: none !important;
+  }
+}
+
+@utility portal-main {
+  @apply intel-main;
+
+  @media print {
+    padding-left: 0 !important;
+  }
+}
+
+@utility portal-topbar {
+  @apply intel-header-stack;
+
+  @media print {
+    display: none !important;
+  }
+}
+
+@utility portal-card {
+  @apply intel-card;
+
+  &:hover {
+    box-shadow: var(--bv-shadow-lg);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+@utility portal-nav-item {
+  @apply intel-nav-item;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+@utility portal-nav-item-active {
+  @apply intel-nav-item-active;
+}
+
+@utility ops-nav-item {
+  @apply flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium text-slate-600 transition-all hover:bg-white hover:text-slate-900 hover:shadow-xs dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white;
+}
+
+@utility ops-nav-item-active {
+  @apply bg-white text-slate-900 shadow-xs ring-1 ring-slate-200/80 dark:bg-slate-900 dark:text-white dark:ring-slate-700;
+}
+
+@utility portal-section-label {
+  @apply text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400;
+}
+
+@utility ops-command-header {
+  /* Remove duplicate portal-card/nav - defined above with intel aliases */
+
+  /* BuildView Operations Control Center */
+  @apply bg-white dark:bg-slate-950;
+}
+
+@utility ops-scope-cluster {
+  @apply inline-flex h-9 max-w-full items-center overflow-x-auto rounded-lg border border-slate-200 bg-slate-50/80 scrollbar-none [-ms-overflow-style:none] dark:border-slate-700 dark:bg-slate-900/60 [&::-webkit-scrollbar]:hidden;
+  @media (min-width: 1024px) and (max-width: 1279px) {
+    & .ops-scope-select {
+      @apply px-1.5 text-[11px];
+    }
+  }
+}
+
+@utility ops-scope-select {
+  /* Keep building/floor visible on tablet widths beside the sidebar */
+  @media (min-width: 1024px) and (max-width: 1279px) {
+    .ops-scope-cluster & {
+      @apply px-1.5 text-[11px];
+    }
+  }
+  @apply rounded-none text-left font-medium text-slate-700 dark:text-slate-200;
+
+  & [data-placeholder] {
+    @apply text-slate-400 font-normal;
+  }
+
+  & > span:first-child {
+    @apply min-w-0 flex-1 truncate text-left;
+  }
+}
+
+@utility ops-quick-bar {
+  @apply border-t border-slate-100 bg-[#FAFBFC] dark:border-slate-800 dark:bg-slate-900/40;
+}
+
+@utility ops-content {
+  @apply px-5 py-8 lg:px-10 lg:py-10;
+}
+
+@utility ops-queue-card {
+  @apply ops-card dashboard-card-hover block p-5;
+}
+
+@utility ops-search-trigger {
+  @apply h-9 w-full items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-left transition-colors hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600;
+}
+
+@utility ops-kbd {
+  @apply rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-slate-400 dark:border-slate-700 dark:bg-slate-800;
+}
+
+@utility ops-quick-action {
+  @apply border border-slate-200/80 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800;
+}
+
+@utility ops-quick-action-primary {
+  @apply border-slate-900 bg-slate-900 text-white hover:bg-slate-800 dark:border-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100;
+}
+
+@utility ops-btn-primary {
+  @apply rounded-xl bg-slate-900 text-white transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100;
+}
+
+@utility ops-page-eyebrow {
+  @apply text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400;
+}
+
+@utility ops-workspace-banner {
+  @apply flex flex-col gap-3 rounded-2xl border border-slate-200/80 bg-linear-to-r from-slate-50 to-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800 dark:from-slate-900 dark:to-slate-950;
+}
+
+@utility ops-workspace-banner-empty {
+  @apply items-start sm:items-center;
+}
+
+@utility ops-upload-zone {
+  @apply transition-colors hover:border-slate-300 hover:bg-white dark:hover:border-slate-600;
+}
+
+@utility compare-glass-toolbar {
+  /* Compare Progress — flagship module */
+  @apply sticky top-0 z-30 border-b border-slate-200/80 bg-white/80 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/80;
+
+  @media print {
+    display: none !important;
+  }
+}
+
+@utility compare-card {
+  border-radius: var(--bv-radius-card);
+  box-shadow: var(--bv-shadow-sm);
+  @apply border border-slate-200/70 bg-white dark:border-slate-800 dark:bg-slate-950;
+}
+
+@utility compare-kpi {
+  @apply compare-card p-4 transition-shadow duration-200 hover:shadow-soft;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none !important;
+    transform: none !important;
+
+    &:hover {
+      transform: none !important;
+    }
+  }
+}
+
+@utility compare-scan-thumb {
+  @apply relative aspect-video overflow-hidden rounded-lg bg-slate-900 ring-2 ring-transparent transition-all;
+}
+
+@utility compare-scan-thumb-selected {
+  @apply ring-slate-900 dark:ring-white;
+}
+
+@utility compare-sync-badge-synced {
+  @apply inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-medium text-white;
+}
+
+@utility compare-sync-badge-independent {
+  @apply inline-flex items-center gap-1 rounded-full bg-slate-700 px-2 py-0.5 text-[10px] font-medium text-slate-300;
+}
+
+@layer utilities {
+  @media (prefers-reduced-motion: reduce) {
+    .animate-hero-ken,
+    .animate-hero-rise,
+    .animate-fade-in,
+    .animate-slide-up {
+      animation: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+    }
+  }
+}
 
 @layer base {
   :root {
@@ -79,458 +719,6 @@
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-display tracking-tight;
-  }
-}
-
-@layer utilities {
-  .font-display {
-    font-family: var(--font-display), var(--font-inter), system-ui, sans-serif;
-  }
-
-  .section-padding {
-    @apply py-20 md:py-24 lg:py-28;
-  }
-
-  .surface-card {
-    border-radius: var(--bv-radius-card);
-    box-shadow: var(--bv-shadow-sm);
-    @apply border border-slate-200/70 bg-white dark:border-slate-800/80 dark:bg-slate-950;
-  }
-
-  .glass {
-    @apply border border-white/30 bg-white/75 backdrop-blur-xl dark:border-slate-700/40 dark:bg-slate-950/75;
-  }
-
-  .glass-nav {
-    @apply border-b border-slate-200/60 bg-white/85 backdrop-blur-xl dark:border-slate-800/60 dark:bg-slate-950/85;
-  }
-
-  .glass-nav-scrolled {
-    @apply border-slate-200/80 bg-white/95 shadow-[0_4px_24px_rgba(5,5,5,0.06)] dark:border-slate-800 dark:bg-slate-950/95;
-  }
-
-  .glass-card {
-    @apply rounded-2xl border border-slate-200/50 bg-white/80 shadow-lg backdrop-blur-md dark:border-slate-700/50 dark:bg-slate-900/80;
-  }
-
-  .gradient-text {
-    @apply bg-gradient-to-r from-brand-accent to-brand-accent-dark bg-clip-text text-transparent;
-  }
-
-  .hero-gradient {
-    background: linear-gradient(
-      152deg,
-      #050505 0%,
-      #0d100c 38%,
-      #141810 58%,
-      #1a1a1a 78%,
-      #050505 100%
-    );
-  }
-
-  .mesh-gradient {
-    background:
-      radial-gradient(ellipse 80% 50% at 20% 40%, rgba(164, 207, 48, 0.12), transparent),
-      radial-gradient(ellipse 60% 40% at 80% 20%, rgba(118, 184, 45, 0.08), transparent),
-      linear-gradient(152deg, #050505 0%, #0f120d 50%, #050505 100%);
-  }
-
-  .dot-pattern {
-    background-image: radial-gradient(rgba(164, 207, 48, 0.15) 1px, transparent 1px);
-    background-size: 24px 24px;
-  }
-
-  .accent-gradient {
-    background: linear-gradient(135deg, #a4cf30 0%, #8bc427 50%, #76b82d 100%);
-  }
-
-  .nav-link {
-    @apply relative text-sm font-medium text-slate-600 transition-colors hover:text-brand-primary dark:text-slate-300 dark:hover:text-white;
-  }
-
-  .nav-link-active {
-    @apply text-brand-primary dark:text-white;
-  }
-
-  .nav-link-active::after {
-    content: "";
-    @apply absolute -bottom-1 left-0 h-0.5 w-full rounded-full bg-brand-accent;
-  }
-
-  .prose-legal strong {
-    @apply font-semibold text-brand-primary dark:text-white;
-  }
-
-  .site-container {
-    @apply container mx-auto;
-    padding-inline: var(--site-gutter);
-  }
-
-  .site-px {
-    padding-inline: var(--site-gutter);
-  }
-
-  /* Premium admin shell */
-  .admin-shell {
-    @apply min-h-screen bg-[#F4F6F9] dark:bg-slate-950;
-  }
-
-  .admin-sidebar {
-    @apply fixed inset-y-0 left-0 z-30 flex w-[260px] flex-col border-r border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900;
-  }
-
-  .admin-main {
-    @apply min-h-screen lg:pl-[260px];
-  }
-
-  .admin-topbar {
-    @apply sticky top-0 z-20 border-b border-slate-200/80 bg-white/95 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95;
-  }
-
-  .ops-card {
-    @apply rounded-2xl border border-slate-200/80 bg-white shadow-[0_1px_0_rgba(15,23,42,0.04)] dark:border-slate-800 dark:bg-slate-950;
-  }
-
-  .admin-card {
-    @apply ops-card transition-shadow hover:shadow-[0_8px_28px_rgba(15,23,42,0.08)];
-  }
-
-  .admin-nav-item {
-    @apply flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium text-slate-600 transition-all hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white;
-  }
-
-  .admin-nav-item-active {
-    @apply bg-slate-900 text-white shadow-sm hover:bg-slate-800 hover:text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 dark:hover:text-slate-900;
-  }
-
-  .admin-metric-label,
-  .dashboard-metric-label {
-    @apply text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400;
-  }
-
-  .admin-table-head {
-    @apply text-[11px] font-semibold uppercase tracking-wider text-slate-500;
-  }
-
-  /* Shared dashboard shell — portfolio showcase baseline */
-  .ops-shell {
-    @apply min-h-screen bg-[hsl(var(--bv-canvas))] dark:bg-slate-950;
-  }
-
-  .ops-sidebar {
-    @apply fixed inset-y-0 left-0 w-[260px] flex-col border-r border-slate-200/80 bg-white/95 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/95;
-  }
-
-  .ops-main {
-    @apply min-h-screen lg:pl-[260px];
-  }
-
-  .ops-header-stack {
-    @apply sticky top-0 z-30 border-b border-slate-200/70 bg-white/90 backdrop-blur-2xl dark:border-slate-800 dark:bg-slate-950/90;
-  }
-
-  /* Client Intelligence Platform — minimal clean surfaces */
-  .intel-shell {
-    @apply relative min-h-screen bg-[hsl(var(--bv-canvas))] dark:bg-slate-950;
-  }
-
-  .intel-sidebar {
-    width: var(--bv-intel-sidebar-width);
-    @apply fixed inset-y-0 left-0 flex-col border-r border-slate-200/70 bg-white dark:border-slate-800 dark:bg-slate-950;
-  }
-
-  .intel-main {
-    min-height: 100vh;
-    padding-left: 0;
-  }
-
-  @media (min-width: 1024px) {
-    .intel-main {
-      padding-left: var(--bv-intel-sidebar-width);
-    }
-  }
-
-  .intel-header-stack {
-    @apply sticky top-0 z-30;
-  }
-
-  .intel-header {
-    @apply border-b border-slate-200/70 bg-white/95 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/95;
-  }
-
-  .intel-quick-access {
-    @apply border-b border-slate-100/80 bg-gradient-to-r from-slate-50/80 via-white/50 to-transparent dark:border-slate-800/50 dark:from-slate-900/50 dark:via-slate-950/30 dark:to-transparent;
-  }
-
-  .intel-context-bar {
-    @apply border-b border-slate-100/70 bg-slate-50/50 dark:border-slate-800/40 dark:bg-slate-900/30;
-  }
-
-  .intel-content {
-    @apply px-4 py-6 lg:px-8 lg:py-8;
-  }
-
-  .intel-card {
-    border-radius: var(--bv-radius-card);
-    box-shadow: var(--bv-shadow-sm);
-    transition-property: box-shadow, border-color;
-    transition-duration: var(--bv-duration-normal);
-    transition-timing-function: var(--bv-ease-out);
-    @apply border border-slate-200/70 bg-white dark:border-slate-800/80 dark:bg-slate-950;
-  }
-
-  .intel-card:hover {
-    box-shadow: var(--bv-shadow-md);
-    @apply border-slate-300/80 dark:border-slate-700;
-  }
-
-  .dashboard-page {
-    @apply space-y-6 pb-8;
-  }
-
-  .dashboard-section-eyebrow {
-    @apply text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400;
-  }
-
-  .dashboard-section-title {
-    @apply font-display text-lg font-semibold tracking-tight text-slate-900 dark:text-white md:text-xl;
-  }
-
-  .dashboard-card-hover {
-    transition-property: box-shadow, border-color;
-    transition-duration: var(--bv-duration-normal);
-    transition-timing-function: var(--bv-ease-out);
-  }
-
-  .dashboard-card-hover:hover {
-    box-shadow: var(--bv-shadow-md);
-  }
-
-  .dashboard-tabs-list {
-    @apply flex h-auto flex-wrap justify-start gap-1 rounded-xl border border-slate-200/80 bg-white/90 p-1 shadow-[0_1px_0_rgba(15,23,42,0.04)] backdrop-blur-sm dark:border-slate-800 dark:bg-slate-950;
-  }
-
-  .dashboard-tabs-trigger {
-    @apply rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 transition-all duration-150 data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-sm dark:text-slate-300 dark:data-[state=active]:bg-slate-100 dark:data-[state=active]:text-slate-950 sm:text-sm;
-  }
-
-  .dashboard-list-row {
-    @apply rounded-lg bg-slate-50/90 px-3 py-2 transition-colors duration-150 hover:bg-slate-100 dark:bg-slate-900/50 dark:hover:bg-slate-800/60;
-  }
-
-  .dashboard-ghost-link {
-    @apply h-8 text-xs text-slate-600;
-  }
-
-  .intel-nav-item {
-    transition-duration: var(--bv-duration-fast);
-    transition-timing-function: var(--bv-ease-out);
-    @apply relative flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium text-slate-500 transition-all hover:bg-slate-100/90 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900/60 dark:hover:text-white;
-  }
-
-  .intel-nav-item-active {
-    box-shadow: var(--bv-shadow-nav);
-    @apply bg-slate-900 text-white hover:bg-slate-800 hover:text-white dark:bg-white dark:text-slate-900 dark:shadow-none dark:hover:bg-slate-100 dark:hover:text-slate-900;
-  }
-
-  .intel-hero-strip {
-    border-radius: var(--bv-radius-card);
-    box-shadow: var(--bv-shadow-sm);
-    @apply border border-slate-200/70 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-950 md:px-6 md:py-5;
-  }
-
-  /* Legacy portal aliases → intel (backward compat) */
-  .portal-shell {
-    @apply intel-shell;
-  }
-
-  .portal-sidebar {
-    @apply intel-sidebar;
-  }
-
-  .portal-main {
-    @apply intel-main;
-  }
-
-  .portal-topbar {
-    @apply intel-header-stack;
-  }
-
-  .portal-card {
-    @apply intel-card;
-  }
-
-  .portal-card:hover {
-    box-shadow: var(--bv-shadow-lg);
-  }
-
-  .portal-nav-item {
-    @apply intel-nav-item;
-  }
-
-  .portal-nav-item-active {
-    @apply intel-nav-item-active;
-  }
-
-  .ops-nav-item {
-    @apply flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium text-slate-600 transition-all hover:bg-white hover:text-slate-900 hover:shadow-sm dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white;
-  }
-
-  .ops-nav-item-active {
-    @apply bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/80 dark:bg-slate-900 dark:text-white dark:ring-slate-700;
-  }
-
-  .portal-section-label {
-    @apply text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400;
-  }
-
-  /* Remove duplicate portal-card/nav - defined above with intel aliases */
-
-  /* BuildView Operations Control Center */
-  .ops-command-header {
-    @apply bg-white dark:bg-slate-950;
-  }
-
-  .ops-scope-cluster {
-    @apply inline-flex h-9 max-w-full items-center overflow-x-auto rounded-lg border border-slate-200 bg-slate-50/80 [scrollbar-width:none] [-ms-overflow-style:none] dark:border-slate-700 dark:bg-slate-900/60 [&::-webkit-scrollbar]:hidden;
-  }
-
-  /* Keep building/floor visible on tablet widths beside the sidebar */
-  @media (min-width: 1024px) and (max-width: 1279px) {
-    .ops-scope-cluster .ops-scope-select {
-      @apply px-1.5 text-[11px];
-    }
-  }
-
-  .ops-scope-select {
-    @apply rounded-none text-left font-medium text-slate-700 dark:text-slate-200;
-  }
-
-  .ops-scope-select [data-placeholder] {
-    @apply text-slate-400 font-normal;
-  }
-
-  .ops-scope-select > span:first-child {
-    @apply min-w-0 flex-1 truncate text-left;
-  }
-
-  .ops-quick-bar {
-    @apply border-t border-slate-100 bg-[#FAFBFC] dark:border-slate-800 dark:bg-slate-900/40;
-  }
-
-  .ops-content {
-    @apply px-5 py-8 lg:px-10 lg:py-10;
-  }
-
-  .ops-queue-card {
-    @apply ops-card dashboard-card-hover block p-5;
-  }
-
-  .ops-search-trigger {
-    @apply h-9 w-full items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-left transition-colors hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600;
-  }
-
-  .ops-kbd {
-    @apply rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-slate-400 dark:border-slate-700 dark:bg-slate-800;
-  }
-
-  .ops-quick-action {
-    @apply border border-slate-200/80 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800;
-  }
-
-  .ops-quick-action-primary {
-    @apply border-slate-900 bg-slate-900 text-white hover:bg-slate-800 dark:border-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100;
-  }
-
-  .ops-btn-primary {
-    @apply rounded-xl bg-slate-900 text-white transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100;
-  }
-
-  .ops-page-eyebrow {
-    @apply text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400;
-  }
-
-  .ops-workspace-banner {
-    @apply flex flex-col gap-3 rounded-2xl border border-slate-200/80 bg-gradient-to-r from-slate-50 to-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800 dark:from-slate-900 dark:to-slate-950;
-  }
-
-  .ops-workspace-banner-empty {
-    @apply items-start sm:items-center;
-  }
-
-  .ops-upload-zone {
-    @apply transition-colors hover:border-slate-300 hover:bg-white dark:hover:border-slate-600;
-  }
-
-  /* Compare Progress — flagship module */
-  .compare-glass-toolbar {
-    @apply sticky top-0 z-30 border-b border-slate-200/80 bg-white/80 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/80;
-  }
-
-  .compare-card {
-    border-radius: var(--bv-radius-card);
-    box-shadow: var(--bv-shadow-sm);
-    @apply border border-slate-200/70 bg-white dark:border-slate-800 dark:bg-slate-950;
-  }
-
-  .compare-kpi {
-    @apply compare-card p-4 transition-shadow duration-200 hover:shadow-soft;
-  }
-
-  .compare-scan-thumb {
-    @apply relative aspect-video overflow-hidden rounded-lg bg-slate-900 ring-2 ring-transparent transition-all;
-  }
-
-  .compare-scan-thumb-selected {
-    @apply ring-slate-900 dark:ring-white;
-  }
-
-  .compare-sync-badge-synced {
-    @apply inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-medium text-white;
-  }
-
-  .compare-sync-badge-independent {
-    @apply inline-flex items-center gap-1 rounded-full bg-slate-700 px-2 py-0.5 text-[10px] font-medium text-slate-300;
-  }
-
-  @media print {
-    .compare-glass-toolbar,
-    .intel-sidebar,
-    .intel-header-stack,
-    .portal-sidebar,
-    .portal-topbar {
-      display: none !important;
-    }
-    .intel-main,
-    .portal-main {
-      padding-left: 0 !important;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .intel-card,
-    .portal-card,
-    .dashboard-card-hover,
-    .compare-kpi,
-    .intel-nav-item,
-    .portal-nav-item {
-      transition: none !important;
-      transform: none !important;
-    }
-
-    .dashboard-card-hover:hover,
-    .compare-kpi:hover {
-      transform: none !important;
-    }
-
-    .animate-hero-ken,
-    .animate-hero-rise,
-    .animate-fade-in,
-    .animate-slide-up {
-      animation: none !important;
-      opacity: 1 !important;
-      transform: none !important;
-    }
   }
 }
 

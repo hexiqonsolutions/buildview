@@ -48,7 +48,7 @@ export function PortalProjectCard({
               className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
             />
           ) : (
-            <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-slate-800 via-slate-900 to-black">
+            <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-linear-to-br from-slate-800 via-slate-900 to-black">
               {tour ? (
                 <>
                   <Rotate3d className="h-8 w-8 text-brand-accent" aria-hidden />
@@ -63,7 +63,7 @@ export function PortalProjectCard({
               )}
             </div>
           )}
-          <span className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/50 to-transparent" />
+          <span className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-linear-to-t from-black/50 to-transparent" />
           {tour && thumbnail && (
             <span className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full bg-slate-950/70 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white backdrop-blur-sm">
               <Rotate3d className="h-3 w-3 text-brand-accent" aria-hidden />
@@ -77,7 +77,7 @@ export function PortalProjectCard({
             <UpdateProjectStatusSelect
               projectId={project.id}
               currentStatus={project.status}
-              triggerClassName="h-7 w-[7.75rem] bg-white/95 text-[11px] shadow-sm backdrop-blur dark:bg-slate-950/90"
+              triggerClassName="h-7 w-31 bg-white/95 text-[11px] shadow-xs backdrop-blur-sm dark:bg-slate-950/90"
             />
           </div>
         )}

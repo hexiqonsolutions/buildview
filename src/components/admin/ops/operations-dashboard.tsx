@@ -95,7 +95,7 @@ export function OperationsDashboard({
       <div className="flex items-center gap-4 sm:gap-5">
         <Link
           href="/dashboard/profile"
-          className="shrink-0 cursor-pointer self-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2"
+          className="shrink-0 cursor-pointer self-center rounded-full focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2"
           aria-label="Open profile"
         >
           <Avatar className="h-20 w-20 ring-2 ring-white shadow-md dark:ring-slate-800 sm:h-24 sm:w-24">
@@ -149,9 +149,9 @@ export function OperationsDashboard({
                     key={c.id}
                     type="button"
                     onClick={() => activateClient(c.id, true)}
-                    className="group flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200/80 bg-slate-50/60 p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white hover:shadow-sm dark:border-slate-800 dark:bg-slate-900/40 dark:hover:border-slate-700 dark:hover:bg-slate-900"
+                    className="group flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200/80 bg-slate-50/60 p-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white hover:shadow-xs dark:border-slate-800 dark:bg-slate-900/40 dark:hover:border-slate-700 dark:hover:bg-slate-900"
                   >
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm dark:bg-slate-800">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white shadow-xs dark:bg-slate-800">
                       {c.logo_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={c.logo_url} alt="" className="h-8 w-8 rounded object-cover" />
@@ -180,9 +180,9 @@ export function OperationsDashboard({
 
       {hydrated && client && (
         <div className="ops-card overflow-hidden border-slate-200 dark:border-slate-800">
-          <div className="flex flex-col gap-4 border-b border-slate-100 bg-gradient-to-br from-slate-50 to-white px-5 py-5 dark:border-slate-800 dark:from-slate-900/80 dark:to-slate-950 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex flex-col gap-4 border-b border-slate-100 bg-linear-to-br from-slate-50 to-white px-5 py-5 dark:border-slate-800 dark:from-slate-900/80 dark:to-slate-950 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex min-w-0 items-start gap-4">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-slate-200/80 dark:bg-slate-800 dark:ring-slate-700">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white shadow-xs ring-1 ring-slate-200/80 dark:bg-slate-800 dark:ring-slate-700">
                 {client.logo_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -212,7 +212,7 @@ export function OperationsDashboard({
                   <Badge variant="outline">{clientProjects.length} projects</Badge>
                   <Badge variant="outline">{activeProjects} in progress</Badge>
                   {project ? (
-                    <Badge variant="outline" className="max-w-[12rem] truncate">
+                    <Badge variant="outline" className="max-w-48 truncate">
                       {project.name}
                     </Badge>
                   ) : null}

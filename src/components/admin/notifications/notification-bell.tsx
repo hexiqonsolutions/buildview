@@ -203,7 +203,7 @@ export function NotificationBell({
                   className={cn(
                     "items-start gap-3 rounded-none border-b border-slate-100 px-4 py-3 last:border-b-0 dark:border-slate-800",
                     href ? "cursor-pointer" : "cursor-default",
-                    isFresh && "bg-brand-accent/[0.06]"
+                    isFresh && "bg-brand-accent/6"
                   )}
                 >
                   <span

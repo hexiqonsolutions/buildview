@@ -184,7 +184,7 @@ const visibilityOutcomes = [
 export default function HomePage() {
   return (
     <>
-      <section className="relative -mt-[4.5rem] min-h-svh overflow-hidden text-white lg:-mt-20">
+      <section className="relative -mt-18 min-h-svh overflow-hidden text-white lg:-mt-20">
         <HeroCaptureVideo />
 
         <div className="site-container relative z-10 flex min-h-svh flex-col justify-center pb-24 pt-28 lg:pb-28 lg:pt-32">

@@ -120,9 +120,9 @@ export function ProjectSitePhotosSection({
                 key={photo.id}
                 type="button"
                 onClick={() => setLightboxId(photo.id)}
-                className="group cursor-pointer overflow-hidden rounded-xl border border-slate-200 bg-white text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:hover:border-slate-700"
+                className="group cursor-pointer overflow-hidden rounded-xl border border-slate-200 bg-white text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-xs dark:border-slate-800 dark:bg-slate-950 dark:hover:border-slate-700"
               >
-                <div className="relative aspect-[4/3] overflow-hidden bg-slate-100 dark:bg-slate-900">
+                <div className="relative aspect-4/3 overflow-hidden bg-slate-100 dark:bg-slate-900">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={url}
@@ -130,7 +130,7 @@ export function ProjectSitePhotosSection({
                     className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
                   />
                   <span className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-opacity group-hover:bg-black/25 group-hover:opacity-100">
-                    <ZoomIn className="h-5 w-5 text-white drop-shadow" />
+                    <ZoomIn className="h-5 w-5 text-white drop-shadow-sm" />
                   </span>
                 </div>
                 <div className="space-y-1 p-3">

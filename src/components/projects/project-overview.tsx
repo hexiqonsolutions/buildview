@@ -104,7 +104,7 @@ export function ProjectOverview({
                 "shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-12px_rgba(15,23,42,0.1)]",
                 "transition-all duration-200 ease-out",
                 "hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-[0_4px_12px_rgba(15,23,42,0.06),0_16px_32px_-12px_rgba(15,23,42,0.14)]",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/40 focus-visible:ring-offset-2",
+                "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-slate-400/40 focus-visible:ring-offset-2",
                 "dark:border-slate-800 dark:bg-slate-900/60 dark:shadow-none dark:hover:border-slate-700 dark:hover:bg-slate-900",
                 "motion-safe:animate-[fadeInUp_0.45s_ease-out_both]",
                 "cursor-pointer",

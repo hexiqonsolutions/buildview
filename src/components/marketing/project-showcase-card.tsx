@@ -41,7 +41,7 @@ export function ProjectShowcaseCard({
       )}
     >
       <div className="relative flex h-52 items-end overflow-hidden bg-brand-primary p-6">
-        <div className="absolute inset-0 bg-gradient-to-br from-brand-accent/20 via-brand-primary to-brand-secondary" />
+        <div className="absolute inset-0 bg-linear-to-br from-brand-accent/20 via-brand-primary to-brand-secondary" />
         <div className="dot-pattern absolute inset-0 opacity-20" />
         <div className="relative w-full">
           <Badge className={cn("mb-3 border-0", statusStyles[status])}>{status}</Badge>

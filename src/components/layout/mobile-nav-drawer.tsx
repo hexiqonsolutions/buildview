@@ -31,13 +31,13 @@ export function MobileNavDrawer({ open, onClose, children, className }: MobileNa
   return createPortal(
     <>
       <div
-        className="fixed inset-0 z-[100] bg-black/40 lg:hidden"
+        className="fixed inset-0 z-100 bg-black/40 lg:hidden"
         onClick={onClose}
         aria-hidden
       />
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-[110] flex w-72 max-w-[85vw] flex-col border-r border-slate-200/90 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-950 lg:hidden",
+          "fixed inset-y-0 left-0 z-110 flex w-72 max-w-[85vw] flex-col border-r border-slate-200/90 bg-white shadow-xl dark:border-slate-800 dark:bg-slate-950 lg:hidden",
           className
         )}
       >

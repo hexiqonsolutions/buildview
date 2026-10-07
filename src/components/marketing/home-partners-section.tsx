@@ -33,11 +33,11 @@ export function HomePartnersSection() {
       {/* Soft bridge from dark hero */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-brand-primary/8 to-transparent dark:from-slate-950"
+        className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-linear-to-b from-brand-primary/8 to-transparent dark:from-slate-950"
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand-accent/35 to-transparent"
+        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-brand-accent/35 to-transparent"
       />
 
       <div className="site-container relative py-12 md:py-14 lg:py-16">
@@ -71,7 +71,7 @@ export function HomePartnersSection() {
                 <li key={sponsor.id}>
                   <div
                     className={cn(
-                      "group flex min-h-[4.75rem] items-center justify-center rounded-xl border border-slate-200/80 bg-slate-50/50 px-4 py-4",
+                      "group flex min-h-19 items-center justify-center rounded-xl border border-slate-200/80 bg-slate-50/50 px-4 py-4",
                       "transition-all duration-200 motion-reduce:transition-none",
                       "hover:border-brand-accent/35 hover:bg-white hover:shadow-soft",
                       "dark:border-slate-800 dark:bg-slate-900/40 dark:hover:border-brand-accent/25 dark:hover:bg-slate-900"
@@ -88,7 +88,7 @@ export function HomePartnersSection() {
         {spotlight && (
           <article
             className={cn(
-              "relative mt-10 overflow-hidden rounded-2xl border border-slate-200/80 bg-gradient-to-br from-slate-50 via-white to-slate-50 p-6 shadow-soft md:mt-12 md:p-8",
+              "relative mt-10 overflow-hidden rounded-2xl border border-slate-200/80 bg-linear-to-br from-slate-50 via-white to-slate-50 p-6 shadow-soft md:mt-12 md:p-8",
               "dark:border-slate-800 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900"
             )}
           >
@@ -135,7 +135,7 @@ export function HomePartnersSection() {
                     href={spotlight.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group/link mt-5 inline-flex min-h-11 items-center gap-1.5 rounded-lg text-sm font-semibold text-brand-accent-dark transition-colors duration-200 hover:text-brand-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2 dark:hover:text-brand-accent"
+                    className="group/link mt-5 inline-flex min-h-11 items-center gap-1.5 rounded-lg text-sm font-semibold text-brand-accent-dark transition-colors duration-200 hover:text-brand-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2 dark:hover:text-brand-accent"
                   >
                     Learn more
                     <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover/link:translate-x-0.5" />

@@ -14,7 +14,7 @@ export default function MarketingLayout({
       <MarketingTheme />
       <JsonLd />
       <MarketingHeader />
-      <main className="flex-1 pt-[4.5rem] lg:pt-20">{children}</main>
+      <main className="flex-1 pt-18 lg:pt-20">{children}</main>
       <MarketingFooter />
       <CookieConsent />
     </div>

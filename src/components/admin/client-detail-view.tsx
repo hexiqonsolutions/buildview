@@ -85,7 +85,7 @@ export function ClientWorkspaceTabs({
       <div className="ops-card p-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex items-start gap-4">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 text-xl font-bold text-slate-700 dark:from-slate-800 dark:to-slate-900 dark:text-white">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-linear-to-br from-slate-100 to-slate-200 text-xl font-bold text-slate-700 dark:from-slate-800 dark:to-slate-900 dark:text-white">
               {displayName.charAt(0).toUpperCase()}
             </div>
             <div>
