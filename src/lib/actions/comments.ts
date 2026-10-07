@@ -11,6 +11,7 @@ import {
 import { validate } from "@/lib/validations/parse";
 import type { ProjectCommentInsert, ProjectCommentWithUser, UserRole } from "@/lib/types";
 import { canCommentOnProject, isBuildViewStaffRole } from "@/lib/auth/roles";
+import { currentUserCanViewProject } from "@/lib/auth/project-access";
 
 export type CommentActionResult =
   | { ok: true }
@@ -87,6 +88,7 @@ export async function getProjectComments(
   projectId: string
 ): Promise<ProjectCommentWithUser[]> {
   if (!validate(commentProjectIdSchema, projectId).success) return [];
+  if (!(await currentUserCanViewProject(projectId))) return [];
 
   try {
     const admin = createServiceRoleClient();

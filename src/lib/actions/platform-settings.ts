@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
-import { requireBuildViewStaff } from "@/lib/supabase/server";
+import { requireStaffPermission } from "@/lib/auth/staff";
 import { DEFAULT_CURRENCY } from "@/lib/currency";
 import {
   DEFAULT_PLATFORM_SETTINGS,
@@ -11,13 +11,8 @@ import {
   type PlatformSettings,
 } from "@/lib/admin/platform-settings";
 
-import type { NotificationType } from "@/lib/types";
 import { validate } from "@/lib/validations/parse";
-import { insertNotificationSystemSchema } from "@/lib/validations/notifications";
-import {
-  notificationRuleSchema,
-  updatePlatformSettingsSchema,
-} from "@/lib/validations/platform-settings";
+import { updatePlatformSettingsSchema } from "@/lib/validations/platform-settings";
 
 type SettingsRow = {
   company_name: string;
@@ -62,6 +57,11 @@ function rowToSettings(row: SettingsRow): PlatformSettings {
 export async function getPlatformSettings(): Promise<PlatformSettings> {
   try {
     const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return DEFAULT_PLATFORM_SETTINGS;
+
     const { data, error } = await supabase
       .from("platform_settings")
       .select("company_name, support_email, default_currency, timezone, notification_rules")
@@ -96,11 +96,7 @@ export async function updatePlatformSettings(
   const valid = parsed.data;
 
   try {
-    await requireBuildViewStaff();
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { supabase, user } = await requireStaffPermission("update", "settings");
 
     const { error } = await supabase
       .from("platform_settings")
@@ -125,49 +121,4 @@ export async function updatePlatformSettings(
       error: err instanceof Error ? err.message : "Failed to save settings",
     };
   }
-}
-
-export async function isNotificationRuleEnabled(
-  rule: keyof PlatformSettings["notifications"]
-): Promise<boolean> {
-  const parsedRule = validate(notificationRuleSchema, rule);
-  if (!parsedRule.success) {
-    console.warn("[isNotificationRuleEnabled] rejected invalid input:", parsedRule.error);
-    return false;
-  }
-
-  const settings = await getPlatformSettings();
-  return settings.notifications[parsedRule.data];
-}
-
-/** Service-role insert — bypasses RLS when non-admin actors trigger system alerts. */
-export async function insertNotificationSystem(data: {
-  user_id: string;
-  title: string;
-  message: string;
-  type?: NotificationType;
-  link?: string | null;
-  created_by?: string | null;
-}) {
-  const parsed = validate(insertNotificationSystemSchema, data);
-  if (!parsed.success) {
-    console.warn("[insertNotificationSystem] rejected invalid input:", parsed.error);
-    return;
-  }
-  const valid = parsed.data;
-
-  const admin = createServiceRoleClient();
-  const { error } = await admin.from("notifications").insert({
-    user_id: valid.user_id,
-    title: valid.title,
-    message: valid.message,
-    type: valid.type ?? "info",
-    link: valid.link ?? null,
-    is_read: false,
-    read_at: null,
-    created_by: valid.created_by ?? null,
-    updated_by: null,
-  });
-
-  if (error) throw new Error(error.message);
 }

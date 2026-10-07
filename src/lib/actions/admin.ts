@@ -6,8 +6,15 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { createSignedStorageUrl } from "@/lib/supabase/storage-server";
 import { resolveInvoiceStoragePath } from "@/lib/supabase/storage";
-import { notifyClientOrgIfEnabled, notifyClientsIfEnabled, notifyInvoiceRecipients, notifyUsersIfEnabled } from "@/lib/actions/notifications";
-import { isNotificationRuleEnabled } from "@/lib/actions/platform-settings";
+import {
+  getProjectNameForNotify,
+  isNotificationRuleEnabled,
+  notifyClientOrgIfEnabled,
+  notifyClientsIfEnabled,
+  notifyInvoiceRecipients,
+  notifyUsersIfEnabled,
+} from "@/lib/notifications/server";
+import { requireStaffPermission } from "@/lib/auth/staff";
 import { normalizeMatterportUrl, resolveMatterportThumbnailUrl } from "@/lib/matterport";
 import { resolveSpatialForWrite } from "@/lib/admin/spatial-resolve";
 import { buildTourDescription } from "@/lib/admin/tour-metadata";
@@ -60,7 +67,6 @@ import {
   portalReportLink,
   formatUploadNotifyMessage,
 } from "@/lib/portal/notification-links";
-import { getProjectNameForNotify } from "@/lib/actions/notifications";
 import { recordTimelineEntry } from "@/lib/timeline/auto-entry";
 import { DEFAULT_CURRENCY } from "@/lib/currency";
 import { isProjectVisibleInClientPortal } from "@/lib/portal/project-visibility";
@@ -164,7 +170,7 @@ export async function createClientRecord(data: {
 }) {
   const validated = parseOrThrow(createClientSchema, data);
 
-  const supabase = await createClient();
+  const { supabase } = await requireStaffPermission("create", "clients");
   const { error } = await supabase.from("clients").insert(validated);
   if (error) throw new Error(error.message);
   revalidatePath("/admin/clients");
@@ -232,8 +238,13 @@ export async function createProject(data: {
   const validated = validation.data;
   const name = validated.name;
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  let supabase: Awaited<ReturnType<typeof createClient>>;
+  let user: { id: string };
+  try {
+    ({ supabase, user } = await requireStaffPermission("create", "projects"));
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Not allowed" };
+  }
 
   const payload: ProjectInsert = {
     name,
@@ -304,10 +315,7 @@ export async function updateProjectCoverImage(
 ) {
   const validated = parseOrThrow(updateProjectCoverImageSchema, { projectId, coverImageUrl });
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await requireStaffPermission("update", "projects");
 
   const { error } = await supabase
     .from("projects")
@@ -489,6 +497,8 @@ type ValidatedReportInput = z.output<typeof createReportActionSchema>;
 
 export async function createReport(input: CreateReportInput) {
   const data = parseOrThrow(createReportActionSchema, input);
+  // insertReport may fall back to the service role, so authorize first.
+  await assertCanUploadToProject(data.project_id, "reports");
   const reportId = await insertReport(data);
 
   if (!data.skipTimeline) {
@@ -659,6 +669,7 @@ export async function createDocumentFolder(data: {
   parent_id?: string | null;
 }) {
   const validated = parseOrThrow(createFolderSchema, data);
+  await assertCanUploadToProject(validated.project_id, "documents");
 
   const supabase = await createClient();
   const {
@@ -705,6 +716,8 @@ type ValidatedDocumentInput = z.output<typeof createDocumentActionSchema>;
 
 export async function createDocument(input: CreateDocumentInput) {
   const data = parseOrThrow(createDocumentActionSchema, input);
+  // insertDocument may fall back to the service role, so authorize first.
+  await assertCanUploadToProject(data.project_id, "documents");
   const documentId = await insertDocument(data);
 
   if (!data.skipTimeline) {
@@ -862,8 +875,7 @@ export async function createInvoice(data: {
 }) {
   const validated = parseOrThrow(createInvoiceSchema, data);
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { supabase, user } = await requireStaffPermission("create", "invoices");
 
   const payload: InvoiceInsert = {
     client_id: validated.client_id,
@@ -917,10 +929,7 @@ export async function attachInvoicePdf(
 ) {
   const validated = parseOrThrow(attachInvoicePdfSchema, { invoiceId, data }).data;
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await requireStaffPermission("update", "invoices");
 
   const { error } = await supabase
     .from("invoices")
@@ -1327,10 +1336,13 @@ export async function updateProjectRecord(data: {
   if (!validation.success) return { error: validation.error };
   const validated = validation.data;
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let supabase: Awaited<ReturnType<typeof createClient>>;
+  let user: { id: string };
+  try {
+    ({ supabase, user } = await requireStaffPermission("update", "projects"));
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Not allowed" };
+  }
 
   const payload: ProjectUpdate = {
     name: validated.name,
@@ -1441,10 +1453,7 @@ async function getActiveProjectSummary(projectId: string) {
 export async function softDeleteProject(projectId: string) {
   parseOrThrow(uuid("Project ID"), projectId);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await requireStaffPermission("delete", "projects");
 
   const project = await getActiveProjectSummary(projectId);
 
@@ -1467,10 +1476,7 @@ export async function softDeleteProject(projectId: string) {
 export async function suspendProject(projectId: string) {
   parseOrThrow(uuid("Project ID"), projectId);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await requireStaffPermission("update", "projects");
 
   const project = await getActiveProjectSummary(projectId);
 
@@ -1493,10 +1499,7 @@ export async function suspendProject(projectId: string) {
 export async function restoreProject(projectId: string) {
   parseOrThrow(uuid("Project ID"), projectId);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await requireStaffPermission("update", "projects");
 
   const { error } = await supabase
     .from("projects")
@@ -1515,10 +1518,7 @@ export async function restoreProject(projectId: string) {
 export async function softDeleteClient(clientId: string) {
   parseOrThrow(uuid("Client ID"), clientId);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await requireStaffPermission("delete", "clients");
 
   const now = new Date().toISOString();
   const actorId = user?.id ?? null;
@@ -1570,10 +1570,7 @@ export async function softDeleteClient(clientId: string) {
 export async function updateInvoiceStatus(invoiceId: string, status: string) {
   const validated = parseOrThrow(updateInvoiceStatusSchema, { id: invoiceId, status });
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await requireStaffPermission("update", "invoices");
 
   const update: InvoiceUpdate = {
     status: validated.status as InvoiceStatus,

@@ -5,8 +5,12 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { createSignedStorageUrl } from "@/lib/supabase/storage-server";
 import { resolveIssueImageStoragePath } from "@/lib/supabase/storage";
-import { notifyClientsIfEnabled, notifySuperAdmins, getProjectNameForNotify } from "@/lib/actions/notifications";
-import { isNotificationRuleEnabled } from "@/lib/actions/platform-settings";
+import {
+  getProjectNameForNotify,
+  isNotificationRuleEnabled,
+  notifyClientsIfEnabled,
+  notifySuperAdmins,
+} from "@/lib/notifications/server";
 import {
   addIssueImagesSchema,
   createIssueActionSchema,

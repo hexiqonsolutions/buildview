@@ -80,7 +80,6 @@ export const auditEventSchema = z
     entityId: optionalUuid("Entity ID"),
     projectId: optionalUuid("Project ID"),
     metadata: auditMetadataSchema.optional(),
-    userId: optionalUuid("User ID"),
   })
   .strict();
 

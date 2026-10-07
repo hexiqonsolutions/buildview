@@ -1,11 +1,10 @@
-"use server";
-
 import {
   isCalendlyEnabled,
   isContactEmailEnabled,
   isGoogleAnalyticsEnabled,
   isTransactionalEmailEnabled,
 } from "@/lib/integrations";
+import { hasStaffPermission } from "@/lib/auth/staff";
 
 export type IntegrationsStatus = {
   calendly: boolean;
@@ -16,7 +15,18 @@ export type IntegrationsStatus = {
   cronSecret: boolean;
 };
 
+const NONE_CONFIGURED: IntegrationsStatus = {
+  calendly: false,
+  googleAnalytics: false,
+  contactEmail: false,
+  notificationEmail: false,
+  siteUrl: false,
+  cronSecret: false,
+};
+
 export async function getIntegrationsStatus(): Promise<IntegrationsStatus> {
+  if (!(await hasStaffPermission("read", "settings"))) return NONE_CONFIGURED;
+
   return {
     calendly: isCalendlyEnabled(),
     googleAnalytics: isGoogleAnalyticsEnabled(),

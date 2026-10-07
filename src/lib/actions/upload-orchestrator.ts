@@ -31,8 +31,11 @@ import type {
 import { createReport, createDocument, createInvoice, attachInvoicePdf } from "@/lib/actions/admin";
 import { addTimelinePhotos } from "@/lib/actions/timeline";
 import { createIssue } from "@/lib/actions/issues";
-import { notifyProjectClientUsers, getProjectNameForNotify } from "@/lib/actions/notifications";
-import { isNotificationRuleEnabled } from "@/lib/actions/platform-settings";
+import {
+  getProjectNameForNotify,
+  isNotificationRuleEnabled,
+  notifyProjectClientUsers,
+} from "@/lib/notifications/server";
 import { resolveSpatialForWrite } from "@/lib/admin/spatial-resolve";
 import { buildTourDescription } from "@/lib/admin/tour-metadata";
 import {

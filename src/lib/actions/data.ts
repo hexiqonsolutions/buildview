@@ -36,6 +36,8 @@ import {
 import { getCurrentUser } from "@/lib/actions/auth";
 import { validate } from "@/lib/validations/parse";
 import { clientIdSchema, projectIdSchema, userIdSchema } from "@/lib/validations/data";
+import { canViewProject, getActiveActor } from "@/lib/auth/project-access";
+import { requireStaffPermission } from "@/lib/auth/staff";
 
 export type AdminDashboardStats = {
   totalClients: number;
@@ -64,6 +66,7 @@ export type AdminDashboardStats = {
 };
 
 export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
+  await requireStaffPermission("read", "analytics");
   const supabase = await createClient();
 
   const [
@@ -221,6 +224,7 @@ function getProgressTrendLabel(status: ProjectStatus): string | null {
 }
 
 export async function getAdminProjectsListData(): Promise<AdminProjectsListData> {
+  await requireStaffPermission("read", "projects");
   const [projects, clients, tours, issues] = await Promise.all([
     getProjects(),
     getClients(),
@@ -1193,6 +1197,7 @@ export async function getInvoices() {
 }
 
 export async function getAdminInvoices() {
+  await requireStaffPermission("read", "invoices");
   const supabase = await createClient();
   const { data } = await supabase
     .from("invoices")
@@ -1204,6 +1209,7 @@ export async function getAdminInvoices() {
 }
 
 export async function getClients() {
+  await requireStaffPermission("read", "clients");
   const supabase = await createClient();
   const { data } = await supabase
     .from("clients")
@@ -1215,6 +1221,7 @@ export async function getClients() {
 
 export async function getClientDetail(clientId: string) {
   if (!validate(clientIdSchema, clientId).success) return null;
+  await requireStaffPermission("read", "clients");
 
   const supabase = await createClient();
 
@@ -1268,6 +1275,7 @@ export async function getClientDetail(clientId: string) {
 }
 
 export async function getClientsWithStats() {
+  await requireStaffPermission("read", "clients");
   const supabase = await createClient();
   const { data: clients } = await supabase
     .from("clients")
@@ -1485,6 +1493,9 @@ export async function getAllUsers(): Promise<AdminUserRow[]> {
 export async function getUserAssignments(userId: string) {
   if (!validate(userIdSchema, userId).success) return [];
 
+  const actor = await getActiveActor();
+  if (!actor || (!isBuildViewStaffRole(actor.role) && actor.userId !== userId)) return [];
+
   try {
     const admin = createServiceRoleClient();
     const { data } = await admin
@@ -1528,6 +1539,9 @@ export async function getProjectAssignments(projectId: string) {
 /** Team members assigned to a project — name, email, role, avatar. */
 export async function getProjectTeam(projectId: string): Promise<ProjectTeamMember[]> {
   if (!validate(projectIdSchema, projectId).success) return [];
+
+  const actor = await getActiveActor();
+  if (!actor || !(await canViewProject(actor, projectId))) return [];
 
   const mapRows = (
     rows: Array<{
@@ -1717,10 +1731,12 @@ export async function getClientTimelinePageData(): Promise<{
 
 /** @deprecated use getTimelinePageData */
 export async function getAdminTimelinePageData() {
+  await requireStaffPermission("read", "projects");
   return getTimelinePageData();
 }
 
 export async function getAdminWorkspaceBootstrap(): Promise<AdminWorkspaceBootstrap> {
+  await requireStaffPermission("read", "projects");
   const supabase = await createClient();
 
   const [{ data: clients }, { data: projects }, { data: tours }, { data: dbBuildings }, { data: dbFloors }] =
@@ -2033,6 +2049,7 @@ export type AdminOperationsStats = AdminDashboardStats & {
 };
 
 export async function getAdminOperationsStats(): Promise<AdminOperationsStats> {
+  await requireStaffPermission("read", "analytics");
   const supabase = await createClient();
   const base = await getAdminDashboardStats();
 
@@ -2146,6 +2163,7 @@ function sumFileSizes(rows: Array<{ file_size: number | null }> | null | undefin
 }
 
 export async function getAdminStorageStats(): Promise<AdminStorageStats> {
+  await requireStaffPermission("read", "storage");
   const supabase = await createClient();
 
   const [
@@ -2249,6 +2267,7 @@ export async function getAdminStorageStats(): Promise<AdminStorageStats> {
 }
 
 export async function getAdminSitePhotos(): Promise<AdminSitePhoto[]> {
+  await requireStaffPermission("read", "projects");
   const supabase = await createClient();
 
   const { data } = await supabase
@@ -2418,6 +2437,7 @@ export type AdminMarketingAuditStats = {
 
 /** Marketing + audit analytics for Control Center strategy and reviews. */
 export async function getAdminMarketingAuditStats(): Promise<AdminMarketingAuditStats> {
+  await requireStaffPermission("read", "analytics");
   const supabase = await createClient();
   const buckets = monthBuckets(6);
   const now = new Date();

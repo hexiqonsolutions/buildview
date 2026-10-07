@@ -22,7 +22,7 @@ import type {
 } from "@/lib/types";
 import { STORAGE_BUCKETS } from "@/lib/types";
 import { resolveSpatialForWrite } from "@/lib/admin/spatial-resolve";
-import { notifyClientsIfEnabled } from "@/lib/actions/notifications";
+import { notifyClientsIfEnabled } from "@/lib/notifications/server";
 import { portalTimelineLink } from "@/lib/portal/notification-links";
 import { assertCanUploadToProject } from "@/lib/auth/upload-access";
 import { isBuildViewStaffRole } from "@/lib/auth/roles";

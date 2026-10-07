@@ -11,7 +11,7 @@ import {
   IMPERSONATOR_COOKIE,
   IMPERSONATION_MAX_AGE_SECONDS,
 } from "@/lib/auth/impersonation";
-import { logAuditEvent } from "@/lib/actions/activity";
+import { logAuditEvent } from "@/lib/activity/audit";
 import { validate } from "@/lib/validations/parse";
 import { text, uuid } from "@/lib/validations/primitives";
 
@@ -76,7 +76,6 @@ export async function loginAsClientUser(userId: string): Promise<LoginAsClientRe
       action: `Impersonation started for ${targetUser.email}`,
       entityType: "impersonation",
       entityId: targetUser.id,
-      userId: actor.id,
       metadata: {
         actor_id: actor.id,
         actor_email: actor.email,

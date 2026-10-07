@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createSignedStorageUrl } from "@/lib/supabase/storage-server";
+import { assertCanUploadToProject } from "@/lib/auth/upload-access";
 import { resolveDocumentStoragePath } from "@/lib/supabase/storage";
 import { replaceDocumentSchema } from "@/lib/validations/document";
 import { parseOrThrow, validate } from "@/lib/validations/parse";
@@ -97,6 +98,8 @@ export async function replaceDocumentVersion(data: {
   if (currentError || !current) {
     throw new Error("Current document version not found");
   }
+
+  await assertCanUploadToProject(current.project_id, "documents");
 
   if (!validation.data.storage_path.startsWith(`${current.project_id}/`)) {
     throw new Error("Storage path is outside the allowed folder");
