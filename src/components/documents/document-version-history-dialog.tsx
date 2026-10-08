@@ -16,7 +16,7 @@ import type { Document } from "@/lib/types";
 import { formatDate, formatFileSize } from "@/lib/utils";
 import { getErrorMessage } from "@/lib/errors/public";
 
-export function DocumentVersionHistoryDialog({
+function DocumentVersionHistoryDialog({
   document,
   open,
   onOpenChange,

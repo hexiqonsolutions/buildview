@@ -1,16 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import {
-  AlertTriangle,
-  Camera,
-  CheckCircle2,
-  ClipboardList,
-  Download,
-  FileText,
-  Printer,
-  Sparkles,
-} from "lucide-react";
+import { AlertTriangle, Camera, CheckCircle2, ClipboardList, FileText, Printer, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +13,14 @@ import {
 import { formatDate, formatStatus } from "@/lib/utils";
 import type { ComparisonSnapshot } from "@/lib/comparison/types";
 import { buildTimelineNodes, isBlankComparisonSnapshot } from "@/lib/comparison/analytics";
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
 function safeScanDate(value: string | null | undefined): string {
   if (!value) return "—";
@@ -91,9 +90,11 @@ export function CompareDetailedReportDialog({
   function handlePrint() {
     const node = printRef.current;
     if (!node) return;
-    const win = window.open("", "_blank", "noopener,noreferrer,width=900,height=1000");
+    // "noopener" would make window.open return null, leaving nothing to write into.
+    const win = window.open("", "_blank", "width=900,height=1000");
     if (!win) return;
-    win.document.write(`<!doctype html><html><head><title>Comparison Report — ${snapshot.project.name}</title>
+    win.opener = null;
+    win.document.write(`<!doctype html><html><head><title>Comparison Report — ${escapeHtml(snapshot.project.name)}</title>
       <style>
         body { font-family: ui-sans-serif, system-ui, sans-serif; color: #0f172a; margin: 24px; line-height: 1.5; }
         h1 { font-size: 22px; margin: 0 0 4px; }
@@ -361,34 +362,5 @@ export function CompareDetailedReportDialog({
         </div>
       </DialogContent>
     </Dialog>
-  );
-}
-
-export function CompareReportTrigger({
-  onClick,
-  disabled,
-  className,
-  label = "Generate Detailed Report",
-  icon = "download",
-}: {
-  onClick: () => void;
-  disabled?: boolean;
-  className?: string;
-  label?: string;
-  icon?: "download" | "sparkles";
-}) {
-  const Icon = icon === "sparkles" ? Sparkles : Download;
-  return (
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      className={className}
-      onClick={onClick}
-      disabled={disabled}
-    >
-      <Icon className="mr-1.5 h-4 w-4" />
-      {label}
-    </Button>
   );
 }

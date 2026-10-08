@@ -5,7 +5,7 @@ import { canAccessAdmin } from "@/lib/auth/permissions";
 import { validate } from "@/lib/validations/parse";
 import { globalSearchQuerySchema } from "@/lib/validations/data";
 
-export type GlobalSearchResult = {
+type GlobalSearchResult = {
   clients: Array<{ id: string; name: string; company_name: string | null; href: string }>;
   projects: Array<{ id: string; name: string; client_name: string; href: string }>;
   issues: Array<{ id: string; title: string; project_name: string; href: string }>;

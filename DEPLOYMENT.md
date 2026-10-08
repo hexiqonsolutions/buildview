@@ -1,8 +1,6 @@
 # BuildView — Deployment Runbook
 
-Step-by-step checklist to go from local development to a production deployment on Vercel + Supabase.
-
-**Last updated:** July 14, 2026
+Checklist for taking BuildView from local development to production on Vercel + Supabase.
 
 ---
 
@@ -10,30 +8,22 @@ Step-by-step checklist to go from local development to a production deployment o
 
 | Requirement | Notes |
 |-------------|-------|
-| Node.js 18.17+ | `node -v` |
+| Node.js 20+ | `node -v` |
 | npm | `npm -v` |
 | Supabase project | [supabase.com](https://supabase.com) |
-| Vercel account | [vercel.com](https://vercel.com) |
-| Git repository | `git init` (done in this project) |
-| GitHub remote (optional) | For Vercel Git integration |
+| Vercel account | [vercel.com](https://vercel.com), connected to the Git repository |
 
 ---
 
 ## Phase 1 — Local environment
 
-### 1.1 Install dependencies
-
 ```bash
 npm install
-```
-
-### 1.2 Configure environment
-
-```bash
 cp .env.example .env.local
+npm run env:check
 ```
 
-Fill in `.env.local`:
+`env:check` reports missing required variables (exit code 1) and warns about recommended ones. It prints variable names only, never values.
 
 | Variable | Required | Where to find |
 |----------|----------|---------------|
@@ -41,74 +31,63 @@ Fill in `.env.local`:
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase → Settings → API |
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes | Supabase → Settings → API (server only) |
 | `NEXT_PUBLIC_APP_URL` | Yes | `http://localhost:3000` locally |
-| `DATABASE_URL` | For `db:apply` | Supabase → Settings → Database → URI (pooler) |
+| `NEXT_PUBLIC_SITE_URL` | Recommended | Canonical production URL; used for SEO and links in notification emails |
+| `CRON_SECRET` | Recommended | Random long string; required to call `/api/internal/sync-users` |
+| `DATABASE_URL` | For `db:apply` | Supabase → Database → Connection string (Transaction pooler URI) |
 
-Optional integrations: `RESEND_API_KEY`, `NEXT_PUBLIC_GA_MEASUREMENT_ID`, `NEXT_PUBLIC_CALENDLY_URL`, `CRON_SECRET`.
+Optional integrations are listed in `.env.example` (Resend, Google Analytics, Meta Pixel / Conversions API, Calendly, rate-limit overrides).
 
-### 1.3 Verify build
+Verify the build:
 
 ```bash
+npx tsc --noEmit
+npm run lint
 npm run build
 ```
-
-Expected: compiles with no TypeScript errors (ESLint warnings are OK).
 
 ---
 
 ## Phase 2 — Database migrations
 
-### Fresh Supabase project (001–007)
+Migrations live in `supabase/migrations` and must be applied in numeric order.
 
-Run in **Supabase SQL Editor** in order:
+| # | Purpose |
+|---|---------|
+| 001–003 | Core schema, RLS policies, storage buckets |
+| 004–007 | Project comments, user RLS fix, optional seed admin (`006`, skip unless wanted), extended roles |
+| 008–015 | Buildings/floors, platform settings, spatial scope, document versions, saved comparisons |
+| 016–019 | Timeline progress fields, client dashboard type, portfolio fields, project covers bucket |
+| 020–023 | `site_supervisor` role, INR currency default and data migration, client upload access |
+| 024–027 | Comment replies, client-admin-only invoices, issue tracking hardening, project media bucket |
+| 028 | `rate_limits` table used by the database-backed rate limiter |
+| 029 | `handle_new_user` ignores sign-up metadata; every new profile is `client` (security fix) |
 
-| # | File | Purpose |
-|---|------|---------|
-| 001 | `001_initial_schema.sql` | Core tables |
-| 002 | `002_rls_policies.sql` | Row Level Security |
-| 003 | `003_storage_buckets.sql` | Storage buckets + policies |
-| 004 | `004_project_comments.sql` | Project comments |
-| 005 | `005_fix_users_update_rls.sql` | User profile RLS fix |
-| 006 | `006_promote_vaibhav_admin.sql` | Optional seed admin (skip if not needed) |
-| 007 | `007_extend_user_roles.sql` | Extended RBAC (8 roles) |
+**Fresh project:** run every file in the Supabase SQL Editor in order (skipping `006` if you don't want that seed admin), then optionally `supabase/seed.sql`.
 
-### Enterprise migrations (004 + 008–015)
-
-**Option A — One-paste SQL bundle** (no `DATABASE_URL` needed):
-
-1. Open `supabase/pending-apply.sql` in Supabase SQL Editor
-2. Run the entire file
-3. Regenerate after migration changes: `npm run db:bundle`
-
-**Option B — Automated** (requires `DATABASE_URL` in `.env.local`):
+**Existing project:**
 
 ```bash
-npm run env:check    # verify env vars first
-npm run db:check     # see which migrations are missing
-npm run db:apply     # applies 004 + 008–015
+npm run db:check                    # shows which detectable migrations are missing
+npm run db:apply -- 028 029         # apply specific migrations via DATABASE_URL
+npm run db:apply -- --from 019      # apply 019 and everything after it
+npm run db:bundle -- --from 019     # write supabase/pending-apply.sql to paste into the SQL Editor
 ```
 
-| # | File | Purpose |
-|---|------|---------|
-| 004 | `004_project_comments.sql` | Project comments |
-| 008 | `008_buildings_floors.sql` | Buildings & floors spatial model |
-| 009 | `009_platform_settings.sql` | Platform settings + notification fallback |
-| 010 | `010_buildings_staff_rls.sql` | Staff RLS for buildings/floors |
-| 011 | `011_content_spatial_scope.sql` | Spatial scope columns on content |
-| 012 | `012_document_versions.sql` | Document versioning |
-| 013 | `013_spatial_fk_columns.sql` | FK columns on content tables |
-| 014 | `014_tour_spatial_fk.sql` | FK columns on project_tours |
-| 015 | `015_saved_comparisons.sql` | Saved comparison presets |
+`db:apply` and `db:bundle` require an explicit selection; they never run every migration by default. `db:check` cannot detect 020–023, 025, 026 or 029 (function, policy, enum and data changes) — verify those in the SQL Editor. For 029:
 
-### Seed data (optional)
-
-```bash
-# Run supabase/seed.sql in SQL Editor after migrations
+```sql
+SELECT prosrc LIKE '%raw_user_meta_data->>''role''%' AS still_trusts_metadata
+FROM pg_proc WHERE proname = 'handle_new_user';
 ```
 
-### Create admin user
+`false` means 029 is applied.
 
-1. `npm run dev` → register at `/register`
-2. Promote in SQL Editor:
+The `supabase/FIX_*.sql` files repair databases that drifted from the migrations; don't run them on a fresh project.
+
+### First Super Admin
+
+1. Register at `/register` (the account is created as `client`).
+2. Promote it in the SQL Editor:
 
 ```sql
 UPDATE public.users
@@ -116,184 +95,95 @@ SET role = 'super_admin', client_id = NULL
 WHERE email = 'your-email@example.com';
 ```
 
+After that, staff roles and client assignments are managed in **Admin → Users**.
+
 ---
 
 ## Phase 3 — Supabase Auth configuration
 
-### Local
+| Setting | Local | Production |
+|---------|-------|------------|
+| Site URL | `http://localhost:3000` | `https://<your-domain>` |
+| Redirect URLs | `http://localhost:3000/auth/callback` | `https://<your-domain>/auth/callback` |
 
-| Setting | Value |
-|---------|-------|
-| Site URL | `http://localhost:3000` |
-| Redirect URLs | `http://localhost:3000/**` |
-
-### Production
-
-| Setting | Value |
-|---------|-------|
-| Site URL | `https://your-app.vercel.app` |
-| Redirect URLs | `https://your-app.vercel.app/**` |
-
-Enable **Email** provider under Authentication → Providers.
+Enable the **Email** provider. For **Google**, create an OAuth client in Google Cloud with redirect URI `https://<project-ref>.supabase.co/auth/v1/callback` and paste its ID and secret into Authentication → Providers → Google.
 
 ---
 
-## Phase 4 — Git + GitHub
+## Phase 4 — Vercel
 
-```bash
-git status
-git add .
-git commit -m "BuildView enterprise platform"
-git branch -M main
-git remote add origin https://github.com/YOUR_ORG/buildview.git
-git push -u origin main
-```
+1. Import the repository at [vercel.com/new](https://vercel.com/new); the framework is detected as Next.js.
+2. `vercel.json` sets the region (`iad1`) and security headers.
+3. Add the Phase 1 environment variables for **Production** (and **Preview** if previews should reach a database). Set `NEXT_PUBLIC_APP_URL` and `NEXT_PUBLIC_SITE_URL` to the production domain.
+4. Deploy, then update the Supabase Auth URLs (Phase 3) to the final domain.
 
-> **Note:** Never commit `.env.local` — it is in `.gitignore`.
+`/api/internal/sync-users` backfills missing `public.users` rows from `auth.users`. No cron is configured; to schedule it, add a Vercel Cron entry to `vercel.json`. Vercel sends `Authorization: Bearer $CRON_SECRET` automatically. Admins can also run the sync from **Admin → Users**.
 
 ---
 
-## Phase 5 — Vercel deployment
+## Phase 5 — Production verification
 
-### 5.1 Import project
+### Marketing and auth
+- [ ] `/` and the marketing pages load; `/sitemap.xml` and `/robots.txt` respond
+- [ ] Register, login, Google sign-in and password reset work
+- [ ] New accounts get the `client` role
 
-1. Go to [vercel.com/new](https://vercel.com/new)
-2. Import the GitHub repository
-3. Framework: **Next.js** (auto-detected)
-4. `vercel.json` supplies build command, region (`iad1`), security headers, and cron
-
-### 5.2 Environment variables
-
-Add for **Production** (and Preview if desired):
-
-| Variable | Value |
-|----------|-------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Anon key |
-| `SUPABASE_SERVICE_ROLE_KEY` | Service role key |
-| `NEXT_PUBLIC_APP_URL` | `https://your-app.vercel.app` |
-| `CRON_SECRET` | Random long secret (for `/api/internal/sync-users`) |
-
-Optional: `RESEND_API_KEY`, `CONTACT_TO_EMAIL`, `CONTACT_FROM_EMAIL`, `NEXT_PUBLIC_GA_MEASUREMENT_ID`, `NEXT_PUBLIC_CALENDLY_URL`.
-
-### 5.3 Deploy
-
-Click **Deploy**. First build should pass if local `npm run build` passed.
-
-### 5.4 Post-deploy Supabase
-
-Update Auth URL configuration (Phase 3 production values) to match your Vercel domain.
-
----
-
-## Phase 6 — Production verification checklist
-
-### Marketing & auth
-- [ ] Homepage loads at `/`
-- [ ] Login at `/login` works
-- [ ] Register at `/register` works
-- [ ] Password reset email arrives
-
-### Admin ops (`/admin`)
-- [ ] Staff user can access admin panel
+### Operations console (`/admin`)
+- [ ] Staff can sign in; non-staff are redirected away
 - [ ] Workspace selectors (Client → Project → Building → Floor) work
-- [ ] Upload Center wizard completes a Matterport upload
-- [ ] Matterport Manager shows tours
-- [ ] Compare module loads with scan selection
-- [ ] Saved comparisons persist (requires migration 015)
+- [ ] Upload Center completes a Matterport tour, report and document upload
+- [ ] Compare loads scans; saved comparisons persist
 
 ### Client portal (`/dashboard`)
-- [ ] Client user sees assigned projects only
-- [ ] Workspace bar filters documents, issues, reports, timeline
-- [ ] Executive dashboard scopes to workspace
-- [ ] Matterport comparison works
+- [ ] Client users see only their assigned projects
+- [ ] Documents, issues, reports and timeline respect the workspace filter
 - [ ] PDF reports preview and download
 
-### Integrations
-- [ ] Contact form sends email (if Resend configured)
-- [ ] Google Analytics loads after cookie consent (if GA configured)
-- [ ] Calendly embed shows on `/contact` (if URL configured)
+### Integrations (if configured)
+- [ ] Contact form sends email (Resend)
+- [ ] Analytics load only after cookie consent
+- [ ] Calendly embed shows on `/contact`
 
 ### Security
-- [ ] Client cannot access `/admin`
-- [ ] Unauthenticated users redirect to `/login`
+- [ ] `/admin` and `/dashboard` pages send `noindex`
 - [ ] Storage downloads respect RLS
-- [ ] `SUPABASE_SERVICE_ROLE_KEY` is not exposed in browser
+- [ ] `SUPABASE_SERVICE_ROLE_KEY` and `META_CAPI_ACCESS_TOKEN` never appear in browser bundles
 
 ---
 
-## Useful commands
+## Commands
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Start dev server |
-| `npm run build` | Production build |
-| `npm run lint` | ESLint |
-| `npm run env:check` | Validate required environment variables |
-| `npm run db:check` | Check which migrations are applied |
-| `npm run db:apply` | Apply migrations 004 + 008–015 via `DATABASE_URL` |
-| `npm run db:bundle` | Regenerate `supabase/pending-apply.sql` |
-| `npm run deploy:check` | env:check + build + db:check |
+| `npm run env:check` | Validate environment variables |
+| `npm run db:check` | Detect missing migrations |
+| `npm run db:apply -- <numbers \| --from N>` | Apply migrations via `DATABASE_URL` |
+| `npm run db:bundle -- <numbers \| --from N>` | Write `supabase/pending-apply.sql` |
 | `npm run db:push` | Supabase CLI push (requires `supabase login`) |
+| `npm run deploy:check` | `env:check` + `build` + `db:check` |
 
 ---
 
 ## Troubleshooting
 
-### `npm run db:apply` fails — Missing DATABASE_URL
-
-Add to `.env.local`:
+**`db:apply` says `DATABASE_URL` is missing:** add the Transaction pooler URI to `.env.local`:
 
 ```
 DATABASE_URL=postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres
 ```
 
-Use the **Transaction** pooler URI from Supabase Dashboard → Database → Connection string.
+**Auth redirect loops:** check that `NEXT_PUBLIC_APP_URL` matches the real domain and that its `/auth/callback` is an allowed redirect URL in Supabase.
 
-### Auth redirect loops
-
-Ensure `NEXT_PUBLIC_APP_URL` matches your actual domain and Supabase redirect URLs include `/**`.
-
-### Build fails on Vercel
-
-Run `npm run build` locally first. Missing env vars are the most common cause.
-
-### Client sees no projects
+**A client sees no projects:** link the user to a client company and assign projects in **Admin → Users**, or in SQL:
 
 ```sql
--- Link user to client
 UPDATE public.users SET client_id = '<client-uuid>' WHERE email = 'user@example.com';
-
--- Assign project access
 INSERT INTO project_assignments (project_id, user_id)
 VALUES ('<project-uuid>', '<user-uuid>')
 ON CONFLICT DO NOTHING;
 ```
 
-### Workspace deep links not filtering
-
-Ensure migrations 008–014 are applied. Run `npm run db:check`.
-
-### Saved comparisons not persisting
-
-Ensure migration `015_saved_comparisons.sql` is applied.
-
----
-
-## Architecture summary
-
-| Portal | URL | Audience |
-|--------|-----|----------|
-| Marketing | `/`, `/about`, `/services`, … | Public |
-| Client Intel | `/dashboard/*` | Clients, consultants |
-| Admin Ops | `/admin/*` | BuildView staff |
-
-Both portals share workspace URL params for deep linking:
-
-```
-/admin/tours?client=<uuid>&project=<uuid>&buildingId=<uuid>&floorId=<uuid>
-/dashboard/documents?project=<uuid>&buildingId=<uuid>&floorId=<uuid>
-```
+**Workspace deep links don't filter / saved comparisons don't persist:** migrations 008–015 are missing; run `npm run db:check`.
 
 ---
 

@@ -30,7 +30,7 @@ const FLOW_POLICIES: Record<
   oauth: { ip: "authOauthIp", noun: "sign-in attempts" },
 };
 
-export interface AuthThrottle {
+interface AuthThrottle {
   /** Seconds to wait before this attempt may proceed (0 = allowed). */
   retryAfter(): Promise<number>;
   /** Counts an attempt/failure against both the IP and the account. */

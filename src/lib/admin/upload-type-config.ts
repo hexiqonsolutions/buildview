@@ -34,7 +34,7 @@ export function resolveUploadCategoryFromParam(type: string | null): UploadCateg
   }
 }
 
-export type AutomationPreview = {
+type AutomationPreview = {
   timeline: boolean;
   activity: boolean;
   clientNotify: boolean;

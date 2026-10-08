@@ -6,7 +6,7 @@ const COMPARE_SCAN_B = "scanB";
 /** Legacy deep link from Tour Manager */
 const COMPARE_TOUR_A = "tourA";
 
-export type CompareUrlParams = WorkspaceScope & {
+type CompareUrlParams = WorkspaceScope & {
   scanAId: string | null;
   scanBId: string | null;
 };

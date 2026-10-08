@@ -11,7 +11,7 @@ import {
 import type { UserRole } from "@/lib/types";
 import { PublicError } from "@/lib/errors/public";
 
-export type UploadAuthContext = {
+type UploadAuthContext = {
   userId: string;
   role: UserRole;
   clientId: string | null;

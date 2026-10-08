@@ -16,16 +16,12 @@ export const createCommentSchema = z
   })
   .strict();
 
-export type CreateCommentInput = z.infer<typeof createCommentSchema>;
-
 export const updateCommentStatusSchema = z
   .object({
     id: uuid("Comment"),
     status: oneOf("Status", commentStatuses),
   })
   .strict();
-
-export type UpdateCommentStatusInput = z.infer<typeof updateCommentStatusSchema>;
 
 export const commentIdSchema = uuid("Comment");
 export const commentProjectIdSchema = uuid("Project");

@@ -1,182 +1,156 @@
 # BuildView
 
-**Monitor construction progress from anywhere.**
+BuildView is a construction monitoring platform. BuildView staff upload 360° Matterport tours, PDF reports, documents, site photos, issues, timeline updates and invoices; developers, contractors and consultants follow their projects remotely in a client portal. A public marketing site sits in front of both portals.
 
-BuildView is an enterprise construction monitoring platform for developers, architects, contractors, and clients. It combines Matterport virtual tours, PDF reports, document management, issue tracking, project timelines, progress comparison, and invoicing in secure admin and client portals.
+| Area | URL | Audience |
+|------|-----|----------|
+| Marketing site | `/`, `/about`, `/services`, `/projects`, `/contact`, legal pages, `/links` (link-in-bio) | Public |
+| Client portal | `/dashboard/*` | Client roles (see [Roles](#roles)) |
+| Operations console | `/admin/*` | BuildView staff |
 
 ## Tech stack
 
 | Layer | Technology |
 |-------|------------|
-| Frontend | Next.js 15 (App Router), TypeScript, Tailwind CSS, ShadCN UI |
-| Backend | Supabase (PostgreSQL, Auth, Storage) |
-| Charts | Recharts |
-| PDF preview | React PDF |
-| Hosting | Vercel |
+| Framework | Next.js 15 (App Router, Server Components, Server Actions), React 19, TypeScript (strict) |
+| Styling | Tailwind CSS v4 (`@utility` blocks in `src/app/globals.css`), Radix UI primitives in `src/components/ui` |
+| Backend | Supabase — Postgres with Row Level Security, Auth (email + Google), Storage, Realtime |
+| Validation | zod schemas in `src/lib/validations` |
+| Charts / PDF | Recharts, react-pdf |
+| Email | Resend (optional) |
+| Hosting | Vercel (`vercel.json` sets region and security headers) |
 
-## Features
+## Getting started
 
-### Marketing site
-- Homepage, About, Services, Projects, Pricing, Contact
-- Legal pages (Privacy, Terms, Cookies)
-- Consent-gated analytics, Calendly integration, contact form
-
-### Authentication & RBAC
-- Login, register, forgot/reset password (Supabase Auth)
-- 8 roles: `super_admin`, `admin`, `operations_manager`, `site_engineer`, `client`, `client_admin`, `client_user`, `read_only_client`, `consultant`
-- Middleware-protected routes
-
-### Admin Operations Control Center (`/admin`)
-- Mission Control dashboard with workspace selectors (Client → Project → Building → Floor)
-- Upload Center wizard (Matterport, reports, documents, issues, timeline, photos)
-- Matterport Manager, Compare Construction Progress module
-- Client & project workspace tabs
-- Activity logs, impersonation audit, command palette (⌘K)
-- Buildings/floors CRUD, spatial FK model
-
-### Client Intelligence Portal (`/dashboard`)
-- Executive dashboard scoped to workspace
-- Projects gallery, documents, issues, reports, timeline
-- Matterport comparison with saved comparisons
-- Workspace deep links across all portal pages
-- Command palette (⌘K), notifications, invoices
-
-## Quick start
+Requirements: Node.js 20+, npm, and a Supabase project.
 
 ```bash
 npm install
-cp .env.example .env.local
-# Fill in Supabase credentials in .env.local
-npm run build
-npm run dev
+cp .env.example .env.local      # then fill in the Supabase values
+npm run env:check               # confirms the required variables are set
+npm run dev                     # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Apply the database migrations before signing in for the first time — see [Database](#database).
 
-## Database migrations
+### Environment variables
 
-### Core (001–007) — run in Supabase SQL Editor
+`.env.example` documents every variable. The app reads:
 
-1. `001_initial_schema.sql`
-2. `002_rls_policies.sql`
-3. `003_storage_buckets.sql`
-4. `004_project_comments.sql`
-5. `005_fix_users_update_rls.sql`
-6. `007_extend_user_roles.sql`
+| Variable | Required | Purpose |
+|----------|----------|---------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Public anon key (RLS enforces access) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Server-only key for privileged writes; never expose it |
+| `NEXT_PUBLIC_APP_URL` | Yes | App origin, e.g. `http://localhost:3000` |
+| `NEXT_PUBLIC_SITE_URL` | Recommended | Canonical URL for SEO, sitemap and email links (falls back to `NEXT_PUBLIC_APP_URL`, then `https://buildview.io`) |
+| `CRON_SECRET` | Recommended | Bearer token for `/api/internal/sync-users`; the route rejects every call without it |
+| `DATABASE_URL` | Scripts only | Postgres URI used by `npm run db:apply` |
+| `RESEND_API_KEY`, `CONTACT_TO_EMAIL`, `CONTACT_FROM_EMAIL`, `NOTIFICATION_FROM_EMAIL` | Optional | Contact form and notification emails |
+| `NEXT_PUBLIC_GA_MEASUREMENT_ID`, `NEXT_PUBLIC_META_PIXEL_ID`, `META_CAPI_ACCESS_TOKEN`, `META_CAPI_TEST_EVENT_CODE` | Optional | Consent-gated analytics |
+| `NEXT_PUBLIC_CALENDLY_URL` | Optional | Scheduler embed on `/contact` |
+| `RATE_LIMIT_*` | Optional | Overrides for the defaults in `src/lib/rate-limit/config.ts` |
 
-### Enterprise (004 + 008–015) — automated or manual
+## Database
+
+All schema, RLS policies, storage buckets and SQL functions live in `supabase/migrations/001`–`029`, applied in numeric order.
+
+**New project:** run every file in order in the Supabase SQL Editor (skip `006_promote_vaibhav_admin.sql`, which seeds a specific admin account). `supabase/seed.sql` adds optional sample data.
+
+**Existing project:** apply only the migrations it is missing.
 
 ```bash
-# Option A — paste one file in Supabase SQL Editor:
-#   supabase/pending-apply.sql  (regenerate: npm run db:bundle)
-
-# Option B — automated (requires DATABASE_URL in .env.local):
-npm run env:check   # verify env vars
-npm run db:check    # verify migration status
-npm run db:apply    # apply 004 + 008–015
+npm run db:check                    # probes tables/columns/buckets added by migrations
+npm run db:apply -- 028 029         # apply specific migrations (needs DATABASE_URL)
+npm run db:apply -- --from 019      # apply 019 and everything after it
+npm run db:bundle -- --from 019     # or write them to supabase/pending-apply.sql to paste manually
 ```
 
-See **[DEPLOYMENT.md](./DEPLOYMENT.md)** for the full runbook.
+`db:check` cannot detect migrations that only change functions, policies, enums or data (020–023, 025, 026, 029); confirm those in the SQL Editor. The `supabase/FIX_*.sql` files are one-off repair scripts for databases that drifted from the migrations — do not run them on a fresh project.
 
-| Migration | Purpose |
-|-----------|---------|
-| 008 | Buildings & floors |
-| 009 | Platform settings |
-| 010 | Buildings staff RLS |
-| 011 | Content spatial scope |
-| 012 | Document versions |
-| 013 | Spatial FK columns |
-| 014 | Tour spatial FK |
-| 015 | Saved comparisons |
+## Authentication
 
-## Scripts
+- Supabase Auth with email/password and Google OAuth. `src/middleware.ts` refreshes the session, blocks inactive users, keeps non-staff out of `/admin`, and applies request rate limits.
+- Every sign-up gets a `public.users` profile with the `client` role — from the `handle_new_user` trigger (migration 029) and, as a fallback, `src/lib/supabase/provision-user.ts`. The role is never taken from sign-up metadata; staff promote accounts in **Admin → Users**.
+- The first Super Admin must be promoted in SQL: `UPDATE public.users SET role = 'super_admin', client_id = NULL WHERE email = '…';` (or `node scripts/promote-admin.mjs <email>`).
+
+**Google sign-in:** create an OAuth client in Google Cloud (redirect URI `https://<project-ref>.supabase.co/auth/v1/callback`), enable the Google provider in Supabase, and add `http://localhost:3000/auth/callback` plus your production `/auth/callback` URL under Authentication → URL Configuration.
+
+### Roles
+
+| Group | Roles | Access |
+|-------|-------|--------|
+| BuildView staff | `super_admin`, `admin`, `operations_manager` | `/admin`; only `super_admin` assigns roles and manages staff accounts |
+| Client portal | `client_admin`, `site_supervisor`, `site_engineer`, `client`, `client_user`, `read_only_client`, `consultant` | `/dashboard`, scoped to their company and project assignments |
+
+Per-action permissions are defined in `src/lib/auth/permissions.ts` and `src/lib/auth/roles.ts`, and are enforced again by RLS in the database.
+
+## Commands
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Start development server |
-| `npm run build` | Production build |
-| `npm run lint` | Run ESLint |
-| `npm run env:check` | Validate required env vars |
-| `npm run db:check` | Check migration status |
-| `npm run db:apply` | Apply migrations 004 + 008–015 |
-| `npm run db:bundle` | Regenerate `supabase/pending-apply.sql` |
-| `npm run deploy:check` | env:check + build + db:check |
+| `npm run dev` | Development server (`dev:fresh` clears `.next` first) |
+| `npm run build` / `npm start` | Production build / serve it |
+| `npm run lint` | ESLint (`no-explicit-any` is an error) |
+| `npx tsc --noEmit` | Type-check |
+| `npm run env:check` | Validate environment variables |
+| `npm run db:check` / `db:apply` / `db:bundle` | Migration status / apply / bundle (see [Database](#database)) |
+| `npm run db:purge-clients[:all]` | Soft-delete sample (or all) clients in a test database |
+| `npm run deploy:check` | `env:check` + `build` + `db:check` |
 
-## Deploy to production
-
-Full checklist: **[DEPLOYMENT.md](./DEPLOYMENT.md)**
-
-```bash
-git init          # already done
-git add .
-git commit -m "BuildView enterprise platform"
-git remote add origin https://github.com/YOUR_ORG/buildview.git
-git push -u origin main
-```
-
-Then import on [Vercel](https://vercel.com/new) and set environment variables from `.env.example`.
+There is no automated test suite yet; `tsc`, `lint` and `build` are the gate.
 
 ## Project structure
 
 ```
-buildview/
-├── src/
-│   ├── app/
-│   │   ├── (auth)/              # Login, register, password reset
-│   │   ├── (marketing)/         # Public marketing pages
-│   │   ├── admin/               # Operations Control Center
-│   │   ├── dashboard/           # Client Intelligence Portal
-│   │   └── api/                 # API routes (cron, sync)
-│   ├── components/
-│   │   ├── admin/               # Admin shell, workspace, upload wizard
-│   │   ├── intel/               # Client portal shell & dashboard
-│   │   ├── portal/              # Workspace providers, context strips
-│   │   ├── compare/             # Progress comparison module
-│   │   └── ui/                  # ShadCN UI primitives
-│   └── lib/
-│       ├── actions/             # Server actions
-│       ├── admin/               # Workspace scope, spatial resolve
-│       ├── portal/              # Portal scope, nav helpers
-│       └── comparison/          # Compare analytics & spatial
-├── supabase/migrations/         # 001–015 SQL migrations
-├── scripts/                     # db:check, db:apply, dev helpers
-├── DEPLOYMENT.md                # Full deployment runbook
-├── .env.example
-└── vercel.json
+src/
+├── app/                     Routes (App Router)
+│   ├── (marketing)/         Public pages
+│   ├── (auth)/              Login, register, password reset
+│   ├── (social)/            Instagram link-in-bio page
+│   ├── admin/               Operations console
+│   ├── dashboard/           Client portal
+│   ├── api/                 Route handlers (Meta CAPI, internal user sync)
+│   └── auth/callback/       OAuth / email-link callback
+├── components/
+│   ├── ui/                  Radix-based primitives (button, dialog, select…)
+│   ├── patterns/            Shared page patterns (tab workspace, loading/empty/error page states)
+│   ├── admin/ intel/ portal/ dashboard/   Console and portal shells and screens
+│   └── compare/ projects/ issues/ documents/ …   Feature components
+├── design-system/           Tokens, typography, motion primitives
+├── hooks/                   Client hooks (notification realtime)
+└── lib/
+    ├── data/                Server-only read models (one module per domain)
+    ├── actions/             "use server" mutations callable from the client
+    ├── auth/                Roles, permissions, project access, staff guards
+    ├── supabase/            Server/browser/admin clients, middleware session, storage
+    ├── validations/         zod schemas and parse helpers
+    ├── errors/              PublicError / internal error handling
+    ├── admin/ portal/       Workspace scope (client → project → building → floor)
+    ├── comparison/ timeline/ issues/ uploads/ notifications/ rate-limit/ …
+    └── utils.ts, currency.ts, seo.ts, site-config.ts
+supabase/migrations/         Schema, RLS, storage, functions
+scripts/                     env and migration tooling (shared helpers in scripts/lib)
 ```
 
-## Environment variables
+### Conventions
 
-See `.env.example` for all variables. Required for local dev:
+- **Reads go in `src/lib/data/<domain>.ts`.** These modules start with `import "server-only"`, are imported by Server Components, and check access themselves (RLS plus explicit role checks). Shared per-request loaders such as `getProjects`, `getUserProfile` and the workspace bootstraps are wrapped in React `cache()`, so layouts and pages can call them freely.
+- **Mutations go in `src/lib/actions/<domain>.ts`** (`"use server"`). Every export of such a module is a public POST endpoint, so each one validates its input with zod, authorizes the caller (`requireStaffPermission`, `canViewProject`, …) and throws `PublicError` for messages that are safe to show. Never export a read helper from a `"use server"` file unless a client component really needs to call it (`src/lib/actions/data.ts` holds the only two).
+- **Service-role clients** (`createServiceRoleClient`) bypass RLS; use them only after an explicit permission check.
+- Client components import only types from `src/lib/data`; the build fails if a client bundle reaches a `server-only` module.
 
-| Variable | Description |
-|----------|-------------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Public anon key |
-| `SUPABASE_SERVICE_ROLE_KEY` | Server-only service role key |
-| `NEXT_PUBLIC_APP_URL` | `http://localhost:3000` |
-| `DATABASE_URL` | Postgres URI (for `db:apply` only) |
+### Adding a feature
 
-## Google sign-in (Supabase Auth)
+1. Add a migration `supabase/migrations/0NN_<name>.sql` with the table, RLS policies and storage rules, and extend `src/lib/types.ts`.
+2. Add zod schemas in `src/lib/validations/<domain>.ts`.
+3. Put reads in `src/lib/data/<domain>.ts` and mutations in `src/lib/actions/<domain>.ts`, using the auth helpers in `src/lib/auth`.
+4. Build the route under `src/app/admin` or `src/app/dashboard`, reusing `components/ui` and `components/patterns` (loading, empty and error states).
+5. Run `npx tsc --noEmit`, `npm run lint` and `npm run build`.
 
-BuildView uses Supabase OAuth for Google login and signup on `/login` and `/register`.
+## Deployment
 
-1. **Google Cloud Console** — create an OAuth 2.0 Client ID (Web application).
-   - Authorized redirect URI: `https://<your-project-ref>.supabase.co/auth/v1/callback`
-2. **Supabase Dashboard** → Authentication → Providers → **Google** — enable and paste Client ID + Client Secret.
-3. **Supabase Dashboard** → Authentication → URL Configuration — add your app URLs:
-   - Site URL: `https://your-domain.com` (or `http://localhost:3000` for local dev)
-   - Redirect URLs: `http://localhost:3000/auth/callback`, `https://your-domain.com/auth/callback`
-
-No extra env vars are required in the Next.js app; OAuth is handled by Supabase.
-
-## Security
-
-- Row Level Security (RLS) on all application tables
-- Extended RBAC with `is_buildview_staff()` helper
-- Storage policies mirror database access rules
-- Next.js middleware enforces authentication
-- Service role key is server-only
+See **[DEPLOYMENT.md](./DEPLOYMENT.md)**: Vercel project settings, environment variables, Supabase Auth URLs, migrations and a post-deploy checklist.
 
 ## License
 

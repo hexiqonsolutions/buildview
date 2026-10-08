@@ -16,7 +16,7 @@ export const BUILDVIEW_STAFF_ROLES = [
   "operations_manager",
 ] as const satisfies readonly UserRole[];
 
-export type BuildViewStaffRole = (typeof BUILDVIEW_STAFF_ROLES)[number];
+type BuildViewStaffRole = (typeof BUILDVIEW_STAFF_ROLES)[number];
 
 /**
  * Client portal roles — project-scoped access.
@@ -40,19 +40,17 @@ export const CLIENT_PORTAL_ROLES = [
   "consultant",
 ] as const satisfies readonly UserRole[];
 
-export type ClientPortalRole = (typeof CLIENT_PORTAL_ROLES)[number];
+type ClientPortalRole = (typeof CLIENT_PORTAL_ROLES)[number];
 
 /** Client roles that can upload reports, documents, timeline, and site photos. */
-export const CLIENT_UPLOAD_ROLES = [
+const CLIENT_UPLOAD_ROLES = [
   "client_admin",
   "site_supervisor",
   "site_engineer",
 ] as const satisfies readonly UserRole[];
 
-export type ClientUploadRole = (typeof CLIENT_UPLOAD_ROLES)[number];
-
 /** Client roles that can leave comments on projects, reports, and documents. */
-export const CLIENT_COMMENT_ROLES = [
+const CLIENT_COMMENT_ROLES = [
   "client_admin",
   "site_supervisor",
   "site_engineer",
@@ -60,36 +58,23 @@ export const CLIENT_COMMENT_ROLES = [
   "client_user",
 ] as const satisfies readonly UserRole[];
 
-export type ClientCommentRole = (typeof CLIENT_COMMENT_ROLES)[number];
-
 /**
  * Any client portal role assigned to a project may report issues.
  * Status changes are restricted separately (see CLIENT_ISSUE_STATUS_ROLES).
  */
-export const CLIENT_ISSUE_CREATE_ROLES = [
+const CLIENT_ISSUE_CREATE_ROLES = [
   ...CLIENT_PORTAL_ROLES,
 ] as const satisfies readonly UserRole[];
 
-export type ClientIssueCreateRole = (typeof CLIENT_ISSUE_CREATE_ROLES)[number];
-
 /** Roles that may change issue status (open → in progress → resolved/closed). */
-export const CLIENT_ISSUE_STATUS_ROLES = [
+const CLIENT_ISSUE_STATUS_ROLES = [
   "client_admin",
   "site_supervisor",
   "site_engineer",
 ] as const satisfies readonly UserRole[];
 
-export type ClientIssueStatusRole = (typeof CLIENT_ISSUE_STATUS_ROLES)[number];
-
 /** Only Client Admin sees invoices in the client portal (billing is org-admin scoped). */
-export const CLIENT_INVOICE_VIEW_ROLES = ["client_admin"] as const satisfies readonly UserRole[];
-
-export type ClientInvoiceViewRole = (typeof CLIENT_INVOICE_VIEW_ROLES)[number];
-
-export const ALL_USER_ROLES: UserRole[] = [
-  ...BUILDVIEW_STAFF_ROLES,
-  ...CLIENT_PORTAL_ROLES,
-];
+const CLIENT_INVOICE_VIEW_ROLES = ["client_admin"] as const satisfies readonly UserRole[];
 
 // =============================================================================
 // Role Checks
@@ -138,8 +123,4 @@ export function canUpdateIssueStatus(role: UserRole): boolean {
 export function canViewClientInvoices(role: UserRole): boolean {
   if (isBuildViewStaffRole(role)) return true;
   return (CLIENT_INVOICE_VIEW_ROLES as readonly string[]).includes(role);
-}
-
-export function normalizeClientRole(role: UserRole): UserRole {
-  return role;
 }

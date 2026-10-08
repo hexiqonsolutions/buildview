@@ -17,16 +17,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import type { User } from "@/lib/types";
 import { getErrorMessage } from "@/lib/errors/public";
-
-function initials(name?: string | null, email?: string | null) {
-  const source = name?.trim() || email?.trim() || "?";
-  return source
-    .split(/\s+/)
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}
+import { getInitials } from "@/lib/utils";
 
 export function ProfileAvatarEditor({ user }: { user: User }) {
   const router = useRouter();
@@ -145,7 +136,7 @@ export function ProfileAvatarEditor({ user }: { user: User }) {
             <Avatar className="h-24 w-24 ring-1 ring-slate-200 dark:ring-slate-700">
               <AvatarImage src={previewUrl || undefined} alt={user.full_name} />
               <AvatarFallback className="bg-slate-900 text-xl font-semibold text-white">
-                {initials(user.full_name, user.email)}
+                {getInitials(user.full_name, user.email)}
               </AvatarFallback>
             </Avatar>
             <span className="absolute inset-0 flex items-center justify-center rounded-full bg-slate-950/50 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">

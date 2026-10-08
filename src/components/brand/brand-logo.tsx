@@ -3,7 +3,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { siteConfig } from "@/lib/site-config";
 
-export type BrandLogoTone = "default" | "onDark" | "auto";
+type BrandLogoTone = "default" | "onDark" | "auto";
 
 interface BrandLogoProps {
   href?: string;

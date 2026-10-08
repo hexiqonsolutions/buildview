@@ -117,16 +117,17 @@ export function CompareProgressHub({
     setSaved(initialSaved);
   }, [initialSaved]);
 
+  const linkedHydrated = linkedWs?.hydrated ?? false;
+  const linkedScope = linkedWs?.scope;
   useEffect(() => {
-    if (!linkedWs?.hydrated) return;
-    const { scope } = linkedWs;
-    if (scope.clientId) setClientId(scope.clientId);
-    if (scope.projectId) setProjectId(scope.projectId);
-    setBuilding(scope.building);
-    setFloor(scope.floor);
-    setBuildingId(scope.buildingId);
-    setFloorId(scope.floorId);
-  }, [linkedWs?.hydrated, linkedWs?.scope]);
+    if (!linkedHydrated || !linkedScope) return;
+    if (linkedScope.clientId) setClientId(linkedScope.clientId);
+    if (linkedScope.projectId) setProjectId(linkedScope.projectId);
+    setBuilding(linkedScope.building);
+    setFloor(linkedScope.floor);
+    setBuildingId(linkedScope.buildingId);
+    setFloorId(linkedScope.floorId);
+  }, [linkedHydrated, linkedScope]);
 
   const compareScope = useMemo(
     (): WorkspaceScope => ({

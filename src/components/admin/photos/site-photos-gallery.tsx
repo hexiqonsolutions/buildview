@@ -6,7 +6,7 @@ import { Calendar, ImageIcon, Loader2, ZoomIn } from "lucide-react";
 import { getTimelinePhotoSignedUrl } from "@/lib/actions/timeline";
 import { useAdminWorkspace } from "@/components/admin/workspace/admin-workspace-provider";
 import { matchesSpatialScope } from "@/lib/admin/scope";
-import type { AdminSitePhoto } from "@/lib/actions/data";
+import type { AdminSitePhoto } from "@/lib/data/storage";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,

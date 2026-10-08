@@ -78,7 +78,7 @@ export function filterIssuesInWindow(
   });
 }
 
-export type ComparisonPhoto = {
+type ComparisonPhoto = {
   id: string;
   url: string;
   caption: string | null;

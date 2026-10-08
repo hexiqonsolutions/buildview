@@ -1,5 +1,5 @@
 import { Users } from "lucide-react";
-import { getClientsWithStats } from "@/lib/actions/data";
+import { getClientsWithStats } from "@/lib/data/clients";
 import { getUserProfile } from "@/lib/supabase/server";
 import { canImpersonate } from "@/lib/auth/permissions";
 import { CreateClientForm } from "@/components/admin/create-client-form";

@@ -2,7 +2,7 @@ import type { EnrichedTour } from "@/lib/comparison/types";
 import { matchesSpatialScope, type SpatialScopedItem } from "@/lib/admin/scope";
 import type { WorkspaceScope } from "@/lib/admin/workspace";
 
-export type ComparisonSpatialScope = Pick<
+type ComparisonSpatialScope = Pick<
   WorkspaceScope,
   "building" | "floor" | "buildingId" | "floorId"
 >;

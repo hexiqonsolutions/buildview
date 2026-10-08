@@ -18,7 +18,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency } from "@/lib/currency";
+import { formatDate } from "@/lib/utils";
 import { downloadFileFromUrl } from "@/lib/download-file";
 import type { Client, Invoice, InvoiceStatus, Project } from "@/lib/types";
 import { getErrorMessage } from "@/lib/errors/public";

@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/client";
 import { STORAGE_BUCKETS, type StorageBucket } from "@/lib/types";
 
-export interface UploadResult {
+interface UploadResult {
   path: string;
   fileName: string;
   fileSize: number;
@@ -9,7 +9,7 @@ export interface UploadResult {
 }
 
 /** Sanitize filename for storage paths. */
-export function sanitizeFileName(name: string): string {
+function sanitizeFileName(name: string): string {
   return name.replace(/[^a-zA-Z0-9._-]/g, "_");
 }
 
@@ -42,7 +42,7 @@ export async function uploadFileToStorage(
 }
 
 /** Build document storage path: {projectId}/{folderId|root}/{timestamp}-{filename} */
-export function buildDocumentStoragePath(
+function buildDocumentStoragePath(
   projectId: string,
   fileName: string,
   folderId?: string | null
@@ -91,18 +91,18 @@ export function resolveStoragePath(
   storagePath: string | null | undefined,
   fileUrl: string | null | undefined
 ): string | null {
-  return resolveBucketStoragePath(storagePath, fileUrl, "reports");
+  return resolveBucketStoragePath(storagePath, fileUrl, STORAGE_BUCKETS.REPORTS);
 }
 
 export function resolveDocumentStoragePath(
   storagePath: string | null | undefined,
   fileUrl: string | null | undefined
 ): string | null {
-  return resolveBucketStoragePath(storagePath, fileUrl, "documents");
+  return resolveBucketStoragePath(storagePath, fileUrl, STORAGE_BUCKETS.DOCUMENTS);
 }
 
 /** Build issue image path: {projectId}/{issueId}/{timestamp}-{filename} */
-export function buildIssueImageStoragePath(
+function buildIssueImageStoragePath(
   projectId: string,
   issueId: string,
   fileName: string
@@ -124,11 +124,11 @@ export function resolveIssueImageStoragePath(
   storagePath: string | null | undefined,
   fileUrl: string | null | undefined
 ): string | null {
-  return resolveBucketStoragePath(storagePath, fileUrl, "issue-images");
+  return resolveBucketStoragePath(storagePath, fileUrl, STORAGE_BUCKETS.ISSUE_IMAGES);
 }
 
 /** Build timeline photo path: {projectId}/{eventId}/{timestamp}-{filename} */
-export function buildTimelinePhotoStoragePath(
+function buildTimelinePhotoStoragePath(
   projectId: string,
   eventId: string,
   fileName: string
@@ -150,11 +150,11 @@ export function resolveTimelinePhotoStoragePath(
   storagePath: string | null | undefined,
   fileUrl: string | null | undefined
 ): string | null {
-  return resolveBucketStoragePath(storagePath, fileUrl, "timeline-photos");
+  return resolveBucketStoragePath(storagePath, fileUrl, STORAGE_BUCKETS.TIMELINE_PHOTOS);
 }
 
 /** Build invoice PDF path: {clientId}/invoices/{invoiceId}/{timestamp}-{filename} */
-export function buildInvoiceStoragePath(
+function buildInvoiceStoragePath(
   clientId: string,
   invoiceId: string,
   fileName: string
@@ -176,11 +176,11 @@ export function resolveInvoiceStoragePath(
   storagePath: string | null | undefined,
   fileUrl: string | null | undefined
 ): string | null {
-  return resolveBucketStoragePath(storagePath, fileUrl, "documents");
+  return resolveBucketStoragePath(storagePath, fileUrl, STORAGE_BUCKETS.DOCUMENTS);
 }
 
 /** Build project cover path: {projectId}/{timestamp}-{filename} */
-export function buildProjectCoverStoragePath(
+function buildProjectCoverStoragePath(
   projectId: string,
   fileName: string
 ): string {
@@ -222,7 +222,7 @@ export function validateProjectCoverFile(file: File): string | null {
 }
 
 /** Build avatar path: {userId}/{timestamp}-{filename} (matches storage_user_id RLS). */
-export function buildAvatarStoragePath(userId: string, fileName: string): string {
+function buildAvatarStoragePath(userId: string, fileName: string): string {
   return `${userId}/${Date.now()}-${sanitizeFileName(fileName)}`;
 }
 

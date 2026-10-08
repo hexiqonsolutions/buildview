@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import { Upload } from "lucide-react";
-import { getProjectWithClient } from "@/lib/actions/data";
+import { getProjectWithClient } from "@/lib/data/projects";
 import { getCurrentUser } from "@/lib/actions/auth";
 import { canManageClientUploads } from "@/lib/auth/roles";
 import { can } from "@/lib/auth/permissions";

@@ -14,7 +14,7 @@ import {
   notifyInvoiceRecipients,
   notifyUsersIfEnabled,
 } from "@/lib/notifications/server";
-import { requireStaffPermission } from "@/lib/auth/staff";
+import { requireActiveStaff, requireStaffPermission } from "@/lib/auth/staff";
 import { normalizeMatterportUrl, resolveMatterportThumbnailUrl } from "@/lib/matterport";
 import { resolveSpatialForWrite } from "@/lib/admin/spatial-resolve";
 import { buildTourDescription } from "@/lib/admin/tour-metadata";
@@ -1022,21 +1022,7 @@ export async function assignUserToProject(projectId: string, userId: string) {
   parseOrThrow(uuid("Project ID"), projectId);
   parseOrThrow(uuid("User ID"), userId);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new PublicError("You must be signed in");
-
-  const { data: me } = await supabase
-    .from("users")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (!me || !isBuildViewStaffRole(me.role)) {
-    throw new PublicError("Only BuildView staff can assign projects");
-  }
+  const { user } = await requireStaffPermission("update", "projects");
 
   // Service role avoids RLS edge cases when staff helpers/enums differ across DBs.
   const admin = createServiceRoleClient();
@@ -1099,21 +1085,7 @@ export async function unassignUserFromProject(projectId: string, userId: string)
   parseOrThrow(uuid("Project ID"), projectId);
   parseOrThrow(uuid("User ID"), userId);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new PublicError("You must be signed in");
-
-  const { data: me } = await supabase
-    .from("users")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (!me || !isBuildViewStaffRole(me.role)) {
-    throw new PublicError("Only BuildView staff can update project access");
-  }
+  const { user } = await requireStaffPermission("update", "projects");
 
   const admin = createServiceRoleClient();
   const { error } = await admin
@@ -1144,23 +1116,7 @@ export async function updateUserProfile(data: {
 }): Promise<{ success: true }> {
   const validated = parseOrThrow(updateUserSchema, data);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new PublicError("You must be signed in");
-
-  const { data: me } = await supabase
-    .from("users")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (!me || !isBuildViewStaffRole(me.role)) {
-    throw new PublicError("Only BuildView staff can manage users");
-  }
-
-  const actorRole = me.role as UserRole;
+  const { supabase, user, role: actorRole } = await requireActiveStaff();
 
   // Load current profile so we can detect role / dashboard changes.
   const { data: existing } = await supabase
@@ -1170,6 +1126,12 @@ export async function updateUserProfile(data: {
     .maybeSingle();
 
   if (!existing) throw new PublicError("User not found");
+
+  // Admins and ops managers manage client accounts; staff accounts (including
+  // deactivating them) are Super Admin only.
+  if (isBuildViewStaffRole(existing.role as UserRole) && !canAssignRoles(actorRole)) {
+    throw new PublicError("Only Super Admin can manage BuildView staff accounts");
+  }
 
   const roleChanging = existing.role !== validated.role;
   const nextDashboard = isClientPortalRole(validated.role)
@@ -1270,23 +1232,9 @@ export async function updateClientRecord(data: {
 }) {
   const validated = parseOrThrow(updateClientSchema, data);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new PublicError("You must be signed in");
+  const { supabase, user, role: actorRole } = await requireStaffPermission("update", "clients");
 
-  const { data: me } = await supabase
-    .from("users")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (!me || !isBuildViewStaffRole(me.role as UserRole)) {
-    throw new PublicError("Only BuildView staff can update clients");
-  }
-
-  if (validated.dashboard_type !== undefined && !canAssignRoles(me.role as UserRole)) {
+  if (validated.dashboard_type !== undefined && !canAssignRoles(actorRole)) {
     // Staff can edit client details; only Super Admin changes dashboard type.
     const { data: existingClient } = await supabase
       .from("clients")
@@ -1310,7 +1258,7 @@ export async function updateClientRecord(data: {
     address: validated.address ?? null,
     subscription_status: validated.subscription_status as ClientUpdate["subscription_status"],
     is_active: validated.is_active,
-    ...(canAssignRoles(me.role as UserRole)
+    ...(canAssignRoles(actorRole)
       ? { dashboard_type: validated.dashboard_type ?? "construction" }
       : {}),
     updated_by: user.id,

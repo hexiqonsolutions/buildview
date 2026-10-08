@@ -1,11 +1,13 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/actions/auth";
 import { getUnreadNotificationCount } from "@/lib/actions/notifications";
-import { getPortalWorkspaceBootstrap } from "@/lib/actions/data";
+import { getPortalWorkspaceBootstrap } from "@/lib/data/workspace";
 import { PortalLayout } from "@/components/dashboard/portal-layout";
-import { ensureUserProfile } from "@/lib/supabase/provision-user";
-import { getAuthUser } from "@/lib/supabase/server";
+import { privateMetadata } from "@/lib/seo";
 import type { User } from "@/lib/types";
+
+export const metadata: Metadata = privateMetadata;
 
 function toPortalUser(user: NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>): User {
   const email = user.email?.trim() || "user@buildview.local";
@@ -35,15 +37,8 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  let user = await getCurrentUser();
-
-  if (!user) {
-    const authUser = await getAuthUser();
-    if (authUser) {
-      await ensureUserProfile(authUser);
-      user = await getCurrentUser();
-    }
-  }
+  // getCurrentUser already provisions a missing profile row and retries once.
+  const user = await getCurrentUser();
 
   if (!user) {
     redirect("/login?error=profile_setup_failed&redirect=/dashboard");

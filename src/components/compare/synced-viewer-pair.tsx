@@ -1,8 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2, Maximize2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getMatterportEmbedUrl, isValidMatterportUrl } from "@/lib/matterport";
 
@@ -135,14 +134,5 @@ export function SyncedViewerPair({
         immersive={immersive}
       />
     </div>
-  );
-}
-
-export function ViewerFullscreenButton({ onClick }: { onClick: () => void }) {
-  return (
-    <Button variant="overlay" size="sm" className="h-8" onClick={onClick}>
-      <Maximize2 className="mr-1.5 h-3.5 w-3.5" />
-      Fullscreen
-    </Button>
   );
 }

@@ -13,9 +13,12 @@ type AuthUserLike = {
     name?: string;
     avatar_url?: string;
     picture?: string;
-    role?: string;
   } | null;
 };
+
+// user_metadata is writable by the user at sign-up, so it must never decide the role.
+// New profiles always start as "client"; staff promote users explicitly.
+const NEW_PROFILE_ROLE: UserRole = "client";
 
 function profileFromAuth(authUser: AuthUserLike): UserInsert | null {
   const email = authUser.email?.trim() || `${authUser.id}@buildview.local`;
@@ -27,14 +30,12 @@ function profileFromAuth(authUser: AuthUserLike): UserInsert | null {
     "User";
   const avatarUrl =
     metadata?.avatar_url?.trim() || metadata?.picture?.trim() || null;
-  const role =
-    metadata?.role === "super_admin" ? "super_admin" : "client";
 
   return {
     id: authUser.id,
     email,
     full_name: fullName,
-    role: role as UserRole,
+    role: NEW_PROFILE_ROLE,
     client_id: null,
     avatar_url: avatarUrl,
     phone: null,

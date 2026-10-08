@@ -105,9 +105,6 @@ export const addIssueImagesSchema = z
 
 export const issueImageIdsSchema = uuidList("Image IDs", { max: 100 });
 
-export type CreateIssueInput = z.infer<typeof createIssueSchema>;
-export type UpdateIssueInput = z.infer<typeof updateIssueSchema>;
-
 const ALLOWED_IMAGE_TYPES = [
   "image/jpeg",
   "image/png",
@@ -116,7 +113,7 @@ const ALLOWED_IMAGE_TYPES = [
   "image/heic",
 ];
 
-export function validateIssueImageFile(file: File): string | null {
+function validateIssueImageFile(file: File): string | null {
   if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
     return "Only JPEG, PNG, WebP, GIF, or HEIC images are allowed.";
   }

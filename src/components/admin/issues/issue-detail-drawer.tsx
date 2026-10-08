@@ -3,13 +3,8 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { ImagePlus, Loader2, MapPin, Trash2, User as UserIcon } from "lucide-react";
-import {
-  addIssueImages,
-  deleteIssue,
-  deleteIssueImage,
-  updateIssue,
-} from "@/lib/actions/issues";
-import { uploadIssueImageFile } from "@/lib/supabase/storage";
+import { deleteIssue, deleteIssueImage, updateIssue } from "@/lib/actions/issues";
+import { attachIssueImages } from "@/lib/issues/attach-images";
 import { validateIssueImageFiles } from "@/lib/validations/issue";
 import { IssueImageGallery } from "@/components/issues/issue-image-gallery";
 import {
@@ -108,16 +103,7 @@ export function IssueDetailDrawer({
     setSaved(false);
     setIsUploading(true);
     try {
-      const uploads = await Promise.all(
-        files.map((file) => uploadIssueImageFile(issue.project_id, issue.id, file))
-      );
-      await addIssueImages(
-        issue.id,
-        uploads.map((upload) => ({
-          storage_path: upload.path,
-          file_name: upload.fileName,
-        }))
-      );
+      await attachIssueImages(issue.project_id, issue.id, files);
     } catch (err) {
       setError(getErrorMessage(err, "Failed to upload photos"));
     } finally {

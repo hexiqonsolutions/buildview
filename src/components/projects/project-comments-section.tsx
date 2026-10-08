@@ -36,7 +36,7 @@ import {
 } from "@/lib/actions/comments";
 import { isBuildViewStaffRole } from "@/lib/auth/roles";
 import { useOptionalPortalWorkspace } from "@/components/portal/workspace/portal-workspace-provider";
-import { cn, formatRelativeTime } from "@/lib/utils";
+import { cn, formatRelativeTime, getInitials } from "@/lib/utils";
 import type { Document, ProjectCommentWithUser, Report, UserRole } from "@/lib/types";
 
 interface ProjectCommentsSectionProps {
@@ -52,16 +52,6 @@ type CommentThread = {
   root: ProjectCommentWithUser;
   replies: ProjectCommentWithUser[];
 };
-
-function initials(name?: string | null, email?: string | null) {
-  const source = name?.trim() || email?.trim() || "?";
-  return source
-    .split(" ")
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}
 
 function parseCommentMessage(message: string): {
   contextKind: "report" | "document" | null;
@@ -511,7 +501,7 @@ function ProjectCommentsPanel({
                         alt={root.author?.full_name || "User"}
                       />
                       <AvatarFallback className="bg-slate-100 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                        {initials(root.author?.full_name, root.author?.email)}
+                        {getInitials(root.author?.full_name, root.author?.email)}
                       </AvatarFallback>
                     </Avatar>
 
@@ -634,7 +624,7 @@ function ProjectCommentsPanel({
                                     alt={reply.author?.full_name || "User"}
                                   />
                                   <AvatarFallback className="bg-slate-200 text-[10px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                                    {initials(reply.author?.full_name, reply.author?.email)}
+                                    {getInitials(reply.author?.full_name, reply.author?.email)}
                                   </AvatarFallback>
                                 </Avatar>
                                 <div className="min-w-0 flex-1 space-y-1.5">

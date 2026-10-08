@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 
-export type IntelProjectContextValue = {
+type IntelProjectContextValue = {
   projectId: string;
   projectName: string;
   progress: number;

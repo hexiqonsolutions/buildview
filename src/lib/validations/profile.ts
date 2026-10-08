@@ -8,13 +8,11 @@ export const updateProfileSchema = z
   })
   .strict();
 
-export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
-
 const AVATAR_OBJECT_PATH = "storage/v1/object/public/avatars/";
 const AVATAR_FILE_NAME = /^[A-Za-z0-9._-]{1,255}$/;
 
 /** Public URL prefix of the avatars bucket, as built by supabase-js `getPublicUrl`. */
-export function avatarPublicUrlPrefix(supabaseUrl: string): string {
+function avatarPublicUrlPrefix(supabaseUrl: string): string {
   const base = supabaseUrl.endsWith("/") ? supabaseUrl : `${supabaseUrl}/`;
   return new URL(AVATAR_OBJECT_PATH, base).href;
 }

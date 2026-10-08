@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { getPlatformSettings } from "@/lib/actions/platform-settings";
 import { sendTransactionalEmail } from "@/lib/email/send";
+import { siteConfig } from "@/lib/site-config";
 import type { NotificationRuleKey, PlatformSettings } from "@/lib/admin/platform-settings";
 import type { NotificationType } from "@/lib/types";
 import type { InvoiceNotifyFields, InvoiceNotifyPayload } from "@/lib/portal/invoice-notifications";
@@ -73,7 +74,7 @@ export async function getProjectNameForNotify(projectId: string): Promise<string
 }
 
 /** Service-role insert — bypasses RLS when non-admin actors trigger system alerts. */
-export async function insertNotificationSystem(data: {
+async function insertNotificationSystem(data: {
   user_id: string;
   title: string;
   message: string;
@@ -104,7 +105,7 @@ export async function insertNotificationSystem(data: {
   if (error) throw internalError("insertNotificationSystem", error);
 }
 
-export async function createNotification(data: {
+async function createNotification(data: {
   user_id: string;
   title: string;
   message: string;
@@ -152,8 +153,7 @@ async function emailNotificationRecipients(
     const emails = users?.map((u) => u.email).filter(Boolean) as string[];
     if (!emails?.length) return;
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-    const linkLine = payload.link ? `\n\nView: ${appUrl}${payload.link}` : "";
+    const linkLine = payload.link ? `\n\nView: ${siteConfig.url}${payload.link}` : "";
 
     await sendTransactionalEmail({
       to: emails,
@@ -165,7 +165,7 @@ async function emailNotificationRecipients(
   }
 }
 
-export async function notifyUsers(userIds: string[], payload: NotifyPayload) {
+async function notifyUsers(userIds: string[], payload: NotifyPayload) {
   const parsedIds = validate(notificationRecipientIdsSchema, userIds);
   const parsedPayload = validate(notifyPayloadSchema, payload);
   if (!parsedIds.success || !parsedPayload.success) {
@@ -221,7 +221,7 @@ export async function notifyInvoiceRecipients(
   await notifyUsers(admins?.map((u) => u.id) ?? [], parsedPayload.data);
 }
 
-export async function notifyClientUsers(clientId: string, payload: NotifyPayload) {
+async function notifyClientUsers(clientId: string, payload: NotifyPayload) {
   const parsedClientId = validate(uuid("Client ID"), clientId);
   const parsedPayload = validate(notifyPayloadSchema, payload);
   if (!parsedClientId.success || !parsedPayload.success) {

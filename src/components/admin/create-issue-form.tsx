@@ -2,8 +2,8 @@
 
 import { useRef, useState } from "react";
 import { Plus, Loader2, Upload, ImageIcon, X } from "lucide-react";
-import { createIssue, addIssueImages } from "@/lib/actions/issues";
-import { uploadIssueImageFile } from "@/lib/supabase/storage";
+import { createIssue } from "@/lib/actions/issues";
+import { attachIssueImages } from "@/lib/issues/attach-images";
 import { validateIssueImageFiles } from "@/lib/validations/issue";
 import {
   ISSUE_PRIORITY_LABELS,
@@ -103,20 +103,7 @@ export function CreateIssueForm({ projects, users = [] }: CreateIssueFormProps) 
         due_date: (form.get("due_date") as string) || null,
       });
 
-      if (files.length > 0) {
-        const uploads = await Promise.all(
-          files.map((file) => uploadIssueImageFile(projectId, issueId, file))
-        );
-
-        await addIssueImages(
-          issueId,
-          uploads.map((upload, index) => ({
-            storage_path: upload.path,
-            file_name: upload.fileName,
-            sort_order: index,
-          }))
-        );
-      }
+      await attachIssueImages(projectId, issueId, files);
 
       setOpen(false);
       resetForm();

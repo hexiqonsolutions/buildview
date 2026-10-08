@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const COLORS = ["#A4CF30", "#76B82D", "#0F172A", "#94A3B8"];
 
-export type ProgressDistributionItem = {
+type ProgressDistributionItem = {
   name: string;
   value: number;
   percent: number;

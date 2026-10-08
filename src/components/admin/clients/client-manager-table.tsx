@@ -36,7 +36,7 @@ import { formatRelativeTime } from "@/lib/utils";
 import type { Client } from "@/lib/types";
 import { getErrorMessage } from "@/lib/errors/public";
 
-export type ClientManagerRow = Client & {
+type ClientManagerRow = Client & {
   projectCount: number;
   userCount: number;
   storageBytes: number;

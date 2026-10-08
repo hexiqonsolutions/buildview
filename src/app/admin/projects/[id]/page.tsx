@@ -1,12 +1,8 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import {
-  getClients,
-  getProjectWithClient,
-  getProjectDetail,
-  getProjectInvoices,
-  getProjectTeam,
-} from "@/lib/actions/data";
+import { getClients } from "@/lib/data/clients";
+import { getProjectInvoices } from "@/lib/data/invoices";
+import { getProjectDetail, getProjectTeam, getProjectWithClient } from "@/lib/data/projects";
 import { EditProjectDetailsDialog } from "@/components/admin/edit-project-details-dialog";
 import { getProjectSpatialHierarchy } from "@/lib/actions/buildings";
 import { getProjectMediaAdmin } from "@/lib/actions/project-media";

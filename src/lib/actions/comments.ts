@@ -14,7 +14,7 @@ import { canCommentOnProject, isBuildViewStaffRole } from "@/lib/auth/roles";
 import { currentUserCanViewProject } from "@/lib/auth/project-access";
 import { logServerError, toPublicMessage } from "@/lib/errors/server";
 
-export type CommentActionResult =
+type CommentActionResult =
   | { ok: true }
   | { ok: false; error: string };
 

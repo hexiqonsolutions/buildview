@@ -1,5 +1,7 @@
 import { ReceiptIndianRupee } from "lucide-react";
-import { getAdminInvoices, getClients, getProjects } from "@/lib/actions/data";
+import { getClients } from "@/lib/data/clients";
+import { getAdminInvoices } from "@/lib/data/invoices";
+import { getProjects } from "@/lib/data/projects";
 import { InvoiceManager } from "@/components/admin/invoices/invoice-manager";
 import { OpsWorkspacePage } from "@/components/admin/ops/ops-workspace-page";
 

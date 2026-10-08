@@ -72,6 +72,12 @@ export const defaultMetadata: Metadata = {
   },
 };
 
+/** Signed-in and auth screens: keep them out of search results and drop the homepage canonical. */
+export const privateMetadata: Metadata = {
+  robots: { index: false, follow: false },
+  alternates: { canonical: null },
+};
+
 export function pageMetadata({
   title,
   description,

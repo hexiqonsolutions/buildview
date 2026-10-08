@@ -1,10 +1,7 @@
 "use server";
 
-import {
-  getProjects,
-  getAccessibleTours,
-  getProjectDetail,
-} from "@/lib/actions/data";
+import { getProjectDetail, getProjects } from "@/lib/data/projects";
+import { getAccessibleTours } from "@/lib/data/tours";
 import { enrichTour } from "@/lib/comparison/metadata";
 import {
   buildActivityLog,

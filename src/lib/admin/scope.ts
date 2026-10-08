@@ -5,7 +5,7 @@ import {
   parseTourWorkspaceMeta,
 } from "@/lib/admin/tour-metadata";
 
-export { filterToursByScope, parseTourWorkspaceMeta };
+export { filterToursByScope,  };
 export const WORKSPACE_PARAM_KEYS = {
   client: "client",
   project: "project",
@@ -132,13 +132,6 @@ export function mergeWorkspaceIntoSearchParams(
   return nextQs ? `?${nextQs}` : "";
 }
 
-export function mergeWorkspaceScope(
-  base: WorkspaceScope,
-  partial: Partial<WorkspaceScope>
-): WorkspaceScope {
-  return { ...base, ...partial };
-}
-
 export function filterProjectsByScope(
   projects: Project[],
   scope: WorkspaceScope
@@ -178,7 +171,7 @@ export type SpatialScopedItem = {
   description?: string | null;
 };
 
-export function resolveSpatialFields(item: SpatialScopedItem): {
+function resolveSpatialFields(item: SpatialScopedItem): {
   building?: string;
   floor?: string;
 } {

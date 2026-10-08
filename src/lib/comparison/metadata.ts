@@ -33,7 +33,7 @@ function inferFromName(name: string | null | undefined): ParsedMeta {
   return meta;
 }
 
-export function buildTourMetadata(
+function buildTourMetadata(
   tour: ProjectTour,
   project: Project,
   index: number,

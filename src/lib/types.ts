@@ -90,7 +90,7 @@ export type Timestamps = {
   updated_at: string;
 };
 
-export type AuditFields = {
+type AuditFields = {
   created_by: string | null;
   updated_by: string | null;
 };
@@ -1207,28 +1207,10 @@ export type ActivityLogUpdate = Partial<ActivityLogInsert>;
 export type SavedComparisonUpdate = Partial<SavedComparisonInsert> & Partial<SoftDeleteFields>;
 
 // =============================================================================
-// Supabase client helpers
-// =============================================================================
-
-export type Tables<T extends keyof Database["public"]["Tables"]> =
-  Database["public"]["Tables"][T]["Row"];
-
-export type TablesInsert<T extends keyof Database["public"]["Tables"]> =
-  Database["public"]["Tables"][T]["Insert"];
-
-export type TablesUpdate<T extends keyof Database["public"]["Tables"]> =
-  Database["public"]["Tables"][T]["Update"];
-
-export type Enums<T extends keyof Database["public"]["Enums"]> =
-  Database["public"]["Enums"][T];
-
-// =============================================================================
 // Relation / query result types (joined data from Supabase selects)
 // =============================================================================
 
 export type UserSummary = Pick<User, "id" | "full_name" | "email" | "avatar_url">;
-
-export type ClientSummary = Pick<Client, "id" | "name" | "company_name" | "email">;
 
 export type ProjectSummary = Pick<
   Project,
@@ -1251,37 +1233,9 @@ export interface TimelineEventWithRelations extends TimelineEvent {
   report?: Report | null;
 }
 
-export interface DocumentWithFolder extends Document {
-  folder?: DocumentFolder | null;
-}
-
-export interface DocumentFolderWithChildren extends DocumentFolder {
-  documents?: Document[];
-  children?: DocumentFolder[];
-}
-
-export interface ProjectWithRelations extends Project {
-  client?: Client | null;
-  project_tours?: ProjectTour[];
-  reports?: Report[];
-  documents?: Document[];
-  issues?: IssueWithRelations[];
-  timeline_events?: TimelineEventWithRelations[];
-  assignments?: ProjectAssignment[];
-}
-
-export interface InvoiceWithRelations extends Invoice {
-  client?: ClientSummary | null;
-  project?: ProjectSummary | null;
-}
-
 export interface ActivityLogWithUser extends ActivityLog {
   user?: UserSummary | null;
   project?: ProjectSummary | null;
-}
-
-export interface NotificationWithUser extends Notification {
-  user?: UserSummary | null;
 }
 
 // =============================================================================
@@ -1299,108 +1253,6 @@ export interface DashboardStats {
 
 export interface AuthUserProfile extends User {
   client?: Client | null;
-}
-
-// =============================================================================
-// Form / action input types
-// =============================================================================
-
-export interface CreateClientInput {
-  name: string;
-  company_name?: string;
-  email: string;
-  phone?: string;
-  address?: string;
-  subscription_status?: SubscriptionStatus;
-}
-
-export interface CreateProjectInput {
-  name: string;
-  client_id: string;
-  client_name: string;
-  location: string;
-  start_date?: string;
-  completion_date?: string;
-  status?: ProjectStatus;
-  description?: string;
-  cover_image_url?: string;
-}
-
-export interface CreateTourInput {
-  project_id: string;
-  name: string;
-  matterport_url: string;
-  capture_date?: string;
-  description?: string;
-  thumbnail_url?: string;
-  sort_order?: number;
-}
-
-export interface CreateReportInput {
-  project_id: string;
-  title: string;
-  report_type: ReportType;
-  report_date: string;
-  description?: string;
-  file_url: string;
-  file_name: string;
-  file_size?: number;
-  mime_type?: string;
-  storage_path?: string;
-}
-
-export interface CreateDocumentInput {
-  project_id: string;
-  folder_id?: string;
-  name: string;
-  category: DocumentCategory;
-  description?: string;
-  file_url: string;
-  file_name: string;
-  file_size?: number;
-  mime_type?: string;
-  storage_path?: string;
-}
-
-export interface CreateIssueInput {
-  project_id: string;
-  title: string;
-  description?: string;
-  priority?: IssuePriority;
-  status?: IssueStatus;
-  location?: string;
-  assigned_to?: string;
-  due_date?: string;
-}
-
-export interface CreateTimelineEventInput {
-  project_id: string;
-  event_date: string;
-  title: string;
-  progress_note?: string;
-  tour_id?: string;
-  report_id?: string;
-  sort_order?: number;
-}
-
-export interface CreateInvoiceInput {
-  client_id: string;
-  project_id?: string;
-  invoice_number: string;
-  amount: number;
-  currency?: string;
-  status?: InvoiceStatus;
-  due_date?: string;
-  issued_date?: string;
-  description?: string;
-  file_url?: string;
-  storage_path?: string;
-}
-
-export interface UpdateProfileInput {
-  full_name?: string;
-  phone?: string;
-  avatar_url?: string;
 }
 
 // =============================================================================

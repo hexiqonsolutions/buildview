@@ -1,13 +1,12 @@
+import "server-only";
+
 import type { WorkspaceScope } from "@/lib/admin/workspace";
 import { filterToursByScope } from "@/lib/admin/scope";
 import { normalizeWorkspaceScope } from "@/lib/admin/workspace-scope";
 import { portalToAdminBootstrap } from "@/lib/portal/workspace";
-import {
-  getAccessibleTours,
-  getPortalWorkspaceBootstrap,
-  getProjects,
-  type ProjectWithMeta,
-} from "@/lib/actions/data";
+import { getProjects, type ProjectWithMeta } from "@/lib/data/projects";
+import { getAccessibleTours } from "@/lib/data/tours";
+import { getPortalWorkspaceBootstrap } from "@/lib/data/workspace";
 import { getProjectProgressPercent } from "@/lib/utils";
 import type { Project, ProjectTour } from "@/lib/types";
 

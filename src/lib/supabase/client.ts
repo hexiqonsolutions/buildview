@@ -2,7 +2,7 @@ import { createBrowserClient } from "@supabase/ssr";
 import type { Database } from "@/lib/types";
 import { getSupabasePublicConfig } from "@/lib/supabase/env";
 
-export type SupabaseBrowserClient = ReturnType<
+type SupabaseBrowserClient = ReturnType<
   typeof createBrowserClient<Database>
 >;
 

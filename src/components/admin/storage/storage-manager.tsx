@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { Camera, FileText, HardDrive, ImageIcon, AlertTriangle } from "lucide-react";
 import { useAdminWorkspace } from "@/components/admin/workspace/admin-workspace-provider";
-import type { AdminStorageStats } from "@/lib/actions/data";
+import type { AdminStorageStats } from "@/lib/data/storage";
 import { cn } from "@/lib/utils";
 
 const CATEGORY_ICONS = {

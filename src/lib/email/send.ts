@@ -1,7 +1,7 @@
 import "server-only";
 import { emailConfig, isContactEmailEnabled } from "@/lib/email/config";
 
-export type SendEmailParams = {
+type SendEmailParams = {
   to: string | string[];
   subject: string;
   text: string;

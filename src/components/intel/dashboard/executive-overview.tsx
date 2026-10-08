@@ -10,7 +10,7 @@ import { PortalLatestTourCard } from "@/components/intel/dashboard/portal-latest
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDate, formatRelativeTime, formatStatus, getStatusColor } from "@/lib/utils";
-import type { ClientDashboardData } from "@/lib/actions/data";
+import type { ClientDashboardData } from "@/lib/data/dashboard";
 import {
   AlertTriangle,
   FileText,

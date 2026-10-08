@@ -14,6 +14,7 @@ import {
   text,
   uuid,
 } from "@/lib/validations/primitives";
+import { MAX_DOCUMENT_FILE_SIZE } from "@/lib/validations/document";
 
 export const projectIdSchema = uuid("Project ID");
 export const clientIdSchema = uuid("Client ID");
@@ -83,8 +84,6 @@ export const auditEventSchema = z
   })
   .strict();
 
-const MAX_DOCUMENT_VERSION_BYTES = 100 * 1024 * 1024;
-
 const UUID_PREFIX_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\//i;
 
 export const replaceDocumentVersionSchema = z
@@ -94,7 +93,7 @@ export const replaceDocumentVersionSchema = z
       message: "Storage path is outside the allowed folder",
     }),
     file_name: fileName("File name"),
-    file_size: optional(fileSize("File size", { max: MAX_DOCUMENT_VERSION_BYTES })),
+    file_size: optional(fileSize("File size", { max: MAX_DOCUMENT_FILE_SIZE })),
     mime_type: optional(mimeType("File type")),
     change_note: optionalText("Change note", { max: LIMITS.description, multiline: true }),
   })

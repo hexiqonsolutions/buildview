@@ -25,5 +25,3 @@ export const createTourActionSchema = createTourSchema
     floor_id: optionalUuid("Floor"),
   })
   .strict();
-
-export type CreateTourInput = z.infer<typeof createTourSchema>;

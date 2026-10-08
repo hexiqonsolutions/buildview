@@ -11,13 +11,7 @@ import {
   notifyClientsIfEnabled,
   notifySuperAdmins,
 } from "@/lib/notifications/server";
-import {
-  addIssueImagesSchema,
-  createIssueActionSchema,
-  issueImageIdsSchema,
-  updateIssueSchema,
-  updateIssueStatusSchema,
-} from "@/lib/validations/issue";
+import { addIssueImagesSchema, createIssueActionSchema, updateIssueSchema, updateIssueStatusSchema } from "@/lib/validations/issue";
 import { parseOrThrow, validate } from "@/lib/validations/parse";
 import { uuid } from "@/lib/validations/primitives";
 import type {
@@ -714,25 +708,4 @@ export async function getIssueImageSignedUrl(
 
   const url = await createSignedStorageUrl(STORAGE_BUCKETS.ISSUE_IMAGES, path);
   return { url, caption: image.caption };
-}
-
-export async function getIssueImageSignedUrls(
-  imageIds: string[]
-): Promise<Record<string, string>> {
-  const results: Record<string, string> = {};
-  const validation = validate(issueImageIdsSchema, imageIds);
-  if (!validation.success) return results;
-
-  await Promise.all(
-    validation.data.map(async (id) => {
-      try {
-        const { url } = await getIssueImageSignedUrl(id);
-        results[id] = url;
-      } catch {
-        // Skip images that cannot be resolved
-      }
-    })
-  );
-
-  return results;
 }

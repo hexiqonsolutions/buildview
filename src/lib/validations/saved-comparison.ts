@@ -20,5 +20,3 @@ export const saveComparisonSchema = z
     clientId: optionalUuid("Client"),
   })
   .strict();
-
-export type SaveComparisonInput = z.infer<typeof saveComparisonSchema>;

@@ -12,7 +12,7 @@ import {
   uuid,
 } from "@/lib/validations/primitives";
 
-export const NOTIFICATION_TYPES = [
+const NOTIFICATION_TYPES = [
   "info",
   "success",
   "warning",
@@ -22,7 +22,7 @@ export const NOTIFICATION_TYPES = [
   "invoice_update",
 ] as const satisfies readonly NotificationType[];
 
-export const NOTIFICATION_RULE_KEYS = [
+const NOTIFICATION_RULE_KEYS = [
   "onUpload",
   "onCriticalIssue",
   "onInvoiceSent",
@@ -41,13 +41,13 @@ const INVOICE_STATUSES = [
   "cancelled",
 ] as const satisfies readonly InvoiceStatus[];
 
-export const NOTIFICATION_TITLE_MAX = LIMITS.title;
-export const NOTIFICATION_MESSAGE_MAX = 2000;
-export const NOTIFICATION_LINK_MAX = 500;
+const NOTIFICATION_TITLE_MAX = LIMITS.title;
+const NOTIFICATION_MESSAGE_MAX = 2000;
+const NOTIFICATION_LINK_MAX = 500;
 /** Upper bound on recipients per notifyUsers call. */
-export const MAX_NOTIFICATION_RECIPIENTS = 500;
+const MAX_NOTIFICATION_RECIPIENTS = 500;
 
-export const notificationTypeSchema = oneOf("Notification type", NOTIFICATION_TYPES);
+const notificationTypeSchema = oneOf("Notification type", NOTIFICATION_TYPES);
 export const notificationRuleSchema = oneOf("Notification rule", NOTIFICATION_RULE_KEYS);
 
 /**
@@ -55,7 +55,7 @@ export const notificationRuleSchema = oneOf("Notification rule", NOTIFICATION_RU
  * "/dashboard/reports?project=<id>&report=<id>". Absolute URLs, "//host",
  * backslashes, fragments and "." / ".." segments are rejected.
  */
-export const notificationLinkSchema = text("Link", {
+const notificationLinkSchema = text("Link", {
   max: NOTIFICATION_LINK_MAX,
   pattern:
     /^\/(?:dashboard|admin)(?:\/(?!\.{1,2}(?:[/?]|$))[A-Za-z0-9._~-]+)*\/?(?:\?[A-Za-z0-9._~%=&+-]*)?$/,
@@ -112,6 +112,3 @@ export const invoiceNotifyFieldsSchema = z
     status: oneOf("Invoice status", INVOICE_STATUSES).optional(),
   })
   .strict();
-
-export type NotifyPayloadInput = z.infer<typeof notifyPayloadSchema>;
-export type CreateNotificationInput = z.infer<typeof createNotificationSchema>;

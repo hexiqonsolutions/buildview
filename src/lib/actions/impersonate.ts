@@ -21,7 +21,7 @@ const refreshTokenSchema = text("Refresh token", {
   pattern: /^[A-Za-z0-9._~+/=-]+$/,
 });
 
-export type LoginAsClientResult = { error: string } | undefined;
+type LoginAsClientResult = { error: string } | undefined;
 
 /**
  * Super admin impersonation: signs the current browser in as the target client

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { UpdateProjectStatusSelect } from "@/components/shared/update-project-status-select";
 import { formatDate } from "@/lib/utils";
 import { getMatterportThumbnailUrl } from "@/lib/matterport";
-import type { ProjectWithMeta } from "@/lib/actions/data";
+import type { ProjectWithMeta } from "@/lib/data/projects";
 import { useOptionalPortalWorkspace } from "@/components/portal/workspace/portal-workspace-provider";
 
 export function PortalProjectCard({

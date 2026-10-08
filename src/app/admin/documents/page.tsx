@@ -1,5 +1,5 @@
 import { FolderOpen } from "lucide-react";
-import { getProjects } from "@/lib/actions/data";
+import { getProjects } from "@/lib/data/projects";
 import {
   getScopedDocuments,
   getScopedFolders,

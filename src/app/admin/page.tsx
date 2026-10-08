@@ -1,5 +1,5 @@
 import { getCurrentUser } from "@/lib/actions/auth";
-import { getAdminOperationsStats } from "@/lib/actions/data";
+import { getAdminOperationsStats } from "@/lib/data/dashboard";
 import { OperationsDashboard } from "@/components/admin/ops/operations-dashboard";
 
 export default async function AdminDashboardPage() {

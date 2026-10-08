@@ -4,7 +4,7 @@ import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { isBuildViewStaffRole } from "@/lib/auth/roles";
 import type { UserRole } from "@/lib/types";
 
-export type ProjectActor = {
+type ProjectActor = {
   userId: string;
   role: UserRole;
   clientId: string | null;

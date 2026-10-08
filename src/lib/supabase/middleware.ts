@@ -12,18 +12,6 @@ import {
 } from "@/lib/auth/routes";
 import { getSupabasePublicConfig } from "@/lib/supabase/env";
 
-export {
-  AUTH_ROUTES,
-  SESSION_AUTH_ROUTES,
-  CLIENT_ROUTE_PREFIX,
-  ADMIN_ROUTE_PREFIX,
-  isAuthRoute,
-  isSessionAuthRoute,
-  isClientRoute,
-  isAdminRoute,
-  isProtectedRoute,
-} from "@/lib/auth/routes";
-
 interface UserProfile {
   role: UserRole;
   is_active: boolean;
@@ -48,7 +36,7 @@ function safeRedirectPath(path: string | null): string {
   return path;
 }
 
-export interface SessionResult {
+interface SessionResult {
   response: NextResponse;
   /** Signed-in Supabase user, if any (used for per-user rate limits). */
   userId: string | null;
@@ -185,9 +173,6 @@ async function runSession(request: NextRequest): Promise<SessionResult | NextRes
       redirectUrl.searchParams.set("error", "unauthorized");
       return redirectWithSessionCookies(redirectUrl, supabaseResponse);
     }
-
-    supabaseResponse.headers.set("x-buildview-user-role", profile.role);
-    supabaseResponse.headers.set("x-buildview-user-id", user.id);
   }
 
   return { response: supabaseResponse, userId: user?.id ?? null };
@@ -213,6 +198,3 @@ function isActiveProfile(profile: UserProfile | null): profile is UserProfile {
     profile.is_active === true
   );
 }
-
-/** Post-login redirect based on role (used by auth actions). */
-export { getDefaultRedirect };

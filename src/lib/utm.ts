@@ -1,4 +1,4 @@
-export type UtmParams = {
+type UtmParams = {
   utm_source: string;
   utm_medium: string;
   utm_campaign: string;
@@ -57,19 +57,4 @@ export function withUtm(
     url.searchParams.set("utm_content", utmContent);
   }
   return `${url.pathname}${url.search}${url.hash}`;
-}
-
-export function absoluteUtmUrl(
-  path: string,
-  params: UtmParams,
-  content?: string,
-  origin?: string
-): string {
-  const base = (
-    origin ??
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    process.env.NEXT_PUBLIC_APP_URL ??
-    "https://buildview.io"
-  ).replace(/\/$/, "");
-  return `${base}${withUtm(path, params, content)}`;
 }

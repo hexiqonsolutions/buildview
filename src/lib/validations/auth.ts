@@ -22,7 +22,7 @@ function newPassword(label = "Password") {
  * Same-site path to return to after auth, e.g. "/dashboard/projects?tab=docs".
  * Rejects absolute URLs, protocol-relative "//host" and "/\host" forms.
  */
-export const redirectPathSchema = z
+const redirectPathSchema = z
   .string({ invalid_type_error: "Redirect must be a path" })
   .max(512, "Redirect path is too long")
   .regex(
@@ -87,8 +87,3 @@ export const authCallbackSchema = z.object({
     .regex(/^[A-Za-z0-9._~-]+$/),
   next: redirectPathSchema.optional(),
 });
-
-export type LoginInput = z.infer<typeof loginSchema>;
-export type RegisterInput = z.infer<typeof registerSchema>;
-export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
-export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;

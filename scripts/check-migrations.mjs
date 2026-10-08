@@ -1,31 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
-import { readFileSync, existsSync } from "fs";
-import { resolve, dirname } from "path";
-import { fileURLToPath } from "url";
+import { loadEnvFile } from "./lib/env.mjs";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const envPath = resolve(__dirname, "..", ".env.local");
+loadEnvFile();
 
-function loadEnv() {
-  if (!existsSync(envPath)) {
-    console.error("Missing .env.local — copy from .env.example first.");
-    process.exit(1);
-  }
-  for (const line of readFileSync(envPath, "utf8").split("\n")) {
-    const t = line.trim();
-    if (!t || t.startsWith("#")) continue;
-    const i = t.indexOf("=");
-    if (i === -1) continue;
-    const k = t.slice(0, i).trim();
-    let v = t.slice(i + 1).trim();
-    if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
-      v = v.slice(1, -1);
-    }
-    if (!process.env[k]) process.env[k] = v;
-  }
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  console.error("Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY — run npm run env:check.");
+  process.exit(1);
 }
-
-loadEnv();
 
 const admin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -33,10 +14,11 @@ const admin = createClient(
   { auth: { autoRefreshToken: false, persistSession: false } }
 );
 
+// Only migrations that add a table, column, or bucket can be probed over the REST API.
+// Function, policy, enum, and data migrations (020–023, 025, 026, 029) must be tracked manually.
 const checks = [
   { name: "001 core schema", table: "projects" },
   { name: "004 project_comments", table: "project_comments" },
-  { name: "007 extended roles", table: "users", column: "role" },
   { name: "008 buildings/floors", table: "buildings" },
   { name: "009 platform_settings", table: "platform_settings" },
   { name: "011 spatial scope cols", table: "documents", column: "building_id" },
@@ -44,25 +26,41 @@ const checks = [
   { name: "013 spatial FK cols", table: "issues", column: "building_id" },
   { name: "014 tour spatial FK", table: "project_tours", column: "building_id" },
   { name: "015 saved_comparisons", table: "saved_comparisons" },
+  { name: "016 timeline progress", table: "timeline_events", column: "progress_percent" },
+  { name: "017 dashboard type", table: "clients", column: "dashboard_type" },
+  { name: "018 portfolio fields", table: "projects", column: "portfolio_category" },
+  { name: "019 project-covers bucket", bucket: "project-covers" },
+  { name: "024 comment replies", table: "project_comments", column: "parent_id" },
+  { name: "027 project_media", table: "project_media" },
+  { name: "027 project-media bucket", bucket: "project-media" },
+  { name: "028 rate_limits", table: "rate_limits", column: "key" },
 ];
+
+async function probe(check) {
+  if (check.bucket) {
+    const { error } = await admin.storage.getBucket(check.bucket);
+    return error;
+  }
+  const { error } = await admin.from(check.table).select(check.column ?? "*").limit(1);
+  return error;
+}
 
 console.log("BuildView migration status\n");
 
 let missing = 0;
 for (const check of checks) {
-  const query = admin.from(check.table).select(check.column ?? "id").limit(1);
-  const { error } = await query;
-  const status = error ? `MISSING (${error.message})` : "OK";
+  const error = await probe(check);
   if (error) missing += 1;
-  console.log(`  ${check.name}: ${status}`);
+  console.log(`  ${check.name}: ${error ? `MISSING (${error.message})` : "OK"}`);
 }
 
+console.log("\n  Not detectable here — confirm in the SQL Editor: 020–023, 025, 026, 029");
 console.log("");
 if (missing > 0) {
-  console.log(`${missing} migration(s) not applied.`);
-  console.log("Run: npm run db:apply  (requires DATABASE_URL in .env.local)");
-  console.log("Or apply manually via Supabase SQL Editor — see DEPLOYMENT.md");
+  console.log(`${missing} check(s) failed.`);
+  console.log("Apply with: npm run db:apply -- <numbers>   (requires DATABASE_URL)");
+  console.log("Or paste the files into the Supabase SQL Editor — see DEPLOYMENT.md");
   process.exit(1);
 }
 
-console.log("All checked migrations are applied.");
+console.log("All detectable migrations are applied.");

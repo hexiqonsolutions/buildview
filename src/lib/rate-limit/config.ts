@@ -12,7 +12,7 @@
  */
 
 /** Fixed window: at most `limit` requests per `windowSeconds`. */
-export interface WindowPolicy {
+interface WindowPolicy {
   kind: "window";
   limit: number;
   windowSeconds: number;
@@ -32,7 +32,7 @@ export interface BackoffPolicy {
   resetAfterSeconds: number;
 }
 
-export type RateLimitPolicy = WindowPolicy | BackoffPolicy;
+type RateLimitPolicy = WindowPolicy | BackoffPolicy;
 
 const window = (limit: number, windowSeconds: number): WindowPolicy => ({
   kind: "window",
@@ -75,7 +75,7 @@ const DEFAULT_POLICIES = {
   authenticated: window(300, 60),
 } satisfies Record<string, RateLimitPolicy>;
 
-export type RateLimitPolicyName = keyof typeof DEFAULT_POLICIES;
+type RateLimitPolicyName = keyof typeof DEFAULT_POLICIES;
 
 type PoliciesOfKind<K extends RateLimitPolicy["kind"]> = {
   [P in RateLimitPolicyName]: (typeof DEFAULT_POLICIES)[P]["kind"] extends K
@@ -86,7 +86,7 @@ type PoliciesOfKind<K extends RateLimitPolicy["kind"]> = {
 export type WindowPolicyName = PoliciesOfKind<"window">;
 export type BackoffPolicyName = PoliciesOfKind<"backoff">;
 
-export interface RateLimitConfig {
+interface RateLimitConfig {
   enabled: boolean;
   store: "database" | "memory";
   policies: { [P in RateLimitPolicyName]: (typeof DEFAULT_POLICIES)[P] };
@@ -106,7 +106,7 @@ function toEnvSegment(policyName: string): string {
 }
 
 /** Env var that overrides one policy field, e.g. RATE_LIMIT_PUBLIC_API_LIMIT. */
-export function policyEnvVar(
+function policyEnvVar(
   policyName: RateLimitPolicyName,
   field: keyof typeof FIELD_ENV_SUFFIX
 ): string {

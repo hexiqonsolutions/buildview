@@ -1,7 +1,7 @@
-export const COOKIE_CONSENT_KEY = "buildview-cookie-consent";
+const COOKIE_CONSENT_KEY = "buildview-cookie-consent";
 export const COOKIE_CONSENT_EVENT = "buildview-cookie-consent-change";
 
-export type CookieConsentValue = "accepted" | "dismissed";
+type CookieConsentValue = "accepted" | "dismissed";
 
 export function readCookieConsent(): CookieConsentValue | null {
   if (typeof window === "undefined") return null;

@@ -1,18 +1,18 @@
 import { getProjectProgressPercent } from "@/lib/utils";
 
-export type TimelineProgressEvent = {
+type TimelineProgressEvent = {
   project_id: string;
   event_date: string;
   progress_percent?: number | null;
 };
 
-export type ProgressDistributionItem = {
+type ProgressDistributionItem = {
   name: string;
   value: number;
   percent: number;
 };
 
-export type MonthlyProgressPoint = {
+type MonthlyProgressPoint = {
   month: string;
   progress: number;
 };

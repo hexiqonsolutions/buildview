@@ -14,7 +14,7 @@ import {
 import { formatDate } from "@/lib/utils";
 import type { TimelineEventWithRelations, TimelinePhoto } from "@/lib/types";
 
-export type ProjectSitePhoto = TimelinePhoto & {
+type ProjectSitePhoto = TimelinePhoto & {
   event_title: string;
   event_date: string;
   building?: string | null;

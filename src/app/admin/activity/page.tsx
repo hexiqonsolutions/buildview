@@ -1,5 +1,6 @@
 import { getActivityLogs } from "@/lib/actions/activity";
-import { getProjects, getAllUsers } from "@/lib/actions/data";
+import { getProjects } from "@/lib/data/projects";
+import { getAllUsers } from "@/lib/data/users";
 import { ActivityLogViewer } from "@/components/admin/activity/activity-log-viewer";
 import { OpsWorkspacePage } from "@/components/admin/ops/ops-workspace-page";
 import { Activity } from "lucide-react";

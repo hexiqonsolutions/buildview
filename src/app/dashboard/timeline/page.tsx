@@ -1,4 +1,4 @@
-import { getClientTimelinePageData } from "@/lib/actions/data";
+import { getClientTimelinePageData } from "@/lib/data/timeline";
 import {
   getPortalScopedTimelinePageData,
   parsePortalWorkspaceScopeFromParams,

@@ -15,7 +15,7 @@ export const contactFormSchema = z
   })
   .strict();
 
-export type ContactFormInput = z.infer<typeof contactFormSchema>;
+type ContactFormInput = z.infer<typeof contactFormSchema>;
 
 const interestLabels: Record<ContactFormInput["interest"], string> = {
   demo: "Request a Live Demo",

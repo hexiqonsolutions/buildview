@@ -1,10 +1,7 @@
 import Link from "next/link";
-import {
-  getAdminDashboardStats,
-  getAdminMarketingAuditStats,
-  getAdminOperationsStats,
-  getAdminStorageStats,
-} from "@/lib/actions/data";
+import { getAdminDashboardStats, getAdminOperationsStats } from "@/lib/data/dashboard";
+import { getAdminMarketingAuditStats } from "@/lib/data/marketing-audit";
+import { getAdminStorageStats } from "@/lib/data/storage";
 import { AdminBarChart } from "@/components/admin/admin-charts";
 import { AdminMetricCard } from "@/components/admin/admin-metric-card";
 import { OpsWorkspacePage } from "@/components/admin/ops/ops-workspace-page";
@@ -25,7 +22,8 @@ import {
   Building2,
   Shield,
 } from "lucide-react";
-import { formatCurrency, formatDate, formatStatus } from "@/lib/utils";
+import { formatCurrency } from "@/lib/currency";
+import { formatDate, formatStatus } from "@/lib/utils";
 
 function formatGb(bytes: number) {
   return `${Math.round((bytes / 1_073_741_824) * 10) / 10} GB`;

@@ -5,7 +5,7 @@ import { FolderKanban, Sparkles } from "lucide-react";
 import { PortalProjectCard } from "@/components/portal/portal-project-card";
 import { IntelPage } from "@/components/intel/pages/intel-page";
 import { scopeToPortalQueryString } from "@/lib/admin/scope";
-import type { ProjectWithMeta } from "@/lib/actions/data";
+import type { ProjectWithMeta } from "@/lib/data/projects";
 import { usePortalWorkspace } from "@/components/portal/workspace/portal-workspace-provider";
 
 export function ClientProjectsGallery({

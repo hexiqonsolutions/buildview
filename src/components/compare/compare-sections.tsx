@@ -93,59 +93,40 @@ function ProgressRing({
   );
 }
 
-export function CompareProgressSidebar({ snapshot }: { snapshot: ComparisonSnapshot }) {
-  return (
-    <WidgetCard title="Progress Summary" className="h-full">
-      <TradeProgressList snapshot={snapshot} />
-      <div className="mt-6 flex justify-center border-t border-slate-100 pt-6 dark:border-slate-800">
-        <ProgressRing
-          value={snapshot.kpis.currentProgress}
-          delta={snapshot.kpis.difference}
-          previous={snapshot.kpis.previousProgress}
-        />
-      </div>
-    </WidgetCard>
-  );
-}
+type TradeProgressItem = ComparisonSnapshot["tradeProgress"][number];
 
-function TradeProgressList({ snapshot }: { snapshot: ComparisonSnapshot }) {
+// Trades only carry a coarse status, so the bar shows a fixed fill per stage rather than a measured %.
+const TRADE_STAGE_FILL: Record<string, string> = {
+  completed: "100%",
+  in_progress: "60%",
+  started: "25%",
+};
+
+function TradeProgressRow({ item }: { item: TradeProgressItem }) {
   return (
-    <div className="space-y-3">
-      {snapshot.tradeProgress.map((item) => (
-        <div key={item.trade} className="flex items-center justify-between gap-2">
-          <span className="text-sm text-slate-700 dark:text-slate-300">{item.trade}</span>
-          <div className="flex items-center gap-2">
-            {item.delta !== undefined && item.delta > 0 && (
-              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">+{item.delta}%</span>
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-sm text-slate-700 dark:text-slate-300">{item.trade}</span>
+      <div className="flex items-center gap-2">
+        {item.delta !== undefined && item.delta > 0 && (
+          <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">+{item.delta}%</span>
+        )}
+        {item.delta === 0 && item.status === "pending" && (
+          <span className="text-xs text-slate-400">0%</span>
+        )}
+        <div className="h-1.5 w-14 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+          <div
+            className={cn(
+              "h-full rounded-full",
+              item.status === "completed"
+                ? "bg-slate-800 dark:bg-slate-200"
+                : item.status === "in_progress"
+                  ? "bg-slate-500"
+                  : "bg-slate-300"
             )}
-            {item.delta === 0 && item.status === "pending" && (
-              <span className="text-xs text-slate-400">0%</span>
-            )}
-            <div className="h-1.5 w-16 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-              <div
-                className={cn(
-                  "h-full rounded-full",
-                  item.status === "completed"
-                    ? "bg-slate-800 dark:bg-slate-200"
-                    : item.status === "in_progress"
-                      ? "bg-slate-500"
-                      : "bg-slate-300"
-                )}
-                style={{
-                  width:
-                    item.status === "completed"
-                      ? "100%"
-                      : item.status === "in_progress"
-                        ? "60%"
-                        : item.status === "started"
-                          ? "25%"
-                          : "5%",
-                }}
-              />
-            </div>
-          </div>
+            style={{ width: TRADE_STAGE_FILL[item.status] ?? "5%" }}
+          />
         </div>
-      ))}
+      </div>
     </div>
   );
 }
@@ -157,39 +138,7 @@ export function CompareProgressSummary({ snapshot }: { snapshot: ComparisonSnaps
       <div className="grid grid-cols-1 items-center gap-8 lg:grid-cols-[1fr_auto]">
         <div className="grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2 xl:grid-cols-4">
           {snapshot.tradeProgress.map((item) => (
-            <div key={item.trade} className="flex items-center justify-between gap-3">
-              <span className="text-sm text-slate-700 dark:text-slate-300">{item.trade}</span>
-              <div className="flex items-center gap-2">
-                {item.delta !== undefined && item.delta > 0 && (
-                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">+{item.delta}%</span>
-                )}
-                {item.delta === 0 && item.status === "pending" && (
-                  <span className="text-xs text-slate-400">0%</span>
-                )}
-                <div className="h-1.5 w-14 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                  <div
-                    className={cn(
-                      "h-full rounded-full",
-                      item.status === "completed"
-                        ? "bg-slate-800 dark:bg-slate-200"
-                        : item.status === "in_progress"
-                          ? "bg-slate-500"
-                          : "bg-slate-300"
-                    )}
-                    style={{
-                      width:
-                        item.status === "completed"
-                          ? "100%"
-                          : item.status === "in_progress"
-                            ? "60%"
-                            : item.status === "started"
-                              ? "25%"
-                              : "5%",
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
+            <TradeProgressRow key={item.trade} item={item} />
           ))}
         </div>
         <div className="flex justify-center lg:justify-end">
@@ -757,42 +706,4 @@ export function CompareAiSummary({
       </div>
     </div>
   );
-}
-
-/** @deprecated use CompareKpiRow */
-export function CompareKpiGrid(props: { snapshot: ComparisonSnapshot }) {
-  return <CompareKpiRow {...props} />;
-}
-
-/** @deprecated use CompareProgressSummary */
-export function CompareProgressPanel(props: { snapshot: ComparisonSnapshot }) {
-  return <CompareProgressSidebar {...props} />;
-}
-
-export function CompareVisualChanges(props: { snapshot: ComparisonSnapshot }) {
-  return <CompareChangesOverview {...props} />;
-}
-
-export function CompareDocumentsTable(props: { snapshot: ComparisonSnapshot }) {
-  return <CompareDocumentsMatrix {...props} />;
-}
-
-export function CompareReportsGrid(props: { snapshot: ComparisonSnapshot }) {
-  return <CompareReportsTable {...props} />;
-}
-
-export function CompareIssuesGrid(props: { snapshot: ComparisonSnapshot }) {
-  return <CompareIssuesStats {...props} />;
-}
-
-export function ComparePhotoSlider(props: { snapshot: ComparisonSnapshot }) {
-  return <ComparePhotoCarousel {...props} />;
-}
-
-export function CompareTimelineStrip(props: { snapshot: ComparisonSnapshot }) {
-  return <CompareHorizontalTimeline {...props} />;
-}
-
-export function CompareAiPanel(props: { snapshot: ComparisonSnapshot }) {
-  return <CompareAiSummary {...props} />;
 }

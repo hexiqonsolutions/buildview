@@ -33,3 +33,15 @@ export const DEFAULT_WORKSPACE: WorkspaceScope = {
   buildingId: null,
   floorId: null,
 };
+
+/** Last workspace scope persisted in localStorage; callers still validate it against the bootstrap. */
+export function readStoredWorkspaceScope(storageKey: string): WorkspaceScope {
+  if (typeof window === "undefined") return DEFAULT_WORKSPACE;
+  try {
+    const raw = localStorage.getItem(storageKey);
+    if (!raw) return DEFAULT_WORKSPACE;
+    return { ...DEFAULT_WORKSPACE, ...JSON.parse(raw) } as WorkspaceScope;
+  } catch {
+    return DEFAULT_WORKSPACE;
+  }
+}

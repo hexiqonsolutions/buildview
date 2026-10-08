@@ -26,6 +26,7 @@ export default async function OpenGraphImage() {
           overflow: "hidden",
         }}
       >
+        {/* eslint-disable-next-line @next/next/no-img-element -- ImageResponse renders plain HTML; next/image is not supported here */}
         <img
           src={photoSrc}
           alt=""

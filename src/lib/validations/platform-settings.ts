@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { optionalEmail, optionalText, LIMITS } from "@/lib/validations/primitives";
-import { notificationRuleSchema } from "@/lib/validations/notifications";
 
 function isKnownTimeZone(value: string): boolean {
   try {
@@ -16,7 +15,7 @@ const ruleToggle = z.boolean({
   invalid_type_error: "Notification rules must be true or false",
 });
 
-export const notificationRulesSchema = z
+const notificationRulesSchema = z
   .object({
     onUpload: ruleToggle,
     onCriticalIssue: ruleToggle,
@@ -52,7 +51,3 @@ export const updatePlatformSettingsSchema = z
     notifications: notificationRulesSchema,
   })
   .strict();
-
-export { notificationRuleSchema };
-
-export type UpdatePlatformSettingsInput = z.infer<typeof updatePlatformSettingsSchema>;

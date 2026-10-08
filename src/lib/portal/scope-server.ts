@@ -1,3 +1,5 @@
+import "server-only";
+
 import {
   filterBySpatialScope,
   filterProjectsByScope,
@@ -8,25 +10,16 @@ import {
 import type { WorkspaceScope } from "@/lib/admin/workspace";
 import { normalizeWorkspaceScope } from "@/lib/admin/workspace-scope";
 import { portalToAdminBootstrap } from "@/lib/portal/workspace";
-import {
-  getAccessibleTours,
-  getAllDocuments,
-  getAllFolders,
-  getAllIssues,
-  getAllReports,
-  getInvoices,
-  getPortalWorkspaceBootstrap,
-  getProjects,
-  getTimelinePageData,
-} from "@/lib/actions/data";
-import { getNotifications } from "@/lib/actions/notifications";
-import {
-  filterNotificationsByProjectScope,
-  isNarrowPortalScope,
-} from "@/lib/portal/notification-scope";
+import { getAllDocuments, getAllFolders } from "@/lib/data/documents";
+import { getInvoices } from "@/lib/data/invoices";
+import { getAllIssues } from "@/lib/data/issues";
+import { getProjects } from "@/lib/data/projects";
+import { getAllReports } from "@/lib/data/reports";
+import { getTimelinePageData } from "@/lib/data/timeline";
+import { getAccessibleTours } from "@/lib/data/tours";
+import { getPortalWorkspaceBootstrap } from "@/lib/data/workspace";
+import { isNarrowPortalScope } from "@/lib/portal/notification-scope";
 import type { Invoice, ProjectTour } from "@/lib/types";
-
-export { parseWorkspaceScope };
 
 async function withPortalNormalizedScope(scope: WorkspaceScope): Promise<WorkspaceScope> {
   const bootstrap = await getPortalWorkspaceBootstrap();
@@ -132,11 +125,4 @@ export async function getPortalScopedInvoices(scope: WorkspaceScope): Promise<In
 
   const ids = await scopedProjectIds(normalized);
   return invoices.filter((invoice) => !invoice.project_id || ids.has(invoice.project_id));
-}
-
-export async function getPortalScopedNotifications(scope: WorkspaceScope) {
-  const normalized = await withPortalNormalizedScope(scope);
-  const notifications = await getNotifications();
-  const ids = await scopedProjectIds(normalized);
-  return filterNotificationsByProjectScope(notifications, ids, normalized);
 }

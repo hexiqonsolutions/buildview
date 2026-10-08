@@ -1,14 +1,16 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { getCurrentUser } from "@/lib/actions/auth";
-import { getAdminWorkspaceBootstrap } from "@/lib/actions/data";
+import { getAdminWorkspaceBootstrap } from "@/lib/data/workspace";
 import { getUnreadNotificationCount } from "@/lib/actions/notifications";
 import { AdminShell } from "@/components/admin/layout/admin-shell";
 import { PageLoadingSkeleton } from "@/components/patterns/page-states";
 import { canAccessAdmin } from "@/lib/auth/permissions";
-import { ensureUserProfile } from "@/lib/supabase/provision-user";
-import { getAuthUser } from "@/lib/supabase/server";
+import { privateMetadata } from "@/lib/seo";
 import type { User } from "@/lib/types";
+
+export const metadata: Metadata = privateMetadata;
 
 function toPortalUser(user: NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>): User {
   const email = user.email?.trim() || "user@buildview.local";
@@ -37,15 +39,8 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  let user = await getCurrentUser();
-
-  if (!user) {
-    const authUser = await getAuthUser();
-    if (authUser) {
-      await ensureUserProfile(authUser);
-      user = await getCurrentUser();
-    }
-  }
+  // getCurrentUser already provisions a missing profile row and retries once.
+  const user = await getCurrentUser();
 
   if (!user) {
     redirect("/login?error=profile_setup_failed&redirect=/admin");

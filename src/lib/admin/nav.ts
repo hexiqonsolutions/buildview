@@ -14,7 +14,7 @@ const ADMIN_NO_WORKSPACE_EXACT = new Set([
 ]);
 
 /** Routes that should keep the active admin workspace in the URL. */
-export function adminHrefShouldCarryWorkspace(href: string): boolean {
+function adminHrefShouldCarryWorkspace(href: string): boolean {
   const path = href.split("?")[0] ?? href;
 
   if (ADMIN_NO_WORKSPACE_EXACT.has(path)) {

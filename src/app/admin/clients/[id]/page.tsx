@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getClientDetail } from "@/lib/actions/data";
+import { getClientDetail } from "@/lib/data/clients";
 import { getUserProfile } from "@/lib/supabase/server";
 import { canImpersonate } from "@/lib/auth/permissions";
 import { ClientWorkspaceTabs } from "@/components/admin/clients/client-workspace-tabs";

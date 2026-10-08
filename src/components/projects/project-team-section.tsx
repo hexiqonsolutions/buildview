@@ -3,19 +3,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { USER_ROLE_LABELS, type UserRole } from "@/lib/types";
-import type { ProjectTeamMember } from "@/lib/actions/data";
+import type { ProjectTeamMember } from "@/lib/data/projects";
 import { isBuildViewStaffRole } from "@/lib/auth/roles";
-import { cn } from "@/lib/utils";
-
-function initials(name?: string | null, email?: string | null) {
-  const source = name?.trim() || email?.trim() || "?";
-  return source
-    .split(" ")
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}
+import { cn, getInitials } from "@/lib/utils";
 
 function roleBadgeClass(role: UserRole) {
   if (isBuildViewStaffRole(role)) {
@@ -52,7 +42,7 @@ export function ProjectTeamSection({ members }: { members: ProjectTeamMember[] }
                 alt={member.full_name || member.email}
               />
               <AvatarFallback className="bg-slate-100 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                {initials(member.full_name, member.email)}
+                {getInitials(member.full_name, member.email)}
               </AvatarFallback>
             </Avatar>
 

@@ -26,6 +26,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/lib/actions/auth";
 import type { User as UserType } from "@/lib/types";
+import { getInitials } from "@/lib/utils";
 import { NotificationBell } from "@/components/admin/notifications/notification-bell";
 import { IntelCommandPalette } from "@/components/intel/shell/intel-command-palette";
 import { usePortalWorkspaceHref } from "@/components/portal/workspace/use-portal-workspace-href";
@@ -76,12 +77,7 @@ export function IntelHeader({
   }
 
   const displayName = user.full_name?.trim() || user.email?.split("@")[0] || "User";
-  const initials = displayName
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
+  const initials = getInitials(displayName);
 
   return (
     <header className="intel-header">

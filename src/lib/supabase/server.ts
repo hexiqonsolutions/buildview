@@ -1,18 +1,19 @@
+import "server-only";
+
+import { cache } from "react";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { Database } from "@/lib/types";
-import type { AuthUserProfile, User } from "@/lib/types";
+import type { AuthUserProfile } from "@/lib/types";
 import { canAccessAdmin } from "@/lib/auth/permissions";
 import { getSupabasePublicConfig } from "@/lib/supabase/env";
 import { ensureUserProfile } from "@/lib/supabase/provision-user";
 
-export type SupabaseServerClient = ReturnType<
+type SupabaseServerClient = ReturnType<
   typeof createServerClient<Database>
 >;
 
-export type { SupabaseServiceRoleClient } from "@/lib/supabase/admin";
-export { createServiceRoleClient } from "@/lib/supabase/admin";
 /**
  * Server-side Supabase client for Server Components, Route Handlers, and Server Actions.
  * Reads and writes auth cookies via Next.js cookies().
@@ -56,8 +57,8 @@ export async function getAuthUser() {
   return user;
 }
 
-/** Returns the BuildView user profile joined with client data, or null. */
-export async function getUserProfile(): Promise<AuthUserProfile | null> {
+/** Returns the BuildView user profile, or null. Deduplicated per request. */
+export const getUserProfile = cache(async (): Promise<AuthUserProfile | null> => {
   const supabase = await createClient();
   const {
     data: { user },
@@ -93,21 +94,10 @@ export async function getUserProfile(): Promise<AuthUserProfile | null> {
   }
 
   return profile as AuthUserProfile;
-}
-
-/** Returns true when the current user is active BuildView staff. */
-export async function isBuildViewStaff(): Promise<boolean> {
-  const profile = await getUserProfile();
-  return profile != null && profile.is_active === true && canAccessAdmin(profile.role);
-}
-
-/** @deprecated Use isBuildViewStaff */
-export async function isSuperAdmin(): Promise<boolean> {
-  return isBuildViewStaff();
-}
+});
 
 /** Returns the current user profile or redirects to login. */
-export async function requireAuth(
+async function requireAuth(
   redirectTo = "/login"
 ): Promise<AuthUserProfile> {
   const profile = await getUserProfile();
@@ -128,28 +118,4 @@ export async function requireBuildViewStaff(): Promise<AuthUserProfile> {
   }
 
   return profile;
-}
-
-/** @deprecated Use requireBuildViewStaff */
-export async function requireSuperAdmin(): Promise<AuthUserProfile> {
-  return requireBuildViewStaff();
-}
-
-/** Lightweight profile fetch for middleware-style checks (no client join). */
-export async function getUserRole(
-  userId: string
-): Promise<Pick<User, "role" | "is_active" | "deleted_at"> | null> {
-  const supabase = await createClient();
-
-  const { data, error } = await supabase
-    .from("users")
-    .select("role, is_active, deleted_at")
-    .eq("id", userId)
-    .single();
-
-  if (error || !data) {
-    return null;
-  }
-
-  return data;
 }

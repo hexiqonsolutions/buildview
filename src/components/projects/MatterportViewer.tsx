@@ -12,7 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 import { getMatterportEmbedUrl, isValidMatterportUrl } from "@/lib/matterport";
 
-export interface MatterportViewerProps {
+interface MatterportViewerProps {
   /** 360° tour share URL or model ID */
   url: string;
   /** Accessible title for the iframe */

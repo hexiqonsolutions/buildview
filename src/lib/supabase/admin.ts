@@ -3,12 +3,12 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/types";
 import { getSupabaseUrl } from "@/lib/supabase/env";
 
-export type SupabaseServiceRoleClient = ReturnType<
+type SupabaseServiceRoleClient = ReturnType<
   typeof createSupabaseClient<Database>
 >;
 
 /** Service role key — bypasses RLS. Lives here (not env.ts) because env.ts also ships to the browser. */
-export function getServiceRoleKey(): string {
+function getServiceRoleKey(): string {
   const value = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!value) {
     throw new Error(

@@ -120,7 +120,7 @@ export function personName(label = "Name", { min = 2, max = LIMITS.name }: { min
   });
 }
 
-export function phone(label = "Phone number") {
+function phone(label = "Phone number") {
   return text(label, {
     min: 7,
     max: LIMITS.phone,
@@ -145,14 +145,6 @@ export function optionalIsoDate(label = "Date") {
   return optional(isoDate(label));
 }
 
-/** ISO 8601 timestamp, e.g. 2026-10-06T09:30:00.000Z or with an offset. */
-export function isoDateTime(label = "Date and time") {
-  return z
-    .string({ required_error: `${label} is required`, invalid_type_error: `${label} must be a timestamp` })
-    .trim()
-    .datetime({ offset: true, message: `${label} must be a valid ISO timestamp` });
-}
-
 export function httpsUrl(label = "URL") {
   return z
     .string({ required_error: `${label} is required`, invalid_type_error: `${label} must be text` })
@@ -160,10 +152,6 @@ export function httpsUrl(label = "URL") {
     .max(LIMITS.url, `${label} must be at most ${LIMITS.url} characters`)
     .url(`${label} must be a valid URL`)
     .refine((value) => value.startsWith("https://"), { message: `${label} must start with https://` });
-}
-
-export function optionalHttpsUrl(label = "URL") {
-  return optional(httpsUrl(label));
 }
 
 export function int(label: string, { min, max }: { min: number; max: number }) {
@@ -184,27 +172,6 @@ export function money(label = "Amount", { max = 1_000_000_000 }: { max?: number 
     .refine((value) => Math.abs(value * 100 - Math.round(value * 100)) < 1e-6, {
       message: `${label} can have at most 2 decimal places`,
     });
-}
-
-/** Number arriving as a FormData string ("12", "12.5"); rejects anything else. */
-export function numericString(label: string) {
-  return z
-    .string({ required_error: `${label} is required`, invalid_type_error: `${label} must be a number` })
-    .trim()
-    .regex(/^-?\d+(\.\d+)?$/, `${label} must be a number`)
-    .transform(Number);
-}
-
-/** Boolean arriving from a form ("true"/"false"/"on"/"1"/"0") or a real boolean. */
-export function formBoolean(label = "Value") {
-  return z.union([
-    z.boolean(),
-    z
-      .enum(["true", "false", "on", "off", "1", "0"], {
-        errorMap: () => ({ message: `${label} must be true or false` }),
-      })
-      .transform((value) => value === "true" || value === "on" || value === "1"),
-  ]);
 }
 
 export function oneOf<const T extends readonly [string, ...string[]]>(label: string, values: T) {
@@ -263,53 +230,4 @@ export function searchQuery(label = "Search") {
 /** Page size / result limit. */
 export function limit(label = "Limit", { max = 100 }: { max?: number } = {}) {
   return int(label, { min: 1, max });
-}
-
-interface FileRules {
-  maxBytes: number;
-  /** Allowed MIME types; omit to allow any type. */
-  mimeTypes?: readonly string[];
-  /** Blocked lowercase extensions including the dot, e.g. ".exe". */
-  blockedExtensions?: readonly string[];
-}
-
-/** A `File` from FormData with size, type and name checks. */
-export function file(label: string, rules: FileRules) {
-  // Duck-typed: FormData files may come from a different File implementation than globalThis.File.
-  return z
-    .custom<File>(
-      (value) =>
-        typeof value === "object" &&
-        value !== null &&
-        typeof (value as File).arrayBuffer === "function" &&
-        typeof (value as File).size === "number" &&
-        typeof (value as File).name === "string" &&
-        typeof (value as File).type === "string",
-      { message: `${label} must be a file` }
-    )
-    .refine((value) => value.size > 0, { message: `${label} is empty` })
-    .refine((value) => value.size <= rules.maxBytes, {
-      message: `${label} must be at most ${Math.round(rules.maxBytes / 1024 / 1024)} MB`,
-    })
-    .refine((value) => value.name.length > 0 && value.name.length <= LIMITS.fileName && !CONTROL_CHARS_SINGLE_LINE.test(value.name), {
-      message: `${label} has an invalid file name`,
-    })
-    .refine((value) => !rules.mimeTypes || rules.mimeTypes.includes(value.type), {
-      message: `${label} has an unsupported file type`,
-    })
-    .refine(
-      (value) => {
-        if (!rules.blockedExtensions) return true;
-        const dot = value.name.lastIndexOf(".");
-        return dot === -1 || !rules.blockedExtensions.includes(value.name.slice(dot).toLowerCase());
-      },
-      { message: `${label} has a blocked file type` }
-    );
-}
-
-export function fileList(label: string, rules: FileRules & { min?: number; maxFiles: number }) {
-  return z
-    .array(file(label, rules))
-    .min(rules.min ?? 0, `Select at least ${rules.min ?? 0} file(s)`)
-    .max(rules.maxFiles, `You can upload up to ${rules.maxFiles} files at once`);
 }

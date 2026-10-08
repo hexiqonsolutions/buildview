@@ -120,8 +120,6 @@ export const addTimelinePhotosSchema = z
   })
   .strict();
 
-export type CreateTimelineEventInput = z.infer<typeof createTimelineEventSchema>;
-
 const ALLOWED_IMAGE_TYPES = [
   "image/jpeg",
   "image/png",
@@ -130,7 +128,7 @@ const ALLOWED_IMAGE_TYPES = [
   "image/heic",
 ];
 
-export function validateTimelinePhotoFile(file: File): string | null {
+function validateTimelinePhotoFile(file: File): string | null {
   if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
     return "Only JPEG, PNG, WebP, GIF, or HEIC images are allowed.";
   }

@@ -1,3 +1,5 @@
+import "server-only";
+
 import { createClient } from "@/lib/supabase/server";
 import { type StorageBucket } from "@/lib/types";
 import { internalError } from "@/lib/errors/server";

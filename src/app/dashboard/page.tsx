@@ -2,7 +2,7 @@ import { getCurrentUser } from "@/lib/actions/auth";
 import { parsePortalWorkspaceScopeFromParams } from "@/lib/portal/scope-server";
 import { getPortalScopedDashboardData } from "@/lib/portal/dashboard-data";
 import { getPortfolioDashboardData } from "@/lib/portal/portfolio-data";
-import { getPortalWorkspaceBootstrap } from "@/lib/actions/data";
+import { getPortalWorkspaceBootstrap } from "@/lib/data/workspace";
 import { ExecutiveOverviewShell } from "@/components/intel/dashboard/executive-overview-shell";
 import { PortfolioShowcaseShell } from "@/components/intel/dashboard/portfolio-showcase-shell";
 import { can } from "@/lib/auth/permissions";

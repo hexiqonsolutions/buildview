@@ -2,7 +2,8 @@ import { ReceiptIndianRupee } from "lucide-react";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { InvoiceDownloadButton } from "@/components/invoices/invoice-download-button";
-import { formatCurrency, formatDate, formatStatus, getStatusColor } from "@/lib/utils";
+import { formatCurrency } from "@/lib/currency";
+import { formatDate, formatStatus, getStatusColor } from "@/lib/utils";
 import type { Invoice } from "@/lib/types";
 
 export function ProjectInvoicesSection({ invoices }: { invoices: Invoice[] }) {

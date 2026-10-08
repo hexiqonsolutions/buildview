@@ -55,8 +55,6 @@ export const createReportActionSchema = z
   .strict()
   .superRefine(requireProjectStoragePath);
 
-export type CreateReportInput = z.infer<typeof createReportSchema>;
-
 export function validateReportFile(file: File): string | null {
   if (file.type !== "application/pdf") {
     return "Only PDF files are allowed.";

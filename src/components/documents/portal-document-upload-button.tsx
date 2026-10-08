@@ -10,10 +10,10 @@ import {
 } from "@/lib/actions/portal-documents";
 import {
   PORTAL_DOCUMENT_ACCEPT,
-  PORTAL_DOCUMENT_MAX_BYTES,
   documentNameFromFile,
   portalDocumentContentType,
 } from "@/lib/portal/document-upload";
+import { MAX_DOCUMENT_FILE_SIZE } from "@/lib/validations/document";
 import { DOCUMENT_CATEGORY_LABELS, STORAGE_BUCKETS, type DocumentCategory } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -74,7 +74,7 @@ export function PortalDocumentUploadButton({
     const next = e.target.files?.[0] ?? null;
     e.target.value = "";
     if (!next) return;
-    if (next.size > PORTAL_DOCUMENT_MAX_BYTES) {
+    if (next.size > MAX_DOCUMENT_FILE_SIZE) {
       setError("Files must be 100 MB or smaller.");
       return;
     }

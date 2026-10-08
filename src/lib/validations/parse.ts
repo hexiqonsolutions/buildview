@@ -6,7 +6,7 @@ export type ValidationResult<T> =
   | { success: false; error: string };
 
 /** Thrown by `parseOrThrow` for actions whose contract is to throw on bad input. */
-export class InvalidInputError extends PublicError {
+class InvalidInputError extends PublicError {
   constructor(message: string) {
     super(message);
     this.name = "InvalidInputError";
@@ -48,7 +48,7 @@ export function parseOrThrow<S extends z.ZodTypeAny>(schema: S, input: unknown):
  *   is always returned as an array.
  * Pair with a `.strict()` schema so unexpected fields are rejected.
  */
-export function formDataToObject(
+function formDataToObject(
   formData: FormData,
   { arrays = [] }: { arrays?: readonly string[] } = {}
 ): ValidationResult<Record<string, FormDataEntryValue | FormDataEntryValue[]>> {

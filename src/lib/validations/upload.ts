@@ -1,11 +1,7 @@
 import { z } from "zod";
 import { DEFAULT_CURRENCY } from "@/lib/currency";
 import { extractMatterportModelId } from "@/lib/matterport";
-import {
-  PORTAL_DOCUMENT_MAX_BYTES,
-  PORTAL_DOCUMENT_MIME_TYPES,
-  hasPortalDocumentExtension,
-} from "@/lib/portal/document-upload";
+import { PORTAL_DOCUMENT_MIME_TYPES, hasPortalDocumentExtension } from "@/lib/portal/document-upload";
 import {
   DOCUMENT_CATEGORY_LABELS,
   ISSUE_PRIORITY_LABELS,
@@ -34,25 +30,25 @@ import {
   uuid,
 } from "@/lib/validations/primitives";
 
-export const DOCUMENT_CATEGORIES = Object.keys(DOCUMENT_CATEGORY_LABELS) as [
+const DOCUMENT_CATEGORIES = Object.keys(DOCUMENT_CATEGORY_LABELS) as [
   DocumentCategory,
   ...DocumentCategory[],
 ];
-export const REPORT_TYPES = Object.keys(REPORT_TYPE_LABELS) as [ReportType, ...ReportType[]];
-export const ISSUE_PRIORITIES = Object.keys(ISSUE_PRIORITY_LABELS) as [
+const REPORT_TYPES = Object.keys(REPORT_TYPE_LABELS) as [ReportType, ...ReportType[]];
+const ISSUE_PRIORITIES = Object.keys(ISSUE_PRIORITY_LABELS) as [
   IssuePriority,
   ...IssuePriority[],
 ];
 
 /** Must match the (private) list in validateDocumentFile. */
-export const DOCUMENT_BLOCKED_EXTENSIONS = [".exe", ".bat", ".cmd", ".sh", ".ps1", ".msi"];
+const DOCUMENT_BLOCKED_EXTENSIONS = [".exe", ".bat", ".cmd", ".sh", ".ps1", ".msi"];
 
 /** Optional input that callers omit: undefined, null or "" all become `undefined`. */
-export function omittable<T extends z.ZodTypeAny>(schema: T) {
+function omittable<T extends z.ZodTypeAny>(schema: T) {
   return optional(schema).transform((value) => (value ?? undefined) as z.output<T> | undefined);
 }
 
-export function omittableText(label: string, options: Parameters<typeof optionalText>[1]) {
+function omittableText(label: string, options: Parameters<typeof optionalText>[1]) {
   return optionalText(label, options).transform((value) => value ?? undefined);
 }
 
@@ -303,7 +299,7 @@ export const uploadIssueSchema = z
 const portalDocumentFileName = fileName().refine(hasPortalDocumentExtension, {
   message: "This file type is not supported.",
 });
-const portalDocumentFileSize = fileSize("File size", { max: PORTAL_DOCUMENT_MAX_BYTES });
+const portalDocumentFileSize = fileSize("File size", { max: MAX_DOCUMENT_FILE_SIZE });
 
 export const portalDocumentUploadUrlSchema = z
   .object({

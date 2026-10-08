@@ -23,7 +23,8 @@ const documentCategories = [
   "other",
 ] as const satisfies readonly DocumentCategory[];
 
-export const MAX_DOCUMENT_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
+/** Matches the `documents` storage bucket limit (migration 003). */
+export const MAX_DOCUMENT_FILE_SIZE = 100 * 1024 * 1024;
 
 const BLOCKED_EXTENSIONS = [".exe", ".bat", ".cmd", ".sh", ".ps1", ".msi"];
 
@@ -102,9 +103,6 @@ export const replaceDocumentSchema = z
     change_note: optionalText("Change note", { max: LIMITS.description, multiline: true }),
   })
   .strict();
-
-export type CreateFolderInput = z.infer<typeof createFolderSchema>;
-export type CreateDocumentInput = z.infer<typeof createDocumentSchema>;
 
 export function validateDocumentFile(file: File): string | null {
   if (file.size > MAX_DOCUMENT_FILE_SIZE) {

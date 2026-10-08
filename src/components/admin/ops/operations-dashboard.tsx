@@ -17,13 +17,14 @@ import {
   Building2,
   ReceiptIndianRupee,
 } from "lucide-react";
-import type { AdminOperationsStats } from "@/lib/actions/data";
+import type { AdminOperationsStats } from "@/lib/data/dashboard";
 import { AdminMetricCard } from "@/components/admin/admin-metric-card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAdminWorkspace } from "@/components/admin/workspace/admin-workspace-provider";
-import { formatCurrency, formatDate, formatRelativeTime } from "@/lib/utils";
+import { formatCurrency } from "@/lib/currency";
+import { formatDate, formatRelativeTime } from "@/lib/utils";
 
 interface OperationsDashboardProps {
   stats: AdminOperationsStats;

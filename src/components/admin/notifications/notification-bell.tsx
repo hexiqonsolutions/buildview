@@ -28,14 +28,6 @@ import {
 import { cn, formatRelativeTime } from "@/lib/utils";
 import type { Notification, NotificationType } from "@/lib/types";
 
-export const NOTIFICATIONS_CHANGED_EVENT = "buildview:notifications-changed";
-
-export function notifyNotificationsChanged() {
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED_EVENT));
-  }
-}
-
 const DROPDOWN_LIMIT = 30;
 
 const TYPE_ICONS: Record<NotificationType, React.ComponentType<{ className?: string }>> = {
@@ -118,14 +110,6 @@ export function NotificationBell({
     void refreshCount();
     const interval = window.setInterval(refreshCount, 120_000);
     return () => window.clearInterval(interval);
-  }, [refreshCount]);
-
-  useEffect(() => {
-    function onChanged() {
-      void refreshCount();
-    }
-    window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, onChanged);
-    return () => window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, onChanged);
   }, [refreshCount]);
 
   function handleOpenChange(next: boolean) {

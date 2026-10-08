@@ -18,7 +18,7 @@ export interface Sponsor {
  * Only publish companies BuildView actually uses or partners with.
  * Unverified logos stay inactive so they are not presented as customers or partners.
  */
-export const sponsors: Sponsor[] = [
+const sponsors: Sponsor[] = [
   {
     id: "insta360",
     name: "Insta360",
@@ -72,7 +72,7 @@ export const sponsors: Sponsor[] = [
   },
 ];
 
-export function getActiveSponsors(): Sponsor[] {
+function getActiveSponsors(): Sponsor[] {
   return sponsors.filter((s) => s.active);
 }
 

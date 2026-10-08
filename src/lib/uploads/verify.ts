@@ -16,7 +16,7 @@ import { MAX_REPORT_FILE_SIZE } from "@/lib/validations/report";
 import { MAX_TIMELINE_PHOTO_SIZE } from "@/lib/validations/timeline";
 import { STORAGE_BUCKETS, type StorageBucket } from "@/lib/types";
 
-export interface UploadRule {
+interface UploadRule {
   bucket: StorageBucket;
   maxBytes: number;
   mimeTypes: readonly string[];

@@ -1,18 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import {
-  ArrowLeft,
-  Building2,
-  Calendar,
-  FileText,
-  FolderOpen,
-  ImageIcon,
-  AlertTriangle,
-  ReceiptIndianRupee,
-  Settings,
-  Upload,
-} from "lucide-react";
+import { ArrowLeft, Building2, FileText, FolderOpen, ImageIcon, AlertTriangle, ReceiptIndianRupee, Settings, Upload } from "lucide-react";
 import { TabWorkspace, TabPanel } from "@/components/patterns/tab-workspace";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,6 +12,7 @@ import { ClientWorkspaceSync } from "@/components/admin/workspace/client-workspa
 import { OpsWorkspaceBanner } from "@/components/admin/ops/ops-workspace-banner";
 import { formatDate } from "@/lib/utils";
 import { isClientPortalRole } from "@/lib/auth/roles";
+import { isOpenIssueStatus } from "@/lib/issues/status";
 import type {
   Client,
   Project,
@@ -148,7 +138,7 @@ export function ClientWorkspaceTabs({
               { label: "Reports", value: reports.length },
               {
                 label: "Open Issues",
-                value: issues.filter((i) => i.status !== "resolved").length,
+                value: issues.filter((i) => isOpenIssueStatus(i.status)).length,
               },
             ].map((stat) => (
               <div key={stat.label} className="ops-card p-4 text-center">
@@ -362,6 +352,3 @@ export function ClientWorkspaceTabs({
     </div>
   );
 }
-
-/** @deprecated Use ClientWorkspaceTabs */
-export const ClientDetailView = ClientWorkspaceTabs;

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { Columns2, Loader2 } from "lucide-react";
 import { getComparisonProjectsData, listSavedComparisons } from "@/lib/actions/comparison";
 import { getCurrentUser } from "@/lib/actions/auth";
-import { getPortalWorkspaceBootstrap } from "@/lib/actions/data";
+import { getPortalWorkspaceBootstrap } from "@/lib/data/workspace";
 import { CompareProgressHub } from "@/components/compare/compare-progress-hub";
 import { IntelPage } from "@/components/intel/pages/intel-page";
 

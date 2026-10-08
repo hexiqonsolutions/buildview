@@ -1,8 +1,6 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
-export { DEFAULT_CURRENCY, formatCurrency } from "@/lib/currency";
-
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -41,6 +39,17 @@ export function formatRelativeTime(date: string | Date | null | undefined): stri
     }
   }
   return "just now";
+}
+
+/** Up to two uppercase initials from a name, falling back to the email, then "?". */
+export function getInitials(name?: string | null, email?: string | null): string {
+  const source = name?.trim() || email?.trim() || "?";
+  return source
+    .split(/\s+/)
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
 }
 
 export function formatFileSize(bytes: number | null | undefined): string {
@@ -108,11 +117,3 @@ export function formatStatus(status: string | null | undefined): string {
   if (!status) return "—";
   return status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
-
-export {
-  extractMatterportModelId,
-  getMatterportEmbedUrl,
-  getMatterportShareUrl,
-  isValidMatterportUrl,
-  normalizeMatterportUrl,
-} from "@/lib/matterport";

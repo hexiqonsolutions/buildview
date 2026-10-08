@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/types";
 
-export type SpatialRefs = {
+type SpatialRefs = {
   building: string | null;
   floor: string | null;
   building_id: string | null;
@@ -17,7 +17,7 @@ const EMPTY_SPATIAL: SpatialRefs = {
 
 type DbClient = SupabaseClient<Database>;
 
-export async function resolveSpatialRefs(
+async function resolveSpatialRefs(
   supabase: DbClient,
   projectId: string,
   building?: string | null,
@@ -72,7 +72,7 @@ export async function resolveSpatialRefs(
   };
 }
 
-export async function resolveSpatialRefsByIds(
+async function resolveSpatialRefsByIds(
   supabase: DbClient,
   buildingId?: string | null,
   floorId?: string | null

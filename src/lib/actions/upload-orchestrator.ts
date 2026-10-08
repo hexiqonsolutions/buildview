@@ -8,17 +8,7 @@ import { createReportSchema } from "@/lib/validations/report";
 import { createDocumentSchema } from "@/lib/validations/document";
 import { createIssueSchema } from "@/lib/validations/issue";
 import { validate } from "@/lib/validations/parse";
-import {
-  attachSitePhotosSchema,
-  beginInvoiceUploadSchema,
-  finalizeInvoiceUploadSchema,
-  uploadDocumentSchema,
-  uploadIssueSchema,
-  uploadMatterportSchema,
-  uploadReportSchema,
-  uploadSitePhotosSchema,
-  uploadTimelineUpdateSchema,
-} from "@/lib/validations/upload";
+import { attachSitePhotosSchema, beginInvoiceUploadSchema, finalizeInvoiceUploadSchema, uploadDocumentSchema, uploadIssueSchema, uploadMatterportSchema, uploadReportSchema, uploadTimelineUpdateSchema } from "@/lib/validations/upload";
 import { createTimelineEvent } from "@/lib/actions/timeline";
 import { recordTimelineEntry } from "@/lib/timeline/auto-entry";
 import { DEFAULT_CURRENCY } from "@/lib/currency";
@@ -567,50 +557,6 @@ export async function attachSitePhotosWithAutomation(data: {
 
   revalidatePaths(input.project_id);
   return { eventId: input.event_id };
-}
-
-export async function uploadSitePhotosWithAutomation(data: {
-  project_id: string;
-  title: string;
-  event_date: string;
-  photos: Array<{ storage_path: string; file_name: string; caption?: string }>;
-  progress_note?: string;
-  building?: string;
-  floor?: string;
-}): Promise<UploadResult> {
-  const parsedInput = validate(uploadSitePhotosSchema, data);
-  if (!parsedInput.success) return { error: parsedInput.error };
-  const input = parsedInput.data;
-  await assertCanUploadToProject(input.project_id, "upload");
-
-  const eventId = await createTimelineEvent({
-    project_id: input.project_id,
-    event_date: input.event_date,
-    title: input.title,
-    progress_note:
-      input.progress_note ??
-      `${input.photos.length} site photo${input.photos.length === 1 ? "" : "s"} uploaded via Upload Center.`,
-  });
-
-  await addTimelinePhotos(
-    eventId,
-    input.photos.map((photo) => ({
-      storage_path: photo.storage_path,
-      file_name: photo.file_name,
-      caption: photo.caption,
-    }))
-  );
-
-  await logActivity(
-    input.project_id,
-    `Site photos uploaded: ${input.title}`,
-    "timeline_photo",
-    eventId,
-    { building: input.building, floor: input.floor, count: String(input.photos.length) }
-  );
-
-  revalidatePaths(input.project_id);
-  return { eventId };
 }
 
 export async function uploadIssueWithAutomation(data: {

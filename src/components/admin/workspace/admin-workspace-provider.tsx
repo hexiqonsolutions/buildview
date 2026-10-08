@@ -23,6 +23,7 @@ import {
 import {
   DEFAULT_WORKSPACE,
   WORKSPACE_STORAGE_KEY,
+  readStoredWorkspaceScope,
   type AdminWorkspaceBootstrap,
   type AdminWorkspaceClient,
   type WorkspaceScope,
@@ -46,17 +47,6 @@ type AdminWorkspaceContextValue = {
 };
 
 const AdminWorkspaceContext = createContext<AdminWorkspaceContextValue | null>(null);
-
-function readStoredScope(): WorkspaceScope {
-  if (typeof window === "undefined") return DEFAULT_WORKSPACE;
-  try {
-    const raw = localStorage.getItem(WORKSPACE_STORAGE_KEY);
-    if (!raw) return DEFAULT_WORKSPACE;
-    return { ...DEFAULT_WORKSPACE, ...JSON.parse(raw) } as WorkspaceScope;
-  } catch {
-    return DEFAULT_WORKSPACE;
-  }
-}
 
 function resolveScope(
   bootstrap: AdminWorkspaceBootstrap,
@@ -131,7 +121,7 @@ export function AdminWorkspaceProvider({
       ? fromUrl
       : pathname === "/admin"
         ? DEFAULT_WORKSPACE
-        : readStoredScope();
+        : readStoredWorkspaceScope(WORKSPACE_STORAGE_KEY);
     const next = resolveScope(bootstrapRef.current, preferred);
     setScope((prev) => (workspaceScopesEqual(prev, next) ? prev : next));
     setHydrated(true);

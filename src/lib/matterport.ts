@@ -101,10 +101,3 @@ export async function resolveMatterportThumbnailUrl(url: string): Promise<string
     return null;
   }
 }
-
-/** Public share URL (opens in new tab). */
-export function getMatterportShareUrl(url: string): string {
-  const modelId = extractMatterportModelId(url);
-  if (!modelId) return url;
-  return `https://${MATTERPORT_SHOW_HOST}/show/?m=${modelId}`;
-}

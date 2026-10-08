@@ -1,3 +1,5 @@
+import "server-only";
+
 import {
   filterByProjectScope,
   filterBySpatialScope,
@@ -8,19 +10,14 @@ import {
 } from "@/lib/admin/scope";
 import type { WorkspaceScope } from "@/lib/admin/workspace";
 import { normalizeWorkspaceScope } from "@/lib/admin/workspace-scope";
-import {
-  getAdminSitePhotos,
-  getAdminWorkspaceBootstrap,
-  getAllDocuments,
-  getAllFolders,
-  getAllIssues,
-  getAllReports,
-  getAllTours,
-  getProjects,
-  getTimelinePageData,
-} from "@/lib/actions/data";
-
-export { parseWorkspaceScope };
+import { getAllDocuments, getAllFolders } from "@/lib/data/documents";
+import { getAllIssues } from "@/lib/data/issues";
+import { getProjects } from "@/lib/data/projects";
+import { getAllReports } from "@/lib/data/reports";
+import { getAdminSitePhotos } from "@/lib/data/storage";
+import { getTimelinePageData } from "@/lib/data/timeline";
+import { getAllTours } from "@/lib/data/tours";
+import { getAdminWorkspaceBootstrap } from "@/lib/data/workspace";
 
 export async function parseWorkspaceScopeFromParams(
   params: Record<string, string | string[] | undefined>
@@ -38,12 +35,6 @@ export async function getScopedProjects(scope: WorkspaceScope) {
   const normalized = await withNormalizedScope(scope);
   const projects = await getProjects();
   return filterProjectsByScope(projects, normalized);
-}
-
-export async function getScopedProjectIdSet(scope: WorkspaceScope): Promise<Set<string>> {
-  const normalized = await withNormalizedScope(scope);
-  const projects = await getProjects();
-  return new Set(projectIdsForScope(projects, normalized));
 }
 
 export async function getScopedTours(scope: WorkspaceScope) {

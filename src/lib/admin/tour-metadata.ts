@@ -1,7 +1,7 @@
 import type { WorkspaceScope } from "@/lib/admin/workspace";
 import type { ProjectTour } from "@/lib/types";
 
-export type TourWorkspaceMeta = {
+type TourWorkspaceMeta = {
   building?: string;
   floor?: string;
   building_id?: string | null;
@@ -10,7 +10,7 @@ export type TourWorkspaceMeta = {
   notes?: string;
 };
 
-export type TourSpatialItem = Pick<ProjectTour, "project_id" | "description"> & {
+type TourSpatialItem = Pick<ProjectTour, "project_id" | "description"> & {
   building_id?: string | null;
   floor_id?: string | null;
 };
@@ -42,7 +42,7 @@ export function parseTourWorkspaceMeta(description: string | null): TourWorkspac
   }
 }
 
-export function resolveTourSpatialRefs(tour: TourSpatialItem): {
+function resolveTourSpatialRefs(tour: TourSpatialItem): {
   building?: string;
   floor?: string;
   building_id: string | null;

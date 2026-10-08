@@ -1,7 +1,7 @@
 import type { Project, ProjectStatus } from "@/lib/types";
 
 /** Statuses hidden from the client portal (admin can still see them). */
-export const CLIENT_HIDDEN_PROJECT_STATUSES: ProjectStatus[] = [
+const CLIENT_HIDDEN_PROJECT_STATUSES: ProjectStatus[] = [
   "archived",
   "suspended",
 ];

@@ -1,3 +1,5 @@
+import "server-only";
+
 import type { WorkspaceScope } from "@/lib/admin/workspace";
 import {
   filterBySpatialScope,
@@ -13,16 +15,13 @@ import {
   countTimelineEventsByMonth,
   resolveProjectProgressValues,
 } from "@/lib/portal/progress-metrics";
-import {
-  getClientDashboardData,
-  getAccessibleTours,
-  getAllDocuments,
-  getAllReports,
-  getAllTimelineEvents,
-  getPortalWorkspaceBootstrap,
-  type ClientDashboardData,
-  type ProjectWithMeta,
-} from "@/lib/actions/data";
+import { type ClientDashboardData, getClientDashboardData } from "@/lib/data/dashboard";
+import { getAllDocuments } from "@/lib/data/documents";
+import type { ProjectWithMeta } from "@/lib/data/projects";
+import { getAllReports } from "@/lib/data/reports";
+import { getAllTimelineEvents } from "@/lib/data/timeline";
+import { getAccessibleTours } from "@/lib/data/tours";
+import { getPortalWorkspaceBootstrap } from "@/lib/data/workspace";
 import type { ProjectTour } from "@/lib/types";
 
 function hasSpatialWorkspaceFilter(scope: WorkspaceScope): boolean {

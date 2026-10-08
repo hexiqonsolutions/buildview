@@ -116,7 +116,7 @@ function periodKey(value: string | null | undefined, granularity: TimelineGranul
   return granularity === "weekly" ? weekKeyFromParts(parts) : monthKeyFromParts(parts);
 }
 
-export function formatMonthLabel(monthKey: string): string {
+function formatMonthLabel(monthKey: string): string {
   const [year, month] = monthKey.split("-").map(Number);
   if (!year || !month) return monthKey;
   return `${MONTH_SHORT[month - 1]} ${year}`;

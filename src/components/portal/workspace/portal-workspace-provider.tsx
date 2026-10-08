@@ -22,6 +22,7 @@ import {
 } from "@/lib/admin/workspace-scope";
 import {
   DEFAULT_WORKSPACE,
+  readStoredWorkspaceScope,
   type WorkspaceScope,
 } from "@/lib/admin/workspace";
 import {
@@ -47,17 +48,6 @@ type PortalWorkspaceContextValue = {
 };
 
 const PortalWorkspaceContext = createContext<PortalWorkspaceContextValue | null>(null);
-
-function readStoredScope(): WorkspaceScope {
-  if (typeof window === "undefined") return DEFAULT_WORKSPACE;
-  try {
-    const raw = localStorage.getItem(PORTAL_WORKSPACE_STORAGE_KEY);
-    if (!raw) return DEFAULT_WORKSPACE;
-    return { ...DEFAULT_WORKSPACE, ...JSON.parse(raw) } as WorkspaceScope;
-  } catch {
-    return DEFAULT_WORKSPACE;
-  }
-}
 
 function resolveScope(
   bootstrap: PortalWorkspaceBootstrap,
@@ -121,7 +111,7 @@ export function PortalWorkspaceProvider({
         fromUrl.building !== "all" ||
         fromUrl.floor !== "all"
     );
-    const stored = readStoredScope();
+    const stored = readStoredWorkspaceScope(PORTAL_WORKSPACE_STORAGE_KEY);
     const preferred = hasUrlScope ? fromUrl : stored;
     const next = resolveScope(bootstrapRef.current, preferred);
     setScope((prev) => (workspaceScopesEqual(prev, next) ? prev : next));

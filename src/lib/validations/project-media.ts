@@ -13,7 +13,7 @@ import {
 } from "@/lib/validations/primitives";
 import { isDirectChildPath } from "@/lib/validations/upload";
 
-export const PROJECT_MEDIA_TYPES = Object.keys(PROJECT_MEDIA_MIME_TYPES) as [
+const PROJECT_MEDIA_TYPES = Object.keys(PROJECT_MEDIA_MIME_TYPES) as [
   ProjectMediaType,
   ...ProjectMediaType[],
 ];

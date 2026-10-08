@@ -1,5 +1,6 @@
 import { portalInvoiceLink } from "@/lib/portal/notification-links";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency } from "@/lib/currency";
+import { formatDate } from "@/lib/utils";
 import type { NotificationType } from "@/lib/types";
 
 export type InvoiceNotificationKind = "sent" | "pending" | "paid" | "overdue";

@@ -242,36 +242,12 @@
   @apply min-h-screen bg-[#F4F6F9] dark:bg-slate-950;
 }
 
-@utility admin-sidebar {
-  @apply fixed inset-y-0 left-0 z-30 flex w-[260px] flex-col border-r border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900;
-}
-
-@utility admin-main {
-  @apply min-h-screen lg:pl-[260px];
-}
-
-@utility admin-topbar {
-  @apply sticky top-0 z-20 border-b border-slate-200/80 bg-white/95 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/95;
-}
-
 @utility ops-card {
   @apply rounded-2xl border border-slate-200/80 bg-white shadow-[0_1px_0_rgba(15,23,42,0.04)] dark:border-slate-800 dark:bg-slate-950;
 }
 
 @utility admin-card {
   @apply ops-card transition-shadow hover:shadow-[0_8px_28px_rgba(15,23,42,0.08)];
-}
-
-@utility admin-nav-item {
-  @apply flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium text-slate-600 transition-all hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white;
-}
-
-@utility admin-nav-item-active {
-  @apply bg-slate-900 text-white shadow-xs hover:bg-slate-800 hover:text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 dark:hover:text-slate-900;
-}
-
-@utility admin-metric-label {
-  @apply text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400;
 }
 
 @utility dashboard-metric-label {
@@ -336,10 +312,6 @@
 
 @utility intel-header {
   @apply border-b border-slate-200/70 bg-white/95 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/95;
-}
-
-@utility intel-quick-access {
-  @apply border-b border-slate-100/80 bg-linear-to-r from-slate-50/80 via-white/50 to-transparent dark:border-slate-800/50 dark:from-slate-900/50 dark:via-slate-950/30 dark:to-transparent;
 }
 
 @utility intel-context-bar {
@@ -438,35 +410,6 @@
   @apply border border-slate-200/70 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-950 md:px-6 md:py-5;
 }
 
-@utility portal-shell {
-  /* Legacy portal aliases → intel (backward compat) */
-  @apply intel-shell;
-}
-
-@utility portal-sidebar {
-  @apply intel-sidebar;
-
-  @media print {
-    display: none !important;
-  }
-}
-
-@utility portal-main {
-  @apply intel-main;
-
-  @media print {
-    padding-left: 0 !important;
-  }
-}
-
-@utility portal-topbar {
-  @apply intel-header-stack;
-
-  @media print {
-    display: none !important;
-  }
-}
-
 @utility portal-card {
   @apply intel-card;
 
@@ -480,29 +423,12 @@
   }
 }
 
-@utility portal-nav-item {
-  @apply intel-nav-item;
-
-  @media (prefers-reduced-motion: reduce) {
-    transition: none !important;
-    transform: none !important;
-  }
-}
-
-@utility portal-nav-item-active {
-  @apply intel-nav-item-active;
-}
-
 @utility ops-nav-item {
   @apply flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium text-slate-600 transition-all hover:bg-white hover:text-slate-900 hover:shadow-xs dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white;
 }
 
 @utility ops-nav-item-active {
   @apply bg-white text-slate-900 shadow-xs ring-1 ring-slate-200/80 dark:bg-slate-900 dark:text-white dark:ring-slate-700;
-}
-
-@utility portal-section-label {
-  @apply text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400;
 }
 
 @utility ops-command-header {
@@ -539,32 +465,12 @@
   }
 }
 
-@utility ops-quick-bar {
-  @apply border-t border-slate-100 bg-[#FAFBFC] dark:border-slate-800 dark:bg-slate-900/40;
-}
-
 @utility ops-content {
   @apply px-5 py-8 lg:px-10 lg:py-10;
 }
 
 @utility ops-queue-card {
   @apply ops-card dashboard-card-hover block p-5;
-}
-
-@utility ops-search-trigger {
-  @apply h-9 w-full items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-left transition-colors hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600;
-}
-
-@utility ops-kbd {
-  @apply rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-slate-400 dark:border-slate-700 dark:bg-slate-800;
-}
-
-@utility ops-quick-action {
-  @apply border border-slate-200/80 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800;
-}
-
-@utility ops-quick-action-primary {
-  @apply border-slate-900 bg-slate-900 text-white hover:bg-slate-800 dark:border-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100;
 }
 
 @utility ops-btn-primary {
@@ -587,48 +493,10 @@
   @apply transition-colors hover:border-slate-300 hover:bg-white dark:hover:border-slate-600;
 }
 
-@utility compare-glass-toolbar {
-  /* Compare Progress — flagship module */
-  @apply sticky top-0 z-30 border-b border-slate-200/80 bg-white/80 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/80;
-
-  @media print {
-    display: none !important;
-  }
-}
-
 @utility compare-card {
   border-radius: var(--bv-radius-card);
   box-shadow: var(--bv-shadow-sm);
   @apply border border-slate-200/70 bg-white dark:border-slate-800 dark:bg-slate-950;
-}
-
-@utility compare-kpi {
-  @apply compare-card p-4 transition-shadow duration-200 hover:shadow-soft;
-
-  @media (prefers-reduced-motion: reduce) {
-    transition: none !important;
-    transform: none !important;
-
-    &:hover {
-      transform: none !important;
-    }
-  }
-}
-
-@utility compare-scan-thumb {
-  @apply relative aspect-video overflow-hidden rounded-lg bg-slate-900 ring-2 ring-transparent transition-all;
-}
-
-@utility compare-scan-thumb-selected {
-  @apply ring-slate-900 dark:ring-white;
-}
-
-@utility compare-sync-badge-synced {
-  @apply inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-medium text-white;
-}
-
-@utility compare-sync-badge-independent {
-  @apply inline-flex items-center gap-1 rounded-full bg-slate-700 px-2 py-0.5 text-[10px] font-medium text-slate-300;
 }
 
 @layer utilities {

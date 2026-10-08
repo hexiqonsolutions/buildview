@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatCurrency, formatStatus } from "@/lib/utils";
+import { formatCurrency } from "@/lib/currency";
 
 const COLORS = ["#A4CF30", "#76B82D", "#050505", "#94A3B8", "#64748B"];
 
@@ -73,20 +73,5 @@ export function AdminBarChart({
         )}
       </CardContent>
     </Card>
-  );
-}
-
-export function AdminStatusChart({
-  title,
-  data,
-}: {
-  title: string;
-  data: { status: string; count: number }[];
-}) {
-  return (
-    <AdminBarChart
-      title={title}
-      data={data.map((d) => ({ label: formatStatus(d.status), value: d.count }))}
-    />
   );
 }

@@ -1,4 +1,6 @@
-import { getAllUsers, getClients, getProjects } from "@/lib/actions/data";
+import { getClients } from "@/lib/data/clients";
+import { getProjects } from "@/lib/data/projects";
+import { getAllUsers } from "@/lib/data/users";
 import { getCurrentUser } from "@/lib/actions/auth";
 import { AdminTable } from "@/components/admin/admin-table";
 import { ManageUserDialog } from "@/components/admin/manage-user-dialog";

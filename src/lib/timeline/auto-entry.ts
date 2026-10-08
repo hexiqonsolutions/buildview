@@ -2,12 +2,12 @@ import { createTimelineEvent } from "@/lib/actions/timeline";
 
 type TimelineEventInput = Parameters<typeof createTimelineEvent>[0];
 
-export type AutoTimelineEntry = Omit<TimelineEventInput, "event_date" | "skipClientNotify"> & {
+type AutoTimelineEntry = Omit<TimelineEventInput, "event_date" | "skipClientNotify"> & {
   event_date?: string | null;
 };
 
 /** Site work is logged in India time, so "today" must not roll over at UTC midnight. */
-export function todayForTimeline(): string {
+function todayForTimeline(): string {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Kolkata",
     year: "numeric",

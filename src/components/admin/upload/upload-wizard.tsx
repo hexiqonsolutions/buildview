@@ -33,7 +33,7 @@ import {
   type UploadCategory,
   type UploadResult,
 } from "@/lib/actions/upload-orchestrator";
-import { addIssueImages } from "@/lib/actions/issues";
+import { attachIssueImages } from "@/lib/issues/attach-images";
 import {
   categoryIsInvoice,
   categoryIsIssue,
@@ -50,7 +50,6 @@ import {
 import {
   uploadDocumentFile,
   uploadInvoiceFile,
-  uploadIssueImageFile,
   uploadReportFile,
   uploadTimelinePhotoFile,
 } from "@/lib/supabase/storage";
@@ -104,7 +103,7 @@ const PORTAL_CATEGORIES = ADMIN_CATEGORIES.filter(
   (c) => c.id !== "invoices_doc" && c.id !== "matterport"
 );
 
-export type UploadWizardProps = {
+type UploadWizardProps = {
   /** Lock wizard to one project (client portal project upload). */
   lockedProjectId?: string;
   lockedProjectName?: string;
@@ -140,11 +139,14 @@ export function UploadWizard({
           ? portalWs.project
           : portalWs?.projects.find((p) => p.id === lockedProjectId) ?? null
       : adminWs?.project ?? portalWs?.project) ?? null;
-  const project =
-    resolvedProject ??
-    (lockedProjectId && lockedProjectName
-      ? ({ id: lockedProjectId, name: lockedProjectName } as NonNullable<typeof resolvedProject>)
-      : null);
+  const project = useMemo(
+    () =>
+      resolvedProject ??
+      (lockedProjectId && lockedProjectName
+        ? ({ id: lockedProjectId, name: lockedProjectName } as NonNullable<typeof resolvedProject>)
+        : null),
+    [resolvedProject, lockedProjectId, lockedProjectName]
+  );
   const clients = adminWs?.clients ?? [];
   const clientProjects = adminWs?.clientProjects ?? portalWs?.projects ?? [];
   const buildings = adminWs?.buildings ?? portalWs?.buildings ?? [];
@@ -387,18 +389,8 @@ export function UploadWizard({
         ...spatialMeta,
       }));
 
-      if (files.length > 0 && upload.issueId) {
-        const images = await Promise.all(
-          files.map(async (file, index) => {
-            const fileUpload = await uploadIssueImageFile(projectId, upload.issueId!, file);
-            return {
-              storage_path: fileUpload.path,
-              file_name: fileUpload.fileName,
-              sort_order: index,
-            };
-          })
-        );
-        await addIssueImages(upload.issueId, images);
+      if (upload.issueId) {
+        await attachIssueImages(projectId, upload.issueId, files);
       }
 
       return upload;
@@ -636,7 +628,6 @@ export function UploadWizard({
         {step === "success" && (
           <SuccessStep
             result={result}
-            projectId={projectId}
             category={category}
             onReset={resetForm}
             projectHref={projectHref ?? (mode === "portal" ? `/dashboard/projects/${projectId}` : `/admin/projects/${projectId}`)}
@@ -1252,7 +1243,6 @@ function AutomationRow({ active, label }: { active: boolean; label: string }) {
 
 function SuccessStep({
   result,
-  projectId,
   category,
   onReset,
   projectHref,
@@ -1260,7 +1250,6 @@ function SuccessStep({
   portalMode,
 }: {
   result: UploadResult | null;
-  projectId: string;
   category: UploadCategory;
   onReset: () => void;
   projectHref: string;

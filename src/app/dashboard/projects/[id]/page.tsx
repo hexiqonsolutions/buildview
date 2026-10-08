@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getProjectWithClient, getProjectDetail, getProjectInvoices, getProjectTeam } from "@/lib/actions/data";
+import { getProjectInvoices } from "@/lib/data/invoices";
+import { getProjectDetail, getProjectTeam, getProjectWithClient } from "@/lib/data/projects";
 import { getProjectSpatialHierarchy } from "@/lib/actions/buildings";
 import { getProjectMedia } from "@/lib/actions/project-media";
 import { ProjectHeader } from "@/components/projects/project-header";

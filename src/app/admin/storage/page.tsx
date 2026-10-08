@@ -1,4 +1,4 @@
-import { getAdminStorageStats } from "@/lib/actions/data";
+import { getAdminStorageStats } from "@/lib/data/storage";
 import { StorageManager } from "@/components/admin/storage/storage-manager";
 import { OpsWorkspacePage } from "@/components/admin/ops/ops-workspace-page";
 import { HardDrive } from "lucide-react";

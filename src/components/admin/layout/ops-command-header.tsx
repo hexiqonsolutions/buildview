@@ -46,7 +46,7 @@ import { useAdminWorkspaceHref } from "@/components/admin/workspace/use-admin-wo
 import { OpsCommandPalette } from "@/components/admin/layout/ops-command-palette";
 import { NotificationBell } from "@/components/admin/notifications/notification-bell";
 import { signOut } from "@/lib/actions/auth";
-import { cn } from "@/lib/utils";
+import { cn, getInitials } from "@/lib/utils";
 import type { User as UserType } from "@/lib/types";
 
 interface OpsCommandHeaderProps {
@@ -83,12 +83,7 @@ export function OpsCommandHeader({
   const homeHref = useAdminWorkspaceHref("/admin");
   const uploadHref = useAdminWorkspaceHref("/admin/upload");
   const displayName = user.full_name?.trim() || user.email?.split("@")[0] || "Admin";
-  const initials = displayName
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
+  const initials = getInitials(displayName);
 
   const clientLabel =
     clients.find((c) => c.id === scope.clientId)?.company_name ||

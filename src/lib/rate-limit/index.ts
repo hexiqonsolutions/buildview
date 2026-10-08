@@ -14,7 +14,7 @@ import {
 
 export type { BackoffPolicyName, WindowPolicyName } from "@/lib/rate-limit/config";
 
-export interface RateLimitDecision {
+interface RateLimitDecision {
   allowed: boolean;
   retryAfterSeconds: number;
 }

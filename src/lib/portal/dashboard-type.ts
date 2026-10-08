@@ -26,7 +26,7 @@ export const CLIENT_DASHBOARD_TYPE_DESCRIPTIONS: Record<ClientDashboardType, str
     "Showcase walkthroughs and completed work for architecture, interior design, and real estate.",
 };
 
-export type PortalNavItem = {
+type PortalNavItem = {
   href: string;
   label: string;
   icon: LucideIcon;

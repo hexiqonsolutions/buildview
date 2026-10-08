@@ -1,36 +1,32 @@
+// Usage: npm run db:bundle -- 028 029   |   npm run db:bundle -- --from 019
 import { readFileSync, writeFileSync } from "fs";
-import { resolve, dirname, join } from "path";
-import { fileURLToPath } from "url";
+import { join, resolve } from "path";
+import { ROOT_DIR } from "./lib/env.mjs";
+import { MIGRATIONS_DIR, selectMigrations } from "./lib/migrations.mjs";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const migrationsDir = resolve(__dirname, "..", "supabase", "migrations");
-const outputPath = resolve(__dirname, "..", "supabase", "pending-apply.sql");
+let files;
+try {
+  files = selectMigrations(process.argv.slice(2));
+} catch (error) {
+  console.error(error.message);
+  process.exit(1);
+}
 
-const pendingFiles = [
-  "004_project_comments.sql",
-  "008_buildings_floors.sql",
-  "009_platform_settings.sql",
-  "010_buildings_staff_rls.sql",
-  "011_content_spatial_scope.sql",
-  "012_document_versions.sql",
-  "013_spatial_fk_columns.sql",
-  "014_tour_spatial_fk.sql",
-  "015_saved_comparisons.sql",
-];
+const outputPath = resolve(ROOT_DIR, "supabase", "pending-apply.sql");
 
 const header = `-- =============================================================================
--- BuildView — Pending migrations bundle (004 + 008–015)
+-- BuildView — Migration bundle (${files[0]} … ${files.at(-1)})
 -- =============================================================================
--- Run in Supabase SQL Editor if npm run db:apply is unavailable.
--- Regenerate: npm run db:bundle
+-- Paste into the Supabase SQL Editor when npm run db:apply is unavailable.
+-- Regenerate: npm run db:bundle -- <numbers> | --from <number>
 -- =============================================================================
 
 `;
 
-const sections = pendingFiles.map((file) => {
-  const sql = readFileSync(join(migrationsDir, file), "utf8").trim();
+const sections = files.map((file) => {
+  const sql = readFileSync(join(MIGRATIONS_DIR, file), "utf8").trim();
   return `-- ========== ${file} ==========\n\n${sql}\n`;
 });
 
 writeFileSync(outputPath, header + sections.join("\n"), "utf8");
-console.log(`Wrote ${outputPath} (${pendingFiles.length} migrations)`);
+console.log(`Wrote ${outputPath} (${files.length} migrations)`);

@@ -7,7 +7,7 @@ import {
 } from "@/lib/portal/scope-server";
 import { DocumentBrowser } from "@/components/documents/document-browser";
 import { PortalDocumentUploadButton } from "@/components/documents/portal-document-upload-button";
-import { getPortalWorkspaceBootstrap } from "@/lib/actions/data";
+import { getPortalWorkspaceBootstrap } from "@/lib/data/workspace";
 import { getCurrentUser } from "@/lib/actions/auth";
 import { isClientPortalRole } from "@/lib/auth/roles";
 import { firstSearchParam } from "@/lib/portal/search-params";

@@ -4,8 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { Notification } from "@/lib/types";
 import { resolveNotificationHref } from "@/lib/portal/notification-links";
-import { parseOrThrow, validate } from "@/lib/validations/parse";
-import { uuid } from "@/lib/validations/primitives";
+import { validate } from "@/lib/validations/parse";
 import { notificationLimitSchema } from "@/lib/validations/notifications";
 import { PublicError } from "@/lib/errors/public";
 import { internalError } from "@/lib/errors/server";
@@ -63,29 +62,6 @@ export async function getUnreadNotificationCount(): Promise<number> {
     .is("deleted_at", null);
 
   return count ?? 0;
-}
-
-export async function markNotificationRead(notificationId: string) {
-  const id = parseOrThrow(uuid("Notification ID"), notificationId);
-
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new PublicError("Unauthorized");
-
-  const { error } = await supabase
-    .from("notifications")
-    .update({
-      is_read: true,
-      read_at: new Date().toISOString(),
-      updated_by: user.id,
-    })
-    .eq("id", id)
-    .eq("user_id", user.id);
-
-  if (error) throw internalError("markNotificationRead", error);
-  revalidateNotificationPaths();
 }
 
 export async function markAllNotificationsRead() {

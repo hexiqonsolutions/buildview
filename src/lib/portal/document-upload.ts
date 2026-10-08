@@ -1,8 +1,5 @@
 import { LIMITS } from "@/lib/validations/primitives";
 
-/** Matches the `documents` storage bucket limits (migration 003). */
-export const PORTAL_DOCUMENT_MAX_BYTES = 100 * 1024 * 1024;
-
 export const PORTAL_DOCUMENT_MIME_TYPES: string[] = [
   "application/pdf",
   "application/msword",

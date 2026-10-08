@@ -16,6 +16,7 @@ import {
   resetPasswordSchema,
 } from "@/lib/validations/auth";
 import { validateFormData } from "@/lib/validations/parse";
+import { siteConfig } from "@/lib/site-config";
 
 export type AuthActionState = {
   error?: string;
@@ -33,7 +34,7 @@ async function getOrigin(): Promise<string> {
   ) {
     return `${protocol}://${host}`;
   }
-  return process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  return siteConfig.url;
 }
 
 function withSentence(message: string, extra: string): string {

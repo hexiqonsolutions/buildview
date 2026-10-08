@@ -1,6 +1,7 @@
 import type { IssueWithRelations, Report, TimelineEventWithRelations } from "@/lib/types";
 import { REPORT_TYPE_LABELS } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
+import { isOpenIssueStatus } from "@/lib/issues/status";
 import type { ProjectAiSummary } from "@/lib/ai/project-summary-types";
 
 const DAY_MS = 86_400_000;
@@ -30,7 +31,7 @@ export function buildProjectReportSummary(input: {
   const { projectName, reports, issues = [], timeline = [] } = input;
   const sortedReports = [...reports].sort((a, b) => reportSortKey(b) - reportSortKey(a));
   const openIssues = issues.filter(
-    (i) => i.status === "open" || i.status === "in_progress"
+    (i) => isOpenIssueStatus(i.status)
   );
   const criticalIssues = openIssues.filter(
     (i) => i.priority === "critical" || i.priority === "high"

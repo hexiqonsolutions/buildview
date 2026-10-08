@@ -1,16 +1,5 @@
 import type { UserRole } from "@/lib/types";
-import {
-  BUILDVIEW_STAFF_ROLES,
-  canAssignRoles as canAssignRolesHelper,
-  canCommentOnProject as canCommentOnProjectHelper,
-  canCreateProjectIssue as canCreateProjectIssueHelper,
-  canManageClientUploads as canManageClientUploadsHelper,
-  canUpdateIssueStatus as canUpdateIssueStatusHelper,
-  canUploadMatterport as canUploadMatterportHelper,
-  canViewClientInvoices as canViewClientInvoicesHelper,
-  isBuildViewStaffRole,
-  isClientPortalRole,
-} from "@/lib/auth/roles";
+import { canCommentOnProject as canCommentOnProjectHelper, canCreateProjectIssue as canCreateProjectIssueHelper, canManageClientUploads as canManageClientUploadsHelper, canUpdateIssueStatus as canUpdateIssueStatusHelper, canUploadMatterport as canUploadMatterportHelper, canViewClientInvoices as canViewClientInvoicesHelper, isBuildViewStaffRole } from "@/lib/auth/roles";
 
 export type PermissionAction =
   | "create"
@@ -49,8 +38,6 @@ const STAFF_FULL: PermissionAction[] = [
   "upload",
   "approve",
 ];
-
-const STAFF_READ_UPLOAD: PermissionAction[] = ["read", "upload", "update"];
 
 const CLIENT_UPLOAD_ACTIONS: PermissionAction[] = [
   "create",
@@ -158,10 +145,6 @@ export function canAccessAdmin(role: UserRole): boolean {
   return isBuildViewStaffRole(role);
 }
 
-export function canAccessClientPortal(role: UserRole): boolean {
-  return isClientPortalRole(role) || role === "super_admin";
-}
-
 export function can(
   role: UserRole,
   action: PermissionAction,
@@ -184,10 +167,6 @@ export function canUploadMatterport(role: UserRole): boolean {
   return canUploadMatterportHelper(role);
 }
 
-export function canAssignRoles(role: UserRole): boolean {
-  return canAssignRolesHelper(role);
-}
-
 export function canCommentOnProject(role: UserRole): boolean {
   return canCommentOnProjectHelper(role);
 }
@@ -202,8 +181,4 @@ export function canUpdateIssueStatus(role: UserRole): boolean {
 
 export function canViewClientInvoices(role: UserRole): boolean {
   return canViewClientInvoicesHelper(role);
-}
-
-export function staffRoles(): UserRole[] {
-  return [...BUILDVIEW_STAFF_ROLES];
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import type { ClientDashboardData } from "@/lib/actions/data";
+import type { ClientDashboardData } from "@/lib/data/dashboard";
 import { scopeToPortalQueryString } from "@/lib/admin/scope";
 import { ExecutiveOverview } from "@/components/intel/dashboard/executive-overview";
 import { usePortalWorkspace } from "@/components/portal/workspace/portal-workspace-provider";

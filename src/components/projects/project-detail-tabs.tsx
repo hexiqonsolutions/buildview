@@ -11,6 +11,7 @@ import { ProjectMatterportPanel } from "@/components/projects/project-matterport
 import { ProjectReportsSection } from "@/components/projects/project-reports-section";
 import { ProjectAiSummaryPanel } from "@/components/projects/project-ai-summary-panel";
 import { buildProjectReportSummary } from "@/lib/ai/build-project-report-summary";
+import { isOpenIssueStatus } from "@/lib/issues/status";
 import { ProjectDocumentsSection } from "@/components/projects/project-documents-section";
 import { ProjectIssuesSection } from "@/components/projects/project-issues-section";
 import { ProjectInvoicesSection } from "@/components/projects/project-invoices-section";
@@ -26,7 +27,7 @@ import { ProjectMediaShowcase } from "@/components/projects/project-media-showca
 import { useOptionalPortalWorkspace } from "@/components/portal/workspace/portal-workspace-provider";
 import type { ProjectMediaGroups } from "@/lib/project-media";
 import type { SpatialHierarchy } from "@/lib/actions/buildings";
-import type { ProjectTeamMember } from "@/lib/actions/data";
+import type { ProjectTeamMember } from "@/lib/data/projects";
 import type {
   ProjectTour,
   Report,
@@ -92,7 +93,7 @@ export function ProjectDetailTabs({
   const searchParams = useSearchParams();
 
   const openIssueCount = issues.filter(
-    (i) => i.status === "open" || i.status === "in_progress"
+    (i) => isOpenIssueStatus(i.status)
   ).length;
   const sitePhotoCount = flattenProjectSitePhotos(timeline).length;
 

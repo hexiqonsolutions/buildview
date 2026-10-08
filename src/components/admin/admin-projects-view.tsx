@@ -25,7 +25,7 @@ import {
   Ban,
   Pencil,
 } from "lucide-react";
-import type { AdminProjectRow, AdminProjectsListData } from "@/lib/actions/data";
+import type { AdminProjectRow, AdminProjectsListData } from "@/lib/data/projects";
 import type { Client, ProjectStatus } from "@/lib/types";
 import { softDeleteProject, restoreProject, suspendProject } from "@/lib/actions/admin";
 import { AdminMetricCard } from "@/components/admin/admin-metric-card";
@@ -72,6 +72,8 @@ import { getErrorMessage } from "@/lib/errors/public";
 
 type ViewMode = "list" | "grid";
 
+const MAX_PAGE_BUTTONS = 6;
+
 interface AdminProjectsViewProps {
   data: AdminProjectsListData;
   clients: Client[];
@@ -86,18 +88,6 @@ const STATUS_OPTIONS: { value: ProjectStatus | "all"; label: string }[] = [
   { value: "completed", label: "Completed" },
   { value: "suspended", label: "Suspended" },
 ];
-
-function projectStatusClass(status: ProjectStatus): string {
-  const map: Record<ProjectStatus, string> = {
-    in_progress: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
-    on_hold: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
-    completed: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
-    planning: "bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300",
-    archived: "bg-slate-100 text-slate-500 dark:bg-slate-800/60 dark:text-slate-400",
-    suspended: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
-  };
-  return map[status] ?? "bg-gray-100 text-gray-800";
-}
 
 function issueCountClass(count: number): string {
   if (count === 0) return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300";
@@ -160,6 +150,7 @@ export function AdminProjectsView({ data, clients, mode = "admin" }: AdminProjec
   const paginated = filtered.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
   const rangeStart = filtered.length === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1;
   const rangeEnd = Math.min(currentPage * rowsPerPage, filtered.length);
+  const firstPageButton = Math.max(1, Math.min(currentPage - 2, totalPages - MAX_PAGE_BUTTONS + 1));
 
   const { stats } = data;
 
@@ -387,8 +378,7 @@ export function AdminProjectsView({ data, clients, mode = "admin" }: AdminProjec
               Showing {rangeStart} to {rangeEnd} of {filtered.length} projects
             </p>
             <div className="flex flex-wrap items-center gap-2">
-              {Array.from({ length: totalPages }, (_, i) => i + 1)
-                .slice(0, 6)
+              {Array.from({ length: Math.min(totalPages, MAX_PAGE_BUTTONS) }, (_, i) => firstPageButton + i)
                 .map((n) => (
                   <Button
                     key={n}

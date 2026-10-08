@@ -4,6 +4,7 @@ import type {
   Report,
   TimelineEventWithRelations,
 } from "@/lib/types";
+import { isOpenIssueStatus } from "@/lib/issues/status";
 import type {
   ComparisonActivity,
   ComparisonKpis,
@@ -79,11 +80,11 @@ export function bucketIssues(
   const newIssues = issues.filter(
     (issue) =>
       isOnOrAfterScanA(issue.created_at, window) &&
-      (issue.status === "open" || issue.status === "in_progress")
+      isOpenIssueStatus(issue.status)
   );
 
   const pendingIssues = issues.filter(
-    (issue) => issue.status === "open" || issue.status === "in_progress"
+    (issue) => isOpenIssueStatus(issue.status)
   );
 
   const criticalIssues = issues.filter(
@@ -101,7 +102,7 @@ export function buildTradeProgress(
 ): TradeProgressItem[] {
   const delta = scanB.metadata.progressPercent - scanA.metadata.progressPercent;
   const resolved = issues.filter((i) => i.status === "resolved" || i.status === "closed").length;
-  const open = issues.filter((i) => i.status === "open" || i.status === "in_progress").length;
+  const open = issues.filter((i) => isOpenIssueStatus(i.status)).length;
 
   return DEFAULT_TRADES.map((trade, i) => {
     const ratio = (i + 1) / DEFAULT_TRADES.length;
@@ -135,7 +136,7 @@ export function buildKpis(scanA: EnrichedTour, scanB: EnrichedTour, issues: Issu
   const currentProgress = scanB.metadata.progressPercent;
   const difference = currentProgress - previousProgress;
   const criticalCount = issues.filter((i) => i.priority === "critical" && i.status !== "closed").length;
-  const openCount = issues.filter((i) => i.status === "open" || i.status === "in_progress").length;
+  const openCount = issues.filter((i) => isOpenIssueStatus(i.status)).length;
 
   return {
     previousProgress,
@@ -165,7 +166,7 @@ export function buildVisualChanges(
 ): VisualChangeCard[] {
   const completed = reports.filter((r) => r.report_type === "progress_report").length;
   const critical = issues.filter((i) => i.priority === "critical").length;
-  const pending = issues.filter((i) => i.status === "open" || i.status === "in_progress").length;
+  const pending = issues.filter((i) => isOpenIssueStatus(i.status)).length;
   const resolved = issues.filter((i) => i.status === "resolved" || i.status === "closed").length;
 
   return [
@@ -351,8 +352,8 @@ export function buildShellComparisonSnapshot(
   };
 }
 
-export const BLANK_SCAN_A_ID = "blank-scan-a";
-export const BLANK_SCAN_B_ID = "blank-scan-b";
+const BLANK_SCAN_A_ID = "blank-scan-a";
+const BLANK_SCAN_B_ID = "blank-scan-b";
 
 function blankEnrichedTour(
   id: string,

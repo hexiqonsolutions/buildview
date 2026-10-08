@@ -1,5 +1,5 @@
 import { AlertTriangle } from "lucide-react";
-import { getAllUsers } from "@/lib/actions/data";
+import { getAllUsers } from "@/lib/data/users";
 import {
   getScopedIssues,
   getScopedProjects,
