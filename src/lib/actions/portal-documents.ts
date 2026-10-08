@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { isClientPortalRole } from "@/lib/auth/roles";
+import { CLIENT_SUSPENDED_MESSAGE, isClientAccountSuspended } from "@/lib/auth/client-suspension";
 import { isProjectVisibleInClientPortal } from "@/lib/portal/project-visibility";
 import { resolveClientDashboardType } from "@/lib/portal/dashboard-type";
 import { toPublicMessage } from "@/lib/errors/server";
@@ -46,6 +47,9 @@ async function authorizePortfolioUpload(
 
   if (!profile || !profile.is_active || profile.deleted_at) {
     return { ok: false, error: "Your account is not active." };
+  }
+  if (await isClientAccountSuspended(profile)) {
+    return { ok: false, error: CLIENT_SUSPENDED_MESSAGE };
   }
   if (!isClientPortalRole(profile.role as UserRole)) {
     return { ok: false, error: "Only client accounts can upload here." };

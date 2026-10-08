@@ -12,6 +12,7 @@ import { validate } from "@/lib/validations/parse";
 import type { ProjectCommentInsert, ProjectCommentWithUser, UserRole } from "@/lib/types";
 import { canCommentOnProject, isBuildViewStaffRole } from "@/lib/auth/roles";
 import { currentUserCanViewProject } from "@/lib/auth/project-access";
+import { isClientAccountSuspended } from "@/lib/auth/client-suspension";
 import { logServerError, toPublicMessage } from "@/lib/errors/server";
 
 type CommentActionResult =
@@ -33,6 +34,7 @@ async function getActorProfile(userId: string) {
       .maybeSingle();
 
     if (error || !data?.is_active) return null;
+    if (await isClientAccountSuspended(data)) return null;
     return data;
   } catch (err) {
     console.error("[comments] getActorProfile failed:", err);

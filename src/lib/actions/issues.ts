@@ -25,6 +25,7 @@ import { STORAGE_BUCKETS } from "@/lib/types";
 import { resolveSpatialForWrite } from "@/lib/admin/spatial-resolve";
 import { formatUploadNotifyMessage, portalIssuesLink } from "@/lib/portal/notification-links";
 import { isBuildViewStaffRole, canCreateProjectIssue, canUpdateIssueStatus } from "@/lib/auth/roles";
+import { assertClientNotSuspended } from "@/lib/auth/client-suspension";
 import { recordTimelineEntry } from "@/lib/timeline/auto-entry";
 import { PublicError } from "@/lib/errors/public";
 import { internalError } from "@/lib/errors/server";
@@ -85,11 +86,12 @@ async function getSignedInUserWithRole() {
 
   const { data: me } = await supabase
     .from("users")
-    .select("role")
+    .select("role, client_id")
     .eq("id", user.id)
     .maybeSingle();
 
   if (!me?.role) throw new PublicError("Your account profile could not be found.");
+  await assertClientNotSuspended(me);
   return { supabase, user, role: me.role as UserRole };
 }
 

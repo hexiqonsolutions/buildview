@@ -2,6 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { isBuildViewStaffRole } from "@/lib/auth/roles";
+import { isClientAccountSuspended } from "@/lib/auth/client-suspension";
 import type { UserRole } from "@/lib/types";
 
 type ProjectActor = {
@@ -26,6 +27,7 @@ export async function getActiveActor(): Promise<ProjectActor | null> {
     .maybeSingle();
 
   if (!profile?.is_active || !profile.role) return null;
+  if (await isClientAccountSuspended(profile)) return null;
   return { userId: user.id, role: profile.role as UserRole, clientId: profile.client_id };
 }
 

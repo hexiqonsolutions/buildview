@@ -10,6 +10,7 @@ import {
 } from "@/lib/auth/roles";
 import type { UserRole } from "@/lib/types";
 import { PublicError } from "@/lib/errors/public";
+import { assertClientNotSuspended } from "@/lib/auth/client-suspension";
 
 type UploadAuthContext = {
   userId: string;
@@ -38,6 +39,7 @@ export async function assertCanUploadToProject(
     .maybeSingle();
 
   if (!profile?.is_active) throw new PublicError("Account is inactive");
+  await assertClientNotSuspended(profile);
   const role = profile.role as UserRole;
 
   if (resource === "matterport") {

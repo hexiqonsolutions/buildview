@@ -61,6 +61,7 @@ Migrations live in `supabase/migrations` and must be applied in numeric order.
 | 024–027 | Comment replies, client-admin-only invoices, issue tracking hardening, project media bucket |
 | 028 | `rate_limits` table used by the database-backed rate limiter |
 | 029 | `handle_new_user` ignores sign-up metadata; every new profile is `client` (security fix) |
+| 030 | Users of a suspended client company lose access to project data |
 
 **Fresh project:** run every file in the Supabase SQL Editor in order (skipping `006` if you don't want that seed admin), then optionally `supabase/seed.sql`.
 
@@ -68,19 +69,22 @@ Migrations live in `supabase/migrations` and must be applied in numeric order.
 
 ```bash
 npm run db:check                    # shows which detectable migrations are missing
-npm run db:apply -- 028 029         # apply specific migrations via DATABASE_URL
+npm run db:apply -- 029 030         # apply specific migrations via DATABASE_URL
 npm run db:apply -- --from 019      # apply 019 and everything after it
 npm run db:bundle -- --from 019     # write supabase/pending-apply.sql to paste into the SQL Editor
 ```
 
-`db:apply` and `db:bundle` require an explicit selection; they never run every migration by default. `db:check` cannot detect 020–023, 025, 026 or 029 (function, policy, enum and data changes) — verify those in the SQL Editor. For 029:
+`db:apply` and `db:bundle` require an explicit selection; they never run every migration by default. `db:check` cannot detect 020–023, 025, 026, 029 or 030 (function, policy, enum and data changes) — verify those in the SQL Editor:
 
 ```sql
+-- 029 is applied when this returns false
 SELECT prosrc LIKE '%raw_user_meta_data->>''role''%' AS still_trusts_metadata
 FROM pg_proc WHERE proname = 'handle_new_user';
-```
 
-`false` means 029 is applied.
+-- 030 is applied when this returns true
+SELECT prosrc LIKE '%public.clients%' AS checks_client_suspension
+FROM pg_proc WHERE proname = 'is_active_authenticated_user';
+```
 
 The `supabase/FIX_*.sql` files repair databases that drifted from the migrations; don't run them on a fresh project.
 

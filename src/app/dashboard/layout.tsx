@@ -4,6 +4,8 @@ import { getCurrentUser } from "@/lib/actions/auth";
 import { getUnreadNotificationCount } from "@/lib/actions/notifications";
 import { getPortalWorkspaceBootstrap } from "@/lib/data/workspace";
 import { PortalLayout } from "@/components/dashboard/portal-layout";
+import { AccountSuspended } from "@/components/portal/account-suspended";
+import { isClientAccountSuspended } from "@/lib/auth/client-suspension";
 import { privateMetadata } from "@/lib/seo";
 import type { User } from "@/lib/types";
 
@@ -46,6 +48,10 @@ export default async function DashboardLayout({
 
   if (!user.is_active || user.deleted_at) {
     redirect("/login?error=account_inactive");
+  }
+
+  if (await isClientAccountSuspended(user)) {
+    return <AccountSuspended userName={toPortalUser(user).full_name} />;
   }
 
   const [unreadNotifications, workspaceBootstrap] = await Promise.all([
