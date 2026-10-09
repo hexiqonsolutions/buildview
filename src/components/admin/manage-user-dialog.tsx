@@ -130,20 +130,18 @@ export function ManageUserDialog({
   const selectedClient =
     clientId === "none" ? null : clients.find((c) => c.id === clientId) ?? user.client ?? null;
 
-  const projectsForAssign =
-    clientId !== "none"
-      ? projects.filter((p) => p.client_id === clientId || assignedProjectIds.has(p.id))
-      : projects;
-  const assignableProjects = projectsForAssign.filter((p) => !assignedProjectIds.has(p.id));
-  const orgName = selectedClient?.company_name || selectedClient?.name || "This organization";
-  const noAssignableMessage =
+  const assignableProjects = projects.filter((p) => !assignedProjectIds.has(p.id));
+  const orgName = selectedClient?.company_name || selectedClient?.name || "Organization";
+  const orgAssignableProjects =
+    clientId === "none" ? [] : assignableProjects.filter((p) => p.client_id === clientId);
+  const otherAssignableProjects =
     clientId === "none"
-      ? projects.length === 0
-        ? "No projects exist yet. Create one in Project Manager first."
-        : "Every project is already assigned to this user."
-      : projects.some((p) => p.client_id === clientId)
-        ? `All of ${orgName}'s projects are already assigned to this user.`
-        : `${orgName} has no projects yet. Create one in Project Manager first.`;
+      ? assignableProjects
+      : assignableProjects.filter((p) => p.client_id !== clientId);
+  const noAssignableMessage =
+    projects.length === 0
+      ? "No projects exist yet. Create one in Project Manager first."
+      : "Every project is already assigned to this user.";
 
   function handleClientChange(nextClientId: string) {
     setClientId(nextClientId);
@@ -425,11 +423,28 @@ export function ManageUserDialog({
                       <SelectValue placeholder="Assign to project" />
                     </SelectTrigger>
                     <SelectContent>
-                      {assignableProjects.map((project) => (
-                        <SelectItem key={project.id} value={project.id}>
-                          {project.name}
-                        </SelectItem>
-                      ))}
+                      {orgAssignableProjects.length > 0 && (
+                        <SelectGroup>
+                          <SelectLabel>{orgName} projects</SelectLabel>
+                          {orgAssignableProjects.map((project) => (
+                            <SelectItem key={project.id} value={project.id}>
+                              {project.name}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      )}
+                      {otherAssignableProjects.length > 0 && (
+                        <SelectGroup>
+                          {orgAssignableProjects.length > 0 || clientId !== "none" ? (
+                            <SelectLabel>Other projects</SelectLabel>
+                          ) : null}
+                          {otherAssignableProjects.map((project) => (
+                            <SelectItem key={project.id} value={project.id}>
+                              {project.name}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      )}
                     </SelectContent>
                   </Select>
                   <Button
