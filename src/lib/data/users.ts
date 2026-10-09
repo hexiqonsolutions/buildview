@@ -8,7 +8,7 @@ import { validate } from "@/lib/validations/parse";
 import { userIdSchema } from "@/lib/validations/data";
 import { getActiveActor } from "@/lib/auth/project-access";
 
-type AdminUserRow = User & {
+export type AdminUserRow = User & {
   last_sign_in_at: string | null;
   client: {
     id: string;

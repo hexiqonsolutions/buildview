@@ -2,18 +2,11 @@ import { getClients } from "@/lib/data/clients";
 import { getProjects } from "@/lib/data/projects";
 import { getAllUsers } from "@/lib/data/users";
 import { getCurrentUser } from "@/lib/actions/auth";
-import { AdminTable } from "@/components/admin/admin-table";
-import { ManageUserDialog } from "@/components/admin/manage-user-dialog";
 import { SyncUsersFromAuthButton } from "@/components/admin/sync-users-from-auth-button";
 import { OpsWorkspacePage } from "@/components/admin/ops/ops-workspace-page";
-import { Badge } from "@/components/ui/badge";
-import { formatDate, formatRelativeTime } from "@/lib/utils";
-import { USER_ROLE_LABELS, type ClientDashboardType, type User, type UserRole } from "@/lib/types";
-import {
-  CLIENT_DASHBOARD_TYPE_LABELS,
-  resolveClientDashboardType,
-} from "@/lib/portal/dashboard-type";
+import { UserDirectory } from "@/components/admin/users/user-directory";
 import { canAssignRoles } from "@/lib/auth/roles";
+import { groupUsersByOrganization } from "@/lib/admin/user-groups";
 import { syncUserProfilesFromAuthDetailed } from "@/lib/supabase/provision-user";
 import { Users } from "lucide-react";
 
@@ -28,13 +21,14 @@ export default async function AdminUsersPage() {
   ]);
 
   const allowAssignRoles = currentUser ? canAssignRoles(currentUser.role) : false;
+  const groups = groupUsersByOrganization(users, clients);
 
   const syncedTotal = syncResult.inserted + syncResult.restored;
 
   return (
     <OpsWorkspacePage
       title="User Manager"
-      description="Manage roles, client assignments, and project access for platform users."
+      description="Accounts grouped by organization: the BuildView team first, then each client company."
       icon={Users}
       showBanner={false}
       actions={<SyncUsersFromAuthButton />}
@@ -56,7 +50,7 @@ export default async function AdminUsersPage() {
         </div>
       )}
 
-      {users.length === 0 && !syncResult.error && (
+      {users.length === 0 && !syncResult.error ? (
         <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-300">
           Sync sees <strong>{syncResult.authCount}</strong> Auth login
           {syncResult.authCount === 1 ? "" : "s"} and{" "}
@@ -64,128 +58,14 @@ export default async function AdminUsersPage() {
           {syncResult.profileCount === 1 ? "" : "s"}. If there are Auth logins but this list
           is empty, contact BuildView support.
         </div>
-      )}
-
-      <div className="ops-card overflow-hidden">
-        <AdminTable
-          data={users as unknown as Array<Record<string, unknown> & { id: string }>}
-          columns={[
-            {
-              key: "full_name",
-              label: "Name",
-              render: (u) => (
-                <div className="min-w-0">
-                  <p className="font-medium text-slate-900 dark:text-white">
-                    {(u.full_name as string) || "—"}
-                  </p>
-                  <p className="truncate text-xs text-slate-500">{(u.email as string) || "—"}</p>
-                </div>
-              ),
-            },
-            {
-              key: "email",
-              label: "Login email",
-              render: (u) => (
-                <span className="text-sm text-slate-700 dark:text-slate-300">
-                  {(u.email as string) || "—"}
-                </span>
-              ),
-            },
-            {
-              key: "role",
-              label: "Role",
-              render: (u) => (
-                <Badge variant={u.role === "super_admin" ? "default" : "outline"}>
-                  {USER_ROLE_LABELS[u.role as UserRole] ?? String(u.role)}
-                </Badge>
-              ),
-            },
-            {
-              key: "client",
-              label: "Client",
-              render: (u) => {
-                const client = u.client as {
-                  company_name: string | null;
-                  name: string;
-                } | null;
-                return client?.company_name || client?.name || "—";
-              },
-            },
-            {
-              key: "dashboard_type",
-              label: "Dashboard",
-              render: (u) => {
-                const client = u.client as {
-                  dashboard_type?: ClientDashboardType | null;
-                } | null;
-                const resolved = resolveClientDashboardType(
-                  {
-                    dashboard_type: u.dashboard_type as ClientDashboardType | null | undefined,
-                  },
-                  client
-                );
-                return (
-                  <span className="text-sm text-slate-700 dark:text-slate-300">
-                    {CLIENT_DASHBOARD_TYPE_LABELS[resolved]}
-                  </span>
-                );
-              },
-            },
-            {
-              key: "last_sign_in_at",
-              label: "Last login",
-              render: (u) => {
-                const at = u.last_sign_in_at as string | null;
-                if (!at) return <span className="text-slate-400">Never</span>;
-                return (
-                  <div className="min-w-0">
-                    <p className="text-sm text-slate-700 dark:text-slate-300">
-                      {formatRelativeTime(at)}
-                    </p>
-                    <p className="text-xs text-slate-400">{formatDate(at)}</p>
-                  </div>
-                );
-              },
-            },
-            {
-              key: "is_active",
-              label: "Active",
-              render: (u) => (
-                <Badge variant={u.is_active ? "outline" : "destructive"}>
-                  {u.is_active ? "Yes" : "No"}
-                </Badge>
-              ),
-            },
-            {
-              key: "created_at",
-              label: "Joined",
-              render: (u) => formatDate(u.created_at as string),
-            },
-            {
-              key: "actions",
-              label: "Actions",
-              render: (u) => (
-                <ManageUserDialog
-                  user={
-                    u as unknown as User & {
-                      client?: {
-                        id: string;
-                        name: string;
-                        company_name: string | null;
-                        dashboard_type?: ClientDashboardType | null;
-                      } | null;
-                    }
-                  }
-                  clients={clients}
-                  projects={projects}
-                  canAssignRoles={allowAssignRoles}
-                />
-              ),
-            },
-          ]}
-          emptyMessage="No users yet. Click “Sync from Supabase Auth” or have them register/sign in once."
+      ) : (
+        <UserDirectory
+          groups={groups}
+          clients={clients}
+          projects={projects}
+          canAssignRoles={allowAssignRoles}
         />
-      </div>
+      )}
     </OpsWorkspacePage>
   );
 }
