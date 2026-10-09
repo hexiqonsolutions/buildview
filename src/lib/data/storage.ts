@@ -1,10 +1,23 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/admin";
+import { getStorageQuota, type StorageQuota } from "@/lib/supabase/plan";
 import { requireStaffPermission } from "@/lib/auth/staff";
+import { STORAGE_BUCKETS, type StorageBucket } from "@/lib/types";
+
+export type AdminStorageCategoryId =
+  | "documents"
+  | "reports"
+  | "photos"
+  | "issue_images"
+  | "project_media"
+  | "project_covers"
+  | "avatars"
+  | "matterport";
 
 export type AdminStorageCategory = {
-  id: "documents" | "reports" | "photos" | "issue_images" | "matterport";
+  id: AdminStorageCategoryId;
   label: string;
   bytes: number;
   fileCount: number;
@@ -19,7 +32,9 @@ export type AdminStorageClientRow = {
 
 export type AdminStorageStats = {
   totalBytes: number;
-  limitBytes: number;
+  quota: StorageQuota;
+  /** "storage" = real object sizes (migration 031); "database" = documents/reports only. */
+  usageSource: "storage" | "database";
   categories: AdminStorageCategory[];
   clients: AdminStorageClientRow[];
 };
@@ -39,40 +54,81 @@ export type AdminSitePhoto = {
   floor?: string | null;
 };
 
-/** Display-only allocation for the usage meter; Supabase enforces the real plan quota. */
-const STORAGE_ALLOCATION_BYTES = 100 * 1024 ** 3;
+type StorageUsageRow = { bucket: string; folder: string; bytes: number; fileCount: number };
 
-function sumFileSizes(rows: Array<{ file_size: number | null }> | null | undefined) {
-  return rows?.reduce((sum, row) => sum + (row.file_size ?? 0), 0) ?? 0;
+const BUCKET_CATEGORIES: { id: AdminStorageCategoryId; bucket: StorageBucket; label: string }[] = [
+  { id: "documents", bucket: STORAGE_BUCKETS.DOCUMENTS, label: "Documents" },
+  { id: "reports", bucket: STORAGE_BUCKETS.REPORTS, label: "Reports" },
+  { id: "photos", bucket: STORAGE_BUCKETS.TIMELINE_PHOTOS, label: "Site Photos" },
+  { id: "issue_images", bucket: STORAGE_BUCKETS.ISSUE_IMAGES, label: "Issue Images" },
+  { id: "project_media", bucket: STORAGE_BUCKETS.PROJECT_MEDIA, label: "Project Media" },
+  { id: "project_covers", bucket: STORAGE_BUCKETS.PROJECT_COVERS, label: "Project Covers" },
+  { id: "avatars", bucket: STORAGE_BUCKETS.AVATARS, label: "Profile Photos" },
+];
+
+/** Every bucket except avatars stores files under "<project_id>/...". */
+const PROJECT_BUCKETS = new Set<string>(
+  BUCKET_CATEGORIES.filter((c) => c.bucket !== STORAGE_BUCKETS.AVATARS).map((c) => c.bucket)
+);
+
+/** Real object sizes from storage.objects, or null if migration 031 isn't applied. */
+async function loadStorageUsage(): Promise<StorageUsageRow[] | null> {
+  try {
+    const { data, error } = await createServiceRoleClient().rpc("get_storage_usage");
+    if (error || !data) return null;
+    return data.map((row) => ({
+      bucket: row.bucket_id,
+      folder: row.folder,
+      bytes: Number(row.bytes) || 0,
+      fileCount: Number(row.file_count) || 0,
+    }));
+  } catch {
+    return null;
+  }
+}
+
+/** Fallback when real usage is unavailable: only documents and reports record file sizes. */
+async function loadDatabaseUsage(
+  supabase: Awaited<ReturnType<typeof createClient>>
+): Promise<StorageUsageRow[]> {
+  const [documentsRes, reportsRes, photosRes, issueImagesRes] = await Promise.all([
+    supabase.from("documents").select("file_size, project_id").is("deleted_at", null),
+    supabase.from("reports").select("file_size, project_id").is("deleted_at", null),
+    supabase.from("timeline_photos").select("id").is("deleted_at", null),
+    supabase.from("issue_images").select("id").is("deleted_at", null),
+  ]);
+
+  const rows: StorageUsageRow[] = [];
+  for (const [bucket, res] of [
+    [STORAGE_BUCKETS.DOCUMENTS, documentsRes],
+    [STORAGE_BUCKETS.REPORTS, reportsRes],
+  ] as const) {
+    for (const row of res.data ?? []) {
+      rows.push({ bucket, folder: row.project_id, bytes: row.file_size ?? 0, fileCount: 1 });
+    }
+  }
+  rows.push(
+    { bucket: STORAGE_BUCKETS.TIMELINE_PHOTOS, folder: "", bytes: 0, fileCount: photosRes.data?.length ?? 0 },
+    { bucket: STORAGE_BUCKETS.ISSUE_IMAGES, folder: "", bytes: 0, fileCount: issueImagesRes.data?.length ?? 0 }
+  );
+  return rows;
 }
 
 export async function getAdminStorageStats(): Promise<AdminStorageStats> {
   await requireStaffPermission("read", "storage");
   const supabase = await createClient();
 
-  const [
-    documentsRes,
-    reportsRes,
-    photosRes,
-    issueImagesRes,
-    toursRes,
-    projectsRes,
-    clientsRes,
-  ] = await Promise.all([
-    supabase.from("documents").select("file_size, project_id").is("deleted_at", null),
-    supabase.from("reports").select("file_size, project_id").is("deleted_at", null),
-    supabase.from("timeline_photos").select("id").is("deleted_at", null),
-    supabase.from("issue_images").select("id").is("deleted_at", null),
+  const [storageUsage, quota, toursRes, projectsRes, clientsRes] = await Promise.all([
+    loadStorageUsage(),
+    getStorageQuota(),
     supabase.from("project_tours").select("id").is("deleted_at", null),
-    supabase.from("projects").select("id, client_id").is("deleted_at", null),
-    supabase.from("clients").select("id, name, company_name").is("deleted_at", null),
+    // Deleted projects and clients still occupy storage until their files are removed.
+    supabase.from("projects").select("id, client_id"),
+    supabase.from("clients").select("id, name, company_name"),
   ]);
 
-  const docBytes = sumFileSizes(documentsRes.data);
-  const reportBytes = sumFileSizes(reportsRes.data);
-  const photoCount = photosRes.data?.length ?? 0;
-  const issueImageCount = issueImagesRes.data?.length ?? 0;
-  const tourCount = toursRes.data?.length ?? 0;
+  const usageSource = storageUsage ? "storage" : "database";
+  const usage = storageUsage ?? (await loadDatabaseUsage(supabase));
 
   const projectClientMap = new Map<string, string>();
   projectsRes.data?.forEach((p) => {
@@ -84,70 +140,48 @@ export async function getAdminStorageStats(): Promise<AdminStorageStats> {
     clientNameMap.set(c.id, c.company_name || c.name);
   });
 
+  const bucketTotals = new Map<string, { bytes: number; fileCount: number }>();
   const clientUsage = new Map<string, { bytes: number; fileCount: number }>();
+  let totalBytes = 0;
 
-  function addClientUsage(projectId: string, bytes: number, count = 1) {
-    const clientId = projectClientMap.get(projectId);
-    if (!clientId) return;
-    const current = clientUsage.get(clientId) ?? { bytes: 0, fileCount: 0 };
-    clientUsage.set(clientId, {
-      bytes: current.bytes + bytes,
-      fileCount: current.fileCount + count,
-    });
+  for (const row of usage) {
+    totalBytes += row.bytes;
+
+    const bucketTotal = bucketTotals.get(row.bucket) ?? { bytes: 0, fileCount: 0 };
+    bucketTotal.bytes += row.bytes;
+    bucketTotal.fileCount += row.fileCount;
+    bucketTotals.set(row.bucket, bucketTotal);
+
+    const clientId = PROJECT_BUCKETS.has(row.bucket) ? projectClientMap.get(row.folder) : undefined;
+    if (clientId) {
+      const current = clientUsage.get(clientId) ?? { bytes: 0, fileCount: 0 };
+      current.bytes += row.bytes;
+      current.fileCount += row.fileCount;
+      clientUsage.set(clientId, current);
+    }
   }
 
-  documentsRes.data?.forEach((d) => addClientUsage(d.project_id, d.file_size ?? 0));
-  reportsRes.data?.forEach((r) => addClientUsage(r.project_id, r.file_size ?? 0));
-
   const categories: AdminStorageCategory[] = [
-    {
-      id: "documents",
-      label: "Documents",
-      bytes: docBytes,
-      fileCount: documentsRes.data?.length ?? 0,
-    },
-    {
-      id: "reports",
-      label: "Reports",
-      bytes: reportBytes,
-      fileCount: reportsRes.data?.length ?? 0,
-    },
-    {
-      id: "photos",
-      label: "Site Photos",
-      bytes: 0,
-      fileCount: photoCount,
-    },
-    {
-      id: "issue_images",
-      label: "Issue Images",
-      bytes: 0,
-      fileCount: issueImageCount,
-    },
-    {
-      id: "matterport",
-      label: "Virtual Tours",
-      bytes: 0,
-      fileCount: tourCount,
-    },
+    ...BUCKET_CATEGORIES.map(({ id, bucket, label }) => ({
+      id,
+      label,
+      bytes: bucketTotals.get(bucket)?.bytes ?? 0,
+      fileCount: bucketTotals.get(bucket)?.fileCount ?? 0,
+    })),
+    // Matterport hosts the tours; BuildView only stores links.
+    { id: "matterport", label: "Virtual Tours", bytes: 0, fileCount: toursRes.data?.length ?? 0 },
   ];
 
-  const totalBytes = docBytes + reportBytes;
   const clients: AdminStorageClientRow[] = Array.from(clientUsage.entries())
-    .map(([clientId, usage]) => ({
+    .map(([clientId, clientTotal]) => ({
       clientId,
       clientName: clientNameMap.get(clientId) ?? "Unknown client",
-      bytes: usage.bytes,
-      fileCount: usage.fileCount,
+      bytes: clientTotal.bytes,
+      fileCount: clientTotal.fileCount,
     }))
     .sort((a, b) => b.bytes - a.bytes);
 
-  return {
-    totalBytes,
-    limitBytes: STORAGE_ALLOCATION_BYTES,
-    categories,
-    clients,
-  };
+  return { totalBytes, quota, usageSource, categories, clients };
 }
 
 export async function getAdminSitePhotos(): Promise<AdminSitePhoto[]> {

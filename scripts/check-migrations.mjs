@@ -15,7 +15,7 @@ const admin = createClient(
 );
 
 // Only migrations that add a table, column, or bucket can be probed over the REST API.
-// Function, policy, enum, and data migrations (020–023, 025, 026, 029, 030) must be tracked manually.
+// Function, policy, enum, and data migrations (020–023, 025, 026, 029–031) must be tracked manually.
 const checks = [
   { name: "001 core schema", table: "projects" },
   { name: "004 project_comments", table: "project_comments" },
@@ -54,7 +54,7 @@ for (const check of checks) {
   console.log(`  ${check.name}: ${error ? `MISSING (${error.message})` : "OK"}`);
 }
 
-console.log("\n  Not detectable here — confirm in the SQL Editor: 020–023, 025, 026, 029, 030");
+console.log("\n  Not detectable here — confirm in the SQL Editor: 020–023, 025, 026, 029–031");
 console.log("");
 if (missing > 0) {
   console.log(`${missing} check(s) failed.`);

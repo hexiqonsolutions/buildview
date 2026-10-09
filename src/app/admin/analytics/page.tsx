@@ -591,7 +591,7 @@ export default async function AdminAnalyticsPage() {
               Storage by category
             </h2>
           </div>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             {storageStats.categories.map((category) => (
               <div
                 key={category.id}
@@ -605,8 +605,10 @@ export default async function AdminAnalyticsPage() {
             ))}
           </div>
           <p className="mt-4 text-sm text-slate-500">
-            Total {formatGb(storageStats.totalBytes)} of {formatGb(storageStats.limitBytes)}{" "}
-            allocated
+            Total {formatGb(storageStats.totalBytes)}
+            {storageStats.quota.limitBytes !== null
+              ? ` of ${formatGb(storageStats.quota.limitBytes)} included in your Supabase plan`
+              : ""}
           </p>
         </div>
       </section>

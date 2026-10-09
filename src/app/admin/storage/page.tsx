@@ -9,7 +9,7 @@ export default async function StorageManagerPage() {
   return (
     <OpsWorkspacePage
       title="Storage Manager"
-      description="Per-client storage usage across documents, reports, site photos, and virtual tours."
+      description="Supabase Storage usage against your plan's quota, by file type and client."
       icon={HardDrive}
     >
       <StorageManager stats={stats} />

@@ -631,6 +631,10 @@ export interface Database {
         Args: { object_path: string };
         Returns: string;
       };
+      get_storage_usage: {
+        Args: Record<string, never>;
+        Returns: { bucket_id: string; folder: string; bytes: number; file_count: number }[];
+      };
     };
     Enums: {
       user_role: UserRole;

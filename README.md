@@ -49,11 +49,12 @@ Apply the database migrations before signing in for the first time — see [Data
 | `RESEND_API_KEY`, `CONTACT_TO_EMAIL`, `CONTACT_FROM_EMAIL`, `NOTIFICATION_FROM_EMAIL` | Optional | Contact form and notification emails |
 | `NEXT_PUBLIC_GA_MEASUREMENT_ID`, `NEXT_PUBLIC_META_PIXEL_ID`, `META_CAPI_ACCESS_TOKEN`, `META_CAPI_TEST_EVENT_CODE` | Optional | Consent-gated analytics |
 | `NEXT_PUBLIC_CALENDLY_URL` | Optional | Scheduler embed on `/contact` |
+| `SUPABASE_ACCESS_TOKEN`, `SUPABASE_STORAGE_QUOTA_GB` | Optional | Storage Manager quota: read the Supabase plan via the Management API (read-only fine-grained token), or set the quota in GB directly |
 | `RATE_LIMIT_*` | Optional | Overrides for the defaults in `src/lib/rate-limit/config.ts` |
 
 ## Database
 
-All schema, RLS policies, storage buckets and SQL functions live in `supabase/migrations/001`–`030`, applied in numeric order.
+All schema, RLS policies, storage buckets and SQL functions live in `supabase/migrations/001`–`031`, applied in numeric order.
 
 **New project:** run every file in order in the Supabase SQL Editor (skip `006_promote_vaibhav_admin.sql`, which seeds a specific admin account). `supabase/seed.sql` adds optional sample data.
 
@@ -66,7 +67,7 @@ npm run db:apply -- --from 019      # apply 019 and everything after it
 npm run db:bundle -- --from 019     # or write them to supabase/pending-apply.sql to paste manually
 ```
 
-`db:check` cannot detect migrations that only change functions, policies, enums or data (020–023, 025, 026, 029, 030); confirm those in the SQL Editor. The `supabase/FIX_*.sql` files are one-off repair scripts for databases that drifted from the migrations — do not run them on a fresh project.
+`db:check` cannot detect migrations that only change functions, policies, enums or data (020–023, 025, 026, 029–031); confirm those in the SQL Editor. The `supabase/FIX_*.sql` files are one-off repair scripts for databases that drifted from the migrations — do not run them on a fresh project.
 
 ## Authentication
 

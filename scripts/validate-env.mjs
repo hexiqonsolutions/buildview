@@ -24,6 +24,8 @@ const optional = [
   "META_CAPI_ACCESS_TOKEN",
   "RATE_LIMIT_ENABLED",
   "RATE_LIMIT_STORE",
+  "SUPABASE_ACCESS_TOKEN",
+  "SUPABASE_STORAGE_QUOTA_GB",
 ];
 
 const fileVars = readEnvFile();
