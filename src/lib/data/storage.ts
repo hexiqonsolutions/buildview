@@ -114,6 +114,13 @@ async function loadDatabaseUsage(
   return rows;
 }
 
+/** Used bytes and plan quota without the breakdown. Callers must check staff permissions. */
+export async function getStorageTotals(): Promise<{ totalBytes: number; quota: StorageQuota }> {
+  const [storageUsage, quota] = await Promise.all([loadStorageUsage(), getStorageQuota()]);
+  const usage = storageUsage ?? (await loadDatabaseUsage(await createClient()));
+  return { totalBytes: usage.reduce((sum, row) => sum + row.bytes, 0), quota };
+}
+
 export async function getAdminStorageStats(): Promise<AdminStorageStats> {
   await requireStaffPermission("read", "storage");
   const supabase = await createClient();

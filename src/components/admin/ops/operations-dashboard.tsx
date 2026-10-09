@@ -24,7 +24,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAdminWorkspace } from "@/components/admin/workspace/admin-workspace-provider";
 import { formatCurrency } from "@/lib/currency";
-import { formatDate, formatRelativeTime } from "@/lib/utils";
+import { formatDate, formatFileSize, formatRelativeTime } from "@/lib/utils";
+
+function formatStorage(bytes: number): string {
+  return bytes > 0 ? formatFileSize(bytes).replace(".0 ", " ") : "0 GB";
+}
 
 interface OperationsDashboardProps {
   stats: AdminOperationsStats;
@@ -329,9 +333,13 @@ export function OperationsDashboard({
         <AdminMetricCard label="Pending Uploads" value={stats.pendingUploads} icon={Clock} />
         <AdminMetricCard
           label="Storage Used"
-          value={`${stats.storageUsedGb} GB`}
+          value={formatStorage(stats.storageUsedBytes)}
           icon={HardDrive}
-          trend={`of ${stats.storageLimitGb} GB`}
+          trend={
+            stats.storageLimitBytes !== null
+              ? `of ${formatStorage(stats.storageLimitBytes)}`
+              : "Supabase plan not connected"
+          }
           trendTone="neutral"
         />
         <AdminMetricCard label="Reports Uploaded" value={stats.totalReports} icon={FileText} />
@@ -357,7 +365,11 @@ export function OperationsDashboard({
             <TodayStat label="Open issues" value={stats.openIssues} />
             <TodayStat
               label="Storage"
-              value={`${stats.storageUsedGb} / ${stats.storageLimitGb} GB`}
+              value={
+                stats.storageLimitBytes !== null
+                  ? `${formatStorage(stats.storageUsedBytes)} / ${formatStorage(stats.storageLimitBytes)}`
+                  : formatStorage(stats.storageUsedBytes)
+              }
             />
           </div>
           <div className="border-t border-slate-100 px-5 py-4 dark:border-slate-800">

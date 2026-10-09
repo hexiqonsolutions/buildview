@@ -20,6 +20,7 @@ import {
 } from "@/lib/data/projects";
 import { idsOrNone } from "@/lib/data/query";
 import { getAccessibleTours } from "@/lib/data/tours";
+import { getStorageTotals } from "@/lib/data/storage";
 
 export type AdminDashboardStats = {
   totalClients: number;
@@ -537,8 +538,9 @@ export type AdminOperationsStats = AdminDashboardStats & {
   projectsRequiringUpdates: number;
   matterportProcessing: number;
   reportsPending: number;
-  storageUsedGb: number;
-  storageLimitGb: number;
+  storageUsedBytes: number;
+  /** Included storage of the Supabase plan, or null when the plan isn't connected. */
+  storageLimitBytes: number | null;
   todaysUploads: number;
 };
 
@@ -558,7 +560,7 @@ export async function getAdminOperationsStats(): Promise<AdminOperationsStats> {
     toursTodayRes,
     reportsTodayRes,
     recentToursRes,
-    fileSizeRes,
+    storage,
   ] = await Promise.all([
     supabase
       .from("project_tours")
@@ -575,7 +577,7 @@ export async function getAdminOperationsStats(): Promise<AdminOperationsStats> {
       .select("project_id, capture_date, created_at")
       .is("deleted_at", null)
       .order("capture_date", { ascending: false }),
-    supabase.from("documents").select("file_size").is("deleted_at", null),
+    getStorageTotals(),
   ]);
 
   const latestTourByProject = new Map<string, string>();
@@ -601,17 +603,14 @@ export async function getAdminOperationsStats(): Promise<AdminOperationsStats> {
       return new Date(last) < fortyFiveDaysAgo;
     }).length ?? 0;
 
-  const storageBytes =
-    fileSizeRes.data?.reduce((sum, d) => sum + (d.file_size ?? 0), 0) ?? 0;
-
   return {
     ...base,
     pendingUploads: projectsRequiringUpdates,
     projectsRequiringUpdates,
     matterportProcessing: 0,
     reportsPending: 0,
-    storageUsedGb: Math.round((storageBytes / 1_073_741_824) * 10) / 10,
-    storageLimitGb: 100,
+    storageUsedBytes: storage.totalBytes,
+    storageLimitBytes: storage.quota.limitBytes,
     todaysUploads: (toursTodayRes.count ?? 0) + (reportsTodayRes.count ?? 0),
   };
 }

@@ -455,9 +455,13 @@ export default async function AdminAnalyticsPage() {
           />
           <AdminMetricCard
             label="Storage used"
-            value={`${opsStats.storageUsedGb} GB`}
+            value={formatGb(opsStats.storageUsedBytes)}
             icon={HardDrive}
-            trend={`of ${opsStats.storageLimitGb} GB`}
+            trend={
+              opsStats.storageLimitBytes !== null
+                ? `of ${formatGb(opsStats.storageLimitBytes)}`
+                : "Supabase plan not connected"
+            }
             trendTone="neutral"
           />
           <AdminMetricCard
