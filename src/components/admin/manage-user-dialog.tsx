@@ -134,6 +134,16 @@ export function ManageUserDialog({
     clientId !== "none"
       ? projects.filter((p) => p.client_id === clientId || assignedProjectIds.has(p.id))
       : projects;
+  const assignableProjects = projectsForAssign.filter((p) => !assignedProjectIds.has(p.id));
+  const orgName = selectedClient?.company_name || selectedClient?.name || "This organization";
+  const noAssignableMessage =
+    clientId === "none"
+      ? projects.length === 0
+        ? "No projects exist yet. Create one in Project Manager first."
+        : "Every project is already assigned to this user."
+      : projects.some((p) => p.client_id === clientId)
+        ? `All of ${orgName}'s projects are already assigned to this user.`
+        : `${orgName} has no projects yet. Create one in Project Manager first.`;
 
   function handleClientChange(nextClientId: string) {
     setClientId(nextClientId);
@@ -401,33 +411,37 @@ export function ManageUserDialog({
                 </ul>
               )}
 
-              <div className="flex gap-2">
-                <Select
-                  value={addProjectId || undefined}
-                  onValueChange={setAddProjectId}
-                >
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Assign to project" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {projectsForAssign
-                      .filter((p) => !assignedProjectIds.has(p.id))
-                      .map((project) => (
+              {loadingAssignments ? null : assignableProjects.length === 0 ? (
+                <p className="rounded-md border border-dashed border-slate-200 px-3 py-2 text-xs text-slate-500 dark:border-slate-700">
+                  {noAssignableMessage}
+                </p>
+              ) : (
+                <div className="flex gap-2">
+                  <Select
+                    value={addProjectId || undefined}
+                    onValueChange={setAddProjectId}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Assign to project" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {assignableProjects.map((project) => (
                         <SelectItem key={project.id} value={project.id}>
                           {project.name}
                         </SelectItem>
                       ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={!addProjectId || isPending}
-                  onClick={handleAssignProject}
-                >
-                  Add
-                </Button>
-              </div>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={!addProjectId || isPending}
+                    onClick={handleAssignProject}
+                  >
+                    Add
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 
