@@ -1,8 +1,8 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
-import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { requireStaffPermission } from "@/lib/auth/staff";
+import { getAuthActivity } from "@/lib/data/auth-activity";
 
 function monthBuckets(count = 6): Array<{ key: string; label: string; month: number; year: number }> {
   return Array.from({ length: count }, (_, i) => {
@@ -191,16 +191,7 @@ export async function getAdminMarketingAuditStats(): Promise<AdminMarketingAudit
   const comparisons = comparisonsRes.data ?? [];
   const notifications = notificationsRes.data ?? [];
 
-  const lastSignInById = new Map<string, string | null>();
-  try {
-    const admin = createServiceRoleClient();
-    const authListed = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-    authListed.data.users.forEach((u) => {
-      lastSignInById.set(u.id, u.last_sign_in_at ?? null);
-    });
-  } catch (err) {
-    console.warn("[getAdminMarketingAuditStats] auth listUsers failed:", err);
-  }
+  const { lastSignInById } = await getAuthActivity();
 
   const clientRoles = new Set(
     [

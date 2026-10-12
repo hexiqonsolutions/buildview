@@ -7,6 +7,7 @@ import type { ClientDashboardType, User } from "@/lib/types";
 import { validate } from "@/lib/validations/parse";
 import { userIdSchema } from "@/lib/validations/data";
 import { getActiveActor } from "@/lib/auth/project-access";
+import { getAuthActivity } from "@/lib/data/auth-activity";
 
 export type AdminUserRow = User & {
   last_sign_in_at: string | null;
@@ -63,13 +64,7 @@ export async function getAllUsers(): Promise<AdminUserRow[]> {
       profiles = (withClient.data as Array<Record<string, unknown>>) ?? [];
     }
 
-    const authListed = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-    const lastSignInById = new Map<string, string | null>();
-    const emailById = new Map<string, string>();
-    for (const u of authListed.data?.users ?? []) {
-      lastSignInById.set(u.id, u.last_sign_in_at ?? null);
-      if (u.email) emailById.set(u.id, u.email);
-    }
+    const { lastSignInById, emailById } = await getAuthActivity();
 
     return (profiles ?? []).map((row) => {
       const email = (String(row.email ?? "").trim() || emailById.get(String(row.id)) || "").trim();

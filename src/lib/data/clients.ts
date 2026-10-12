@@ -6,6 +6,7 @@ import { validate } from "@/lib/validations/parse";
 import { clientIdSchema } from "@/lib/validations/data";
 import { requireStaffPermission } from "@/lib/auth/staff";
 import { idsOrNone } from "@/lib/data/query";
+import { getAuthActivity } from "@/lib/data/auth-activity";
 
 export async function getClients() {
   await requireStaffPermission("read", "clients");
@@ -83,15 +84,16 @@ export async function getClientsWithStats() {
 
   if (!clients?.length) return [];
 
-  const [projectsRes, usersRes, documentsRes, reportsRes] = await Promise.all([
+  const [projectsRes, usersRes, documentsRes, reportsRes, { lastSignInById }] = await Promise.all([
     supabase.from("projects").select("id, client_id").is("deleted_at", null),
     supabase
       .from("users")
-      .select("id, client_id, updated_at, role, is_active")
+      .select("id, client_id, role, is_active")
       .is("deleted_at", null)
       .in("role", [...CLIENT_PORTAL_ROLES]),
     supabase.from("documents").select("project_id, file_size").is("deleted_at", null),
     supabase.from("reports").select("project_id, file_size").is("deleted_at", null),
+    getAuthActivity(),
   ]);
 
   const countByClient: Record<string, number> = {};
@@ -109,9 +111,10 @@ export async function getClientsWithStats() {
   usersRes.data?.forEach((u) => {
     if (!u.client_id) return;
     usersByClient[u.client_id] = (usersByClient[u.client_id] || 0) + 1;
+    const lastSignIn = lastSignInById.get(u.id);
     const prev = lastActivityByClient[u.client_id];
-    if (!prev || u.updated_at > prev) {
-      lastActivityByClient[u.client_id] = u.updated_at;
+    if (lastSignIn && (!prev || Date.parse(lastSignIn) > Date.parse(prev))) {
+      lastActivityByClient[u.client_id] = lastSignIn;
     }
     if (u.is_active) {
       if (u.role === "client_admin") {
