@@ -150,7 +150,7 @@ function priorityWeight(priority: string): number {
   return map[priority] ?? 0;
 }
 
-function normalizeTrades(raw: unknown): TimelineTradeProgress[] {
+export function normalizeTrades(raw: unknown): TimelineTradeProgress[] {
   if (!Array.isArray(raw) || raw.length === 0) return [];
   return raw
     .map((item) => {

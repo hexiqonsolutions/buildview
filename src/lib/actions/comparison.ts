@@ -7,7 +7,6 @@ import {
   buildActivityLog,
   buildAiPlaceholder,
   buildKpis,
-  buildTradeProgress,
   buildVisualChanges,
   bucketIssues,
   filterBetweenScans,
@@ -16,6 +15,7 @@ import {
   filterTimelineBetween,
   orderScans,
 } from "@/lib/comparison/analytics";
+import { buildTradeProgress, getScanProgress } from "@/lib/comparison/progress";
 import {
   documentAppearedAfterScanA,
   extractPhotosFromEvents,
@@ -92,8 +92,7 @@ export async function getComparisonProjectsData(): Promise<ComparisonProjectsDat
           project?: { id: string; name: string; client_name: string } | null;
         },
         project,
-        index,
-        sorted.length
+        index
       )
     );
   }
@@ -168,8 +167,10 @@ export async function fetchComparisonSnapshot(
   const photosB =
     windowPhotosB.length > 0 ? windowPhotosB : tourLinkedPhotos(detail.timeline, scanB.id);
 
-  const kpis = buildKpis(scanA, scanB, issuesBetween);
-  const tradeProgress = buildTradeProgress(scanA, scanB, reportsBetween, issuesBetween);
+  const progressA = getScanProgress(scanA, scopedTimeline);
+  const progressB = getScanProgress(scanB, scopedTimeline);
+  const kpis = buildKpis(progressA, progressB, issuesBetween);
+  const tradeProgress = buildTradeProgress(progressA, progressB);
   const visualChanges = buildVisualChanges(documentsBetween, issuesBetween, reportsBetween);
   const activities = buildActivityLog(
     scanA,
@@ -187,6 +188,7 @@ export async function fetchComparisonSnapshot(
     dateWindowLabel: formatWindowLabel(window),
     kpis,
     tradeProgress,
+    progressSources: { scanA: progressA.source, scanB: progressB.source },
     visualChanges,
     documentsBetween,
     reportsBetween,

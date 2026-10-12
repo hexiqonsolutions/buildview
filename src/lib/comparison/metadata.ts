@@ -1,7 +1,7 @@
 import type { Project, ProjectTour } from "@/lib/types";
 import type { EnrichedTour, TourMetadata } from "@/lib/comparison/types";
 import { parseTourWorkspaceMeta } from "@/lib/admin/tour-metadata";
-import { getProjectProgressPercent, getProjectStageLabel } from "@/lib/utils";
+import { getProjectStageLabel } from "@/lib/utils";
 
 type ParsedMeta = Partial<TourMetadata>;
 
@@ -19,7 +19,6 @@ function tryParseDescription(description: string | null): ParsedMeta {
     version: undefined,
     weather: undefined,
     projectStage: undefined,
-    progressPercent: undefined,
   };
 }
 
@@ -36,13 +35,9 @@ function inferFromName(name: string | null | undefined): ParsedMeta {
 function buildTourMetadata(
   tour: ProjectTour,
   project: Project,
-  index: number,
-  total: number
+  index: number
 ): TourMetadata {
   const parsed = { ...inferFromName(tour.name), ...tryParseDescription(tour.description) };
-  const baseProgress = getProjectProgressPercent(project.status);
-  const step = total > 1 ? Math.round((index / (total - 1)) * (100 - baseProgress)) : 0;
-  const progressPercent = parsed.progressPercent ?? Math.min(100, baseProgress + step);
 
   return {
     building: parsed.building ?? "Main Building",
@@ -53,7 +48,6 @@ function buildTourMetadata(
     version: parsed.version ?? `v${index + 1}.${tour.sort_order + 1}`,
     weather: parsed.weather ?? "Clear",
     projectStage: parsed.projectStage ?? getProjectStageLabel(project.status),
-    progressPercent,
     notes: parsed.notes ?? tour.description ?? "",
   };
 }
@@ -61,12 +55,11 @@ function buildTourMetadata(
 export function enrichTour(
   tour: ProjectTour & { project?: { id: string; name: string; client_name: string } | null },
   project: Project,
-  index: number,
-  total: number
+  index: number
 ): EnrichedTour {
   return {
     ...tour,
-    metadata: buildTourMetadata(tour, project, index, total),
+    metadata: buildTourMetadata(tour, project, index),
   };
 }
 

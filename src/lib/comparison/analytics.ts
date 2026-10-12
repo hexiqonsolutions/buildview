@@ -10,6 +10,7 @@ import type {
   ComparisonKpis,
   ComparisonSnapshot,
   EnrichedTour,
+  ScanProgress,
   TradeProgressItem,
   VisualChangeCard,
 } from "@/lib/comparison/types";
@@ -24,16 +25,7 @@ import {
   type ComparisonDateWindow,
 } from "@/lib/comparison/date-window";
 import { getTourDate } from "@/lib/comparison/metadata";
-
-const DEFAULT_TRADES = [
-  "Structure",
-  "Masonry",
-  "Plastering",
-  "Electrical",
-  "Plumbing",
-  "Painting",
-  "Flooring",
-];
+import { EMPTY_SCAN_PROGRESS } from "@/lib/comparison/progress";
 
 export function filterBetweenScans<T extends { created_at: string }>(
   items: T[],
@@ -94,47 +86,15 @@ export function bucketIssues(
   return { resolvedIssues, newIssues, pendingIssues, criticalIssues };
 }
 
-export function buildTradeProgress(
-  scanA: EnrichedTour,
-  scanB: EnrichedTour,
-  reports: Report[],
+export function buildKpis(
+  scanA: ScanProgress,
+  scanB: ScanProgress,
   issues: IssueWithRelations[]
-): TradeProgressItem[] {
-  const delta = scanB.metadata.progressPercent - scanA.metadata.progressPercent;
-  const resolved = issues.filter((i) => i.status === "resolved" || i.status === "closed").length;
-  const open = issues.filter((i) => isOpenIssueStatus(i.status)).length;
-
-  return DEFAULT_TRADES.map((trade, i) => {
-    const ratio = (i + 1) / DEFAULT_TRADES.length;
-    const tradeDelta = Math.round((delta * ratio) / DEFAULT_TRADES.length) || 0;
-    const threshold = scanA.metadata.progressPercent + delta * ratio;
-
-    if (threshold >= scanB.metadata.progressPercent - 5) {
-      return { trade, status: "completed" as const, delta: tradeDelta > 0 ? tradeDelta : undefined };
-    }
-    if (threshold >= scanB.metadata.progressPercent - 20) {
-      const pct = Math.round(((threshold - scanA.metadata.progressPercent) / Math.max(delta, 1)) * 100);
-      return {
-        trade,
-        status: "in_progress" as const,
-        detail: `${Math.min(95, Math.max(10, pct))}%`,
-        delta: tradeDelta > 0 ? tradeDelta : undefined,
-      };
-    }
-    if (reports.length > 0 && i < reports.length) {
-      return { trade, status: "started" as const, delta: tradeDelta > 0 ? tradeDelta : undefined };
-    }
-    if (open > resolved && i === DEFAULT_TRADES.length - 1) {
-      return { trade, status: "pending" as const };
-    }
-    return { trade, status: "pending" as const, delta: 0 };
-  });
-}
-
-export function buildKpis(scanA: EnrichedTour, scanB: EnrichedTour, issues: IssueWithRelations[]): ComparisonKpis {
-  const previousProgress = scanA.metadata.progressPercent;
-  const currentProgress = scanB.metadata.progressPercent;
-  const difference = currentProgress - previousProgress;
+): ComparisonKpis {
+  const previousProgress = scanA.overall;
+  const currentProgress = scanB.overall;
+  const difference =
+    previousProgress != null && currentProgress != null ? currentProgress - previousProgress : null;
   const criticalCount = issues.filter((i) => i.priority === "critical" && i.status !== "closed").length;
   const openCount = issues.filter((i) => isOpenIssueStatus(i.status)).length;
 
@@ -142,20 +102,30 @@ export function buildKpis(scanA: EnrichedTour, scanB: EnrichedTour, issues: Issu
     previousProgress,
     currentProgress,
     difference,
-    scheduleStatus: difference >= 8 ? "on_track" : difference >= 3 ? "at_risk" : "delayed",
+    scheduleStatus:
+      difference == null
+        ? "unknown"
+        : difference >= 8
+          ? "on_track"
+          : difference >= 3
+            ? "at_risk"
+            : "delayed",
     qualityStatus: criticalCount > 0 ? "concern" : openCount > 3 ? "review" : "good",
     safetyStatus: issues.some((i) => i.title.toLowerCase().includes("safety") && i.status !== "closed")
       ? "alert"
       : openCount > 5
         ? "watch"
         : "clear",
-    healthScore: Math.min(
-      100,
-      Math.max(
-        40,
-        currentProgress - criticalCount * 8 - openCount * 2 + difference * 0.5
-      )
-    ),
+    healthScore:
+      currentProgress == null
+        ? null
+        : Math.min(
+            100,
+            Math.max(
+              40,
+              currentProgress - criticalCount * 8 - openCount * 2 + (difference ?? 0) * 0.5
+            )
+          ),
   };
 }
 
@@ -296,14 +266,27 @@ export function buildAiPlaceholder(
   tradeProgress: TradeProgressItem[],
   criticalIssues: IssueWithRelations[]
 ): ComparisonSnapshot["aiPlaceholder"] {
-  const pending = tradeProgress.filter((t) => t.status === "pending").map((t) => t.trade);
-  const completed = tradeProgress.filter((t) => t.status === "completed").map((t) => t.trade);
+  const pending = tradeProgress
+    .filter((t) => t.status === "pending" || t.status === "in_progress")
+    .map((t) => t.trade);
+  const completed = tradeProgress
+    .filter((t) => t.status === "completed" && (t.before ?? 0) < 100)
+    .map((t) => t.trade);
+
+  let overallProgress: string;
+  if (kpis.difference != null && kpis.currentProgress != null) {
+    overallProgress = `Overall progress changed by ${kpis.difference >= 0 ? "+" : ""}${kpis.difference}% between site visits. Current completion at ${kpis.currentProgress}%.`;
+  } else if (kpis.currentProgress != null) {
+    overallProgress = `Current completion at ${kpis.currentProgress}%. No progress was recorded in Timeline for the earlier scan.`;
+  } else {
+    overallProgress = "Overall progress hasn't been recorded in Timeline for these scans yet.";
+  }
 
   return {
-    overallProgress: `Overall progress increased by ${kpis.difference}% between site visits. Current completion at ${kpis.currentProgress}%.`,
+    overallProgress,
     keyChanges: [
       ...completed.slice(0, 2).map((t) => `${t} marked complete`),
-      `${kpis.difference}% net progress gain`,
+      ...(kpis.difference != null ? [`${kpis.difference}% net progress change`] : []),
     ],
     pendingActivities: pending.slice(0, 4),
     criticalRisks: criticalIssues.slice(0, 3).map((i) => i.title),
@@ -322,8 +305,8 @@ export function buildShellComparisonSnapshot(
   scanB: EnrichedTour
 ): ComparisonSnapshot {
   const [orderedA, orderedB] = orderScans(scanA, scanB);
-  const kpis = buildKpis(orderedA, orderedB, []);
-  const tradeProgress = buildTradeProgress(orderedA, orderedB, [], []);
+  const kpis = buildKpis(EMPTY_SCAN_PROGRESS, EMPTY_SCAN_PROGRESS, []);
+  const tradeProgress: TradeProgressItem[] = [];
   const visualChanges = buildVisualChanges([], [], []);
   const activities = buildActivityLog(orderedA, orderedB, [], [], [], []);
 
@@ -334,6 +317,7 @@ export function buildShellComparisonSnapshot(
     dateWindowLabel: `${new Date(orderedA.capture_date ?? orderedA.created_at).toLocaleDateString()} → ${new Date(orderedB.capture_date ?? orderedB.created_at).toLocaleDateString()}`,
     kpis,
     tradeProgress,
+    progressSources: null,
     visualChanges,
     documentsBetween: [],
     reportsBetween: [],
@@ -385,7 +369,6 @@ function blankEnrichedTour(
       version: "",
       weather: "",
       projectStage: "",
-      progressPercent: 0,
       notes: "",
     },
     project: project
@@ -426,19 +409,16 @@ export function buildBlankComparisonSnapshot(
     scanB,
     dateWindowLabel: "— → —",
     kpis: {
-      previousProgress: 0,
-      currentProgress: 0,
-      difference: 0,
-      scheduleStatus: "on_track",
+      previousProgress: null,
+      currentProgress: null,
+      difference: null,
+      scheduleStatus: "unknown",
       qualityStatus: "good",
       safetyStatus: "clear",
-      healthScore: 0,
+      healthScore: null,
     },
-    tradeProgress: DEFAULT_TRADES.map((trade) => ({
-      trade,
-      status: "pending" as const,
-      delta: 0,
-    })),
+    tradeProgress: [],
+    progressSources: null,
     visualChanges: [
       { id: "completed", label: "Completed Work", count: 0, tone: "success" },
       { id: "new", label: "New Areas", count: 0, tone: "info" },

@@ -16,7 +16,6 @@ export type TourMetadata = {
   version: string;
   weather: string;
   projectStage: string;
-  progressPercent: number;
   notes: string;
 };
 
@@ -27,9 +26,26 @@ export type EnrichedTour = ProjectTour & {
 
 export type TradeProgressItem = {
   trade: string;
-  status: "completed" | "in_progress" | "started" | "pending";
-  detail?: string;
-  delta?: number;
+  status: "completed" | "in_progress" | "pending" | "not_recorded";
+  /** Percent recorded in Timeline as of Scan A / Scan B; null when never recorded. */
+  before: number | null;
+  after: number | null;
+  delta: number | null;
+};
+
+/** Timeline entry a scan's progress figures were read from. */
+export type ProgressSource = {
+  eventId: string;
+  title: string;
+  date: string;
+  linkedToScan: boolean;
+};
+
+export type ScanProgress = {
+  overall: number | null;
+  /** Latest percent per trade, in the order trades were first entered. */
+  trades: Map<string, number>;
+  source: ProgressSource | null;
 };
 
 export type VisualChangeCard = {
@@ -47,13 +63,14 @@ export type ComparisonActivity = {
 };
 
 export type ComparisonKpis = {
-  previousProgress: number;
-  currentProgress: number;
-  difference: number;
-  scheduleStatus: "on_track" | "at_risk" | "delayed";
+  /** Overall % recorded in Timeline; null when no entry covers that scan. */
+  previousProgress: number | null;
+  currentProgress: number | null;
+  difference: number | null;
+  scheduleStatus: "on_track" | "at_risk" | "delayed" | "unknown";
   qualityStatus: "good" | "review" | "concern";
   safetyStatus: "clear" | "watch" | "alert";
-  healthScore: number;
+  healthScore: number | null;
 };
 
 export type SavedComparison = {
@@ -76,6 +93,8 @@ export type ComparisonSnapshot = {
   dateWindowLabel: string;
   kpis: ComparisonKpis;
   tradeProgress: TradeProgressItem[];
+  /** Null until the full comparison has loaded from the server. */
+  progressSources: { scanA: ProgressSource | null; scanB: ProgressSource | null } | null;
   visualChanges: VisualChangeCard[];
   documentsBetween: Document[];
   reportsBetween: Report[];

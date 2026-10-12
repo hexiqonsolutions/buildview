@@ -50,13 +50,13 @@ function ProgressRing({
   delta,
   previous,
 }: {
-  value: number;
-  delta: number;
-  previous: number;
+  value: number | null;
+  delta: number | null;
+  previous: number | null;
 }) {
   const r = 52;
   const c = 2 * Math.PI * r;
-  const offset = c - (value / 100) * c;
+  const offset = c - ((value ?? 0) / 100) * c;
 
   return (
     <div className="flex flex-col items-center">
@@ -77,8 +77,10 @@ function ProgressRing({
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="font-display text-3xl font-bold text-slate-900 dark:text-white">{value}%</span>
-          {delta !== 0 && (
+          <span className="font-display text-3xl font-bold text-slate-900 dark:text-white">
+            {value == null ? "—" : `${value}%`}
+          </span>
+          {delta != null && delta !== 0 && (
             <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
               {delta >= 0 ? "+" : ""}
               {delta}%
@@ -87,7 +89,7 @@ function ProgressRing({
         </div>
       </div>
       <p className="mt-2 text-center text-xs text-slate-500">
-        Previous scan: {previous}%
+        Previous scan: {previous == null ? "not recorded" : `${previous}%`}
       </p>
     </div>
   );
@@ -95,24 +97,20 @@ function ProgressRing({
 
 type TradeProgressItem = ComparisonSnapshot["tradeProgress"][number];
 
-// Trades only carry a coarse status, so the bar shows a fixed fill per stage rather than a measured %.
-const TRADE_STAGE_FILL: Record<string, string> = {
-  completed: "100%",
-  in_progress: "60%",
-  started: "25%",
-};
-
 function TradeProgressRow({ item }: { item: TradeProgressItem }) {
   return (
     <div className="flex items-center justify-between gap-3">
       <span className="text-sm text-slate-700 dark:text-slate-300">{item.trade}</span>
       <div className="flex items-center gap-2">
-        {item.delta !== undefined && item.delta > 0 && (
-          <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">+{item.delta}%</span>
+        {item.delta != null && item.delta !== 0 && (
+          <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+            {item.delta > 0 ? "+" : ""}
+            {item.delta}%
+          </span>
         )}
-        {item.delta === 0 && item.status === "pending" && (
-          <span className="text-xs text-slate-400">0%</span>
-        )}
+        <span className="w-9 text-right text-xs tabular-nums text-slate-500">
+          {item.after == null ? "—" : `${item.after}%`}
+        </span>
         <div className="h-1.5 w-14 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
           <div
             className={cn(
@@ -123,7 +121,7 @@ function TradeProgressRow({ item }: { item: TradeProgressItem }) {
                   ? "bg-slate-500"
                   : "bg-slate-300"
             )}
-            style={{ width: TRADE_STAGE_FILL[item.status] ?? "5%" }}
+            style={{ width: `${item.after ?? 0}%` }}
           />
         </div>
       </div>
@@ -131,16 +129,43 @@ function TradeProgressRow({ item }: { item: TradeProgressItem }) {
   );
 }
 
+function ProgressSourceNote({ snapshot }: { snapshot: ComparisonSnapshot }) {
+  const sources = snapshot.progressSources;
+  if (!sources) return null;
+
+  const describe = (label: string, source: NonNullable<typeof sources.scanA> | null) =>
+    source
+      ? `${label}: “${source.title}”, ${formatDate(source.date)}${source.linkedToScan ? " (linked to scan)" : ""}`
+      : `${label}: no Timeline entry on or before this scan`;
+
+  return (
+    <p className="mt-4 border-t border-slate-100 pt-3 text-xs text-slate-500 dark:border-slate-800">
+      Progress is taken from Timeline entries. {describe("Scan A", sources.scanA)} ·{" "}
+      {describe("Scan B", sources.scanB)}
+    </p>
+  );
+}
+
 /** Full-width progress summary — sits below KPIs when viewers are immersive. */
 export function CompareProgressSummary({ snapshot }: { snapshot: ComparisonSnapshot }) {
+  const loaded = snapshot.progressSources != null;
+
   return (
     <WidgetCard title="Progress Summary">
       <div className="grid grid-cols-1 items-center gap-8 lg:grid-cols-[1fr_auto]">
-        <div className="grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2 xl:grid-cols-4">
-          {snapshot.tradeProgress.map((item) => (
-            <TradeProgressRow key={item.trade} item={item} />
-          ))}
-        </div>
+        {snapshot.tradeProgress.length > 0 ? (
+          <div className="grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2 xl:grid-cols-4">
+            {snapshot.tradeProgress.map((item) => (
+              <TradeProgressRow key={item.trade} item={item} />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-lg border border-dashed border-slate-200 px-4 py-6 text-sm text-slate-500 dark:border-slate-700">
+            {loaded
+              ? "No trade progress recorded for these scans yet. Trade percentages come from Timeline entries linked to a scan or dated on or before it."
+              : "Loading progress…"}
+          </div>
+        )}
         <div className="flex justify-center lg:justify-end">
           <ProgressRing
             value={snapshot.kpis.currentProgress}
@@ -149,6 +174,7 @@ export function CompareProgressSummary({ snapshot }: { snapshot: ComparisonSnaps
           />
         </div>
       </div>
+      <ProgressSourceNote snapshot={snapshot} />
     </WidgetCard>
   );
 }
@@ -161,6 +187,8 @@ export function CompareKpiRow({
   blank?: boolean;
 }) {
   const { kpis } = snapshot;
+  const loaded = snapshot.progressSources != null;
+  const notRecorded = loaded ? "not recorded" : "loading…";
   const openTotal =
     snapshot.pendingIssues.length + snapshot.newIssues.length + snapshot.criticalIssues.length;
   const newIssues = snapshot.newIssues.length;
@@ -168,11 +196,17 @@ export function CompareKpiRow({
   const cards = [
     {
       label: "Overall Progress",
-      value: blank ? "—" : `${kpis.currentProgress}%`,
-      sub: blank ? "awaiting scans" : `from ${kpis.previousProgress}%`,
+      value: blank || kpis.currentProgress == null ? "—" : `${kpis.currentProgress}%`,
+      sub: blank
+        ? "awaiting scans"
+        : kpis.currentProgress == null
+          ? notRecorded
+          : kpis.previousProgress == null
+            ? "previous scan not recorded"
+            : `from ${kpis.previousProgress}%`,
       icon: TrendingUp,
       tone: "text-slate-700 bg-slate-100 dark:text-slate-300 dark:bg-slate-800",
-      ring: !blank,
+      ring: !blank && kpis.currentProgress != null,
     },
     {
       label: "Schedule Status",
@@ -182,8 +216,10 @@ export function CompareKpiRow({
           ? "On Track"
           : kpis.scheduleStatus === "at_risk"
             ? "At Risk"
-            : "Delayed",
-      sub: "vs planned timeline",
+            : kpis.scheduleStatus === "delayed"
+              ? "Delayed"
+              : "—",
+      sub: kpis.scheduleStatus === "unknown" && !blank ? `progress ${notRecorded}` : "vs planned timeline",
       icon: Calendar,
       tone: "text-slate-700 bg-slate-100 dark:text-slate-300 dark:bg-slate-800",
     },
@@ -223,8 +259,8 @@ export function CompareKpiRow({
     },
     {
       label: "Project Health Score",
-      value: blank ? "—" : `${Math.round(kpis.healthScore)}`,
-      sub: "/ 100",
+      value: blank || kpis.healthScore == null ? "—" : `${Math.round(kpis.healthScore)}`,
+      sub: !blank && kpis.healthScore == null ? `progress ${notRecorded}` : "/ 100",
       icon: TrendingUp,
       tone: "text-slate-700 bg-slate-100",
     },
@@ -240,7 +276,7 @@ export function CompareKpiRow({
             </p>
             <p className="mt-1 font-display text-2xl font-bold text-slate-900 dark:text-white">
               {card.value}
-              {card.label === "Project Health Score" && !blank && (
+              {card.label === "Project Health Score" && !blank && kpis.healthScore != null && (
                 <span className="text-sm font-normal text-slate-400">/100</span>
               )}
             </p>
@@ -265,7 +301,7 @@ export function CompareKpiRow({
                   stroke="#22c55e"
                   strokeWidth="4"
                   strokeDasharray={113}
-                  strokeDashoffset={113 - (kpis.currentProgress / 100) * 113}
+                  strokeDashoffset={113 - ((kpis.currentProgress ?? 0) / 100) * 113}
                   strokeLinecap="round"
                 />
               </svg>

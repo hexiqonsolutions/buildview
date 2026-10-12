@@ -29,6 +29,11 @@ function safeScanDate(value: string | null | undefined): string {
   return formatDate(value);
 }
 
+function formatPercent(value: number | null, signed = false): string {
+  if (value == null) return "Not recorded";
+  return `${signed && value >= 0 ? "+" : ""}${value}%`;
+}
+
 function Section({
   title,
   icon: Icon,
@@ -186,16 +191,30 @@ export function CompareDetailedReportDialog({
 
               <Section title="Progress & health" icon={ClipboardList}>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  <MetricPill label="Previous" value={`${snapshot.kpis.previousProgress}%`} />
-                  <MetricPill label="Current" value={`${snapshot.kpis.currentProgress}%`} />
+                  <MetricPill label="Previous" value={formatPercent(snapshot.kpis.previousProgress)} />
+                  <MetricPill label="Current" value={formatPercent(snapshot.kpis.currentProgress)} />
                   <MetricPill
                     label="Change"
-                    value={`${snapshot.kpis.difference >= 0 ? "+" : ""}${snapshot.kpis.difference}%`}
+                    value={formatPercent(snapshot.kpis.difference, true)}
                   />
-                  <MetricPill label="Schedule" value={formatStatus(snapshot.kpis.scheduleStatus)} />
+                  <MetricPill
+                    label="Schedule"
+                    value={
+                      snapshot.kpis.scheduleStatus === "unknown"
+                        ? "Not recorded"
+                        : formatStatus(snapshot.kpis.scheduleStatus)
+                    }
+                  />
                   <MetricPill label="Quality" value={formatStatus(snapshot.kpis.qualityStatus)} />
                   <MetricPill label="Safety" value={formatStatus(snapshot.kpis.safetyStatus)} />
-                  <MetricPill label="Health score" value={snapshot.kpis.healthScore} />
+                  <MetricPill
+                    label="Health score"
+                    value={
+                      snapshot.kpis.healthScore == null
+                        ? "Not recorded"
+                        : Math.round(snapshot.kpis.healthScore)
+                    }
+                  />
                 </div>
               </Section>
 
@@ -233,7 +252,9 @@ export function CompareDetailedReportDialog({
 
               <Section title="Trade progress" icon={CheckCircle2}>
                 {snapshot.tradeProgress.length === 0 ? (
-                  <p className="text-sm text-slate-500">No trade progress data for this window.</p>
+                  <p className="text-sm text-slate-500">
+                    No trade progress recorded in Timeline for these scans.
+                  </p>
                 ) : (
                   <div className="space-y-2">
                     {snapshot.tradeProgress.map((trade) => (
@@ -245,12 +266,10 @@ export function CompareDetailedReportDialog({
                           {trade.trade}
                         </span>
                         <div className="flex items-center gap-2">
-                          {typeof trade.delta === "number" ? (
-                            <span className="text-xs text-slate-500">
-                              {trade.delta >= 0 ? "+" : ""}
-                              {trade.delta}%
-                            </span>
-                          ) : null}
+                          <span className="text-xs text-slate-500">
+                            {formatPercent(trade.before)} → {formatPercent(trade.after)}
+                            {trade.delta != null ? ` (${formatPercent(trade.delta, true)})` : ""}
+                          </span>
                           <Badge variant="secondary" className="capitalize">
                             {trade.status.replace(/_/g, " ")}
                           </Badge>
