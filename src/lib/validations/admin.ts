@@ -57,7 +57,12 @@ const staffEditableProjectStatuses = [
 const subscriptionStatuses = ["active", "inactive", "trial", "cancelled"] as const satisfies readonly SubscriptionStatus[];
 const invoiceStatuses = ["draft", "sent", "paid", "overdue", "cancelled"] as const satisfies readonly InvoiceStatus[];
 const invoiceNotificationKinds = ["sent", "pending", "paid", "overdue"] as const satisfies readonly InvoiceNotificationKind[];
-const portfolioCategories = ["architecture", "interior", "real_estate"] as const satisfies readonly PortfolioCategory[];
+const portfolioCategories = [
+  "architecture",
+  "interior",
+  "real_estate",
+  "construction_monitoring",
+] as const satisfies readonly PortfolioCategory[];
 
 const dashboardTypes = ["construction", "portfolio"] as const satisfies readonly ClientDashboardType[];
 

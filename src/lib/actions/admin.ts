@@ -234,7 +234,12 @@ export async function createProject(data: {
   status: string;
   description?: string | null;
   area_sqft?: number | null;
-  portfolio_category?: "architecture" | "interior" | "real_estate" | null;
+  portfolio_category?:
+    | "architecture"
+    | "interior"
+    | "real_estate"
+    | "construction_monitoring"
+    | null;
 }): Promise<{ projectId: string } | { error: string }> {
   const validation = validate(createProjectSchema, data);
   if (!validation.success) return { error: validation.error };
@@ -1302,7 +1307,12 @@ export async function updateProjectRecord(data: {
   start_date?: string | null;
   completion_date?: string | null;
   area_sqft?: number | null;
-  portfolio_category?: "architecture" | "interior" | "real_estate" | null;
+  portfolio_category?:
+    | "architecture"
+    | "interior"
+    | "real_estate"
+    | "construction_monitoring"
+    | null;
 }): Promise<{ error?: string }> {
   const validation = validate(updateProjectSchema, data);
   if (!validation.success) return { error: validation.error };

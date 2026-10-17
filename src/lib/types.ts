@@ -772,12 +772,17 @@ export type User = Timestamps &
     dashboard_type?: ClientDashboardType | null;
   };
 
-export type PortfolioCategory = "architecture" | "interior" | "real_estate";
+export type PortfolioCategory =
+  | "architecture"
+  | "interior"
+  | "real_estate"
+  | "construction_monitoring";
 
 export const PORTFOLIO_CATEGORY_LABELS: Record<PortfolioCategory, string> = {
   architecture: "Architecture",
   interior: "Interior",
   real_estate: "Real Estate",
+  construction_monitoring: "Construction Monitoring",
 };
 
 export type Project = Timestamps &
