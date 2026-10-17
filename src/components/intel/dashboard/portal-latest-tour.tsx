@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Camera, Columns2, Rotate3d } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,13 +9,12 @@ import { getMatterportThumbnailUrl } from "@/lib/matterport";
 import type { ProjectTour } from "@/lib/types";
 import { scopeToPortalQueryString } from "@/lib/admin/scope";
 import { usePortalWorkspace } from "@/components/portal/workspace/portal-workspace-provider";
-import { useState } from "react";
 
 type LatestTour = ProjectTour & { projectName: string; projectId: string };
 
 /**
  * Compact latest-walkthrough card for Construction Intelligence.
- * Intentionally does not embed Matterport — keeps the dashboard scannable.
+ * No Matterport embed, no h-full — keeps the dashboard from stretching.
  */
 export function PortalLatestTourCard({ tour }: { tour: LatestTour | null }) {
   const { hydrated, scope } = usePortalWorkspace();
@@ -32,7 +32,7 @@ export function PortalLatestTourCard({ tour }: { tour: LatestTour | null }) {
 
   if (!tour) {
     return (
-      <section className="intel-card flex h-full flex-col p-4 sm:p-5">
+      <section className="intel-card p-4 sm:p-5">
         <div className="mb-3 flex items-center justify-between gap-2">
           <div>
             <p className="dashboard-section-eyebrow">Latest walkthrough</p>
@@ -42,7 +42,7 @@ export function PortalLatestTourCard({ tour }: { tour: LatestTour | null }) {
             <Link href={projectsHref}>View all</Link>
           </Button>
         </div>
-        <div className="flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-8 text-center dark:border-slate-700 dark:bg-slate-900/40">
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-4 py-10 text-center dark:border-slate-700 dark:bg-slate-900/40">
           <Camera className="mb-2 h-8 w-8 text-slate-300" aria-hidden />
           <p className="text-sm font-medium text-slate-700 dark:text-slate-200">No walkthroughs yet</p>
           <p className="mt-1 max-w-[16rem] text-xs text-slate-500">
@@ -52,6 +52,7 @@ export function PortalLatestTourCard({ tour }: { tour: LatestTour | null }) {
       </section>
     );
   }
+
   const scansQuery = new URLSearchParams(
     workspaceQuery.startsWith("?") ? workspaceQuery.slice(1) : workspaceQuery
   );
@@ -63,7 +64,7 @@ export function PortalLatestTourCard({ tour }: { tour: LatestTour | null }) {
   }`;
 
   return (
-    <section className="intel-card flex h-full flex-col overflow-hidden">
+    <section className="intel-card overflow-hidden">
       <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-3 dark:border-slate-800 sm:px-5">
         <div className="min-w-0">
           <p className="dashboard-section-eyebrow">Latest walkthrough</p>
@@ -79,7 +80,7 @@ export function PortalLatestTourCard({ tour }: { tour: LatestTour | null }) {
 
       <Link
         href={projectHref}
-        className="group relative block aspect-[16/10] overflow-hidden bg-slate-900"
+        className="group relative block aspect-video overflow-hidden bg-slate-900"
         aria-label={`Open ${tour.name} on ${tour.projectName}`}
       >
         {thumbnail ? (
@@ -107,7 +108,7 @@ export function PortalLatestTourCard({ tour }: { tour: LatestTour | null }) {
         </span>
       </Link>
 
-      <div className="flex flex-1 flex-col gap-3 p-4 sm:p-5">
+      <div className="space-y-3 p-4 sm:p-5">
         <div className="min-w-0">
           <p className="truncate text-sm font-medium text-slate-900 dark:text-white">
             {tour.projectName}
@@ -116,8 +117,12 @@ export function PortalLatestTourCard({ tour }: { tour: LatestTour | null }) {
             {tour.capture_date ? formatDate(tour.capture_date) : "Date not set"}
           </p>
         </div>
-        <div className="mt-auto flex flex-wrap gap-2">
-          <Button size="sm" className="bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900" asChild>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            className="bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900"
+            asChild
+          >
             <Link href={projectHref}>Open project</Link>
           </Button>
           <Button variant="outline" size="sm" asChild>

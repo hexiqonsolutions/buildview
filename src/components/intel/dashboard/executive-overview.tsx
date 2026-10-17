@@ -44,7 +44,6 @@ export function ExecutiveOverview({
   canUpdateStatus = false,
 }: ExecutiveOverviewProps) {
   const q = workspaceQuery || "";
-  // Show every accessible project; completed last so active work stays on top.
   const displayProjects = [...data.projects].sort((a, b) => {
     const aDone = a.status === "completed" ? 1 : 0;
     const bDone = b.status === "completed" ? 1 : 0;
@@ -68,7 +67,6 @@ export function ExecutiveOverview({
         avatarUrl={avatarUrl}
       />
 
-      {/* KPI strip — overall project health at a glance */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <PortalMetricCard
           label="Active Projects"
@@ -100,9 +98,9 @@ export function ExecutiveOverview({
         />
       </div>
 
-      {/* Primary work area: projects + compact tour + overall analytics */}
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
-        <section className="space-y-4 xl:col-span-7">
+      {/* items-start prevents CSS grid from stretching short columns to match tall ones */}
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
+        <section className="space-y-4 lg:col-span-7">
           <div className="flex items-end justify-between gap-4">
             <div>
               <p className="dashboard-section-eyebrow">Projects</p>
@@ -122,45 +120,43 @@ export function ExecutiveOverview({
           />
         </section>
 
-        <aside className="space-y-4 xl:col-span-5">
+        <aside className="space-y-4 lg:col-span-5">
           <PortalLatestTourCard tour={data.latestTour} />
+        </aside>
+      </div>
 
-          <section className="intel-card p-4 sm:p-5">
-            <p className="dashboard-section-eyebrow">Portfolio summary</p>
-            <h2 className="dashboard-section-title mt-0.5">Overall project information</h2>
-            <div className="mt-4 grid grid-cols-2 gap-2.5">
-              <SummaryStat
-                icon={FolderKanban}
-                label="In progress"
-                value={inProgressCount}
-              />
-              <SummaryStat
-                icon={CheckCircle2}
-                label="Completed"
-                value={completedCount}
-              />
+      <section className="space-y-4">
+        <div>
+          <p className="dashboard-section-eyebrow">Portfolio summary</p>
+          <h2 className="dashboard-section-title mt-0.5">Overall project information</h2>
+        </div>
+        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
+          <div className="intel-card p-4 sm:p-5">
+            <p className="text-xs font-medium text-slate-500">Status breakdown</p>
+            <div className="mt-3 grid grid-cols-2 gap-2.5">
+              <SummaryStat icon={FolderKanban} label="In progress" value={inProgressCount} />
+              <SummaryStat icon={CheckCircle2} label="Completed" value={completedCount} />
               <SummaryStat icon={PauseCircle} label="On hold" value={onHoldCount} />
-              <SummaryStat
-                icon={CircleDashed}
-                label="Planning / other"
-                value={planningCount}
-              />
+              <SummaryStat icon={CircleDashed} label="Planning / other" value={planningCount} />
             </div>
             <p className="mt-4 text-xs text-slate-500">
-              Average progression across projects:{" "}
+              Average progression:{" "}
               <span className="font-semibold tabular-nums text-slate-800 dark:text-slate-200">
                 {data.overallProgressPercent}%
               </span>
             </p>
-          </section>
-
-          <PortalOverallProgressDonut
-            overallPercent={data.overallProgressPercent}
-            distribution={data.progressDistribution}
-          />
-          <PortalProgressTrendChart data={data.progressTrend} />
-        </aside>
-      </div>
+          </div>
+          <div className="intel-card overflow-hidden p-1">
+            <PortalOverallProgressDonut
+              overallPercent={data.overallProgressPercent}
+              distribution={data.progressDistribution}
+            />
+          </div>
+          <div className="intel-card overflow-hidden p-1">
+            <PortalProgressTrendChart data={data.progressTrend} />
+          </div>
+        </div>
+      </section>
 
       <FeedWidgets data={data} workspaceQuery={workspaceQuery} />
     </div>

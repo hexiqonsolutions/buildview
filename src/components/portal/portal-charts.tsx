@@ -39,9 +39,9 @@ export function PortalOverallProgressDonut({
         <CardTitle className="font-display text-base font-semibold">Overall Progress</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="relative mx-auto h-[200px] w-full max-w-[220px]">
+        <div className="relative mx-auto h-[200px] w-full max-w-[220px] shrink-0 overflow-hidden">
           {hasData ? (
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height={200}>
               <PieChart>
                 <Pie
                   data={chartData}
@@ -102,8 +102,8 @@ export function PortalProgressTrendChart({ data }: PortalProgressTrendChartProps
         <CardTitle className="font-display text-base font-semibold">Progress Trend</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="h-[200px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="h-[200px] w-full shrink-0 overflow-hidden">
+          <ResponsiveContainer width="100%" height={200}>
             <LineChart data={data} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
               <XAxis
                 dataKey="month"
