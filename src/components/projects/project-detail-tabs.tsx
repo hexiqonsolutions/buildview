@@ -10,6 +10,7 @@ import { ProjectOverview } from "@/components/projects/project-overview";
 import { ProjectMatterportPanel } from "@/components/projects/project-matterport-panel";
 import { ProjectReportsSection } from "@/components/projects/project-reports-section";
 import { ProjectAiSummaryPanel } from "@/components/projects/project-ai-summary-panel";
+import { ProgressionPanel } from "@/components/projects/progression/progression-panel";
 import { buildProjectReportSummary } from "@/lib/ai/build-project-report-summary";
 import { isOpenIssueStatus } from "@/lib/issues/status";
 import { ProjectDocumentsSection } from "@/components/projects/project-documents-section";
@@ -28,6 +29,7 @@ import { useOptionalPortalWorkspace } from "@/components/portal/workspace/portal
 import type { ProjectMediaGroups } from "@/lib/project-media";
 import type { SpatialHierarchy } from "@/lib/actions/buildings";
 import type { ProjectTeamMember } from "@/lib/data/projects";
+import type { ProjectProgressionView } from "@/lib/progression/types";
 import type {
   ProjectTour,
   Report,
@@ -63,6 +65,8 @@ interface ProjectDetailTabsProps {
   canUploadContent?: boolean;
   /** Portfolio showcase Videos & Photos */
   media?: ProjectMediaGroups;
+  /** Construction Progression Report (null / undefined for portfolio or missing migration). */
+  progression?: ProjectProgressionView | null;
 }
 
 export function ProjectDetailTabs({
@@ -84,6 +88,7 @@ export function ProjectDetailTabs({
   allowInvoices = false,
   canUploadContent = false,
   media,
+  progression = null,
 }: ProjectDetailTabsProps) {
   const portal = useOptionalPortalWorkspace();
   const isPortfolioIntel = variant === "intel" && portal?.dashboardType === "portfolio";
@@ -113,6 +118,15 @@ export function ProjectDetailTabs({
       ? [
           { id: "photos", label: "Site Images", badge: sitePhotoCount },
           { id: "timeline", label: "Timeline", badge: timeline.length },
+          ...(progression
+            ? [
+                {
+                  id: "progression",
+                  label: "Progression",
+                  badge: `${progression.overallPercent}%`,
+                },
+              ]
+            : []),
           { id: "reports", label: "Reports", badge: reports.length },
         ]
       : []),
@@ -162,6 +176,10 @@ export function ProjectDetailTabs({
             openIssueCount={openIssueCount}
           />
         )}
+
+        {showConstructionTabs && progression ? (
+          <ProgressionPanel initial={progression} compact />
+        ) : null}
 
         {showConstructionTabs ? (
           <ProjectAiSummaryPanel summary={aiSummary} />
@@ -228,6 +246,12 @@ export function ProjectDetailTabs({
             />
             <TimelineView events={timeline} />
           </TabPanel>
+
+          {progression ? (
+            <TabPanel value="progression" className="mt-6">
+              <ProgressionPanel initial={progression} />
+            </TabPanel>
+          ) : null}
 
           <TabPanel value="reports" className="mt-6 space-y-6">
             <TabSectionHeader

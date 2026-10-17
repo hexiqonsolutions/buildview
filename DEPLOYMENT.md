@@ -63,6 +63,7 @@ Migrations live in `supabase/migrations` and must be applied in numeric order.
 | 029 | `handle_new_user` ignores sign-up metadata; every new profile is `client` (security fix) |
 | 030 | Users of a suspended client company lose access to project data |
 | 031 | `get_storage_usage()` — real file sizes for the admin Storage Manager |
+| 032 | Progression Report — post-slab 56-step checklist, daily logs, RLS |
 
 **Fresh project:** run every file in the Supabase SQL Editor in order (skipping `006` if you don't want that seed admin), then optionally `supabase/seed.sql`.
 
@@ -75,7 +76,7 @@ npm run db:apply -- --from 019      # apply 019 and everything after it
 npm run db:bundle -- --from 019     # write supabase/pending-apply.sql to paste into the SQL Editor
 ```
 
-`db:apply` and `db:bundle` require an explicit selection; they never run every migration by default. `db:check` cannot detect 020–023, 025, 026 or 029–031 (function, policy, enum and data changes) — verify those in the SQL Editor:
+`db:apply` and `db:bundle` require an explicit selection; they never run every migration by default. `db:check` cannot detect 020–023, 025, 026 or 029–031 (function, policy, enum and data changes) — verify those in the SQL Editor. Migration 032 is detectable via `project_progressions`.
 
 ```sql
 -- 029 is applied when this returns false

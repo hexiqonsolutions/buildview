@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getProjectInvoices } from "@/lib/data/invoices";
 import { getProjectDetail, getProjectTeam, getProjectWithClient } from "@/lib/data/projects";
+import { getProjectProgression } from "@/lib/data/progression";
 import { getProjectSpatialHierarchy } from "@/lib/actions/buildings";
 import { getProjectMedia } from "@/lib/actions/project-media";
 import { ProjectHeader } from "@/components/projects/project-header";
@@ -39,21 +40,25 @@ export default async function ProjectDetailPage({
 }) {
   const { id } = await params;
 
-  const [projectData, detail, invoices, user, spatialHierarchy, team, media] = await Promise.all([
-    getProjectWithClient(id).catch(() => null),
-    getProjectDetail(id).catch(() => EMPTY_DETAIL),
-    getProjectInvoices(id).catch(() => []),
-    getCurrentUser().catch(() => null),
-    getProjectSpatialHierarchy(id).catch(() => ({ buildings: [] as never[] })),
-    getProjectTeam(id).catch(() => []),
-    getProjectMedia(id).catch(() => ({ videos: [], photos: [] })),
-  ]);
+  const [projectData, detail, invoices, user, spatialHierarchy, team, media, progression] =
+    await Promise.all([
+      getProjectWithClient(id).catch(() => null),
+      getProjectDetail(id).catch(() => EMPTY_DETAIL),
+      getProjectInvoices(id).catch(() => []),
+      getCurrentUser().catch(() => null),
+      getProjectSpatialHierarchy(id).catch(() => ({ buildings: [] as never[] })),
+      getProjectTeam(id).catch(() => []),
+      getProjectMedia(id).catch(() => ({ videos: [], photos: [] })),
+      getProjectProgression(id).catch(() => null),
+    ]);
 
   if (!projectData) notFound();
 
   const { project, client } = projectData;
   const latestTour = detail.tours[0];
   const latestScanDate = latestTour?.capture_date ?? latestTour?.created_at ?? null;
+  const headerProgress =
+    progression != null ? progression.overallPercent : getProjectProgressPercent(project.status);
   const allowMatterportUpload = user ? canUploadMatterport(user.role) : false;
   const canManageUploads = user
     ? canManageClientUploads(user.role) || can(user.role, "upload", "upload")
@@ -72,13 +77,14 @@ export default async function ProjectDetailPage({
       <IntelProjectContextBridge
         projectId={project.id}
         projectName={project.name}
-        progress={getProjectProgressPercent(project.status)}
+        progress={headerProgress}
         latestScanDate={latestScanDate}
       />
       <ProjectHeader
         project={project}
         client={client}
         latestTour={detail.tours[0] ?? null}
+        progressOverride={progression != null ? progression.overallPercent : null}
         canUpdateStatus={canUpdateStatus}
         actions={
           canManageUploads ? (
@@ -110,6 +116,7 @@ export default async function ProjectDetailPage({
           allowInvoices={allowInvoices}
           canUploadContent={canUploadContent}
           media={media}
+          progression={progression}
         />
       </div>
       {showComments && (

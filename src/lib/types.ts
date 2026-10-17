@@ -579,6 +579,89 @@ export interface Database {
           },
         ];
       };
+      progression_templates: {
+        Row: ProgressionTemplate;
+        Insert: ProgressionTemplateInsert;
+        Update: ProgressionTemplateUpdate;
+        Relationships: [];
+      };
+      progression_template_steps: {
+        Row: ProgressionTemplateStep;
+        Insert: ProgressionTemplateStepInsert;
+        Update: ProgressionTemplateStepUpdate;
+        Relationships: [
+          {
+            foreignKeyName: "progression_template_steps_template_id_fkey";
+            columns: ["template_id"];
+            isOneToOne: false;
+            referencedRelation: "progression_templates";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      project_progressions: {
+        Row: ProjectProgression;
+        Insert: ProjectProgressionInsert;
+        Update: ProjectProgressionUpdate;
+        Relationships: [
+          {
+            foreignKeyName: "project_progressions_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: true;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "project_progressions_template_id_fkey";
+            columns: ["template_id"];
+            isOneToOne: false;
+            referencedRelation: "progression_templates";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      project_progression_steps: {
+        Row: ProjectProgressionStep;
+        Insert: ProjectProgressionStepInsert;
+        Update: ProjectProgressionStepUpdate;
+        Relationships: [
+          {
+            foreignKeyName: "project_progression_steps_progression_id_fkey";
+            columns: ["progression_id"];
+            isOneToOne: false;
+            referencedRelation: "project_progressions";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "project_progression_steps_template_step_id_fkey";
+            columns: ["template_step_id"];
+            isOneToOne: false;
+            referencedRelation: "progression_template_steps";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      project_progression_logs: {
+        Row: ProjectProgressionLog;
+        Insert: ProjectProgressionLogInsert;
+        Update: ProjectProgressionLogUpdate;
+        Relationships: [
+          {
+            foreignKeyName: "project_progression_logs_progression_id_fkey";
+            columns: ["progression_id"];
+            isOneToOne: false;
+            referencedRelation: "project_progressions";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "project_progression_logs_step_id_fkey";
+            columns: ["step_id"];
+            isOneToOne: false;
+            referencedRelation: "project_progression_steps";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       active_projects: {
@@ -949,6 +1032,115 @@ export type SavedComparisonRecord = Timestamps & {
   floor_id: string | null;
   client_id: string | null;
 };
+
+export type ProgressionTemplate = Timestamps & {
+  id: string;
+  key: string;
+  name: string;
+  version: number;
+  is_active: boolean;
+};
+
+export type ProgressionTemplateStep = {
+  id: string;
+  template_id: string;
+  step_number: number;
+  phase_number: number;
+  phase_name: string;
+  phase_stage: string;
+  title: string;
+  created_at: string;
+};
+
+export type ProjectProgression = Timestamps &
+  FullAuditFields & {
+    id: string;
+    project_id: string;
+    template_id: string;
+  };
+
+export type ProjectProgressionStep = Timestamps & {
+  id: string;
+  progression_id: string;
+  template_step_id: string;
+  step_number: number;
+  status: "pending" | "completed";
+  completed_at: string | null;
+  completed_by: string | null;
+  work_date: string | null;
+  note: string | null;
+};
+
+export type ProjectProgressionLog = {
+  id: string;
+  progression_id: string;
+  step_id: string;
+  action: "completed" | "reopened";
+  work_date: string;
+  actor_id: string | null;
+  note: string | null;
+  created_at: string;
+};
+
+export type ProgressionTemplateInsert = {
+  id?: string;
+  key: string;
+  name: string;
+  version?: number;
+  is_active?: boolean;
+};
+
+export type ProgressionTemplateUpdate = Partial<ProgressionTemplateInsert>;
+
+export type ProgressionTemplateStepInsert = {
+  id?: string;
+  template_id: string;
+  step_number: number;
+  phase_number: number;
+  phase_name: string;
+  phase_stage?: string;
+  title: string;
+};
+
+export type ProgressionTemplateStepUpdate = Partial<ProgressionTemplateStepInsert>;
+
+export type ProjectProgressionInsert = {
+  id?: string;
+  project_id: string;
+  template_id: string;
+  created_by?: string | null;
+  updated_by?: string | null;
+};
+
+export type ProjectProgressionUpdate = Partial<ProjectProgressionInsert> & Partial<SoftDeleteFields>;
+
+export type ProjectProgressionStepInsert = {
+  id?: string;
+  progression_id: string;
+  template_step_id: string;
+  step_number: number;
+  status?: "pending" | "completed";
+  completed_at?: string | null;
+  completed_by?: string | null;
+  work_date?: string | null;
+  note?: string | null;
+};
+
+export type ProjectProgressionStepUpdate = Partial<
+  Omit<ProjectProgressionStepInsert, "progression_id" | "template_step_id" | "step_number">
+>;
+
+export type ProjectProgressionLogInsert = {
+  id?: string;
+  progression_id: string;
+  step_id: string;
+  action: "completed" | "reopened";
+  work_date: string;
+  actor_id?: string | null;
+  note?: string | null;
+};
+
+export type ProjectProgressionLogUpdate = Partial<ProjectProgressionLogInsert>;
 
 // =============================================================================
 // Insert types (omit auto-generated / defaulted fields)

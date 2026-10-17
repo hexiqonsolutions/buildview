@@ -34,6 +34,8 @@ const checks = [
   { name: "027 project_media", table: "project_media" },
   { name: "027 project-media bucket", bucket: "project-media" },
   { name: "028 rate_limits", table: "rate_limits", column: "key" },
+  { name: "032 progression report", table: "project_progressions" },
+  { name: "032 progression steps", table: "project_progression_steps" },
 ];
 
 async function probe(check) {

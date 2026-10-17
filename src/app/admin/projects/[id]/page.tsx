@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getClients } from "@/lib/data/clients";
 import { getProjectInvoices } from "@/lib/data/invoices";
 import { getProjectDetail, getProjectTeam, getProjectWithClient } from "@/lib/data/projects";
+import { getProjectProgression } from "@/lib/data/progression";
 import { EditProjectDetailsDialog } from "@/components/admin/edit-project-details-dialog";
 import { getProjectSpatialHierarchy } from "@/lib/actions/buildings";
 import { getProjectMediaAdmin } from "@/lib/actions/project-media";
@@ -34,6 +35,7 @@ export default async function AdminProjectDetailPage({
     team,
     projectMedia,
     clients,
+    progression,
   ] = await Promise.all([
     getProjectWithClient(id),
     getProjectDetail(id),
@@ -43,6 +45,7 @@ export default async function AdminProjectDetailPage({
     getProjectTeam(id).catch(() => []),
     getProjectMediaAdmin(id).catch(() => null),
     getClients().catch(() => []),
+    getProjectProgression(id).catch(() => null),
   ]);
 
   if (!projectData) notFound();
@@ -138,6 +141,7 @@ export default async function AdminProjectDetailPage({
         team={team}
         canUploadMatterport={allowMatterportUpload}
         allowInvoices
+        progression={progression}
       />
     </div>
   );

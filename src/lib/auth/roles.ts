@@ -73,6 +73,13 @@ const CLIENT_ISSUE_STATUS_ROLES = [
   "site_engineer",
 ] as const satisfies readonly UserRole[];
 
+/** Client roles that may tick Progression Report steps. */
+const CLIENT_PROGRESSION_EDIT_ROLES = [
+  "client_admin",
+  "site_supervisor",
+  "site_engineer",
+] as const satisfies readonly UserRole[];
+
 /** Only Client Admin sees invoices in the client portal (billing is org-admin scoped). */
 const CLIENT_INVOICE_VIEW_ROLES = ["client_admin"] as const satisfies readonly UserRole[];
 
@@ -123,4 +130,13 @@ export function canUpdateIssueStatus(role: UserRole): boolean {
 export function canViewClientInvoices(role: UserRole): boolean {
   if (isBuildViewStaffRole(role)) return true;
   return (CLIENT_INVOICE_VIEW_ROLES as readonly string[]).includes(role);
+}
+
+/**
+ * BuildView staff, Client Admin, Site Engineer, and Site Supervisor may tick
+ * Progression Report steps. Other project members may view Overview graphs only.
+ */
+export function canEditProgression(role: UserRole): boolean {
+  if (isBuildViewStaffRole(role)) return true;
+  return (CLIENT_PROGRESSION_EDIT_ROLES as readonly string[]).includes(role);
 }
