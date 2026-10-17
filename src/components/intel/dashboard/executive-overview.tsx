@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { PortalWelcomeBanner, PortalQuickActions } from "@/components/portal/portal-dashboard";
+import { PortalWelcomeBanner } from "@/components/portal/portal-dashboard";
 import { PortalMetricCard } from "@/components/portal/portal-metric-card";
-import { PortalProjectCard } from "@/components/portal/portal-project-card";
 import {
   PortalOverallProgressDonut,
   PortalProgressTrendChart,
 } from "@/components/portal/portal-charts";
 import { PortalLatestTourCard } from "@/components/intel/dashboard/portal-latest-tour";
+import { ConstructionProjectList } from "@/components/intel/dashboard/construction-project-list";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDate, formatRelativeTime, formatStatus, getStatusColor } from "@/lib/utils";
@@ -19,6 +19,9 @@ import {
   FolderKanban,
   Camera,
   Activity,
+  CheckCircle2,
+  PauseCircle,
+  CircleDashed,
 } from "lucide-react";
 
 interface ExecutiveOverviewProps {
@@ -40,8 +43,21 @@ export function ExecutiveOverview({
   workspaceQuery = "",
   canUpdateStatus = false,
 }: ExecutiveOverviewProps) {
-  const displayProjects = data.projects.filter((p) => p.status !== "completed").slice(0, 3);
   const q = workspaceQuery || "";
+  // Show every accessible project; completed last so active work stays on top.
+  const displayProjects = [...data.projects].sort((a, b) => {
+    const aDone = a.status === "completed" ? 1 : 0;
+    const bDone = b.status === "completed" ? 1 : 0;
+    if (aDone !== bDone) return aDone - bDone;
+    return a.name.localeCompare(b.name);
+  });
+
+  const completedCount = data.projects.filter((p) => p.status === "completed").length;
+  const onHoldCount = data.projects.filter((p) => p.status === "on_hold").length;
+  const planningCount = data.projects.filter(
+    (p) => p.status === "planning" || p.status === "archived" || p.status === "suspended"
+  ).length;
+  const inProgressCount = data.projects.filter((p) => p.status === "in_progress").length;
 
   return (
     <div className="dashboard-page">
@@ -52,6 +68,7 @@ export function ExecutiveOverview({
         avatarUrl={avatarUrl}
       />
 
+      {/* KPI strip — overall project health at a glance */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <PortalMetricCard
           label="Active Projects"
@@ -83,51 +100,91 @@ export function ExecutiveOverview({
         />
       </div>
 
-      <PortalLatestTourCard tour={data.latestTour} />
-
-      <PortalQuickActions workspaceQuery={workspaceQuery} />
-
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <section className="space-y-4 xl:col-span-2">
+      {/* Primary work area: projects + compact tour + overall analytics */}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+        <section className="space-y-4 xl:col-span-7">
           <div className="flex items-end justify-between gap-4">
             <div>
               <p className="dashboard-section-eyebrow">Projects</p>
-              <h2 className="dashboard-section-title mt-0.5">Your Projects</h2>
+              <h2 className="dashboard-section-title mt-0.5">All projects</h2>
+              <p className="mt-1 text-xs text-slate-500">
+                Progression % from each project&apos;s Progression Report when available
+              </p>
             </div>
             <Button variant="ghost" size="sm" className="dashboard-ghost-link" asChild>
               <Link href={`/dashboard/projects${q}`}>View all</Link>
             </Button>
           </div>
-          {displayProjects.length === 0 ? (
-            <div className="intel-card p-8 text-center">
-              <p className="text-sm text-slate-500">No active projects assigned yet.</p>
-              <Button variant="outline" size="sm" className="mt-4" asChild>
-                <Link href={`/dashboard/projects${q}`}>Browse projects</Link>
-              </Button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-1">
-              {displayProjects.map((project) => (
-                <PortalProjectCard
-                  key={project.id}
-                  project={project}
-                  canUpdateStatus={canUpdateStatus}
-                />
-              ))}
-            </div>
-          )}
+          <ConstructionProjectList
+            projects={displayProjects}
+            workspaceQuery={q}
+            canUpdateStatus={canUpdateStatus}
+          />
         </section>
 
-        <div className="space-y-4">
+        <aside className="space-y-4 xl:col-span-5">
+          <PortalLatestTourCard tour={data.latestTour} />
+
+          <section className="intel-card p-4 sm:p-5">
+            <p className="dashboard-section-eyebrow">Portfolio summary</p>
+            <h2 className="dashboard-section-title mt-0.5">Overall project information</h2>
+            <div className="mt-4 grid grid-cols-2 gap-2.5">
+              <SummaryStat
+                icon={FolderKanban}
+                label="In progress"
+                value={inProgressCount}
+              />
+              <SummaryStat
+                icon={CheckCircle2}
+                label="Completed"
+                value={completedCount}
+              />
+              <SummaryStat icon={PauseCircle} label="On hold" value={onHoldCount} />
+              <SummaryStat
+                icon={CircleDashed}
+                label="Planning / other"
+                value={planningCount}
+              />
+            </div>
+            <p className="mt-4 text-xs text-slate-500">
+              Average progression across projects:{" "}
+              <span className="font-semibold tabular-nums text-slate-800 dark:text-slate-200">
+                {data.overallProgressPercent}%
+              </span>
+            </p>
+          </section>
+
           <PortalOverallProgressDonut
             overallPercent={data.overallProgressPercent}
             distribution={data.progressDistribution}
           />
           <PortalProgressTrendChart data={data.progressTrend} />
-        </div>
+        </aside>
       </div>
 
       <FeedWidgets data={data} workspaceQuery={workspaceQuery} />
+    </div>
+  );
+}
+
+function SummaryStat({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof FolderKanban;
+  label: string;
+  value: number;
+}) {
+  return (
+    <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2.5 dark:border-slate-800 dark:bg-slate-900/50">
+      <div className="flex items-center gap-1.5 text-slate-400">
+        <Icon className="h-3.5 w-3.5" aria-hidden />
+        <span className="text-[10px] font-semibold uppercase tracking-[0.12em]">{label}</span>
+      </div>
+      <p className="mt-1 font-display text-xl font-bold tabular-nums text-slate-900 dark:text-white">
+        {value}
+      </p>
     </div>
   );
 }
@@ -214,9 +271,7 @@ function FeedWidgets({
         <section className="intel-card p-5">
           <div className="mb-4 flex items-center gap-2">
             <Activity className="h-4 w-4 text-slate-400" />
-            <h3 className="dashboard-section-title">
-              Latest Activity
-            </h3>
+            <h3 className="dashboard-section-title">Latest Activity</h3>
           </div>
           {data.stats.recentActivity.length === 0 ? (
             <p className="py-6 text-center text-sm text-slate-500">No recent activity</p>
@@ -224,7 +279,7 @@ function FeedWidgets({
             <div className="space-y-3">
               {data.stats.recentActivity.slice(0, 5).map((activity) => (
                 <div key={activity.id} className="flex items-start gap-3">
-                  <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-slate-900" />
+                  <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-slate-900 dark:bg-slate-200" />
                   <div className="min-w-0">
                     <p className="text-sm text-slate-900 dark:text-white">{activity.action}</p>
                     <p className="text-xs text-slate-500">
@@ -243,9 +298,7 @@ function FeedWidgets({
         <section className="intel-card p-5">
           <div className="mb-4 flex items-center gap-2">
             <Calendar className="h-4 w-4 text-slate-400" />
-            <h3 className="dashboard-section-title">
-              Upcoming Milestones
-            </h3>
+            <h3 className="dashboard-section-title">Upcoming Milestones</h3>
           </div>
           {data.upcomingMilestones.length === 0 ? (
             <p className="py-6 text-center text-sm text-slate-500">No upcoming milestones</p>

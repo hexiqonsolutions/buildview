@@ -305,3 +305,55 @@ export async function getProjectProgressionFresh(projectId: string) {
   if (!actor) return null;
   return loadProjectProgressionView(projectId, actor);
 }
+
+/**
+ * Read-only Progression % for many projects (no auto-seed).
+ * Used by the Construction Intelligence dashboard so project bars match Overview.
+ */
+export async function getProgressionPercentByProjectIds(
+  projectIds: string[]
+): Promise<Map<string, number>> {
+  const result = new Map<string, number>();
+  const ids = projectIds.filter((id) => validate(projectIdSchema, id).success);
+  if (ids.length === 0) return result;
+
+  try {
+    const admin = createServiceRoleClient();
+    const { data: progressions, error } = await admin
+      .from("project_progressions")
+      .select("id, project_id")
+      .in("project_id", ids)
+      .is("deleted_at", null);
+
+    if (error || !progressions?.length) return result;
+
+    const progressionIds = progressions.map((p) => p.id);
+    const { data: steps, error: stepsError } = await admin
+      .from("project_progression_steps")
+      .select("progression_id, status")
+      .in("progression_id", progressionIds);
+
+    if (stepsError || !steps) return result;
+
+    const totals = new Map<string, { completed: number; total: number }>();
+    for (const step of steps) {
+      const row = totals.get(step.progression_id) ?? { completed: 0, total: 0 };
+      row.total += 1;
+      if (step.status === "completed") row.completed += 1;
+      totals.set(step.progression_id, row);
+    }
+
+    for (const progression of progressions) {
+      const counts = totals.get(progression.id);
+      if (!counts || counts.total === 0) continue;
+      result.set(
+        progression.project_id,
+        Math.round((counts.completed / counts.total) * 100)
+      );
+    }
+  } catch (err) {
+    console.warn("[getProgressionPercentByProjectIds] failed:", err);
+  }
+
+  return result;
+}
