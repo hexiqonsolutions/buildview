@@ -21,7 +21,6 @@ import {
 import { idsOrNone } from "@/lib/data/query";
 import { getAccessibleTours } from "@/lib/data/tours";
 import { getStorageTotals } from "@/lib/data/storage";
-import { getProgressionPercentByProjectIds } from "@/lib/data/progression";
 
 export type AdminDashboardStats = {
   totalClients: number;
@@ -378,15 +377,8 @@ export async function getClientDashboardData(): Promise<ClientDashboardData> {
       .limit(5),
   ]);
 
-  const [timelineForChart, progressionByProject] = await Promise.all([
-    getProjectProgressEvents(projectIds),
-    getProgressionPercentByProjectIds(projectIds),
-  ]);
+  const timelineForChart = await getProjectProgressEvents(projectIds);
   const progressByProject = resolveProjectProgressValues(projects, timelineForChart);
-  // Prefer Progression Report % (same source as project Overview) when available.
-  for (const [projectId, percent] of progressionByProject) {
-    progressByProject.set(projectId, percent);
-  }
   const projectsWithMeta = buildProjectsWithMeta(projects, tours as ProjectTour[], progressByProject);
 
   const sortedTours = [...tours].sort(

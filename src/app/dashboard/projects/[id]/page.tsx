@@ -62,8 +62,7 @@ export default async function ProjectDetailPage({
   const { project, client } = projectData;
   const latestTour = detail.tours[0];
   const latestScanDate = latestTour?.capture_date ?? latestTour?.created_at ?? null;
-  const headerProgress =
-    progression != null ? progression.overallPercent : getProjectProgressPercent(project.status);
+  const headerProgress = getProjectProgressPercent(project.status);
   const allowMatterportUpload = user ? canUploadMatterport(user.role) : false;
   const canManageUploads = user
     ? canManageClientUploads(user.role) || can(user.role, "upload", "upload")
@@ -90,7 +89,6 @@ export default async function ProjectDetailPage({
         project={project}
         client={client}
         latestTour={detail.tours[0] ?? null}
-        progressOverride={progression != null ? progression.overallPercent : null}
         canUpdateStatus={canUpdateStatus}
         actions={
           canManageUploads ? (

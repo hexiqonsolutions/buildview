@@ -34,8 +34,6 @@ interface ProjectHeaderProps {
   latestTour?: ProjectTour | null;
   canUpdateStatus?: boolean;
   allowStaffStatuses?: boolean;
-  /** When set (e.g. Progression Report %), overrides status-based progress. */
-  progressOverride?: number | null;
   /** Optional actions (e.g. Upload) rendered in the header card */
   actions?: ReactNode;
 }
@@ -56,7 +54,6 @@ export function ProjectHeader({
   latestTour = null,
   canUpdateStatus = false,
   allowStaffStatuses = false,
-  progressOverride = null,
   actions,
 }: ProjectHeaderProps) {
   const portal = useOptionalPortalWorkspace();
@@ -79,10 +76,7 @@ export function ProjectHeader({
     project.area_sqft != null && project.area_sqft > 0
       ? `${project.area_sqft.toLocaleString("en-US")} sq ft`
       : null;
-  const progress =
-    typeof progressOverride === "number"
-      ? progressOverride
-      : getProjectProgressPercent(project.status);
+  const progress = getProjectProgressPercent(project.status);
   const location = titleCaseLocation(project.location);
   const schedule =
     project.start_date != null

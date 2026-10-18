@@ -18,7 +18,6 @@ import {
 import { type ClientDashboardData, getClientDashboardData } from "@/lib/data/dashboard";
 import { getAllDocuments } from "@/lib/data/documents";
 import type { ProjectWithMeta } from "@/lib/data/projects";
-import { getProgressionPercentByProjectIds } from "@/lib/data/progression";
 import { getAllReports } from "@/lib/data/reports";
 import { getAllTimelineEvents } from "@/lib/data/timeline";
 import { getAccessibleTours } from "@/lib/data/tours";
@@ -134,10 +133,6 @@ export async function getPortalScopedDashboardData(
   const openIssues = openIssuesList.length;
   const scopedTimeline = filterBySpatialScope(allTimeline, spatialScope, projectIds);
   const progressByProject = resolveProjectProgressValues(projects, scopedTimeline);
-  const progressionByProject = await getProgressionPercentByProjectIds(projects.map((p) => p.id));
-  for (const [projectId, percent] of progressionByProject) {
-    progressByProject.set(projectId, percent);
-  }
   const overallProgressPercent = averageProgress(progressByProject);
   const monthlyLabels = buildLastSixMonthLabels();
   const monthlyProgress = countTimelineEventsByMonth(scopedTimeline, monthlyLabels);
