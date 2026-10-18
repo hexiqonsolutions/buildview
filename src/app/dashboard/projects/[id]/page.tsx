@@ -35,10 +35,15 @@ const EMPTY_DETAIL = {
 
 export default async function ProjectDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { id } = await params;
+  const query = await searchParams;
+  const floorParam = query.floor;
+  const floorId = typeof floorParam === "string" ? floorParam : null;
 
   const [projectData, detail, invoices, user, spatialHierarchy, team, media, progression] =
     await Promise.all([
@@ -49,7 +54,7 @@ export default async function ProjectDetailPage({
       getProjectSpatialHierarchy(id).catch(() => ({ buildings: [] as never[] })),
       getProjectTeam(id).catch(() => []),
       getProjectMedia(id).catch(() => ({ videos: [], photos: [] })),
-      getProjectProgression(id).catch(() => null),
+      getProjectProgression(id, floorId).catch(() => null),
     ]);
 
   if (!projectData) notFound();

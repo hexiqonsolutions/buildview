@@ -63,19 +63,20 @@ export async function setProgressionStep(input: unknown) {
     return { ok: false as const, error: parsed.error };
   }
 
-  const { projectId, stepId, completed, workDate, note } = parsed.data;
+  const { projectId, floorId, stepId, completed, workDate, note } = parsed.data;
 
   try {
     const actor = await requireProgressionEditor(projectId);
-    const view = await getProjectProgression(projectId);
-    if (!view) {
+    const view = await getProjectProgression(projectId, floorId);
+    const selected = view?.selected;
+    if (!view || !selected) {
       return {
         ok: false as const,
-        error: "Progression Report is not available for this project.",
+        error: "Progression Report is not available for this floor.",
       };
     }
 
-    const step = view.phases.flatMap((p) => p.steps).find((s) => s.id === stepId);
+    const step = selected.phases.flatMap((p) => p.steps).find((s) => s.id === stepId);
     if (!step) {
       return { ok: false as const, error: "Step not found." };
     }
@@ -102,12 +103,12 @@ export async function setProgressionStep(input: unknown) {
           note: note?.trim() || null,
         })
         .eq("id", stepId)
-        .eq("progression_id", view.id);
+        .eq("progression_id", selected.id);
 
       if (error) throw error;
 
       const { error: logError } = await admin.from("project_progression_logs").insert({
-        progression_id: view.id,
+        progression_id: selected.id,
         step_id: stepId,
         action: "completed",
         work_date: workDate,
@@ -126,12 +127,12 @@ export async function setProgressionStep(input: unknown) {
           note: null,
         })
         .eq("id", stepId)
-        .eq("progression_id", view.id);
+        .eq("progression_id", selected.id);
 
       if (error) throw error;
 
       const { error: logError } = await admin.from("project_progression_logs").insert({
-        progression_id: view.id,
+        progression_id: selected.id,
         step_id: stepId,
         action: "reopened",
         work_date: workDate,
@@ -144,12 +145,12 @@ export async function setProgressionStep(input: unknown) {
     await admin
       .from("project_progressions")
       .update({ updated_by: actor.userId })
-      .eq("id", view.id);
+      .eq("id", selected.id);
 
     revalidatePath(`/dashboard/projects/${projectId}`);
     revalidatePath(`/admin/projects/${projectId}`);
 
-    const progression = await getProjectProgressionFresh(projectId);
+    const progression = await getProjectProgressionFresh(projectId, floorId);
     return { ok: true as const, progression };
   } catch (err) {
     logServerError("setProgressionStep", err);

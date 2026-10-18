@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { Building2, ImagePlus, Layers, Loader2, Plus, X } from "lucide-react";
 import { createProject, updateProjectCoverImage } from "@/lib/actions/admin";
-import { createBuilding, createFloor } from "@/lib/actions/buildings";
+import { createBuilding, createFloor, createFloorsByCount } from "@/lib/actions/buildings";
 import {
   uploadProjectCoverFile,
   validateProjectCoverFile,
@@ -54,6 +54,7 @@ export function CreateProjectForm({
   const [status, setStatus] = useState("planning");
   const [portfolioCategory, setPortfolioCategory] = useState<string>("");
   const [buildingName, setBuildingName] = useState("");
+  const [floorCount, setFloorCount] = useState("");
   const [floorNames, setFloorNames] = useState("");
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
@@ -73,6 +74,7 @@ export function CreateProjectForm({
     setStatus("planning");
     setPortfolioCategory("");
     setBuildingName("");
+    setFloorCount("");
     setFloorNames("");
     setThumbnailFile(null);
     setThumbnailPreview(null);
@@ -99,9 +101,16 @@ export function CreateProjectForm({
     const areaSqft = sqftRaw ? Number.parseInt(sqftRaw, 10) : null;
     const building = buildingName.trim();
     const floors = parseFloorNames(floorNames);
+    const countRaw = floorCount.trim();
+    const count = countRaw ? Number.parseInt(countRaw, 10) : 0;
 
-    if (floors.length > 0 && !building) {
+    if ((floors.length > 0 || count > 0) && !building) {
       alert("Add a building name before adding floors.");
+      setLoading(false);
+      return;
+    }
+    if (countRaw && (!Number.isFinite(count) || count < 1 || count > 200)) {
+      alert("Floor count must be between 1 and 200.");
       setLoading(false);
       return;
     }
@@ -130,6 +139,9 @@ export function CreateProjectForm({
       if (building) {
         try {
           const buildingId = await createBuilding(projectId, building);
+          if (count > 0) {
+            await createFloorsByCount(buildingId, count);
+          }
           for (const floor of floors) {
             await createFloor(buildingId, floor);
           }
@@ -269,22 +281,39 @@ export function CreateProjectForm({
                 maxLength={120}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="create-project-floors" className="inline-flex items-center gap-1.5">
-                <Layers className="h-3.5 w-3.5 text-slate-500" />
-                Floor(s)
-              </Label>
-              <Input
-                id="create-project-floors"
-                value={floorNames}
-                onChange={(e) => setFloorNames(e.target.value)}
-                placeholder="e.g. Ground, 1st Floor, Basement"
-                maxLength={240}
-                disabled={!buildingName.trim()}
-              />
-              <p className="text-[11px] text-slate-500">
-                Separate multiple floors with commas. You can add more later on the Buildings tab.
-              </p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="create-project-floor-count" className="inline-flex items-center gap-1.5">
+                  <Layers className="h-3.5 w-3.5 text-slate-500" />
+                  Floor count
+                </Label>
+                <Input
+                  id="create-project-floor-count"
+                  type="number"
+                  min={1}
+                  max={200}
+                  value={floorCount}
+                  onChange={(e) => setFloorCount(e.target.value)}
+                  placeholder="e.g. 20"
+                  disabled={!buildingName.trim()}
+                />
+                <p className="text-[11px] text-slate-500">Creates Floor 1…N (rename later).</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="create-project-floors" className="inline-flex items-center gap-1.5">
+                  <Layers className="h-3.5 w-3.5 text-slate-500" />
+                  Extra named floors
+                </Label>
+                <Input
+                  id="create-project-floors"
+                  value={floorNames}
+                  onChange={(e) => setFloorNames(e.target.value)}
+                  placeholder="e.g. Basement, Podium"
+                  maxLength={240}
+                  disabled={!buildingName.trim()}
+                />
+                <p className="text-[11px] text-slate-500">Optional. Comma-separated custom names.</p>
+              </div>
             </div>
           </div>
 

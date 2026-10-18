@@ -607,8 +607,22 @@ export interface Database {
           {
             foreignKeyName: "project_progressions_project_id_fkey";
             columns: ["project_id"];
-            isOneToOne: true;
+            isOneToOne: false;
             referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "project_progressions_floor_id_fkey";
+            columns: ["floor_id"];
+            isOneToOne: true;
+            referencedRelation: "floors";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "project_progressions_building_id_fkey";
+            columns: ["building_id"];
+            isOneToOne: false;
+            referencedRelation: "buildings";
             referencedColumns: ["id"];
           },
           {
@@ -1061,6 +1075,8 @@ export type ProjectProgression = Timestamps &
   FullAuditFields & {
     id: string;
     project_id: string;
+    floor_id: string;
+    building_id: string | null;
     template_id: string;
   };
 
@@ -1112,6 +1128,8 @@ export type ProgressionTemplateStepUpdate = Partial<ProgressionTemplateStepInser
 export type ProjectProgressionInsert = {
   id?: string;
   project_id: string;
+  floor_id: string;
+  building_id?: string | null;
   template_id: string;
   created_by?: string | null;
   updated_by?: string | null;

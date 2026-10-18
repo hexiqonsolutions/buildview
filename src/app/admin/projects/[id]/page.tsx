@@ -21,10 +21,15 @@ import { formatDate } from "@/lib/utils";
 
 export default async function AdminProjectDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { id } = await params;
+  const query = await searchParams;
+  const floorParam = query.floor;
+  const floorId = typeof floorParam === "string" ? floorParam : null;
 
   const [
     projectData,
@@ -45,7 +50,7 @@ export default async function AdminProjectDetailPage({
     getProjectTeam(id).catch(() => []),
     getProjectMediaAdmin(id).catch(() => null),
     getClients().catch(() => []),
-    getProjectProgression(id).catch(() => null),
+    getProjectProgression(id, floorId).catch(() => null),
   ]);
 
   if (!projectData) notFound();

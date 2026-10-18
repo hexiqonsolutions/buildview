@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireBuildViewStaff } from "@/lib/supabase/server";
+import { ensureFloorProgression } from "@/lib/data/progression";
 import type { Building, Floor } from "@/lib/types";
 import { parseOrThrow, validate } from "@/lib/validations/parse";
 import { LIMITS, text, uuid } from "@/lib/validations/primitives";
@@ -130,8 +131,113 @@ export async function createFloor(buildingId: string, name: string) {
     .single();
 
   if (error) throw internalError("createFloor", error);
+
+  // Every floor gets its own Progression checklist (construction monitoring).
+  try {
+    await ensureFloorProgression(building.project_id, data.id, buildingId, null);
+  } catch (err) {
+    console.warn("[createFloor] progression seed failed:", err);
+  }
+
   revalidateSpatialPaths(building.project_id);
+  revalidatePath(`/dashboard/projects/${building.project_id}`);
   return data.id;
+}
+
+/** Bulk-create Floor 1…N (or custom start), then rename later if needed. */
+export async function createFloorsByCount(buildingId: string, count: number) {
+  parseOrThrow(uuid("Building"), buildingId);
+  const n = Math.floor(Number(count));
+  if (!Number.isFinite(n) || n < 1 || n > 200) {
+    throw new PublicError("Enter a floor count between 1 and 200.");
+  }
+  await requireBuildViewStaff();
+
+  const supabase = await createClient();
+  const { data: building, error: buildingError } = await supabase
+    .from("buildings")
+    .select("project_id")
+    .eq("id", buildingId)
+    .is("deleted_at", null)
+    .single();
+
+  if (buildingError || !building) throw new PublicError("Building not found.");
+
+  const { data: existing } = await supabase
+    .from("floors")
+    .select("name, sort_order")
+    .eq("building_id", buildingId)
+    .is("deleted_at", null);
+
+  const usedNames = new Set((existing ?? []).map((f) => f.name.toLowerCase()));
+  let sortBase = Math.max(0, ...(existing ?? []).map((f) => f.sort_order ?? 0)) + 1;
+
+  const createdIds: string[] = [];
+  for (let i = 1; i <= n; i++) {
+    let name = `Floor ${i}`;
+    let suffix = 0;
+    while (usedNames.has(name.toLowerCase())) {
+      suffix += 1;
+      name = `Floor ${i}.${suffix}`;
+    }
+    usedNames.add(name.toLowerCase());
+
+    const { data, error } = await supabase
+      .from("floors")
+      .insert({
+        building_id: buildingId,
+        name,
+        sort_order: sortBase++,
+      })
+      .select("id")
+      .single();
+
+    if (error) throw internalError("createFloorsByCount", error);
+    createdIds.push(data.id);
+
+    try {
+      await ensureFloorProgression(building.project_id, data.id, buildingId, null);
+    } catch (err) {
+      console.warn("[createFloorsByCount] progression seed failed:", err);
+    }
+  }
+
+  revalidateSpatialPaths(building.project_id);
+  revalidatePath(`/dashboard/projects/${building.project_id}`);
+  return createdIds;
+}
+
+export async function renameFloor(floorId: string, name: string) {
+  parseOrThrow(uuid("Floor"), floorId);
+  const trimmed = parseOrThrow(text("Floor name", { max: LIMITS.name }), name);
+  await requireBuildViewStaff();
+
+  const supabase = await createClient();
+  const { data: floor, error: fetchError } = await supabase
+    .from("floors")
+    .select("building_id")
+    .eq("id", floorId)
+    .is("deleted_at", null)
+    .single();
+
+  if (fetchError || !floor) throw new PublicError("Floor not found.");
+
+  const { data: building, error: buildingError } = await supabase
+    .from("buildings")
+    .select("project_id")
+    .eq("id", floor.building_id)
+    .single();
+
+  if (buildingError || !building) throw new PublicError("Building not found.");
+
+  const { error } = await supabase
+    .from("floors")
+    .update({ name: trimmed })
+    .eq("id", floorId);
+
+  if (error) throw internalError("renameFloor", error);
+  revalidateSpatialPaths(building.project_id);
+  revalidatePath(`/dashboard/projects/${building.project_id}`);
 }
 
 export async function deleteBuilding(buildingId: string) {
@@ -149,6 +255,12 @@ export async function deleteBuilding(buildingId: string) {
 
   const now = new Date().toISOString();
 
+  const { data: floorRows } = await supabase
+    .from("floors")
+    .select("id")
+    .eq("building_id", buildingId)
+    .is("deleted_at", null);
+
   const { error: floorsError } = await supabase
     .from("floors")
     .update({ deleted_at: now })
@@ -157,6 +269,15 @@ export async function deleteBuilding(buildingId: string) {
 
   if (floorsError) throw internalError("deleteBuilding", floorsError);
 
+  const floorIds = (floorRows ?? []).map((f) => f.id);
+  if (floorIds.length > 0) {
+    await supabase
+      .from("project_progressions")
+      .update({ deleted_at: now })
+      .in("floor_id", floorIds)
+      .is("deleted_at", null);
+  }
+
   const { error } = await supabase
     .from("buildings")
     .update({ deleted_at: now })
@@ -164,6 +285,7 @@ export async function deleteBuilding(buildingId: string) {
 
   if (error) throw internalError("deleteBuilding", error);
   revalidateSpatialPaths(building.project_id);
+  revalidatePath(`/dashboard/projects/${building.project_id}`);
 }
 
 export async function deleteFloor(floorId: string) {
@@ -189,11 +311,22 @@ export async function deleteFloor(floorId: string) {
 
   const projectId = building.project_id;
 
+  const now = new Date().toISOString();
+
   const { error } = await supabase
     .from("floors")
-    .update({ deleted_at: new Date().toISOString() })
+    .update({ deleted_at: now })
     .eq("id", floorId);
 
   if (error) throw internalError("deleteFloor", error);
+
+  // Soft-delete linked progression so ticks do not orphan against deleted floors
+  await supabase
+    .from("project_progressions")
+    .update({ deleted_at: now })
+    .eq("floor_id", floorId)
+    .is("deleted_at", null);
+
   revalidateSpatialPaths(projectId);
+  revalidatePath(`/dashboard/projects/${projectId}`);
 }

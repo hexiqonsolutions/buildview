@@ -65,6 +65,7 @@ Migrations live in `supabase/migrations` and must be applied in numeric order.
 | 031 | `get_storage_usage()` — real file sizes for the admin Storage Manager |
 | 032 | Progression Report — post-slab 56-step checklist, daily logs, RLS |
 | 033 | Portfolio category: add Construction Monitoring |
+| 034 | Progression per floor — resets existing ticks; one checklist per floor |
 
 **Fresh project:** run every file in the Supabase SQL Editor in order (skipping `006` if you don't want that seed admin), then optionally `supabase/seed.sql`.
 

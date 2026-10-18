@@ -17,10 +17,12 @@ export function ProgressionOverallCard({
   percent,
   completed,
   total,
+  label = "Overall progression",
 }: {
   percent: number;
   completed: number;
   total: number;
+  label?: string;
 }) {
   const r = 42;
   const c = 2 * Math.PI * r;
@@ -58,9 +60,9 @@ export function ProgressionOverallCard({
           </span>
         </div>
       </div>
-      <div>
-        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-          Overall progression
+      <div className="min-w-0">
+        <p className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+          {label}
         </p>
         <p className="mt-1 font-display text-sm font-semibold text-slate-900 dark:text-white">
           {completed} of {total} steps complete

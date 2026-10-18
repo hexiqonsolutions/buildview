@@ -29,7 +29,7 @@ import { useOptionalPortalWorkspace } from "@/components/portal/workspace/portal
 import type { ProjectMediaGroups } from "@/lib/project-media";
 import type { SpatialHierarchy } from "@/lib/actions/buildings";
 import type { ProjectTeamMember } from "@/lib/data/projects";
-import type { ProjectProgressionView } from "@/lib/progression/types";
+import type { ProjectProgressionBundle } from "@/lib/progression/types";
 import type {
   ProjectTour,
   Report,
@@ -66,7 +66,7 @@ interface ProjectDetailTabsProps {
   /** Portfolio showcase Videos & Photos */
   media?: ProjectMediaGroups;
   /** Construction Progression Report (null / undefined for portfolio or missing migration). */
-  progression?: ProjectProgressionView | null;
+  progression?: ProjectProgressionBundle | null;
 }
 
 export function ProjectDetailTabs({
@@ -123,7 +123,10 @@ export function ProjectDetailTabs({
                 {
                   id: "progression",
                   label: "Progression",
-                  badge: `${progression.overallPercent}%`,
+                  badge:
+                    progression.floorCount > 0
+                      ? `${progression.overallPercent}%`
+                      : "—",
                 },
               ]
             : []),

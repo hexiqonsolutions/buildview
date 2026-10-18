@@ -4,6 +4,7 @@ import { isoDate, optionalText, uuid } from "@/lib/validations/primitives";
 export const setProgressionStepSchema = z
   .object({
     projectId: uuid("Project ID"),
+    floorId: uuid("Floor ID"),
     stepId: uuid("Step ID"),
     completed: z.boolean(),
     workDate: isoDate("Work date"),
