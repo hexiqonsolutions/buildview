@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { Building2, Check, ChevronDown, Layers, Loader2 } from "lucide-react";
 import {
   selectProgressionFloor,
@@ -173,9 +173,23 @@ export function ProgressionPanel({
   compact?: boolean;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [data, setData] = useState(initial);
+  /** Floor the user is viewing — ignores stale RSC props that still say Floor 1. */
+  const lockedFloorIdRef = useRef<string | null>(initial.selected?.floorId ?? null);
+
   useEffect(() => {
+    const serverFloor = initial.selected?.floorId ?? null;
+    // Server Actions refresh the route; ignore payloads for a different floor.
+    if (
+      lockedFloorIdRef.current &&
+      serverFloor &&
+      serverFloor !== lockedFloorIdRef.current
+    ) {
+      return;
+    }
     setData(initial);
+    if (serverFloor) lockedFloorIdRef.current = serverFloor;
   }, [initial]);
 
   const selected = data.selected;
@@ -220,17 +234,19 @@ export function ProgressionPanel({
     });
   }
 
+  /** Keep ?floor= in Next.js searchParams so post-action refreshes stay on this floor. */
   function syncFloorInUrl(floorId: string) {
     const params = new URLSearchParams(window.location.search);
     params.set("tab", "progression");
     params.set("floor", floorId);
-    window.history.replaceState(null, "", `${window.location.pathname}?${params.toString()}`);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   }
 
   function selectFloor(floorId: string) {
     if (selected?.floorId === floorId || switching) return;
     setError(null);
     setSwitching(true);
+    lockedFloorIdRef.current = floorId;
     syncFloorInUrl(floorId);
     startTransition(async () => {
       const result = await selectProgressionFloor(data.projectId, floorId);
@@ -239,6 +255,7 @@ export function ProgressionPanel({
         setError(result.error);
         return;
       }
+      lockedFloorIdRef.current = result.progression.selected?.floorId ?? floorId;
       setData(result.progression);
     });
   }
@@ -246,6 +263,8 @@ export function ProgressionPanel({
   function onToggle(stepId: string, completed: boolean) {
     if (!data.canEdit || !selected || pendingStepId) return;
     setError(null);
+    lockedFloorIdRef.current = selected.floorId;
+    syncFloorInUrl(selected.floorId);
     const snapshot = data;
     setData(patchStepLocally(data, stepId, completed, workDate));
     setPendingStepId(stepId);
@@ -264,15 +283,21 @@ export function ProgressionPanel({
         setError(result.error);
         return;
       }
-      if (result.progression) setData(result.progression);
+      if (result.progression) {
+        lockedFloorIdRef.current = result.progression.selected?.floorId ?? selected.floorId;
+        setData(result.progression);
+      }
     });
   }
 
   function openFullTab(floorId?: string) {
     const params = new URLSearchParams(window.location.search);
     params.set("tab", "progression");
-    if (floorId) params.set("floor", floorId);
-    router.replace(`${window.location.pathname}?${params.toString()}`, { scroll: false });
+    if (floorId) {
+      params.set("floor", floorId);
+      lockedFloorIdRef.current = floorId;
+    }
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   }
 
   if (compact) {

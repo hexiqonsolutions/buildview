@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { canEditProgression, isBuildViewStaffRole } from "@/lib/auth/roles";
@@ -200,10 +199,8 @@ export async function setProgressionStep(input: unknown) {
       .update({ updated_by: actor.userId })
       .eq("id", progression.id);
 
-    // Soft revalidate for next navigation — client already has optimistic + returned bundle
-    revalidatePath(`/dashboard/projects/${projectId}`);
-    revalidatePath(`/admin/projects/${projectId}`);
-
+    // Avoid revalidatePath here — it refreshes the route and was resetting the
+    // selected floor back to Floor 1 when ?floor= was out of sync.
     const bundle = await getProjectProgressionFresh(projectId, floorId, {
       ensureMissing: false,
     });
