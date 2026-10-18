@@ -369,6 +369,10 @@ export function ProgressionPanel({
   }
 
   if (summaryOnly) {
+    const activatedFloors = data.floors.filter((f) => f.activated);
+    const projectCompleted = activatedFloors.reduce((sum, f) => sum + f.completedCount, 0);
+    const projectTotal = activatedFloors.reduce((sum, f) => sum + f.totalCount, 0);
+
     return (
       <div className="space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -380,7 +384,7 @@ export function ProgressionPanel({
               Overview
             </h3>
             <p className="mt-0.5 text-sm text-slate-500">
-              Project health{" "}
+              Overall project{" "}
               <span className="font-semibold tabular-nums text-slate-800 dark:text-slate-200">
                 {data.overallPercent}%
               </span>
@@ -403,7 +407,17 @@ export function ProgressionPanel({
           </p>
         ) : (
           <>
+            <ProgressionOverallCard
+              percent={data.overallPercent}
+              completed={projectCompleted}
+              total={projectTotal}
+              label="Overall project"
+            />
+
             <div className="space-y-2">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                By floor
+              </p>
               {buildings.map((building) => (
                 <div key={building.buildingId} className="space-y-1.5">
                   {buildings.length > 1 ? (
