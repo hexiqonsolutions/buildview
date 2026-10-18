@@ -6,6 +6,7 @@ import { getPortalWorkspaceBootstrap } from "@/lib/data/workspace";
 import { ExecutiveOverviewShell } from "@/components/intel/dashboard/executive-overview-shell";
 import { PortfolioShowcaseShell } from "@/components/intel/dashboard/portfolio-showcase-shell";
 import { can } from "@/lib/auth/permissions";
+import { isBuildViewStaffRole } from "@/lib/auth/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +32,10 @@ export default async function DashboardPage({
     user?.email?.split("@")[0] ||
     "there";
   const canUpdateStatus = user ? can(user.role, "update", "projects") : false;
+  // Staff on /dashboard keep the original overview. Impersonation swaps the
+  // session to the client user, so they correctly get Construction Intelligence.
+  const overviewVariant =
+    user && isBuildViewStaffRole(user.role) ? "original" : "construction";
 
   if (isPortfolio && portfolioData) {
     return (
@@ -52,6 +57,7 @@ export default async function DashboardPage({
       avatarUrl={user?.avatar_url}
       data={data!}
       canUpdateStatus={canUpdateStatus}
+      variant={overviewVariant}
     />
   );
 }
