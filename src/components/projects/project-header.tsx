@@ -34,6 +34,13 @@ interface ProjectHeaderProps {
   latestTour?: ProjectTour | null;
   canUpdateStatus?: boolean;
   allowStaffStatuses?: boolean;
+  /**
+   * Progression Report % for construction projects.
+   * Portfolio showcase omits overall progress (pass null and hideProgress).
+   */
+  progressOverride?: number | null;
+  /** Hide the overall progress bar (portfolio showcase). */
+  hideProgress?: boolean;
   /** Optional actions (e.g. Upload) rendered in the header card */
   actions?: ReactNode;
 }
@@ -54,6 +61,8 @@ export function ProjectHeader({
   latestTour = null,
   canUpdateStatus = false,
   allowStaffStatuses = false,
+  progressOverride = null,
+  hideProgress = false,
   actions,
 }: ProjectHeaderProps) {
   const portal = useOptionalPortalWorkspace();
@@ -76,7 +85,10 @@ export function ProjectHeader({
     project.area_sqft != null && project.area_sqft > 0
       ? `${project.area_sqft.toLocaleString("en-US")} sq ft`
       : null;
-  const progress = getProjectProgressPercent(project.status);
+  const progress =
+    typeof progressOverride === "number"
+      ? progressOverride
+      : getProjectProgressPercent(project.status);
   const location = titleCaseLocation(project.location);
   const schedule =
     project.start_date != null
@@ -268,21 +280,22 @@ export function ProjectHeader({
                 </p>
               )}
 
-              {/* Progress */}
-              <div className="max-w-md space-y-1.5">
-                <div className="flex items-center justify-between gap-3 text-xs">
-                  <span className="font-medium text-slate-500">Overall progress</span>
-                  <span className="font-display font-semibold tabular-nums text-slate-800 dark:text-slate-100">
-                    {progress}%
-                  </span>
+              {!hideProgress ? (
+                <div className="max-w-md space-y-1.5">
+                  <div className="flex items-center justify-between gap-3 text-xs">
+                    <span className="font-medium text-slate-500">Overall progress</span>
+                    <span className="font-display font-semibold tabular-nums text-slate-800 dark:text-slate-100">
+                      {progress}%
+                    </span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                    <div
+                      className="h-full rounded-full bg-slate-800 transition-[width] duration-500 ease-out dark:bg-slate-200"
+                      style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                  <div
-                    className="h-full rounded-full bg-slate-800 transition-[width] duration-500 ease-out dark:bg-slate-200"
-                    style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
-                  />
-                </div>
-              </div>
+              ) : null}
             </div>
 
             {metaItems.length > 0 && (

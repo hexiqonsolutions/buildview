@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { getProjectComments } from "@/lib/actions/comments";
 import { isBuildViewStaffRole, isClientPortalRole } from "@/lib/auth/roles";
-import type { Project, ProjectStatus, ProjectTour, UserRole } from "@/lib/types";
+import type { ClientDashboardType, Project, ProjectTour, UserRole } from "@/lib/types";
 import { getProjectProgressPercent, getProjectStageLabel } from "@/lib/utils";
 import { filterClientVisibleProjects, isProjectVisibleInClientPortal } from "@/lib/portal/project-visibility";
 import { validate } from "@/lib/validations/parse";
@@ -17,17 +17,21 @@ import { getClients } from "@/lib/data/clients";
 import { idsOrNone } from "@/lib/data/query";
 import { getProjectDocuments } from "@/lib/data/documents";
 import { getAllIssues, getProjectIssues } from "@/lib/data/issues";
+import { getProgressionPercentByProjectIds } from "@/lib/data/progression";
 import { getProjectReports } from "@/lib/data/reports";
 import { getAllTours, getProjectTours } from "@/lib/data/tours";
 
 export type AdminProjectRow = Project & {
-  progress: number;
+  /** Progression Report % for construction clients; null for portfolio showcase. */
+  progress: number | null;
   stage: string;
   tourCount: number;
   openIssueCount: number;
   lastScanDate: string | null;
   projectCode: string;
   progressTrend: string | null;
+  /** Client portal type — Progression only applies to construction. */
+  clientDashboardType: "construction" | "portfolio" | null;
 };
 
 export type AdminProjectsListData = {
@@ -47,13 +51,6 @@ function formatProjectCode(index: number): string {
   return `PROJ-${String(index + 1).padStart(3, "0")}`;
 }
 
-function getProgressTrendLabel(status: ProjectStatus): string | null {
-  if (status === "in_progress") return "↑ 12% this month";
-  if (status === "completed") return "↑ 5% this month";
-  if (status === "on_hold") return "↓ 2% this month";
-  return null;
-}
-
 export async function getAdminProjectsListData(): Promise<AdminProjectsListData> {
   await requireStaffPermission("read", "projects");
   const [projects, clients, tours, issues] = await Promise.all([
@@ -61,6 +58,22 @@ export async function getAdminProjectsListData(): Promise<AdminProjectsListData>
     getClients(),
     getAllTours(),
     getAllIssues(),
+  ]);
+
+  const dashboardTypeByClientId = new Map<string, ClientDashboardType | null>();
+  for (const c of clients) {
+    dashboardTypeByClientId.set(
+      c.id,
+      (c.dashboard_type as ClientDashboardType | null | undefined) ?? null
+    );
+  }
+
+  const constructionProjectIds = projects
+    .filter((p) => dashboardTypeByClientId.get(p.client_id) !== "portfolio")
+    .map((p) => p.id);
+
+  const [progressionByProject] = await Promise.all([
+    getProgressionPercentByProjectIds(constructionProjectIds),
   ]);
 
   const tourCountByProject: Record<string, number> = {};
@@ -91,16 +104,22 @@ export async function getAdminProjectsListData(): Promise<AdminProjectsListData>
     openIssues: issues.filter((i) => isOpenIssueStatus(i.status)).length,
   };
 
-  const projectRows: AdminProjectRow[] = projects.map((p, index) => ({
-    ...p,
-    progress: getProjectProgressPercent(p.status),
-    stage: getProjectStageLabel(p.status),
-    tourCount: tourCountByProject[p.id] ?? 0,
-    openIssueCount: openIssueCountByProject[p.id] ?? 0,
-    lastScanDate: lastScanByProject[p.id] ?? null,
-    projectCode: formatProjectCode(index),
-    progressTrend: getProgressTrendLabel(p.status),
-  }));
+  const projectRows: AdminProjectRow[] = projects.map((p, index) => {
+    const clientDashboardType = dashboardTypeByClientId.get(p.client_id) ?? null;
+    const isPortfolio = clientDashboardType === "portfolio";
+    return {
+      ...p,
+      // Construction: Progression Report % only (0 when not started). Portfolio: no progress %.
+      progress: isPortfolio ? null : (progressionByProject.get(p.id) ?? 0),
+      stage: getProjectStageLabel(p.status),
+      tourCount: tourCountByProject[p.id] ?? 0,
+      openIssueCount: openIssueCountByProject[p.id] ?? 0,
+      lastScanDate: lastScanByProject[p.id] ?? null,
+      projectCode: formatProjectCode(index),
+      progressTrend: null,
+      clientDashboardType,
+    };
+  });
 
   return {
     stats,
@@ -273,12 +292,20 @@ export async function getProjectWithClient(id: string) {
 
   const { data } = await supabase
     .from("projects")
-    .select("*, client:clients(id, name, company_name, email)")
+    .select("*, client:clients(id, name, company_name, email, dashboard_type)")
     .eq("id", id)
     .is("deleted_at", null)
     .single();
 
   if (!data) return null;
+
+  type ProjectClient = {
+    id: string;
+    name: string;
+    company_name: string | null;
+    email: string;
+    dashboard_type?: ClientDashboardType | null;
+  };
 
   if (user) {
     const { data: profile } = await supabase
@@ -288,7 +315,7 @@ export async function getProjectWithClient(id: string) {
       .single();
 
     const { client, ...project } = data as typeof data & {
-      client: { id: string; name: string; company_name: string | null; email: string } | null;
+      client: ProjectClient | null;
     };
 
     if (
@@ -303,7 +330,7 @@ export async function getProjectWithClient(id: string) {
   }
 
   const { client, ...project } = data as typeof data & {
-    client: { id: string; name: string; company_name: string | null; email: string } | null;
+    client: ProjectClient | null;
   };
 
   return { project, client };

@@ -31,8 +31,13 @@ export default async function AdminProjectDetailPage({
   const floorParam = query.floor;
   const floorId = typeof floorParam === "string" ? floorParam : null;
 
+  const projectData = await getProjectWithClient(id);
+  if (!projectData) notFound();
+
+  const { project, client } = projectData;
+  const isPortfolioClient = client?.dashboard_type === "portfolio";
+
   const [
-    projectData,
     detail,
     invoices,
     spatialHierarchy,
@@ -42,7 +47,6 @@ export default async function AdminProjectDetailPage({
     clients,
     progression,
   ] = await Promise.all([
-    getProjectWithClient(id),
     getProjectDetail(id),
     getProjectInvoices(id),
     getProjectSpatialHierarchy(id),
@@ -50,15 +54,16 @@ export default async function AdminProjectDetailPage({
     getProjectTeam(id).catch(() => []),
     getProjectMediaAdmin(id).catch(() => null),
     getClients().catch(() => []),
-    getProjectProgression(id, floorId).catch(() => null),
+    isPortfolioClient
+      ? Promise.resolve(null)
+      : getProjectProgression(id, floorId).catch(() => null),
   ]);
 
-  if (!projectData) notFound();
-
-  const { project, client } = projectData;
   const allowMatterportUpload = currentUser ? canUploadMatterport(currentUser.role) : false;
-  const allowProgression = currentUser ? canViewProgression(currentUser.role) : false;
-  const showComments = currentUser ? canCommentOnProject(currentUser.role) : false;
+  const allowProgression =
+    !isPortfolioClient && currentUser ? canViewProgression(currentUser.role) : false;
+  const showComments =
+    !isPortfolioClient && currentUser ? canCommentOnProject(currentUser.role) : false;
 
   return (
     <div className="animate-fade-in space-y-6">

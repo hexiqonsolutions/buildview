@@ -45,24 +45,31 @@ export default async function ProjectDetailPage({
   const floorParam = query.floor;
   const floorId = typeof floorParam === "string" ? floorParam : null;
 
-  const [projectData, detail, invoices, user, spatialHierarchy, team, media, progression] =
+  const projectData = await getProjectWithClient(id).catch(() => null);
+  if (!projectData) notFound();
+
+  const { project, client } = projectData;
+  const isPortfolioClient = client?.dashboard_type === "portfolio";
+
+  const [detail, invoices, user, spatialHierarchy, team, media, progression] =
     await Promise.all([
-      getProjectWithClient(id).catch(() => null),
       getProjectDetail(id).catch(() => EMPTY_DETAIL),
       getProjectInvoices(id).catch(() => []),
       getCurrentUser().catch(() => null),
       getProjectSpatialHierarchy(id).catch(() => ({ buildings: [] as never[] })),
       getProjectTeam(id).catch(() => []),
       getProjectMedia(id).catch(() => ({ videos: [], photos: [] })),
-      getProjectProgression(id, floorId).catch(() => null),
+      isPortfolioClient
+        ? Promise.resolve(null)
+        : getProjectProgression(id, floorId).catch(() => null),
     ]);
 
-  if (!projectData) notFound();
-
-  const { project, client } = projectData;
   const latestTour = detail.tours[0];
   const latestScanDate = latestTour?.capture_date ?? latestTour?.created_at ?? null;
-  const headerProgress = getProjectProgressPercent(project.status);
+  const headerProgress =
+    !isPortfolioClient && progression != null
+      ? progression.overallPercent
+      : getProjectProgressPercent(project.status);
   const allowMatterportUpload = user ? canUploadMatterport(user.role) : false;
   const canManageUploads = user
     ? canManageClientUploads(user.role) || can(user.role, "upload", "upload")
@@ -75,7 +82,8 @@ export default async function ProjectDetailPage({
   const allowInvoices = user ? canViewClientInvoices(user.role) : false;
   const canUpdateStatus = user ? can(user.role, "update", "projects") : false;
   const showComments = user ? canCommentOnProject(user.role) : false;
-  const allowProgression = user ? canViewProgression(user.role) : false;
+  const allowProgression =
+    !isPortfolioClient && user ? canViewProgression(user.role) : false;
 
   return (
     <div className="space-y-6">
@@ -89,6 +97,10 @@ export default async function ProjectDetailPage({
         project={project}
         client={client}
         latestTour={detail.tours[0] ?? null}
+        progressOverride={
+          !isPortfolioClient && progression != null ? progression.overallPercent : null
+        }
+        hideProgress={isPortfolioClient}
         canUpdateStatus={canUpdateStatus}
         actions={
           canManageUploads ? (

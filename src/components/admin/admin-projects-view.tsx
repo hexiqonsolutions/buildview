@@ -107,7 +107,7 @@ function exportProjectsCsv(projects: AdminProjectRow[]) {
     p.client_name,
     p.location,
     formatStatus(p.status),
-    `${p.progress}%`,
+    p.progress == null ? "—" : `${p.progress}%`,
     String(p.tourCount),
     String(p.openIssueCount),
     p.lastScanDate ? formatDate(p.lastScanDate) : "",
@@ -636,6 +636,36 @@ function ProjectActionsMenu({
   );
 }
 
+/** Construction projects show Progression Report %; portfolio showcase has no progress. */
+function ProjectProgressCell({
+  progress,
+  progressTrend,
+}: {
+  progress: number | null;
+  progressTrend: string | null;
+}) {
+  if (progress == null) {
+    return <span className="text-sm text-slate-400">—</span>;
+  }
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between gap-2 text-sm">
+        <span className="font-semibold text-slate-900 dark:text-white">{progress}%</span>
+        {progressTrend ? (
+          <span className="text-[10px] font-medium text-emerald-600">{progressTrend}</span>
+        ) : null}
+      </div>
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+        <div
+          className="h-full rounded-full bg-emerald-500 transition-all"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 function ProjectTableRow({
   project,
   projectBase,
@@ -678,20 +708,7 @@ function ProjectTableRow({
         />
       </TableCell>
       <TableCell>
-        <div className="space-y-1">
-          <div className="flex items-center justify-between gap-2 text-sm">
-            <span className="font-semibold text-slate-900 dark:text-white">{project.progress}%</span>
-            {project.progressTrend && (
-              <span className="text-[10px] font-medium text-emerald-600">{project.progressTrend}</span>
-            )}
-          </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-            <div
-              className="h-full rounded-full bg-emerald-500 transition-all"
-              style={{ width: `${project.progress}%` }}
-            />
-          </div>
-        </div>
+        <ProjectProgressCell progress={project.progress} progressTrend={project.progressTrend} />
       </TableCell>
       <TableCell>
         {isAdmin ? (
@@ -801,18 +818,7 @@ function ProjectGridCard({
           {project.location}
         </p>
         <div className="mt-3">
-          <div className="mb-1 flex items-center justify-between text-xs">
-            <span className="font-semibold text-slate-900 dark:text-white">{project.progress}%</span>
-            {project.progressTrend && (
-              <span className="text-emerald-600">{project.progressTrend}</span>
-            )}
-          </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-            <div
-              className="h-full rounded-full bg-emerald-500"
-              style={{ width: `${project.progress}%` }}
-            />
-          </div>
+          <ProjectProgressCell progress={project.progress} progressTrend={project.progressTrend} />
         </div>
         <div className="mt-4 flex items-center justify-between text-xs text-slate-500">
           <span className="inline-flex items-center gap-1">
