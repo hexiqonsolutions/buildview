@@ -2,9 +2,13 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
-import { canEditProgression, isBuildViewStaffRole } from "@/lib/auth/roles";
+import { canEditProgression, canViewProgression, isBuildViewStaffRole } from "@/lib/auth/roles";
 import { assertClientNotSuspended } from "@/lib/auth/client-suspension";
-import { getProjectProgressionFresh } from "@/lib/data/progression";
+import { canViewProject, getActiveActor } from "@/lib/auth/project-access";
+import {
+  getProjectProgressionFresh,
+  isConstructionProjectForProgression,
+} from "@/lib/data/progression";
 import { validate } from "@/lib/validations/parse";
 import { setProgressionStepSchema } from "@/lib/validations/progression";
 import { projectIdSchema } from "@/lib/validations/data";
@@ -13,6 +17,25 @@ import { getErrorMessage, PublicError } from "@/lib/errors/public";
 import { logServerError } from "@/lib/errors/server";
 import type { ProjectProgressionBundle } from "@/lib/progression/types";
 import type { UserRole } from "@/lib/types";
+
+async function requireProgressionViewer(projectId: string) {
+  const actor = await getActiveActor();
+  if (!actor) throw new PublicError("You must be signed in.");
+
+  if (!canViewProgression(actor.role)) {
+    throw new PublicError("You do not have permission to view the Progression Report.");
+  }
+
+  if (!(await canViewProject(actor, projectId))) {
+    throw new PublicError("You do not have access to this project.");
+  }
+
+  if (!(await isConstructionProjectForProgression(projectId))) {
+    throw new PublicError("Progression Report is not available for this project.");
+  }
+
+  return actor;
+}
 
 async function requireProgressionEditor(projectId: string) {
   const supabase = await createClient();
@@ -41,14 +64,16 @@ async function requireProgressionEditor(projectId: string) {
     throw new PublicError("You do not have permission to update the Progression Report.");
   }
 
+  if (!(await isConstructionProjectForProgression(projectId))) {
+    throw new PublicError("Progression Report is not available for this project.");
+  }
+
   if (!isBuildViewStaffRole(role)) {
-    const { data: project } = await supabase
-      .from("projects")
-      .select("id")
-      .eq("id", projectId)
-      .is("deleted_at", null)
-      .maybeSingle();
-    if (!project) {
+    const allowed = await canViewProject(
+      { userId: profile.id, role, clientId: profile.client_id },
+      projectId
+    );
+    if (!allowed) {
       throw new PublicError("You do not have access to this project.");
     }
   }
@@ -69,6 +94,7 @@ export async function selectProgressionFloor(
   }
 
   try {
+    await requireProgressionViewer(projectId);
     const progression = await getProjectProgressionFresh(projectId, floorId, {
       ensureMissing: false,
     });

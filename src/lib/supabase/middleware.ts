@@ -70,9 +70,17 @@ async function runSession(request: NextRequest): Promise<SessionResult | NextRes
   try {
     ({ url, anonKey } = getSupabasePublicConfig());
   } catch (error) {
-    // Missing env on Vercel causes MIDDLEWARE_INVOCATION_FAILED (500).
-    // Fail soft so the site can still load public pages and show a clear signal.
+    // Missing env must not leave /dashboard or /admin unprotected.
     console.error("[middleware] Supabase env missing:", error);
+    const { pathname } = request.nextUrl;
+    if (isProtectedRoute(pathname)) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/login";
+      redirectUrl.searchParams.set("error", "config");
+      const response = NextResponse.redirect(redirectUrl);
+      response.headers.set("x-buildview-config-error", "missing-supabase-env");
+      return response;
+    }
     const response = NextResponse.next({ request });
     response.headers.set("x-buildview-config-error", "missing-supabase-env");
     return response;

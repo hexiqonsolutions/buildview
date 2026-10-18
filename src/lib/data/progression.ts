@@ -1,9 +1,9 @@
 import "server-only";
 
 import { cache } from "react";
-import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
-import { canEditProgression, isBuildViewStaffRole } from "@/lib/auth/roles";
+import { canEditProgression, canViewProgression } from "@/lib/auth/roles";
+import { canViewProject, getActiveActor } from "@/lib/auth/project-access";
 import { PROGRESSION_TEMPLATE_KEY } from "@/lib/progression/catalog";
 import {
   buildDailySeries,
@@ -25,39 +25,27 @@ import { uuid } from "@/lib/validations/primitives";
 type Actor = {
   id: string;
   role: UserRole;
+  clientId: string | null;
 };
 
-async function getActor(): Promise<Actor | null> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
-
-  const { data: profile } = await supabase
-    .from("users")
-    .select("id, role, is_active, deleted_at")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (!profile?.is_active || profile.deleted_at || !profile.role) return null;
-  return { id: profile.id, role: profile.role as UserRole };
+async function getProgressionActor(): Promise<Actor | null> {
+  const active = await getActiveActor();
+  if (!active) return null;
+  return { id: active.userId, role: active.role, clientId: active.clientId };
 }
 
-async function assertProjectReadable(projectId: string, actor: Actor): Promise<boolean> {
-  if (isBuildViewStaffRole(actor.role)) return true;
-
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("projects")
-    .select("id")
-    .eq("id", projectId)
-    .is("deleted_at", null)
-    .maybeSingle();
-  return Boolean(data);
+async function assertProgressionReadable(projectId: string, actor: Actor): Promise<boolean> {
+  if (!canViewProgression(actor.role)) return false;
+  return canViewProject(
+    { userId: actor.id, role: actor.role, clientId: actor.clientId },
+    projectId
+  );
 }
 
-async function isConstructionProject(projectId: string): Promise<boolean> {
+/** True when the project's client portal is construction (not portfolio showcase). */
+export async function isConstructionProjectForProgression(
+  projectId: string
+): Promise<boolean> {
   try {
     const admin = createServiceRoleClient();
     const { data } = await admin
@@ -432,12 +420,15 @@ async function loadFloorDetail(
 function pickDefaultFloorId(
   floors: FloorProgressionSummary[],
   preferredFloorId?: string | null
-): string | null {
-  if (preferredFloorId && floors.some((f) => f.floorId === preferredFloorId)) {
-    return preferredFloorId;
+): { floorId: string | null; unknownPreferred: boolean } {
+  if (preferredFloorId) {
+    if (floors.some((f) => f.floorId === preferredFloorId)) {
+      return { floorId: preferredFloorId, unknownPreferred: false };
+    }
+    return { floorId: null, unknownPreferred: true };
   }
   // Stay on the first floor in structure order — never auto-jump to an unfinished floor.
-  return floors[0]?.floorId ?? null;
+  return { floorId: floors[0]?.floorId ?? null, unknownPreferred: false };
 }
 
 async function loadProjectProgressionBundle(
@@ -446,10 +437,11 @@ async function loadProjectProgressionBundle(
   floorId?: string | null,
   options?: { ensureMissing?: boolean }
 ): Promise<ProjectProgressionBundle | null> {
-  if (!(await assertProjectReadable(projectId, actor))) return null;
-  if (!(await isConstructionProject(projectId))) return null;
+  if (!(await assertProgressionReadable(projectId, actor))) return null;
+  if (!(await isConstructionProjectForProgression(projectId))) return null;
 
-  if (options?.ensureMissing !== false) {
+  // Full-project seed is opt-in (admin create / repair). Reads ensure the selected floor only.
+  if (options?.ensureMissing === true) {
     try {
       await ensureProjectFloorProgressions(projectId, actor.id);
     } catch (err) {
@@ -461,7 +453,9 @@ async function loadProjectProgressionBundle(
   const { overallPercent, activatedFloorCount } = aggregateProjectPercent(floors);
   const canEdit = canEditProgression(actor.role);
 
-  const selectedFloorId = pickDefaultFloorId(floors, floorId);
+  const { floorId: selectedFloorId, unknownPreferred } = pickDefaultFloorId(floors, floorId);
+  if (unknownPreferred) return null;
+
   let selected: ProjectProgressionView | null = null;
 
   if (selectedFloorId) {
@@ -487,14 +481,17 @@ async function loadProjectProgressionBundle(
 /**
  * Load Progression Report bundle for a construction project.
  * Pass floorId to select a specific floor checklist.
+ * Does not bulk-seed floors on read (selected floor is ensured in loadFloorDetail).
  */
 export const getProjectProgression = cache(
   async (projectId: string, floorId?: string | null) => {
     if (!validate(projectIdSchema, projectId).success) return null;
     if (floorId && !validate(uuid("Floor"), floorId).success) return null;
-    const actor = await getActor();
+    const actor = await getProgressionActor();
     if (!actor) return null;
-    return loadProjectProgressionBundle(projectId, actor, floorId);
+    return loadProjectProgressionBundle(projectId, actor, floorId, {
+      ensureMissing: false,
+    });
   }
 );
 
@@ -509,7 +506,7 @@ export async function getProjectProgressionFresh(
 ) {
   if (!validate(projectIdSchema, projectId).success) return null;
   if (floorId && !validate(uuid("Floor"), floorId).success) return null;
-  const actor = await getActor();
+  const actor = await getProgressionActor();
   if (!actor) return null;
   return loadProjectProgressionBundle(projectId, actor, floorId, {
     ensureMissing: options?.ensureMissing ?? false,

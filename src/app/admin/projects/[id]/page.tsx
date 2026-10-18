@@ -36,32 +36,24 @@ export default async function AdminProjectDetailPage({
 
   const { project, client } = projectData;
   const isPortfolioClient = client?.dashboard_type === "portfolio";
-
-  const [
-    detail,
-    invoices,
-    spatialHierarchy,
-    currentUser,
-    team,
-    projectMedia,
-    clients,
-    progression,
-  ] = await Promise.all([
-    getProjectDetail(id),
-    getProjectInvoices(id),
-    getProjectSpatialHierarchy(id),
-    getCurrentUser(),
-    getProjectTeam(id).catch(() => []),
-    getProjectMediaAdmin(id).catch(() => null),
-    getClients().catch(() => []),
-    isPortfolioClient
-      ? Promise.resolve(null)
-      : getProjectProgression(id, floorId).catch(() => null),
-  ]);
-
-  const allowMatterportUpload = currentUser ? canUploadMatterport(currentUser.role) : false;
+  const currentUser = await getCurrentUser().catch(() => null);
   const allowProgression =
     !isPortfolioClient && currentUser ? canViewProgression(currentUser.role) : false;
+
+  const [detail, invoices, spatialHierarchy, team, projectMedia, clients, progression] =
+    await Promise.all([
+      getProjectDetail(id),
+      getProjectInvoices(id),
+      getProjectSpatialHierarchy(id),
+      getProjectTeam(id).catch(() => []),
+      getProjectMediaAdmin(id).catch(() => null),
+      getClients().catch(() => []),
+      allowProgression
+        ? getProjectProgression(id, floorId).catch(() => null)
+        : Promise.resolve(null),
+    ]);
+
+  const allowMatterportUpload = currentUser ? canUploadMatterport(currentUser.role) : false;
   const showComments =
     !isPortfolioClient && currentUser ? canCommentOnProject(currentUser.role) : false;
 
@@ -153,7 +145,7 @@ export default async function AdminProjectDetailPage({
         team={team}
         canUploadMatterport={allowMatterportUpload}
         allowInvoices
-        progression={progression}
+        progression={allowProgression ? progression : null}
         allowProgression={allowProgression}
         comments={detail.comments}
         currentUserId={currentUser?.id}
