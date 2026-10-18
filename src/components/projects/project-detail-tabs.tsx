@@ -11,6 +11,7 @@ import { ProjectMatterportPanel } from "@/components/projects/project-matterport
 import { ProjectReportsSection } from "@/components/projects/project-reports-section";
 import { ProjectAiSummaryPanel } from "@/components/projects/project-ai-summary-panel";
 import { ProgressionPanel } from "@/components/projects/progression/progression-panel";
+import { ProjectCommentsSection } from "@/components/projects/project-comments-section";
 import { buildProjectReportSummary } from "@/lib/ai/build-project-report-summary";
 import { isOpenIssueStatus } from "@/lib/issues/status";
 import { ProjectDocumentsSection } from "@/components/projects/project-documents-section";
@@ -38,6 +39,7 @@ import type {
   IssueWithRelations,
   TimelineEventWithRelations,
   Invoice,
+  ProjectCommentWithUser,
 } from "@/lib/types";
 
 interface ProjectDetailTabsProps {
@@ -67,6 +69,15 @@ interface ProjectDetailTabsProps {
   media?: ProjectMediaGroups;
   /** Construction Progression Report (null / undefined for portfolio or missing migration). */
   progression?: ProjectProgressionBundle | null;
+  /**
+   * BuildView staff + client_admin + site_supervisor + site_engineer.
+   * When false, Progression tab and overview summary are hidden.
+   */
+  allowProgression?: boolean;
+  /** Team Discussion rendered inside Overview (not below all tabs). */
+  comments?: ProjectCommentWithUser[];
+  currentUserId?: string;
+  showComments?: boolean;
 }
 
 export function ProjectDetailTabs({
@@ -89,10 +100,15 @@ export function ProjectDetailTabs({
   canUploadContent = false,
   media,
   progression = null,
+  allowProgression = false,
+  comments = [],
+  currentUserId,
+  showComments = false,
 }: ProjectDetailTabsProps) {
   const portal = useOptionalPortalWorkspace();
   const isPortfolioIntel = variant === "intel" && portal?.dashboardType === "portfolio";
   const showConstructionTabs = variant === "ops" || !isPortfolioIntel;
+  const showProgression = Boolean(showConstructionTabs && allowProgression && progression);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -118,7 +134,7 @@ export function ProjectDetailTabs({
       ? [
           { id: "photos", label: "Site Images", badge: sitePhotoCount },
           { id: "timeline", label: "Timeline", badge: timeline.length },
-          ...(progression
+          ...(showProgression && progression
             ? [
                 {
                   id: "progression",
@@ -180,8 +196,8 @@ export function ProjectDetailTabs({
           />
         )}
 
-        {showConstructionTabs && progression ? (
-          <ProgressionPanel initial={progression} compact />
+        {showProgression && progression ? (
+          <ProgressionPanel initial={progression} summaryOnly />
         ) : null}
 
         {showConstructionTabs ? (
@@ -206,6 +222,16 @@ export function ProjectDetailTabs({
             projectId={projectId}
             tours={tours}
             canUpload={canUploadMatterport}
+          />
+        ) : null}
+
+        {showComments && projectId ? (
+          <ProjectCommentsSection
+            projectId={projectId}
+            comments={comments}
+            currentUserId={currentUserId}
+            reports={reports}
+            documents={documents}
           />
         ) : null}
       </TabPanel>
@@ -250,9 +276,9 @@ export function ProjectDetailTabs({
             <TimelineView events={timeline} />
           </TabPanel>
 
-          {progression ? (
+          {showProgression && progression ? (
             <TabPanel value="progression" className="mt-6">
-              <ProgressionPanel initial={progression} />
+              <ProgressionPanel initial={progression} checklistOnly />
             </TabPanel>
           ) : null}
 

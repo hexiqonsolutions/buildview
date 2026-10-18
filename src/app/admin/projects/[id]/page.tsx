@@ -9,7 +9,7 @@ import { getProjectSpatialHierarchy } from "@/lib/actions/buildings";
 import { getProjectMediaAdmin } from "@/lib/actions/project-media";
 import { ProjectMediaManager } from "@/components/admin/projects/project-media-manager";
 import { getCurrentUser } from "@/lib/actions/auth";
-import { canUploadMatterport } from "@/lib/auth/permissions";
+import { canCommentOnProject, canUploadMatterport, canViewProgression } from "@/lib/auth/permissions";
 import { ProjectWorkspaceTabs } from "@/components/admin/projects/project-workspace-tabs";
 import { ProjectMatterportUploader } from "@/components/projects/project-matterport-uploader";
 import { ClientWorkspaceSync } from "@/components/admin/workspace/client-workspace-sync";
@@ -57,6 +57,8 @@ export default async function AdminProjectDetailPage({
 
   const { project, client } = projectData;
   const allowMatterportUpload = currentUser ? canUploadMatterport(currentUser.role) : false;
+  const allowProgression = currentUser ? canViewProgression(currentUser.role) : false;
+  const showComments = currentUser ? canCommentOnProject(currentUser.role) : false;
 
   return (
     <div className="animate-fade-in space-y-6">
@@ -147,6 +149,10 @@ export default async function AdminProjectDetailPage({
         canUploadMatterport={allowMatterportUpload}
         allowInvoices
         progression={progression}
+        allowProgression={allowProgression}
+        comments={detail.comments}
+        currentUserId={currentUser?.id}
+        showComments={showComments}
       />
     </div>
   );

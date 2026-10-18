@@ -133,10 +133,15 @@ export function canViewClientInvoices(role: UserRole): boolean {
 }
 
 /**
- * BuildView staff, Client Admin, Site Engineer, and Site Supervisor may tick
- * Progression Report steps. Other project members may view Overview graphs only.
+ * BuildView staff, Client Admin, Site Engineer, and Site Supervisor may view
+ * and tick the Progression Report. Other project members do not see it.
  */
 export function canEditProgression(role: UserRole): boolean {
   if (isBuildViewStaffRole(role)) return true;
   return (CLIENT_PROGRESSION_EDIT_ROLES as readonly string[]).includes(role);
+}
+
+/** Same roles as canEditProgression — Progression UI is edit-role only. */
+export function canViewProgression(role: UserRole): boolean {
+  return canEditProgression(role);
 }

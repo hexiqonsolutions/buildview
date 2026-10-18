@@ -17,11 +17,11 @@ import {
   canCreateProjectIssue,
   canUpdateIssueStatus,
   canViewClientInvoices,
+  canViewProgression,
 } from "@/lib/auth/permissions";
 import { getProjectProgressPercent } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Upload } from "lucide-react";
-import { ProjectCommentsSection } from "@/components/projects/project-comments-section";
 
 const EMPTY_DETAIL = {
   tours: [],
@@ -76,6 +76,7 @@ export default async function ProjectDetailPage({
   const allowInvoices = user ? canViewClientInvoices(user.role) : false;
   const canUpdateStatus = user ? can(user.role, "update", "projects") : false;
   const showComments = user ? canCommentOnProject(user.role) : false;
+  const allowProgression = user ? canViewProgression(user.role) : false;
 
   return (
     <div className="space-y-6">
@@ -122,17 +123,12 @@ export default async function ProjectDetailPage({
           canUploadContent={canUploadContent}
           media={media}
           progression={progression}
-        />
-      </div>
-      {showComments && (
-        <ProjectCommentsSection
-          projectId={project.id}
+          allowProgression={allowProgression}
           comments={detail.comments}
           currentUserId={user?.id}
-          reports={detail.reports}
-          documents={detail.documents}
+          showComments={showComments}
         />
-      )}
+      </div>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import type { UserRole } from "@/lib/types";
-import { canCommentOnProject as canCommentOnProjectHelper, canCreateProjectIssue as canCreateProjectIssueHelper, canEditProgression as canEditProgressionHelper, canManageClientUploads as canManageClientUploadsHelper, canUpdateIssueStatus as canUpdateIssueStatusHelper, canUploadMatterport as canUploadMatterportHelper, canViewClientInvoices as canViewClientInvoicesHelper, isBuildViewStaffRole } from "@/lib/auth/roles";
+import { canCommentOnProject as canCommentOnProjectHelper, canCreateProjectIssue as canCreateProjectIssueHelper, canEditProgression as canEditProgressionHelper, canManageClientUploads as canManageClientUploadsHelper, canUpdateIssueStatus as canUpdateIssueStatusHelper, canUploadMatterport as canUploadMatterportHelper, canViewClientInvoices as canViewClientInvoicesHelper, canViewProgression as canViewProgressionHelper, isBuildViewStaffRole } from "@/lib/auth/roles";
 
 export type PermissionAction =
   | "create"
@@ -185,4 +185,8 @@ export function canViewClientInvoices(role: UserRole): boolean {
 
 export function canEditProgression(role: UserRole): boolean {
   return canEditProgressionHelper(role);
+}
+
+export function canViewProgression(role: UserRole): boolean {
+  return canViewProgressionHelper(role);
 }

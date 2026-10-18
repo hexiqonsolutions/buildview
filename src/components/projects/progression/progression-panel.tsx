@@ -164,13 +164,71 @@ function FloorChip({
   );
 }
 
+/** Overview entry point — opens the Progression tab checklist. */
+export function CheckProgressionReportCta({
+  overallPercent,
+  activatedFloorCount,
+  floorCount,
+}: {
+  overallPercent: number;
+  activatedFloorCount: number;
+  floorCount: number;
+}) {
+  const router = useRouter();
+  const pathname = usePathname();
+
+  function openReport() {
+    const params = new URLSearchParams(window.location.search);
+    params.set("tab", "progression");
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }
+
+  return (
+    <section
+      aria-label="Progression Report"
+      className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800 dark:bg-slate-900/60"
+    >
+      <div className="min-w-0">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+          Progression Report
+        </p>
+        <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-300">
+          <span className="font-semibold tabular-nums text-slate-900 dark:text-white">
+            {overallPercent}%
+          </span>
+          {" project health"}
+          {floorCount > 0 ? (
+            <>
+              {" · "}
+              {activatedFloorCount}/{floorCount} floors activated
+            </>
+          ) : null}
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={openReport}
+        className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+      >
+        Check Progression Report
+      </button>
+    </section>
+  );
+}
+
 export function ProgressionPanel({
   initial,
   compact = false,
+  checklistOnly = false,
+  summaryOnly = false,
 }: {
   initial: ProjectProgressionBundle;
-  /** Overview embed: project health + compact floor picker. */
+  /** @deprecated Prefer summaryOnly or CheckProgressionReportCta. */
   compact?: boolean;
+  /** Progression tab: floor switcher + checklist, no summary charts. */
+  checklistOnly?: boolean;
+  /** Overview: floor health summary charts + Check Progression Report CTA. */
+  summaryOnly?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -300,81 +358,96 @@ export function ProgressionPanel({
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   }
 
-  if (compact) {
+  if (compact && !summaryOnly) {
     return (
-      <section aria-label="Progression Report" className="space-y-3">
-        <div className="flex items-end justify-between gap-3">
+      <CheckProgressionReportCta
+        overallPercent={data.overallPercent}
+        activatedFloorCount={data.activatedFloorCount}
+        floorCount={data.floorCount}
+      />
+    );
+  }
+
+  if (summaryOnly) {
+    return (
+      <div className="space-y-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
               Progression Report
             </p>
             <h3 className="mt-0.5 font-display text-sm font-semibold text-slate-900 dark:text-white">
-              Project health by floor
+              Overview
             </h3>
+            <p className="mt-0.5 text-sm text-slate-500">
+              Project health{" "}
+              <span className="font-semibold tabular-nums text-slate-800 dark:text-slate-200">
+                {data.overallPercent}%
+              </span>
+              {" · "}
+              {data.activatedFloorCount}/{data.floorCount} floors activated
+            </p>
           </div>
           <button
             type="button"
             onClick={() => openFullTab(selected?.floorId)}
-            className="cursor-pointer text-xs font-medium text-slate-600 underline-offset-2 hover:underline dark:text-slate-300"
+            className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
           >
-            Open checklist
+            Check Progression Report
           </button>
         </div>
 
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,220px)_1fr]">
-          <ProgressionOverallCard
-            percent={data.overallPercent}
-            completed={data.floors
-              .filter((f) => f.activated)
-              .reduce((sum, f) => sum + f.completedCount, 0)}
-            total={data.floors
-              .filter((f) => f.activated)
-              .reduce((sum, f) => sum + f.totalCount, 0)}
-            label="Project health"
-          />
-          <div className="min-w-0 space-y-2 rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900/60">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-xs text-slate-500">
-                {data.activatedFloorCount}/{data.floorCount} floors activated
-              </p>
-              {data.floors.length > 0 ? (
-                <select
-                  aria-label="Jump to floor checklist"
-                  className="max-w-[14rem] cursor-pointer rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-                  value={selected?.floorId ?? ""}
-                  onChange={(e) => {
-                    const id = e.target.value;
-                    if (id) openFullTab(id);
-                  }}
-                >
-                  {data.floors.map((floor) => (
-                    <option key={floor.floorId} value={floor.floorId}>
-                      {floor.buildingName} · {floor.floorName}
-                      {floor.activated ? ` (${floor.percent}%)` : ""}
-                    </option>
-                  ))}
-                </select>
-              ) : null}
+        {data.floors.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500 dark:border-slate-700">
+            Add buildings and floors in admin to start monitoring.
+          </p>
+        ) : (
+          <>
+            <div className="space-y-2">
+              {buildings.map((building) => (
+                <div key={building.buildingId} className="space-y-1.5">
+                  {buildings.length > 1 ? (
+                    <p className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
+                      <Building2 className="h-3 w-3" aria-hidden />
+                      {building.buildingName}
+                    </p>
+                  ) : null}
+                  <div className="flex gap-1.5 overflow-x-auto pb-1">
+                    {building.floors.map((floor) => (
+                      <FloorChip
+                        key={floor.floorId}
+                        floor={floor}
+                        active={selected?.floorId === floor.floorId}
+                        disabled={switching || isPending}
+                        onSelect={() => selectFloor(floor.floorId)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
-            {data.floors.length === 0 ? (
-              <p className="py-4 text-center text-sm text-slate-500">
-                Add buildings and floors in admin to start monitoring.
-              </p>
-            ) : (
-              <div className="flex gap-1.5 overflow-x-auto pb-0.5">
-                {data.floors.map((floor) => (
-                  <FloorChip
-                    key={floor.floorId}
-                    floor={floor}
-                    active={selected?.floorId === floor.floorId}
-                    onSelect={() => openFullTab(floor.floorId)}
-                  />
-                ))}
+
+            {switching && !selected ? (
+              <div className="flex items-center justify-center gap-2 py-8 text-sm text-slate-500">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading floor…
               </div>
-            )}
-          </div>
-        </div>
-      </section>
+            ) : selected ? (
+              <div className="grid gap-3 lg:grid-cols-2">
+                <ProgressionOverallCard
+                  percent={selected.overallPercent}
+                  completed={selected.completedCount}
+                  total={selected.totalCount}
+                  label={selected.floorName}
+                />
+                <ProgressionPhaseBars phases={selected.phases} />
+                <ProgressionDailyChart daily={selected.daily} />
+                <ProgressionWeeklyChart weekly={selected.weekly} />
+              </div>
+            ) : null}
+          </>
+        )}
+      </div>
     );
   }
 
@@ -468,17 +541,19 @@ export function ProgressionPanel({
                 </span>
               </div>
 
-              <div className="grid gap-3 lg:grid-cols-2">
-                <ProgressionOverallCard
-                  percent={selected.overallPercent}
-                  completed={selected.completedCount}
-                  total={selected.totalCount}
-                  label={selected.floorName}
-                />
-                <ProgressionPhaseBars phases={selected.phases} />
-                <ProgressionDailyChart daily={selected.daily} />
-                <ProgressionWeeklyChart weekly={selected.weekly} />
-              </div>
+              {!checklistOnly ? (
+                <div className="grid gap-3 lg:grid-cols-2">
+                  <ProgressionOverallCard
+                    percent={selected.overallPercent}
+                    completed={selected.completedCount}
+                    total={selected.totalCount}
+                    label={selected.floorName}
+                  />
+                  <ProgressionPhaseBars phases={selected.phases} />
+                  <ProgressionDailyChart daily={selected.daily} />
+                  <ProgressionWeeklyChart weekly={selected.weekly} />
+                </div>
+              ) : null}
 
               {nextPending && data.canEdit ? (
                 <p className="text-xs text-slate-500">
