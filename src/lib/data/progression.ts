@@ -169,7 +169,10 @@ export async function ensureFloorProgression(
   return created.id;
 }
 
-/** Ensure every active floor on the project has a progression row. */
+/**
+ * Ensure every active floor on the project has a progression row.
+ * Only creates missing rows (skips floors that already have a checklist).
+ */
 async function ensureProjectFloorProgressions(
   projectId: string,
   actorId: string
@@ -184,13 +187,22 @@ async function ensureProjectFloorProgressions(
   const buildingIds = (buildings ?? []).map((b) => b.id);
   if (buildingIds.length === 0) return;
 
-  const { data: floors } = await admin
-    .from("floors")
-    .select("id, building_id")
-    .in("building_id", buildingIds)
-    .is("deleted_at", null);
+  const [{ data: floors }, { data: existing }] = await Promise.all([
+    admin
+      .from("floors")
+      .select("id, building_id")
+      .in("building_id", buildingIds)
+      .is("deleted_at", null),
+    admin
+      .from("project_progressions")
+      .select("floor_id")
+      .eq("project_id", projectId)
+      .is("deleted_at", null),
+  ]);
 
+  const have = new Set((existing ?? []).map((p) => p.floor_id as string));
   for (const floor of floors ?? []) {
+    if (have.has(floor.id)) continue;
     await ensureFloorProgression(projectId, floor.id, floor.building_id, actorId);
   }
 }
@@ -424,24 +436,25 @@ function pickDefaultFloorId(
   if (preferredFloorId && floors.some((f) => f.floorId === preferredFloorId)) {
     return preferredFloorId;
   }
-  const inactive = floors.find((f) => !f.activated);
-  if (inactive) return inactive.floorId;
-  const leastComplete = [...floors].sort((a, b) => a.percent - b.percent)[0];
-  return leastComplete?.floorId ?? null;
+  // Stay on the first floor in structure order — never auto-jump to an unfinished floor.
+  return floors[0]?.floorId ?? null;
 }
 
 async function loadProjectProgressionBundle(
   projectId: string,
   actor: Actor,
-  floorId?: string | null
+  floorId?: string | null,
+  options?: { ensureMissing?: boolean }
 ): Promise<ProjectProgressionBundle | null> {
   if (!(await assertProjectReadable(projectId, actor))) return null;
   if (!(await isConstructionProject(projectId))) return null;
 
-  try {
-    await ensureProjectFloorProgressions(projectId, actor.id);
-  } catch (err) {
-    console.warn("[getProjectProgression] ensure floors failed:", err);
+  if (options?.ensureMissing !== false) {
+    try {
+      await ensureProjectFloorProgressions(projectId, actor.id);
+    } catch (err) {
+      console.warn("[getProjectProgression] ensure floors failed:", err);
+    }
   }
 
   const floors = await loadFloorSummaries(projectId);
@@ -485,16 +498,22 @@ export const getProjectProgression = cache(
   }
 );
 
-/** Fresh read after a mutation (bypasses React cache()). */
+/**
+ * Fresh read after a mutation / floor switch (bypasses React cache()).
+ * Skips re-seeding every floor — use after ticks and client floor picks.
+ */
 export async function getProjectProgressionFresh(
   projectId: string,
-  floorId?: string | null
+  floorId?: string | null,
+  options?: { ensureMissing?: boolean }
 ) {
   if (!validate(projectIdSchema, projectId).success) return null;
   if (floorId && !validate(uuid("Floor"), floorId).success) return null;
   const actor = await getActor();
   if (!actor) return null;
-  return loadProjectProgressionBundle(projectId, actor, floorId);
+  return loadProjectProgressionBundle(projectId, actor, floorId, {
+    ensureMissing: options?.ensureMissing ?? false,
+  });
 }
 
 /**

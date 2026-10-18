@@ -5,14 +5,14 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { canEditProgression, isBuildViewStaffRole } from "@/lib/auth/roles";
 import { assertClientNotSuspended } from "@/lib/auth/client-suspension";
-import {
-  getProjectProgression,
-  getProjectProgressionFresh,
-} from "@/lib/data/progression";
+import { getProjectProgressionFresh } from "@/lib/data/progression";
 import { validate } from "@/lib/validations/parse";
 import { setProgressionStepSchema } from "@/lib/validations/progression";
+import { projectIdSchema } from "@/lib/validations/data";
+import { uuid } from "@/lib/validations/primitives";
 import { getErrorMessage, PublicError } from "@/lib/errors/public";
 import { logServerError } from "@/lib/errors/server";
+import type { ProjectProgressionBundle } from "@/lib/progression/types";
 import type { UserRole } from "@/lib/types";
 
 async function requireProgressionEditor(projectId: string) {
@@ -57,6 +57,38 @@ async function requireProgressionEditor(projectId: string) {
   return { userId: profile.id, role };
 }
 
+/** Switch floor checklist without a full page reload. */
+export async function selectProgressionFloor(
+  projectId: string,
+  floorId: string
+): Promise<{ ok: true; progression: ProjectProgressionBundle } | { ok: false; error: string }> {
+  if (!validate(projectIdSchema, projectId).success) {
+    return { ok: false, error: "Invalid project." };
+  }
+  if (!validate(uuid("Floor"), floorId).success) {
+    return { ok: false, error: "Invalid floor." };
+  }
+
+  try {
+    const progression = await getProjectProgressionFresh(projectId, floorId, {
+      ensureMissing: false,
+    });
+    if (!progression?.selected) {
+      return { ok: false, error: "Floor checklist not found." };
+    }
+    return { ok: true, progression };
+  } catch (err) {
+    logServerError("selectProgressionFloor", err);
+    return {
+      ok: false,
+      error: getErrorMessage(err, "Failed to load floor checklist."),
+    };
+  }
+}
+
+/**
+ * Fast tick path: verify step via DB (no full bundle load), then light reload.
+ */
 export async function setProgressionStep(input: unknown) {
   const parsed = validate(setProgressionStepSchema, input);
   if (!parsed.success) {
@@ -67,29 +99,50 @@ export async function setProgressionStep(input: unknown) {
 
   try {
     const actor = await requireProgressionEditor(projectId);
-    const view = await getProjectProgression(projectId, floorId);
-    const selected = view?.selected;
-    if (!view || !selected) {
-      return {
-        ok: false as const,
-        error: "Progression Report is not available for this floor.",
-      };
-    }
+    const admin = createServiceRoleClient();
 
-    const step = selected.phases.flatMap((p) => p.steps).find((s) => s.id === stepId);
-    if (!step) {
+    const { data: stepRow, error: stepError } = await admin
+      .from("project_progression_steps")
+      .select(
+        "id, status, progression_id, progression:project_progressions!inner(id, project_id, floor_id, deleted_at)"
+      )
+      .eq("id", stepId)
+      .maybeSingle();
+
+    if (stepError || !stepRow) {
       return { ok: false as const, error: "Step not found." };
     }
 
-    const alreadyCompleted = step.status === "completed";
-    if (completed && alreadyCompleted) {
-      return { ok: true as const, progression: view };
-    }
-    if (!completed && !alreadyCompleted) {
-      return { ok: true as const, progression: view };
+    const progression = stepRow.progression as unknown as {
+      id: string;
+      project_id: string;
+      floor_id: string;
+      deleted_at: string | null;
+    } | null;
+
+    if (
+      !progression ||
+      progression.deleted_at ||
+      progression.project_id !== projectId ||
+      progression.floor_id !== floorId
+    ) {
+      return { ok: false as const, error: "Step does not belong to this floor." };
     }
 
-    const admin = createServiceRoleClient();
+    const alreadyCompleted = stepRow.status === "completed";
+    if (completed && alreadyCompleted) {
+      const bundle = await getProjectProgressionFresh(projectId, floorId, {
+        ensureMissing: false,
+      });
+      return { ok: true as const, progression: bundle };
+    }
+    if (!completed && !alreadyCompleted) {
+      const bundle = await getProjectProgressionFresh(projectId, floorId, {
+        ensureMissing: false,
+      });
+      return { ok: true as const, progression: bundle };
+    }
+
     const now = new Date().toISOString();
 
     if (completed) {
@@ -103,12 +156,12 @@ export async function setProgressionStep(input: unknown) {
           note: note?.trim() || null,
         })
         .eq("id", stepId)
-        .eq("progression_id", selected.id);
+        .eq("progression_id", progression.id);
 
       if (error) throw error;
 
       const { error: logError } = await admin.from("project_progression_logs").insert({
-        progression_id: selected.id,
+        progression_id: progression.id,
         step_id: stepId,
         action: "completed",
         work_date: workDate,
@@ -127,12 +180,12 @@ export async function setProgressionStep(input: unknown) {
           note: null,
         })
         .eq("id", stepId)
-        .eq("progression_id", selected.id);
+        .eq("progression_id", progression.id);
 
       if (error) throw error;
 
       const { error: logError } = await admin.from("project_progression_logs").insert({
-        progression_id: selected.id,
+        progression_id: progression.id,
         step_id: stepId,
         action: "reopened",
         work_date: workDate,
@@ -145,13 +198,16 @@ export async function setProgressionStep(input: unknown) {
     await admin
       .from("project_progressions")
       .update({ updated_by: actor.userId })
-      .eq("id", selected.id);
+      .eq("id", progression.id);
 
+    // Soft revalidate for next navigation — client already has optimistic + returned bundle
     revalidatePath(`/dashboard/projects/${projectId}`);
     revalidatePath(`/admin/projects/${projectId}`);
 
-    const progression = await getProjectProgressionFresh(projectId, floorId);
-    return { ok: true as const, progression };
+    const bundle = await getProjectProgressionFresh(projectId, floorId, {
+      ensureMissing: false,
+    });
+    return { ok: true as const, progression: bundle };
   } catch (err) {
     logServerError("setProgressionStep", err);
     return {

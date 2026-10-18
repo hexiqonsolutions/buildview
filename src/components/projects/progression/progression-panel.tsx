@@ -3,10 +3,14 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Building2, Check, ChevronDown, Layers, Loader2 } from "lucide-react";
-import { setProgressionStep } from "@/lib/actions/progression";
+import {
+  selectProgressionFloor,
+  setProgressionStep,
+} from "@/lib/actions/progression";
 import type {
   FloorProgressionSummary,
   ProjectProgressionBundle,
+  ProjectProgressionView,
 } from "@/lib/progression/types";
 import { formatDate, cn } from "@/lib/utils";
 import {
@@ -40,12 +44,132 @@ function groupFloorsByBuilding(floors: FloorProgressionSummary[]) {
   }));
 }
 
+function patchStepLocally(
+  bundle: ProjectProgressionBundle,
+  stepId: string,
+  completed: boolean,
+  workDate: string
+): ProjectProgressionBundle {
+  const selected = bundle.selected;
+  if (!selected) return bundle;
+
+  const phases = selected.phases.map((phase) => {
+    const steps = phase.steps.map((step) => {
+      if (step.id !== stepId) return step;
+      return completed
+        ? {
+            ...step,
+            status: "completed" as const,
+            workDate,
+            completedAt: new Date().toISOString(),
+          }
+        : {
+            ...step,
+            status: "pending" as const,
+            workDate: null,
+            completedAt: null,
+            completedBy: null,
+            completedByName: null,
+            note: null,
+          };
+    });
+    const phaseCompleted = steps.filter((s) => s.status === "completed").length;
+    return {
+      ...phase,
+      steps,
+      completed: phaseCompleted,
+      percent:
+        phase.total > 0 ? Math.round((phaseCompleted / phase.total) * 100) : 0,
+    };
+  });
+
+  const completedCount = phases.reduce((sum, p) => sum + p.completed, 0);
+  const totalCount = selected.totalCount;
+  const overallPercent =
+    totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+  const activated = completedCount > 0;
+
+  const nextSelected: ProjectProgressionView = {
+    ...selected,
+    phases,
+    completedCount,
+    overallPercent,
+    activated,
+  };
+
+  const floors = bundle.floors.map((floor) =>
+    floor.floorId === selected.floorId
+      ? {
+          ...floor,
+          completedCount,
+          totalCount,
+          percent: overallPercent,
+          activated,
+        }
+      : floor
+  );
+
+  const activatedFloors = floors.filter((f) => f.activated);
+  let projectCompleted = 0;
+  let projectTotal = 0;
+  for (const floor of activatedFloors) {
+    projectCompleted += floor.completedCount;
+    projectTotal += floor.totalCount;
+  }
+
+  return {
+    ...bundle,
+    floors,
+    selected: nextSelected,
+    activatedFloorCount: activatedFloors.length,
+    overallPercent:
+      projectTotal > 0 ? Math.round((projectCompleted / projectTotal) * 100) : 0,
+  };
+}
+
+function FloorChip({
+  floor,
+  active,
+  disabled,
+  onSelect,
+}: {
+  floor: FloorProgressionSummary;
+  active: boolean;
+  disabled?: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onSelect}
+      className={cn(
+        "shrink-0 cursor-pointer rounded-lg border px-2.5 py-1.5 text-left transition-colors duration-150",
+        active
+          ? "border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900"
+          : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200",
+        disabled && "opacity-60"
+      )}
+    >
+      <span className="block text-xs font-medium leading-tight">{floor.floorName}</span>
+      <span
+        className={cn(
+          "block text-[10px] tabular-nums leading-tight",
+          active ? "text-white/70 dark:text-slate-500" : "text-slate-400"
+        )}
+      >
+        {floor.activated ? `${floor.percent}%` : "—"}
+      </span>
+    </button>
+  );
+}
+
 export function ProgressionPanel({
   initial,
   compact = false,
 }: {
   initial: ProjectProgressionBundle;
-  /** Overview embed: project health + floor strip, link to full tab. */
+  /** Overview embed: project health + compact floor picker. */
   compact?: boolean;
 }) {
   const router = useRouter();
@@ -77,8 +201,7 @@ export function ProgressionPanel({
         selected.phases.filter((p) => p.completed < p.total).map((p) => p.number).slice(0, 2)
       )
     );
-    // Reset open phases when the selected floor checklist changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: only re-open on floor change
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when floor checklist identity changes
   }, [selected?.id]);
 
   const nextPending = useMemo(
@@ -97,22 +220,34 @@ export function ProgressionPanel({
     });
   }
 
-  function selectFloor(floorId: string) {
-    if (selected?.floorId === floorId) return;
-    setSwitching(true);
-    setError(null);
+  function syncFloorInUrl(floorId: string) {
     const params = new URLSearchParams(window.location.search);
     params.set("tab", "progression");
     params.set("floor", floorId);
-    router.replace(`${window.location.pathname}?${params.toString()}`, { scroll: false });
-    router.refresh();
-    // Soft unlock after navigation; server will replace `initial`
-    setTimeout(() => setSwitching(false), 800);
+    window.history.replaceState(null, "", `${window.location.pathname}?${params.toString()}`);
+  }
+
+  function selectFloor(floorId: string) {
+    if (selected?.floorId === floorId || switching) return;
+    setError(null);
+    setSwitching(true);
+    syncFloorInUrl(floorId);
+    startTransition(async () => {
+      const result = await selectProgressionFloor(data.projectId, floorId);
+      setSwitching(false);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setData(result.progression);
+    });
   }
 
   function onToggle(stepId: string, completed: boolean) {
-    if (!data.canEdit || !selected) return;
+    if (!data.canEdit || !selected || pendingStepId) return;
     setError(null);
+    const snapshot = data;
+    setData(patchStepLocally(data, stepId, completed, workDate));
     setPendingStepId(stepId);
     startTransition(async () => {
       const result = await setProgressionStep({
@@ -125,11 +260,11 @@ export function ProgressionPanel({
       });
       setPendingStepId(null);
       if (!result.ok) {
+        setData(snapshot);
         setError(result.error);
         return;
       }
       if (result.progression) setData(result.progression);
-      router.refresh();
     });
   }
 
@@ -151,10 +286,6 @@ export function ProgressionPanel({
             <h3 className="mt-0.5 font-display text-sm font-semibold text-slate-900 dark:text-white">
               Project health by floor
             </h3>
-            <p className="mt-0.5 text-xs text-slate-500">
-              {data.activatedFloorCount} of {data.floorCount} floor
-              {data.floorCount === 1 ? "" : "s"} activated · overall from activated floors only
-            </p>
           </div>
           <button
             type="button"
@@ -176,49 +307,45 @@ export function ProgressionPanel({
               .reduce((sum, f) => sum + f.totalCount, 0)}
             label="Project health"
           />
-          <div className="intel-card divide-y divide-slate-100 overflow-hidden dark:divide-slate-800">
+          <div className="min-w-0 space-y-2 rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900/60">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs text-slate-500">
+                {data.activatedFloorCount}/{data.floorCount} floors activated
+              </p>
+              {data.floors.length > 0 ? (
+                <select
+                  aria-label="Jump to floor checklist"
+                  className="max-w-[14rem] cursor-pointer rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                  value={selected?.floorId ?? ""}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    if (id) openFullTab(id);
+                  }}
+                >
+                  {data.floors.map((floor) => (
+                    <option key={floor.floorId} value={floor.floorId}>
+                      {floor.buildingName} · {floor.floorName}
+                      {floor.activated ? ` (${floor.percent}%)` : ""}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
+            </div>
             {data.floors.length === 0 ? (
-              <p className="px-4 py-8 text-center text-sm text-slate-500">
-                Add buildings and floors in admin to start floor-by-floor progression.
+              <p className="py-4 text-center text-sm text-slate-500">
+                Add buildings and floors in admin to start monitoring.
               </p>
             ) : (
-              data.floors.map((floor) => (
-                <button
-                  key={floor.floorId}
-                  type="button"
-                  onClick={() => openFullTab(floor.floorId)}
-                  className="flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition-colors duration-150 hover:bg-slate-50/80 dark:hover:bg-slate-900/40"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-slate-900 dark:text-white">
-                      {floor.buildingName}
-                      <span className="text-slate-300 dark:text-slate-600"> · </span>
-                      {floor.floorName}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      {floor.activated
-                        ? `${floor.completedCount}/${floor.totalCount} steps`
-                        : "Not started — excluded from project health"}
-                    </p>
-                  </div>
-                  <span
-                    className={cn(
-                      "shrink-0 font-display text-sm font-semibold tabular-nums",
-                      floor.activated
-                        ? "text-slate-900 dark:text-white"
-                        : "text-slate-400"
-                    )}
-                  >
-                    {floor.activated ? `${floor.percent}%` : "—"}
-                  </span>
-                  <div className="h-1.5 w-16 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                    <div
-                      className="h-full rounded-full bg-slate-800 transition-[width] duration-300 dark:bg-slate-200"
-                      style={{ width: `${floor.activated ? floor.percent : 0}%` }}
-                    />
-                  </div>
-                </button>
-              ))
+              <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+                {data.floors.map((floor) => (
+                  <FloorChip
+                    key={floor.floorId}
+                    floor={floor}
+                    active={selected?.floorId === floor.floorId}
+                    onSelect={() => openFullTab(floor.floorId)}
+                  />
+                ))}
+              </div>
             )}
           </div>
         </div>
@@ -227,18 +354,14 @@ export function ProgressionPanel({
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className="space-y-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h3 className="font-display text-base font-semibold text-slate-900 dark:text-white">
             Progression Report
           </h3>
           <p className="text-sm text-slate-500">
-            Each floor has the same post-slab sequence. Tick work on the selected floor. Project
-            health averages floors that have at least one tick.
-          </p>
-          <p className="mt-1 text-xs text-slate-500">
-            Project health:{" "}
+            Project health{" "}
             <span className="font-semibold tabular-nums text-slate-800 dark:text-slate-200">
               {data.overallPercent}%
             </span>
@@ -273,68 +396,59 @@ export function ProgressionPanel({
             No floors to monitor yet
           </p>
           <p className="mt-1 text-sm text-slate-500">
-            Ask BuildView to add buildings and floors on this project. Each floor will get its own
-            56-step checklist.
+            Ask BuildView to add buildings and floors on this project.
           </p>
         </div>
       ) : (
         <>
-          <div className="space-y-3">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-              Select floor
-            </p>
+          <div className="space-y-2">
             {buildings.map((building) => (
-              <div key={building.buildingId} className="space-y-2">
-                <p className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-300">
-                  <Building2 className="h-3.5 w-3.5" aria-hidden />
-                  {building.buildingName}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {building.floors.map((floor) => {
-                    const active = selected?.floorId === floor.floorId;
-                    return (
-                      <button
-                        key={floor.floorId}
-                        type="button"
-                        disabled={switching}
-                        onClick={() => selectFloor(floor.floorId)}
-                        className={cn(
-                          "cursor-pointer rounded-xl border px-3 py-2 text-left transition-colors duration-150",
-                          active
-                            ? "border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900"
-                            : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
-                        )}
-                      >
-                        <span className="block text-sm font-medium">{floor.floorName}</span>
-                        <span
-                          className={cn(
-                            "block text-[10px] tabular-nums",
-                            active ? "text-white/70 dark:text-slate-500" : "text-slate-400"
-                          )}
-                        >
-                          {floor.activated ? `${floor.percent}%` : "Not started"}
-                        </span>
-                      </button>
-                    );
-                  })}
+              <div key={building.buildingId} className="space-y-1.5">
+                {buildings.length > 1 ? (
+                  <p className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
+                    <Building2 className="h-3 w-3" aria-hidden />
+                    {building.buildingName}
+                  </p>
+                ) : null}
+                <div className="flex gap-1.5 overflow-x-auto pb-1">
+                  {building.floors.map((floor) => (
+                    <FloorChip
+                      key={floor.floorId}
+                      floor={floor}
+                      active={selected?.floorId === floor.floorId}
+                      disabled={switching || isPending}
+                      onSelect={() => selectFloor(floor.floorId)}
+                    />
+                  ))}
                 </div>
               </div>
             ))}
           </div>
 
-          {switching || !selected ? (
-            <div className="flex items-center justify-center gap-2 py-16 text-sm text-slate-500">
+          {switching && !selected ? (
+            <div className="flex items-center justify-center gap-2 py-12 text-sm text-slate-500">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Loading floor checklist…
+              Loading floor…
             </div>
-          ) : (
+          ) : selected ? (
             <>
+              <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                {switching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                <span className="font-medium text-slate-900 dark:text-white">
+                  {selected.buildingName} · {selected.floorName}
+                </span>
+                <span className="text-slate-400">·</span>
+                <span className="tabular-nums">
+                  {selected.completedCount}/{selected.totalCount} · {selected.overallPercent}%
+                </span>
+              </div>
+
               <div className="grid gap-3 lg:grid-cols-2">
                 <ProgressionOverallCard
                   percent={selected.overallPercent}
                   completed={selected.completedCount}
                   total={selected.totalCount}
-                  label={`${selected.buildingName} · ${selected.floorName}`}
+                  label={selected.floorName}
                 />
                 <ProgressionPhaseBars phases={selected.phases} />
                 <ProgressionDailyChart daily={selected.daily} />
@@ -356,31 +470,31 @@ export function ProgressionPanel({
                 </div>
               ) : null}
 
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {selected.phases.map((phase) => {
                   const open = openPhases.has(phase.number);
                   return (
                     <div
                       key={phase.number}
-                      className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800"
+                      className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800"
                     >
                       <button
                         type="button"
                         onClick={() => togglePhase(phase.number)}
                         aria-expanded={open}
-                        className="flex w-full cursor-pointer items-center justify-between gap-3 bg-slate-50 px-4 py-3 text-left dark:bg-slate-900/50"
+                        className="flex w-full cursor-pointer items-center justify-between gap-3 bg-slate-50 px-3 py-2.5 text-left dark:bg-slate-900/50"
                       >
                         <div className="min-w-0">
                           <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-                            Phase {phase.number} · {phase.stage}
+                            Phase {phase.number}
                           </p>
-                          <p className="font-display text-sm font-semibold text-slate-900 dark:text-white">
+                          <p className="truncate font-display text-sm font-semibold text-slate-900 dark:text-white">
                             {phase.name}
                           </p>
                         </div>
-                        <div className="flex shrink-0 items-center gap-3">
+                        <div className="flex shrink-0 items-center gap-2">
                           <span className="text-xs tabular-nums text-slate-500">
-                            {phase.completed}/{phase.total} · {phase.percent}%
+                            {phase.completed}/{phase.total}
                           </span>
                           <ChevronDown
                             className={cn(
@@ -399,11 +513,11 @@ export function ProgressionPanel({
                             return (
                               <li
                                 key={step.id}
-                                className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50/80 dark:hover:bg-slate-900/40"
+                                className="flex items-start gap-3 px-3 py-2.5 hover:bg-slate-50/80 dark:hover:bg-slate-900/40"
                               >
                                 <button
                                   type="button"
-                                  disabled={!data.canEdit || busy}
+                                  disabled={!data.canEdit || Boolean(pendingStepId)}
                                   onClick={() => onToggle(step.id, !done)}
                                   aria-pressed={done}
                                   aria-label={`${done ? "Reopen" : "Complete"} step ${step.stepNumber}`}
@@ -453,7 +567,7 @@ export function ProgressionPanel({
                 })}
               </div>
             </>
-          )}
+          ) : null}
         </>
       )}
     </div>
