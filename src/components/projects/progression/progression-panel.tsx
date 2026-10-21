@@ -19,6 +19,7 @@ import {
   selectProgressionSection,
   startProgressionStep,
   updateProgressionStepDates,
+  type ProgressionStepPatch,
 } from "@/lib/actions/progression";
 import {
   PROGRESSION_TRACKS,
@@ -103,6 +104,46 @@ function groupSummariesByBuilding(floors: FloorProgressionSummary[]) {
 }
 
 type StepTransition = "start" | "end" | "reset";
+
+/**
+ * BuildView track identity: Pre-Slab uses the brand lime family,
+ * Post-Slab uses the brand charcoal family. Text labels + subtitles
+ * always accompany colour so status is never conveyed by colour alone.
+ */
+const TRACK_THEMES: Record<
+  ProgressionTrack,
+  {
+    subtitle: string;
+    section: string;
+    chip: string;
+    progress: string;
+    startButton: string;
+    endButton: string;
+  }
+> = {
+  pre_slab: {
+    subtitle: "Before slab casting · structure cycle",
+    section:
+      "border-[#c3dd8b] border-l-4 border-l-brand-accent-dark bg-[#f7fbec] dark:border-[#4a6b16] dark:border-l-brand-accent dark:bg-[#1c2907]/70",
+    chip: "bg-brand-accent text-slate-950",
+    progress: "bg-brand-accent-dark dark:bg-brand-accent",
+    startButton:
+      "border-[#76b82d] text-[#4a6b16] hover:bg-[#76b82d] hover:text-white dark:border-brand-accent dark:text-brand-accent dark:hover:bg-brand-accent dark:hover:text-slate-950",
+    endButton:
+      "bg-[#76b82d] text-white hover:bg-[#639a26] dark:bg-brand-accent dark:text-slate-950 dark:hover:bg-[#bce065]",
+  },
+  post_slab: {
+    subtitle: "After slab casting · finishing cycle",
+    section:
+      "border-slate-300 border-l-4 border-l-slate-900 bg-slate-100/90 dark:border-slate-600 dark:border-l-white dark:bg-slate-900/80",
+    chip: "bg-slate-900 text-white dark:bg-white dark:text-slate-900",
+    progress: "bg-slate-900 dark:bg-white",
+    startButton:
+      "border-slate-900 text-slate-900 hover:bg-slate-900 hover:text-white dark:border-slate-200 dark:text-slate-100 dark:hover:bg-slate-200 dark:hover:text-slate-900",
+    endButton:
+      "bg-slate-900 text-white hover:bg-slate-700 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200",
+  },
+};
 
 function recomputeBundle(
   bundle: ProjectProgressionBundle,
@@ -285,16 +326,16 @@ export function CheckProgressionReportCta({
 
 function StepRow({
   step,
+  track,
   canEdit,
   busy,
-  anyBusy,
   onTransition,
   onSaveDates,
 }: {
   step: ProgressionStepView;
+  track: ProgressionTrack;
   canEdit: boolean;
   busy: boolean;
-  anyBusy: boolean;
   onTransition: (step: ProgressionStepView, transition: StepTransition) => void;
   onSaveDates: (
     step: ProgressionStepView,
@@ -302,6 +343,7 @@ function StepRow({
     endedAt: string | null
   ) => void;
 }) {
+  const theme = TRACK_THEMES[track];
   const [editingDates, setEditingDates] = useState(false);
   const [draftStart, setDraftStart] = useState("");
   const [draftEnd, setDraftEnd] = useState("");
@@ -367,9 +409,12 @@ function StepRow({
             {step.status === "pending" ? (
               <button
                 type="button"
-                disabled={anyBusy}
+                disabled={busy}
                 onClick={() => onTransition(step, "start")}
-                className="inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-900 px-3.5 text-sm font-medium text-slate-900 transition-colors hover:bg-slate-900 hover:text-white disabled:cursor-wait disabled:opacity-60 dark:border-slate-200 dark:text-slate-100 dark:hover:bg-slate-200 dark:hover:text-slate-900"
+                className={cn(
+                  "inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-lg border px-3.5 text-sm font-semibold transition-colors disabled:cursor-wait disabled:opacity-60",
+                  theme.startButton
+                )}
               >
                 {busy ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -382,9 +427,12 @@ function StepRow({
               <>
                 <button
                   type="button"
-                  disabled={anyBusy}
+                  disabled={busy}
                   onClick={() => onTransition(step, "end")}
-                  className="inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-lg bg-slate-900 px-3.5 text-sm font-medium text-white transition-colors hover:bg-slate-800 disabled:cursor-wait disabled:opacity-60 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+                  className={cn(
+                    "inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-lg px-3.5 text-sm font-semibold transition-colors disabled:cursor-wait disabled:opacity-60",
+                    theme.endButton
+                  )}
                 >
                   {busy ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -395,7 +443,7 @@ function StepRow({
                 </button>
                 <button
                   type="button"
-                  disabled={anyBusy}
+                  disabled={busy}
                   aria-label={`Reset step ${step.stepNumber}`}
                   title="Reset step"
                   onClick={() => {
@@ -412,7 +460,7 @@ function StepRow({
               <>
                 <button
                   type="button"
-                  disabled={anyBusy}
+                  disabled={busy}
                   aria-label={`Correct dates for step ${step.stepNumber}`}
                   title="Correct Start/End dates"
                   onClick={openEditor}
@@ -422,7 +470,7 @@ function StepRow({
                 </button>
                 <button
                   type="button"
-                  disabled={anyBusy}
+                  disabled={busy}
                   aria-label={`Reset step ${step.stepNumber}`}
                   title="Reset step"
                   onClick={() => {
@@ -502,7 +550,7 @@ function TrackSection({
   track,
   data,
   switching,
-  pendingKey,
+  pendingKeys,
   onSelectFloor,
   onTransition,
   onSaveDates,
@@ -510,7 +558,7 @@ function TrackSection({
   track: ProgressionTrack;
   data: ProjectProgressionBundle;
   switching: boolean;
-  pendingKey: string | null;
+  pendingKeys: Set<string>;
   onSelectFloor: (track: ProgressionTrack, floorId: string) => void;
   onTransition: (
     track: ProgressionTrack,
@@ -553,6 +601,7 @@ function TrackSection({
     );
   }, [selectedId]);
 
+  const theme = TRACK_THEMES[track];
   const selectedBuildingId =
     selected?.buildingId ?? buildings[0]?.buildingId ?? "";
   const floorsOfBuilding =
@@ -570,13 +619,27 @@ function TrackSection({
   return (
     <section
       aria-label={`${label} Progression`}
-      className="space-y-3 rounded-2xl border border-slate-200 bg-white/60 p-3 sm:p-4 dark:border-slate-800 dark:bg-slate-900/30"
+      className={cn(
+        "space-y-3 rounded-2xl border p-3 shadow-xs sm:p-4",
+        theme.section
+      )}
     >
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h4 className="font-display text-base font-semibold text-slate-900 dark:text-white">
-            {label}
-          </h4>
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={cn(
+                "rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em]",
+                theme.chip
+              )}
+            >
+              {label}
+            </span>
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+              {theme.subtitle}
+            </span>
+          </div>
+          <h4 className="sr-only">{label}</h4>
           <p className="text-sm text-slate-500">
             {selected ? (
               <>
@@ -650,7 +713,7 @@ function TrackSection({
           aria-label={`${label} progress`}
         >
           <div
-            className="h-full rounded-full bg-slate-800 transition-all duration-500 dark:bg-slate-200"
+            className={cn("h-full rounded-full transition-all duration-500", theme.progress)}
             style={{ width: `${selected.overallPercent}%` }}
           />
         </div>
@@ -711,7 +774,7 @@ function TrackSection({
                 </button>
                 <div className="h-1 bg-slate-100 dark:bg-slate-800">
                   <div
-                    className="h-full bg-slate-700 transition-all duration-500 dark:bg-slate-300"
+                    className={cn("h-full transition-all duration-500", theme.progress)}
                     style={{ width: `${phase.percent}%` }}
                   />
                 </div>
@@ -722,9 +785,9 @@ function TrackSection({
                       <StepRow
                         key={step.id}
                         step={step}
+                        track={track}
                         canEdit={data.canEdit}
-                        busy={pendingKey === `${track}:${step.id}`}
-                        anyBusy={Boolean(pendingKey)}
+                        busy={pendingKeys.has(`${track}:${step.id}`)}
                         onTransition={(s, t) => onTransition(track, s, t)}
                         onSaveDates={(s, a, b) => onSaveDates(track, s, a, b)}
                       />
@@ -763,7 +826,7 @@ export function ProgressionPanel({
     pre: initial.selectedByTrack.pre_slab?.floorId ?? null,
     post: initial.selectedByTrack.post_slab?.floorId ?? null,
   });
-  const [pendingKey, setPendingKey] = useState<string | null>(null);
+  const [pendingKeys, setPendingKeys] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [switchingTrack, setSwitchingTrack] = useState<ProgressionTrack | null>(null);
   const [, startTransition] = useTransition();
@@ -844,13 +907,48 @@ export function ProgressionPanel({
     setData((prev) => patchStep(prev, track, step.id, patch));
   }
 
+  function markPending(key: string, pending: boolean) {
+    setPendingKeys((prev) => {
+      const next = new Set(prev);
+      if (pending) next.add(key);
+      else next.delete(key);
+      return next;
+    });
+  }
+
+  /** Merge the server's lightweight step patch over the optimistic state. */
+  function reconcileStep(track: ProgressionTrack, serverStep: ProgressionStepPatch) {
+    setData((prev) =>
+      patchStep(prev, track, serverStep.id, (s) => ({
+        ...s,
+        status: serverStep.status,
+        ...(serverStep.startedAt !== undefined ? { startedAt: serverStep.startedAt } : {}),
+        ...(serverStep.startedByName !== undefined
+          ? { startedByName: serverStep.startedByName }
+          : {}),
+        ...(serverStep.endedAt !== undefined ? { endedAt: serverStep.endedAt } : {}),
+        ...(serverStep.endedByName !== undefined
+          ? { endedByName: serverStep.endedByName }
+          : {}),
+        ...(serverStep.completedAt !== undefined
+          ? { completedAt: serverStep.completedAt }
+          : {}),
+        ...(serverStep.completedByName !== undefined
+          ? { completedByName: serverStep.completedByName }
+          : {}),
+        ...(serverStep.workDate !== undefined ? { workDate: serverStep.workDate } : {}),
+      }))
+    );
+  }
+
   function onTransition(
     track: ProgressionTrack,
     step: ProgressionStepView,
     transition: StepTransition
   ) {
     const selected = data.selectedByTrack[track];
-    if (!data.canEdit || !selected || pendingKey) return;
+    const key = `${track}:${step.id}`;
+    if (!data.canEdit || !selected || pendingKeys.has(key)) return;
     setError(null);
     const snapshot = data;
     const nowIso = new Date().toISOString();
@@ -880,7 +978,7 @@ export function ProgressionPanel({
               note: null,
             }
     );
-    setPendingKey(`${track}:${step.id}`);
+    markPending(key, true);
     startTransition(async () => {
       const action =
         transition === "start"
@@ -895,13 +993,13 @@ export function ProgressionPanel({
         stepId: step.id,
         ...selectionsFor(track, selected.floorId),
       });
-      setPendingKey(null);
+      markPending(key, false);
       if (!result.ok) {
         setData(snapshot);
         setError(result.error);
         return;
       }
-      if (result.progression) setData(result.progression);
+      if (result.step) reconcileStep(track, result.step);
     });
   }
 
@@ -912,7 +1010,8 @@ export function ProgressionPanel({
     endedAt: string | null
   ) {
     const selected = data.selectedByTrack[track];
-    if (!data.canEdit || !selected || pendingKey) return;
+    const key = `${track}:${step.id}`;
+    if (!data.canEdit || !selected || pendingKeys.has(key)) return;
     setError(null);
     const snapshot = data;
     applyOptimistic(track, step, (s) => ({
@@ -921,7 +1020,7 @@ export function ProgressionPanel({
       endedAt,
       completedAt: s.status === "completed" ? endedAt : s.completedAt,
     }));
-    setPendingKey(`${track}:${step.id}`);
+    markPending(key, true);
     startTransition(async () => {
       const result = await updateProgressionStepDates({
         projectId: data.projectId,
@@ -932,13 +1031,13 @@ export function ProgressionPanel({
         endedAt,
         ...selectionsFor(track, selected.floorId),
       });
-      setPendingKey(null);
+      markPending(key, false);
       if (!result.ok) {
         setData(snapshot);
         setError(result.error);
         return;
       }
-      if (result.progression) setData(result.progression);
+      if (result.step) reconcileStep(track, result.step);
     });
   }
 
@@ -1013,19 +1112,30 @@ export function ProgressionPanel({
               {data.tracks.map((t) => (
                 <div
                   key={t.track}
-                  className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/60"
+                  className={cn(
+                    "rounded-2xl border bg-white p-4 dark:bg-slate-900/60",
+                    TRACK_THEMES[t.track].section
+                  )}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                    <span
+                      className={cn(
+                        "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em]",
+                        TRACK_THEMES[t.track].chip
+                      )}
+                    >
                       {PROGRESSION_TRACK_LABELS[t.track]}
-                    </p>
+                    </span>
                     <span className="font-display text-sm font-semibold tabular-nums text-slate-900 dark:text-white">
                       {t.percent}%
                     </span>
                   </div>
                   <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
                     <div
-                      className="h-full rounded-full bg-slate-800 transition-all duration-500 dark:bg-slate-200"
+                      className={cn(
+                        "h-full rounded-full transition-all duration-500",
+                        TRACK_THEMES[t.track].progress
+                      )}
                       style={{ width: `${t.percent}%` }}
                     />
                   </div>
@@ -1095,11 +1205,23 @@ export function ProgressionPanel({
             </span>
             {" · "}
             {data.activatedFloorCount}/{data.floorCount} floors activated
-            {" · Pre-Slab "}
-            {data.tracks.find((t) => t.track === "pre_slab")?.percent ?? 0}%
-            {" · Post-Slab "}
-            {data.tracks.find((t) => t.track === "post_slab")?.percent ?? 0}%
           </p>
+          <div className="mt-2 flex flex-wrap gap-1.5" aria-label="Track legend">
+            {PROGRESSION_TRACKS.map((t) => {
+              const summary = data.tracks.find((x) => x.track === t);
+              return (
+                <span
+                  key={t}
+                  className={cn(
+                    "rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em]",
+                    TRACK_THEMES[t].chip
+                  )}
+                >
+                  {PROGRESSION_TRACK_LABELS[t]} · {summary?.percent ?? 0}%
+                </span>
+              );
+            })}
+          </div>
         </div>
         {!data.canEdit ? (
           <p className="rounded-lg border border-dashed border-slate-200 px-3 py-2 text-xs text-slate-500 dark:border-slate-700">
@@ -1136,7 +1258,7 @@ export function ProgressionPanel({
               track={track}
               data={data}
               switching={switchingTrack === track}
-              pendingKey={pendingKey}
+              pendingKeys={pendingKeys}
               onSelectFloor={selectFloor}
               onTransition={onTransition}
               onSaveDates={onSaveDates}

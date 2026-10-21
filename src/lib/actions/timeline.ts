@@ -229,6 +229,8 @@ export async function createTimelineEvent(data: {
   photos?: TimelinePhotoInput[];
   /** When true, caller already notifies clients (e.g. upload orchestrator). */
   skipClientNotify?: boolean;
+  /** When true, skip page revalidation (high-frequency auto-entries like Progression Start/End). */
+  skipRevalidate?: boolean;
 }) {
   const validated = parseOrThrow(createTimelineEventSchema, data);
 
@@ -293,7 +295,9 @@ export async function createTimelineEvent(data: {
     }
   }
 
-  revalidateTimelinePaths(validated.project_id);
+  if (!data.skipRevalidate) {
+    revalidateTimelinePaths(validated.project_id);
+  }
   return eventId;
 }
 

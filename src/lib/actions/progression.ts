@@ -151,6 +151,22 @@ type StepContext = {
   progressionId: string;
   buildingName: string;
   floorName: string;
+  startedAt: string | null;
+  endedAt: string | null;
+  completedAt: string | null;
+};
+
+/** Lightweight step state returned to the client instead of a full bundle reload. */
+export type ProgressionStepPatch = {
+  id: string;
+  status: "pending" | "in_progress" | "completed";
+  startedAt?: string | null;
+  startedByName?: string | null;
+  endedAt?: string | null;
+  endedByName?: string | null;
+  completedAt?: string | null;
+  completedByName?: string | null;
+  workDate?: string | null;
 };
 
 async function loadStepContext(
@@ -163,7 +179,7 @@ async function loadStepContext(
   const { data: stepRow, error } = await admin
     .from("project_progression_steps")
     .select(
-      "id, status, step_number, progression:project_progressions!inner(id, project_id, floor_id, building_id, track, deleted_at), template_step:progression_template_steps(step_number, title, phase_name)"
+      "id, status, step_number, started_at, ended_at, completed_at, work_date, progression:project_progressions!inner(id, project_id, floor_id, building_id, track, deleted_at), template_step:progression_template_steps(step_number, title, phase_name)"
     )
     .eq("id", stepId)
     .maybeSingle();
@@ -211,23 +227,10 @@ async function loadStepContext(
     progressionId: progression.id,
     buildingName: building?.name ?? "Tower",
     floorName: (floorRow?.name as string) ?? "Floor",
+    startedAt: (stepRow.started_at as string | null) ?? null,
+    endedAt: (stepRow.ended_at as string | null) ?? null,
+    completedAt: (stepRow.completed_at as string | null) ?? null,
   };
-}
-
-async function freshBundle(
-  projectId: string,
-  track: ProgressionTrack,
-  floorId: string,
-  selections?: { preFloorId?: string; postFloorId?: string }
-) {
-  return getProjectProgressionFresh(
-    projectId,
-    {
-      preFloorId: track === "pre_slab" ? floorId : (selections?.preFloorId ?? null),
-      postFloorId: track === "post_slab" ? floorId : (selections?.postFloorId ?? null),
-    },
-    { ensureMissing: false }
-  );
 }
 
 type StepTransition = "start" | "end" | "reset";
@@ -237,10 +240,8 @@ async function transitionProgressionStep(input: unknown, transition: StepTransit
   if (!parsed.success) return { ok: false as const, error: parsed.error };
 
   const { projectId, floorId, track, stepId } = parsed.data;
-  const selections = {
-    preFloorId: parsed.data.preFloorId,
-    postFloorId: parsed.data.postFloorId,
-  };
+  void parsed.data.preFloorId;
+  void parsed.data.postFloorId;
 
   try {
     const actor = await requireProgressionEditor(projectId);
@@ -287,27 +288,43 @@ async function transitionProgressionStep(input: unknown, transition: StepTransit
     if (updateError) throw updateError;
 
     // Idempotent no-op: already in the target state — no duplicate log/Timeline.
+    // Reconcile the client with the step's stored state (single-row context).
     if (!changed?.length) {
-      const bundle = await freshBundle(projectId, track, floorId, selections);
-      return { ok: true as const, progression: bundle };
+      const current =
+        ctx.status === "completed"
+          ? ("completed" as const)
+          : ctx.status === "in_progress"
+            ? ("in_progress" as const)
+            : ("pending" as const);
+      return {
+        ok: true as const,
+        step: {
+          id: stepId,
+          status: current,
+          startedAt: ctx.startedAt,
+          endedAt: ctx.endedAt,
+          completedAt: ctx.completedAt,
+        } satisfies ProgressionStepPatch,
+      };
     }
 
     const logAction =
       transition === "start" ? "started" : transition === "end" ? "ended" : "reset";
-    const { error: logError } = await admin.from("project_progression_logs").insert({
-      progression_id: ctx.progressionId,
-      step_id: stepId,
-      action: logAction,
-      work_date: workDate,
-      actor_id: actor.userId,
-      note: null,
-    });
+    const [{ error: logError }] = await Promise.all([
+      admin.from("project_progression_logs").insert({
+        progression_id: ctx.progressionId,
+        step_id: stepId,
+        action: logAction,
+        work_date: workDate,
+        actor_id: actor.userId,
+        note: null,
+      }),
+      admin
+        .from("project_progressions")
+        .update({ updated_by: actor.userId })
+        .eq("id", ctx.progressionId),
+    ]);
     if (logError) throw logError;
-
-    await admin
-      .from("project_progressions")
-      .update({ updated_by: actor.userId })
-      .eq("id", ctx.progressionId);
 
     const actorLabel = `${actor.fullName ?? "BuildView user"} (${USER_ROLE_LABELS[actor.role]})`;
     const trackLabel = PROGRESSION_TRACK_LABELS[track];
@@ -317,6 +334,8 @@ async function transitionProgressionStep(input: unknown, transition: StepTransit
         : transition === "end"
           ? "completed"
           : "reset";
+    // Best-effort Timeline entry; skipRevalidate avoids a full project-page
+    // refetch after every Start/End press (Timeline reads fresh on navigation).
     await recordTimelineEntry(
       {
         project_id: projectId,
@@ -326,12 +345,41 @@ async function transitionProgressionStep(input: unknown, transition: StepTransit
         floor: ctx.floorName,
         status: transition === "end" ? "completed" : "in_progress",
         author_name: actorLabel,
+        skipRevalidate: true,
       },
       `progressionStep:${transition}`
     );
 
-    const bundle = await freshBundle(projectId, track, floorId, selections);
-    return { ok: true as const, progression: bundle };
+    const step: ProgressionStepPatch =
+      transition === "start"
+        ? {
+            id: stepId,
+            status: "in_progress",
+            startedAt: now,
+            startedByName: actor.fullName,
+          }
+        : transition === "end"
+          ? {
+              id: stepId,
+              status: "completed",
+              endedAt: now,
+              endedByName: actor.fullName,
+              completedAt: now,
+              completedByName: actor.fullName,
+              workDate,
+            }
+          : {
+              id: stepId,
+              status: "pending",
+              startedAt: null,
+              startedByName: null,
+              endedAt: null,
+              endedByName: null,
+              completedAt: null,
+              completedByName: null,
+              workDate: null,
+            };
+    return { ok: true as const, step };
   } catch (err) {
     logServerError(`progressionStep:${transition}`, err);
     return {
@@ -358,10 +406,8 @@ export async function updateProgressionStepDates(input: unknown) {
   if (!parsed.success) return { ok: false as const, error: parsed.error };
 
   const { projectId, floorId, track, stepId, startedAt, endedAt } = parsed.data;
-  const selections = {
-    preFloorId: parsed.data.preFloorId,
-    postFloorId: parsed.data.postFloorId,
-  };
+  void parsed.data.preFloorId;
+  void parsed.data.postFloorId;
 
   try {
     const actor = await requireProgressionEditor(projectId);
@@ -398,8 +444,21 @@ export async function updateProgressionStepDates(input: unknown) {
     });
     if (logError) throw logError;
 
-    const bundle = await freshBundle(projectId, track, floorId, selections);
-    return { ok: true as const, progression: bundle };
+    return {
+      ok: true as const,
+      step: {
+        id: stepId,
+        status:
+          ctx.status === "completed"
+            ? ("completed" as const)
+            : ("in_progress" as const),
+        startedAt,
+        endedAt,
+        ...(ctx.status === "completed"
+          ? { completedAt: endedAt, workDate: endedAt ? endedAt.slice(0, 10) : null }
+          : {}),
+      } satisfies ProgressionStepPatch,
+    };
   } catch (err) {
     logServerError("updateProgressionStepDates", err);
     return {
