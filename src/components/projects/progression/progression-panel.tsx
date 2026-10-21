@@ -3,15 +3,21 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  AlertTriangle,
+  ArrowRight,
   Building2,
   CalendarClock,
   Check,
+  CheckCircle2,
   ChevronDown,
+  Clock,
   Layers,
   Loader2,
+  PauseCircle,
   Pencil,
   Play,
   RotateCcw,
+  Sparkles,
   X,
 } from "lucide-react";
 import {
@@ -35,12 +41,7 @@ import type {
   ProgressionStepView,
 } from "@/lib/progression/types";
 import { formatDate, cn } from "@/lib/utils";
-import {
-  ProgressionDailyChart,
-  ProgressionOverallCard,
-  ProgressionPhaseBars,
-  ProgressionWeeklyChart,
-} from "@/components/projects/progression/progression-charts";
+import { ProgressionDailyChart } from "@/components/projects/progression/progression-charts";
 
 /* ---------------------------------------------------------------- helpers */
 
@@ -1026,6 +1027,8 @@ export function ProgressionPanel({
     post: initial.selectedByTrack.post_slab?.floorId ?? null,
   });
   const [pendingKeys, setPendingKeys] = useState<Set<string>>(new Set());
+  const [overviewTrack, setOverviewTrack] = useState<ProgressionTrack>("post_slab");
+  const [overviewSwitching, setOverviewSwitching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [switchingTrack, setSwitchingTrack] = useState<ProgressionTrack | null>(null);
   const [, startTransition] = useTransition();
@@ -1044,8 +1047,6 @@ export function ProgressionPanel({
     setData(initial);
     lockedRef.current = { pre: serverPre ?? locked.pre, post: serverPost ?? locked.post };
   }, [initial]);
-
-  const selectedPost = data.selectedByTrack.post_slab;
 
   function syncSelectionInUrl(track: ProgressionTrack, floorId: string) {
     const params = new URLSearchParams(window.location.search);
@@ -1279,6 +1280,40 @@ export function ProgressionPanel({
     });
   }
 
+  /** Overview floor chips: load both track details for a floor, staying on Overview. */
+  function selectOverviewFloor(floorId: string) {
+    if (overviewSwitching) return;
+    const preFloor = data.selectedByTrack.pre_slab?.floorId;
+    const postFloor = data.selectedByTrack.post_slab?.floorId;
+    if (preFloor === floorId && postFloor === floorId) return;
+    setError(null);
+    setOverviewSwitching(true);
+    lockedRef.current = { pre: floorId, post: floorId };
+    startTransition(async () => {
+      const first = await selectProgressionSection({
+        projectId: data.projectId,
+        track: "pre_slab",
+        floorId,
+        preFloorId: floorId,
+        postFloorId: postFloor ?? floorId,
+      });
+      if (first.ok) setData(first.progression);
+      const second = await selectProgressionSection({
+        projectId: data.projectId,
+        track: "post_slab",
+        floorId,
+        preFloorId: floorId,
+        postFloorId: floorId,
+      });
+      setOverviewSwitching(false);
+      if (second.ok) {
+        setData(second.progression);
+      } else if (!first.ok) {
+        setError(second.error);
+      }
+    });
+  }
+
   function openFullTab(floorId?: string) {
     const params = new URLSearchParams(window.location.search);
     params.set("tab", "progression");
@@ -1304,34 +1339,133 @@ export function ProgressionPanel({
     const activatedFloors = data.combinedFloors.filter((f) => f.activated);
     const projectCompleted = activatedFloors.reduce((s, f) => s + f.completedCount, 0);
     const projectTotal = activatedFloors.reduce((s, f) => s + f.totalCount, 0);
+    const projectInProgress = data.tracks.reduce((s, t) => s + t.inProgressCount, 0);
+    const projectPending = Math.max(0, projectTotal - projectCompleted - projectInProgress);
+    const share = (n: number) =>
+      projectTotal > 0 ? Math.round((n / projectTotal) * 100) : 0;
+
+    const today = todayKolkataDate();
+    const overdue = data.floors.filter(
+      (f) => f.plannedEndDate && f.plannedEndDate < today && f.percent < 100
+    );
+    const overdueForTrack = (track: ProgressionTrack) =>
+      overdue.filter((f) => f.track === track);
+    const upcomingDeadlines = data.floors
+      .filter((f) => f.plannedEndDate && f.plannedEndDate >= today && f.percent < 100)
+      .sort((a, b) => (a.plannedEndDate! < b.plannedEndDate! ? -1 : 1));
+    const nextDeadline = upcomingDeadlines[0] ?? null;
+    const lowestFloor =
+      [...activatedFloors].sort((a, b) => a.percent - b.percent)[0] ?? null;
+
+    const insights: string[] = [];
+    if (projectTotal === 0) {
+      insights.push("No floor has been started yet — start steps from the Progression tab.");
+    } else if (overdue.length > 0) {
+      insights.push(
+        `Project is at ${data.overallPercent}% overall. ${overdue.length} checklist${overdue.length === 1 ? " is" : "s are"} past deadline.`
+      );
+      for (const f of overdue.slice(0, 3)) {
+        insights.push(
+          `${PROGRESSION_TRACK_LABELS[f.track]} on ${f.buildingName} · ${f.floorName} is past its deadline (${formatDate(f.plannedEndDate)}).`
+        );
+      }
+    } else {
+      insights.push(
+        `Project is on track with ${data.overallPercent}% overall progress (${projectCompleted} of ${projectTotal} activities ended).`
+      );
+    }
+    if (nextDeadline) {
+      insights.push(
+        `Next deadline: ${PROGRESSION_TRACK_LABELS[nextDeadline.track]} on ${nextDeadline.buildingName} · ${nextDeadline.floorName} — ${formatDate(nextDeadline.plannedEndDate)} (in ${dayDiff(today, nextDeadline.plannedEndDate!)}d).`
+      );
+    }
+    if (lowestFloor && lowestFloor.percent < 100) {
+      insights.push(
+        `${lowestFloor.buildingName} · ${lowestFloor.floorName} is the slowest activated floor at ${lowestFloor.percent}%.`
+      );
+    }
+    if (data.floors.every((f) => !f.plannedEndDate)) {
+      insights.push("No deadlines set yet — add Start/Deadline dates in the Progression tab.");
+    }
+
+    const overviewView = data.selectedByTrack[overviewTrack];
+    const overviewFloorId =
+      overviewView?.floorId ?? data.selectedByTrack.post_slab?.floorId ?? null;
+    const dailyByDate = new Map<string, number>();
+    for (const track of PROGRESSION_TRACKS) {
+      const view = data.selectedByTrack[track];
+      if (!view || view.floorId !== overviewFloorId) continue;
+      for (const point of view.daily) {
+        dailyByDate.set(point.date, (dailyByDate.get(point.date) ?? 0) + point.completions);
+      }
+    }
+    const mergedDaily = [...dailyByDate.entries()]
+      .sort(([a], [b]) => (a < b ? -1 : 1))
+      .map(([date, completions]) => ({ date, completions }));
+
+    const statCards = [
+      {
+        icon: CheckCircle2,
+        iconClass: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+        label: "Completed",
+        value: projectCompleted,
+        sub: `≈ ${share(projectCompleted)}% of activities`,
+      },
+      {
+        icon: Clock,
+        iconClass: "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300",
+        label: "In Progress",
+        value: projectInProgress,
+        sub: `≈ ${share(projectInProgress)}% of activities`,
+      },
+      {
+        icon: PauseCircle,
+        iconClass: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+        label: "Pending",
+        value: projectPending,
+        sub: `≈ ${share(projectPending)}% of activities`,
+      },
+      {
+        icon: AlertTriangle,
+        iconClass: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+        label: "Delayed",
+        value: overdue.length,
+        sub:
+          overdue.length > 0
+            ? `${overdue.length} checklist${overdue.length === 1 ? "" : "s"} past deadline`
+            : "Nothing past deadline",
+      },
+    ];
 
     return (
-      <div className="space-y-4">
+      <div className="space-y-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
               Progression Report
             </p>
-            <h3 className="mt-0.5 font-display text-sm font-semibold text-slate-900 dark:text-white">
+            <h3 className="mt-0.5 font-display text-base font-semibold text-slate-900 dark:text-white">
               Overview
             </h3>
-            <p className="mt-0.5 text-sm text-slate-500">
-              Overall project{" "}
-              <span className="font-semibold tabular-nums text-slate-800 dark:text-slate-200">
-                {data.overallPercent}%
-              </span>
-              {" · "}
-              {data.activatedFloorCount}/{data.floorCount} floors activated
-            </p>
           </div>
           <button
             type="button"
-            onClick={() => openFullTab(selectedPost?.floorId)}
-            className="inline-flex min-h-11 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+            onClick={() => openFullTab(overviewFloorId ?? undefined)}
+            className="inline-flex min-h-11 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
           >
             Check Progression Report
+            <ArrowRight className="h-4 w-4" aria-hidden />
           </button>
         </div>
+
+        {error ? (
+          <div
+            role="alert"
+            className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200"
+          >
+            {error}
+          </div>
+        ) : null}
 
         {data.combinedFloors.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500 dark:border-slate-700">
@@ -1339,88 +1473,312 @@ export function ProgressionPanel({
           </p>
         ) : (
           <>
-            <ProgressionOverallCard
-              percent={data.overallPercent}
-              completed={projectCompleted}
-              total={projectTotal}
-              label="Overall project"
-            />
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              {data.tracks.map((t) => (
-                <div
-                  key={t.track}
-                  className={cn(
-                    "rounded-2xl border bg-white p-4 dark:bg-slate-900/60",
-                    TRACK_THEMES[t.track].section
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span
-                      className={cn(
-                        "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em]",
-                        TRACK_THEMES[t.track].chip
-                      )}
-                    >
-                      {PROGRESSION_TRACK_LABELS[t.track]}
-                    </span>
-                    <span className="font-display text-sm font-semibold tabular-nums text-slate-900 dark:text-white">
-                      {t.percent}%
-                    </span>
-                  </div>
-                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                    <div
-                      className={cn(
-                        "h-full rounded-full transition-all duration-500",
-                        TRACK_THEMES[t.track].progress
-                      )}
-                      style={{ width: `${t.percent}%` }}
+            {/* Stat cards */}
+            <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
+              <div className="col-span-2 flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 sm:col-span-1 dark:border-slate-800 dark:bg-slate-900/60">
+                <div className="relative h-20 w-20 shrink-0">
+                  <svg viewBox="0 0 100 100" className="h-20 w-20 -rotate-90">
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="42"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="9"
+                      className="text-slate-100 dark:text-slate-800"
                     />
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="42"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="9"
+                      strokeLinecap="round"
+                      strokeDasharray={2 * Math.PI * 42}
+                      strokeDashoffset={
+                        2 * Math.PI * 42 - (data.overallPercent / 100) * 2 * Math.PI * 42
+                      }
+                      className="text-[#76b82d] transition-all duration-500 dark:text-brand-accent"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="font-display text-lg font-bold tabular-nums text-slate-900 dark:text-white">
+                      {data.overallPercent}%
+                    </span>
                   </div>
-                  <p className="mt-2 text-xs tabular-nums text-slate-500">
-                    {t.completedCount}/{t.totalCount} ended
-                    {t.inProgressCount > 0 ? ` · ${t.inProgressCount} in progress` : ""}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                    Overall Progress
                   </p>
+                  <p className="mt-0.5 text-sm font-semibold tabular-nums text-slate-900 dark:text-white">
+                    {projectCompleted} of {projectTotal} activities
+                  </p>
+                  <p
+                    className={cn(
+                      "mt-0.5 inline-flex items-center gap-1 text-xs font-medium",
+                      overdue.length > 0
+                        ? "text-red-600 dark:text-red-300"
+                        : "text-emerald-600 dark:text-emerald-300"
+                    )}
+                  >
+                    {overdue.length > 0 ? (
+                      <>
+                        <AlertTriangle className="h-3.5 w-3.5" aria-hidden />
+                        {overdue.length} delayed
+                      </>
+                    ) : (
+                      <>
+                        <Check className="h-3.5 w-3.5" aria-hidden />
+                        On Track
+                      </>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              {statCards.map((card) => (
+                <div
+                  key={card.label}
+                  className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/60"
+                >
+                  <span
+                    className={cn(
+                      "inline-flex h-8 w-8 items-center justify-center rounded-full",
+                      card.iconClass
+                    )}
+                  >
+                    <card.icon className="h-4.5 w-4.5" aria-hidden />
+                  </span>
+                  <p className="mt-2 text-xs font-medium text-slate-500">{card.label}</p>
+                  <p className="font-display text-2xl font-bold tabular-nums text-slate-900 dark:text-white">
+                    {card.value}
+                  </p>
+                  <p className="text-[11px] tabular-nums text-slate-400">{card.sub}</p>
                 </div>
               ))}
             </div>
 
-            <div className="space-y-2">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                By floor
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {data.combinedFloors.map((floor) => (
-                  <button
-                    key={floor.floorId}
-                    type="button"
-                    onClick={() => openFullTab(floor.floorId)}
-                    className="min-h-11 shrink-0 cursor-pointer rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-left transition-colors hover:border-slate-300 dark:border-slate-700 dark:bg-slate-950"
-                  >
-                    <span className="block text-xs font-medium leading-tight text-slate-700 dark:text-slate-200">
-                      {floor.buildingName} · {floor.floorName}
-                    </span>
-                    <span className="block text-[10px] tabular-nums leading-tight text-slate-400">
-                      {floor.activated ? `${floor.percent}%` : "—"}
-                    </span>
-                  </button>
-                ))}
+            {/* Project stages */}
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <h4 className="font-display text-sm font-semibold text-slate-900 dark:text-white">
+                  Project Stages
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => openFullTab(overviewFloorId ?? undefined)}
+                  className="inline-flex cursor-pointer items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                >
+                  View All <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                </button>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {data.tracks.map((t) => {
+                  const trackOverdue = overdueForTrack(t.track).length;
+                  const status =
+                    t.totalCount === 0 || (t.completedCount === 0 && t.inProgressCount === 0)
+                      ? { label: "Not Started", className: "text-slate-400" }
+                      : t.percent >= 100
+                        ? { label: "Completed", className: "text-emerald-600 dark:text-emerald-300" }
+                        : trackOverdue > 0
+                          ? {
+                              label: `Delayed · ${trackOverdue} past deadline`,
+                              className: "text-red-600 dark:text-red-300",
+                            }
+                          : { label: "In Progress", className: "text-sky-600 dark:text-sky-300" };
+                  return (
+                    <div
+                      key={t.track}
+                      className={cn(
+                        "rounded-2xl border bg-white p-4 dark:bg-slate-900/60",
+                        TRACK_THEMES[t.track].section
+                      )}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span
+                          className={cn(
+                            "rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em]",
+                            TRACK_THEMES[t.track].chip
+                          )}
+                        >
+                          {PROGRESSION_TRACK_LABELS[t.track]} Work
+                        </span>
+                        <span className="font-display text-sm font-bold tabular-nums text-slate-900 dark:text-white">
+                          {t.percent}%
+                        </span>
+                      </div>
+                      <p className="mt-2 text-xs tabular-nums text-slate-500">
+                        {t.completedCount} / {t.totalCount} activities
+                        {t.inProgressCount > 0 ? ` · ${t.inProgressCount} in progress` : ""}
+                      </p>
+                      <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200/70 dark:bg-slate-800">
+                        <div
+                          className={cn(
+                            "h-full rounded-full transition-all duration-500",
+                            TRACK_THEMES[t.track].progress
+                          )}
+                          style={{ width: `${t.percent}%` }}
+                        />
+                      </div>
+                      <p className={cn("mt-2 text-xs font-medium", status.className)}>
+                        {status.label}
+                      </p>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
-            {selectedPost ? (
+            {/* Floor progress */}
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <h4 className="font-display text-sm font-semibold text-slate-900 dark:text-white">
+                  Floor Progress
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => openFullTab(overviewFloorId ?? undefined)}
+                  className="inline-flex cursor-pointer items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                >
+                  View All Floors <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {data.combinedFloors.map((floor) => {
+                  const active = floor.floorId === overviewFloorId;
+                  return (
+                    <button
+                      key={floor.floorId}
+                      type="button"
+                      disabled={overviewSwitching}
+                      onClick={() => selectOverviewFloor(floor.floorId)}
+                      aria-pressed={active}
+                      className={cn(
+                        "min-h-11 shrink-0 cursor-pointer rounded-xl border px-3 py-1.5 text-left transition-colors disabled:opacity-60",
+                        active
+                          ? "border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900"
+                          : "border-slate-200 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-slate-950"
+                      )}
+                    >
+                      <span className="block text-xs font-medium leading-tight">
+                        {floor.buildingName} · {floor.floorName}
+                      </span>
+                      <span
+                        className={cn(
+                          "block text-[11px] font-semibold tabular-nums leading-tight",
+                          active
+                            ? "text-white dark:text-slate-900"
+                            : floor.percent >= 100 && floor.activated
+                              ? "text-emerald-600 dark:text-emerald-300"
+                              : "text-slate-400"
+                        )}
+                      >
+                        {floor.activated ? `${floor.percent}%` : "Not started"}
+                      </span>
+                    </button>
+                  );
+                })}
+                {overviewSwitching ? (
+                  <span className="inline-flex items-center gap-1.5 text-xs text-slate-400">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading floor…
+                  </span>
+                ) : null}
+              </div>
+            </div>
+
+            {/* Phase completion + daily progress */}
+            {overviewView ? (
               <div className="grid gap-3 lg:grid-cols-2">
-                <ProgressionOverallCard
-                  percent={selectedPost.overallPercent}
-                  completed={selectedPost.completedCount}
-                  total={selectedPost.totalCount}
-                  label={`${selectedPost.floorName} · Post-Slab`}
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/60">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                      Phase Completion · {overviewView.buildingName} · {overviewView.floorName}
+                    </p>
+                    <div
+                      className="inline-flex rounded-lg border border-slate-200 p-0.5 dark:border-slate-700"
+                      role="group"
+                      aria-label="Phase completion track"
+                    >
+                      {PROGRESSION_TRACKS.map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => setOverviewTrack(t)}
+                          aria-pressed={overviewTrack === t}
+                          className={cn(
+                            "min-h-9 cursor-pointer rounded-md px-2.5 text-xs font-medium transition-colors",
+                            overviewTrack === t
+                              ? TRACK_THEMES[t].chip
+                              : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                          )}
+                        >
+                          {PROGRESSION_TRACK_LABELS[t]}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="mt-3 space-y-2.5">
+                    {overviewView.phases.map((phase) => (
+                      <div
+                        key={phase.number}
+                        className="flex items-center gap-3 text-xs"
+                      >
+                        <span className="min-w-0 flex-1 truncate text-slate-700 dark:text-slate-300">
+                          {phase.number}. {phase.name}
+                        </span>
+                        <span className="h-1.5 w-24 shrink-0 overflow-hidden rounded-full bg-slate-100 sm:w-32 dark:bg-slate-800">
+                          <span
+                            className={cn(
+                              "block h-full rounded-full transition-all duration-500",
+                              phase.percent >= 100
+                                ? "bg-emerald-500"
+                                : phase.percent >= 50
+                                  ? TRACK_THEMES[overviewTrack].progress
+                                  : phase.percent > 0
+                                    ? "bg-amber-400"
+                                    : "bg-slate-200 dark:bg-slate-700"
+                            )}
+                            style={{ width: `${phase.percent}%` }}
+                          />
+                        </span>
+                        <span className="w-10 shrink-0 text-right font-semibold tabular-nums text-slate-700 dark:text-slate-200">
+                          {phase.percent}%
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <ProgressionDailyChart
+                  daily={mergedDaily}
+                  accentClassName="bg-[#76b82d] dark:bg-brand-accent"
                 />
-                <ProgressionPhaseBars phases={selectedPost.phases} />
-                <ProgressionDailyChart daily={selectedPost.daily} />
-                <ProgressionWeeklyChart weekly={selectedPost.weekly} />
               </div>
             ) : null}
+
+            {/* Summary insights (computed from live progression data) */}
+            <div className="rounded-2xl border border-slate-200 bg-[#f7fbec] p-4 dark:border-[#4a6b16] dark:bg-[#1c2907]/60">
+              <div className="flex items-start justify-between gap-3">
+                <p className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                  <Sparkles className="h-4 w-4 text-[#76b82d] dark:text-brand-accent" aria-hidden />
+                  Project Summary
+                </p>
+                <button
+                  type="button"
+                  onClick={() => openFullTab(overviewFloorId ?? undefined)}
+                  className="inline-flex min-h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg bg-slate-900 px-3 text-xs font-medium text-white transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-900"
+                >
+                  View Actions <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                </button>
+              </div>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700 dark:text-slate-200">
+                {insights.map((line, i) => (
+                  <li key={i}>{line}</li>
+                ))}
+              </ul>
+            </div>
           </>
         )}
       </div>

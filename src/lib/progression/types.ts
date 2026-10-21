@@ -91,6 +91,9 @@ export type FloorProgressionSummary = {
   completedCount: number;
   inProgressCount: number;
   totalCount: number;
+  /** Planned schedule for this floor + track (YYYY-MM-DD), null when unset. */
+  plannedStartDate: string | null;
+  plannedEndDate: string | null;
   /** True once any step in either track on this floor has Started. */
   activated: boolean;
 };

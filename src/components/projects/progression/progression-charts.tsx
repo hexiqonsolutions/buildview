@@ -18,11 +18,13 @@ export function ProgressionOverallCard({
   completed,
   total,
   label = "Overall progression",
+  accentClassName = "text-slate-800 dark:text-slate-200",
 }: {
   percent: number;
   completed: number;
   total: number;
   label?: string;
+  accentClassName?: string;
 }) {
   const r = 42;
   const c = 2 * Math.PI * r;
@@ -51,7 +53,7 @@ export function ProgressionOverallCard({
             strokeLinecap="round"
             strokeDasharray={c}
             strokeDashoffset={offset}
-            className="text-slate-800 transition-all duration-500 dark:text-slate-200"
+            className={cn("transition-all duration-500", accentClassName)}
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
@@ -103,7 +105,13 @@ export function ProgressionPhaseBars({ phases }: { phases: ProgressionPhaseView[
   );
 }
 
-export function ProgressionDailyChart({ daily }: { daily: ProgressionDailyPoint[] }) {
+export function ProgressionDailyChart({
+  daily,
+  accentClassName = "bg-slate-800 dark:bg-slate-200",
+}: {
+  daily: ProgressionDailyPoint[];
+  accentClassName?: string;
+}) {
   const max = Math.max(1, ...daily.map((d) => d.completions));
 
   return (
@@ -123,7 +131,7 @@ export function ProgressionDailyChart({ daily }: { daily: ProgressionDailyPoint[
                 className={cn(
                   "w-full max-w-6 rounded-t-sm transition-all duration-300",
                   point.completions > 0
-                    ? "bg-slate-800 dark:bg-slate-200"
+                    ? accentClassName
                     : "bg-slate-100 dark:bg-slate-800"
                 )}
                 style={{ height: `${height}%` }}

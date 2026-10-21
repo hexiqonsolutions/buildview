@@ -354,7 +354,7 @@ async function loadFloorSummaries(projectId: string): Promise<FloorSummariesResu
 
   const { data: progressions } = await admin
     .from("project_progressions")
-    .select("id, floor_id, track")
+    .select("id, floor_id, track, planned_start_date, planned_end_date")
     .eq("project_id", projectId)
     .is("deleted_at", null);
 
@@ -362,6 +362,15 @@ async function loadFloorSummaries(projectId: string): Promise<FloorSummariesResu
     (progressions ?? []).map((p) => [
       `${p.floor_id as string}:${p.track as string}`,
       p.id as string,
+    ])
+  );
+  const plannedByFloorTrack = new Map(
+    (progressions ?? []).map((p) => [
+      `${p.floor_id as string}:${p.track as string}`,
+      {
+        plannedStartDate: (p.planned_start_date as string | null) ?? null,
+        plannedEndDate: (p.planned_end_date as string | null) ?? null,
+      },
     ])
   );
   const progressionIds = (progressions ?? []).map((p) => p.id);
@@ -417,6 +426,7 @@ async function loadFloorSummaries(projectId: string): Promise<FloorSummariesResu
       pooledCompleted += counts.completed;
       pooledInProgress += counts.inProgress;
       pooledTotal += counts.total;
+      const planned = plannedByFloorTrack.get(`${floor.id}:${track}`);
       trackSummaries.push({
         track,
         floorId: floor.id,
@@ -427,6 +437,8 @@ async function loadFloorSummaries(projectId: string): Promise<FloorSummariesResu
         inProgressCount: counts.inProgress,
         totalCount: counts.total,
         percent: overallPercent(counts.completed, counts.total),
+        plannedStartDate: planned?.plannedStartDate ?? null,
+        plannedEndDate: planned?.plannedEndDate ?? null,
         activated,
       });
     }
