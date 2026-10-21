@@ -54,6 +54,27 @@ export type SelectProgressionSectionInput = z.infer<
   typeof selectProgressionSectionSchema
 >;
 
+/** Planned Start / Deadline (end) dates for one floor + track checklist. */
+export const progressionScheduleSchema = z
+  .object({
+    projectId: uuid("Project ID"),
+    floorId: uuid("Floor ID"),
+    track: progressionTrackSchema,
+    plannedStartDate: isoDate("Planned start date").nullable(),
+    plannedEndDate: isoDate("Deadline").nullable(),
+    ...selections,
+  })
+  .strict()
+  .refine(
+    (v) =>
+      !v.plannedStartDate ||
+      !v.plannedEndDate ||
+      v.plannedEndDate >= v.plannedStartDate,
+    { message: "Deadline must be on or after the planned Start date." }
+  );
+
+export type ProgressionScheduleInput = z.infer<typeof progressionScheduleSchema>;
+
 /** Legacy tick schema (kept for compatibility; UI uses Start/End actions). */
 export const setProgressionStepSchema = z
   .object({

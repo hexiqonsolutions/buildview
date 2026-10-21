@@ -1079,6 +1079,8 @@ export type ProjectProgression = Timestamps &
     building_id: string | null;
     template_id: string;
     track: "pre_slab" | "post_slab";
+    planned_start_date: string | null;
+    planned_end_date: string | null;
   };
 
 export type ProjectProgressionStep = Timestamps & {
@@ -1137,6 +1139,8 @@ export type ProjectProgressionInsert = {
   building_id?: string | null;
   template_id: string;
   track?: "pre_slab" | "post_slab";
+  planned_start_date?: string | null;
+  planned_end_date?: string | null;
   created_by?: string | null;
   updated_by?: string | null;
 };

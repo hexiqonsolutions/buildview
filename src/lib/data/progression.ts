@@ -479,7 +479,7 @@ async function loadFloorDetail(
       .limit(500),
     admin
       .from("project_progressions")
-      .select("id, template:progression_templates(key)")
+      .select("id, planned_start_date, planned_end_date, template:progression_templates(key)")
       .eq("id", progressionId)
       .maybeSingle(),
   ]);
@@ -526,6 +526,10 @@ async function loadFloorDetail(
     buildingName: meta.buildingName,
     floorName: meta.floorName,
     templateKey,
+    plannedStartDate:
+      (templateRes.data?.planned_start_date as string | null | undefined) ?? null,
+    plannedEndDate:
+      (templateRes.data?.planned_end_date as string | null | undefined) ?? null,
     overallPercent: overallPercent(completedCount, totalCount),
     completedCount,
     inProgressCount,

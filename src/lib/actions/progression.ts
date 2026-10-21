@@ -6,11 +6,13 @@ import { canEditProgression, canViewProgression, isBuildViewStaffRole } from "@/
 import { assertClientNotSuspended } from "@/lib/auth/client-suspension";
 import { canViewProject, getActiveActor } from "@/lib/auth/project-access";
 import {
+  ensureFloorProgression,
   getProjectProgressionFresh,
   isConstructionProjectForProgression,
 } from "@/lib/data/progression";
 import { validate } from "@/lib/validations/parse";
 import {
+  progressionScheduleSchema,
   progressionStepActionSchema,
   selectProgressionSectionSchema,
   setProgressionStepSchema,
@@ -464,6 +466,56 @@ export async function updateProgressionStepDates(input: unknown) {
     return {
       ok: false as const,
       error: getErrorMessage(err, "Failed to update step dates."),
+    };
+  }
+}
+
+/** Set the planned Start date and Deadline for one floor + track checklist. */
+export async function setProgressionSchedule(input: unknown) {
+  const parsed = validate(progressionScheduleSchema, input);
+  if (!parsed.success) return { ok: false as const, error: parsed.error };
+
+  const { projectId, floorId, track, plannedStartDate, plannedEndDate } = parsed.data;
+
+  try {
+    const actor = await requireProgressionEditor(projectId);
+    const admin = createServiceRoleClient();
+
+    const { data: floorRow } = await admin
+      .from("floors")
+      .select("building_id")
+      .eq("id", floorId)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (!floorRow) return { ok: false as const, error: "Floor not found." };
+
+    const progressionId = await ensureFloorProgression(
+      projectId,
+      floorId,
+      floorRow.building_id as string,
+      actor.userId,
+      track
+    );
+    if (!progressionId) {
+      return { ok: false as const, error: "Checklist not found for this floor." };
+    }
+
+    const { error } = await admin
+      .from("project_progressions")
+      .update({
+        planned_start_date: plannedStartDate,
+        planned_end_date: plannedEndDate,
+        updated_by: actor.userId,
+      })
+      .eq("id", progressionId);
+    if (error) throw error;
+
+    return { ok: true as const, plannedStartDate, plannedEndDate };
+  } catch (err) {
+    logServerError("setProgressionSchedule", err);
+    return {
+      ok: false as const,
+      error: getErrorMessage(err, "Failed to save planned dates."),
     };
   }
 }

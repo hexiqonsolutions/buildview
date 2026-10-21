@@ -65,6 +65,10 @@ export type ProjectProgressionView = {
   buildingName: string;
   floorName: string;
   templateKey: string;
+  /** Planned schedule for this floor + track (YYYY-MM-DD), null when unset. */
+  plannedStartDate: string | null;
+  /** Deadline for this floor + track (YYYY-MM-DD), null when unset. */
+  plannedEndDate: string | null;
   overallPercent: number;
   completedCount: number;
   inProgressCount: number;

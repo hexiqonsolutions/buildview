@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Building2,
+  CalendarClock,
   Check,
   ChevronDown,
   Layers,
@@ -17,6 +18,7 @@ import {
   endProgressionStep,
   resetProgressionStep,
   selectProgressionSection,
+  setProgressionSchedule,
   startProgressionStep,
   updateProgressionStepDates,
   type ProgressionStepPatch,
@@ -76,6 +78,70 @@ function fromDateTimeLocal(value: string): string | null {
   if (!value) return null;
   // Inputs are wall-clock India time (no DST).
   return new Date(`${value}:00+05:30`).toISOString();
+}
+
+function todayKolkataDate(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+/** Whole days from `from` to `to` (YYYY-MM-DD); negative when `to` has passed. */
+function dayDiff(from: string, to: string): number {
+  return Math.round(
+    (new Date(`${to}T00:00:00+05:30`).getTime() -
+      new Date(`${from}T00:00:00+05:30`).getTime()) /
+      86_400_000
+  );
+}
+
+function deadlineStatus(
+  plannedEndDate: string | null,
+  percent: number
+): { label: string; className: string } {
+  if (!plannedEndDate) {
+    return {
+      label: "No deadline set",
+      className:
+        "bg-slate-200/70 text-slate-600 dark:bg-slate-800 dark:text-slate-300",
+    };
+  }
+  if (percent >= 100) {
+    return {
+      label: "Completed",
+      className:
+        "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200",
+    };
+  }
+  const diff = dayDiff(todayKolkataDate(), plannedEndDate);
+  if (diff < 0) {
+    return {
+      label: `Overdue by ${Math.abs(diff)}d`,
+      className: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200",
+    };
+  }
+  if (diff === 0) {
+    return {
+      label: "Due today",
+      className:
+        "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200",
+    };
+  }
+  if (diff <= 7) {
+    return {
+      label: `Due in ${diff}d`,
+      className:
+        "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200",
+    };
+  }
+  return {
+    label: `Due in ${diff}d`,
+    className:
+      "bg-slate-200/70 text-slate-700 dark:bg-slate-800 dark:text-slate-200",
+  };
 }
 
 function durationLabel(start: string | null, end: string | null): string | null {
@@ -544,6 +610,107 @@ function StepRow({
   );
 }
 
+/* ----------------------------------------------------------- Schedule bar */
+
+function ScheduleBar({
+  selected,
+  canEdit,
+  saving,
+  onSave,
+}: {
+  selected: ProjectProgressionView;
+  canEdit: boolean;
+  saving: boolean;
+  onSave: (plannedStartDate: string | null, plannedEndDate: string | null) => void;
+}) {
+  const [draftStart, setDraftStart] = useState(selected.plannedStartDate ?? "");
+  const [draftEnd, setDraftEnd] = useState(selected.plannedEndDate ?? "");
+  const [error, setError] = useState<string | null>(null);
+  const status = deadlineStatus(selected.plannedEndDate, selected.overallPercent);
+  const dirty =
+    draftStart !== (selected.plannedStartDate ?? "") ||
+    draftEnd !== (selected.plannedEndDate ?? "");
+
+  function save() {
+    if (draftStart && draftEnd && draftEnd < draftStart) {
+      setError("Deadline must be on or after Start.");
+      return;
+    }
+    setError(null);
+    onSave(draftStart || null, draftEnd || null);
+  }
+
+  return (
+    <div className="rounded-xl border border-slate-900/10 bg-white/70 px-3 py-2.5 dark:border-white/10 dark:bg-slate-950/40">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          <CalendarClock className="h-4 w-4" aria-hidden />
+          Schedule
+        </span>
+
+        {canEdit ? (
+          <>
+            <label className="inline-flex items-center gap-1.5 text-xs text-slate-500">
+              Start
+              <input
+                type="date"
+                aria-label="Planned start date"
+                value={draftStart}
+                onChange={(e) => setDraftStart(e.target.value)}
+                className="min-h-11 rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              />
+            </label>
+            <label className="inline-flex items-center gap-1.5 text-xs text-slate-500">
+              Deadline
+              <input
+                type="date"
+                aria-label="Deadline (planned end date)"
+                value={draftEnd}
+                onChange={(e) => setDraftEnd(e.target.value)}
+                className="min-h-11 rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              />
+            </label>
+            <button
+              type="button"
+              disabled={!dirty || saving}
+              onClick={save}
+              className="inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-lg bg-slate-900 px-3 text-sm font-medium text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Save dates
+            </button>
+          </>
+        ) : (
+          <span className="text-sm text-slate-600 dark:text-slate-300">
+            {selected.plannedStartDate
+              ? formatDate(selected.plannedStartDate)
+              : "—"}
+            {" → Deadline "}
+            {selected.plannedEndDate ? formatDate(selected.plannedEndDate) : "—"}
+          </span>
+        )}
+
+        <span
+          className={cn(
+            "ml-auto rounded-full px-2.5 py-1 text-[11px] font-semibold",
+            status.className
+          )}
+        >
+          {status.label}
+        </span>
+      </div>
+      {error ? <p className="mt-1.5 text-xs text-red-600">{error}</p> : null}
+      {canEdit && selected.plannedEndDate ? (
+        <p className="mt-1.5 text-[11px] text-slate-400">
+          Planned {selected.plannedStartDate ? formatDate(selected.plannedStartDate) : "—"}
+          {" → Deadline "}
+          {formatDate(selected.plannedEndDate)} · actuals are tracked per step below.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 /* ------------------------------------------------------------ Track section */
 
 function TrackSection({
@@ -554,6 +721,7 @@ function TrackSection({
   onSelectFloor,
   onTransition,
   onSaveDates,
+  onSaveSchedule,
 }: {
   track: ProgressionTrack;
   data: ProjectProgressionBundle;
@@ -570,6 +738,11 @@ function TrackSection({
     step: ProgressionStepView,
     startedAt: string | null,
     endedAt: string | null
+  ) => void;
+  onSaveSchedule: (
+    track: ProgressionTrack,
+    plannedStartDate: string | null,
+    plannedEndDate: string | null
   ) => void;
 }) {
   const selected = data.selectedByTrack[track];
@@ -702,6 +875,16 @@ function TrackSection({
           </label>
         </div>
       </div>
+
+      {selected ? (
+        <ScheduleBar
+          key={selected.id}
+          selected={selected}
+          canEdit={data.canEdit}
+          saving={pendingKeys.has(`${track}:schedule`)}
+          onSave={(a, b) => onSaveSchedule(track, a, b)}
+        />
+      ) : null}
 
       {selected ? (
         <div
@@ -1041,6 +1224,45 @@ export function ProgressionPanel({
     });
   }
 
+  function onSaveSchedule(
+    track: ProgressionTrack,
+    plannedStartDate: string | null,
+    plannedEndDate: string | null
+  ) {
+    const selected = data.selectedByTrack[track];
+    const key = `${track}:schedule`;
+    if (!data.canEdit || !selected || pendingKeys.has(key)) return;
+    setError(null);
+    const snapshot = data;
+    setData((prev) => {
+      const current = prev.selectedByTrack[track];
+      if (!current) return prev;
+      const updated = { ...current, plannedStartDate, plannedEndDate };
+      const selectedByTrack = { ...prev.selectedByTrack, [track]: updated };
+      return {
+        ...prev,
+        selectedByTrack,
+        selected: selectedByTrack.post_slab,
+      };
+    });
+    markPending(key, true);
+    startTransition(async () => {
+      const result = await setProgressionSchedule({
+        projectId: data.projectId,
+        floorId: selected.floorId,
+        track,
+        plannedStartDate,
+        plannedEndDate,
+        ...selectionsFor(track, selected.floorId),
+      });
+      markPending(key, false);
+      if (!result.ok) {
+        setData(snapshot);
+        setError(result.error);
+      }
+    });
+  }
+
   function openFullTab(floorId?: string) {
     const params = new URLSearchParams(window.location.search);
     params.set("tab", "progression");
@@ -1262,6 +1484,7 @@ export function ProgressionPanel({
               onSelectFloor={selectFloor}
               onTransition={onTransition}
               onSaveDates={onSaveDates}
+              onSaveSchedule={onSaveSchedule}
             />
           ))}
         </div>
