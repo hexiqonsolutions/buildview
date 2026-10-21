@@ -938,29 +938,45 @@ function TrackSection({
                       {phase.endedAt ? formatDate(phase.endedAt) : "—"}
                     </p>
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    {phase.inProgress > 0 ? (
-                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-                        {phase.inProgress} in progress
+                  <div className="flex shrink-0 items-center gap-3">
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="text-xs tabular-nums text-slate-500">
+                        <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                          {phase.percent}%
+                        </span>{" "}
+                        · {phase.completed}/{phase.total}
+                        {phase.inProgress > 0 ? (
+                          <span className="text-amber-600 dark:text-amber-300">
+                            {" "}
+                            · {phase.inProgress} in progress
+                          </span>
+                        ) : null}
                       </span>
-                    ) : null}
-                    <span className="text-xs tabular-nums text-slate-500">
-                      {phase.completed}/{phase.total}
-                    </span>
+                      <span
+                        className="h-1.5 w-24 overflow-hidden rounded-full bg-slate-200/80 sm:w-32 dark:bg-slate-700/70"
+                        role="progressbar"
+                        aria-valuenow={phase.percent}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-label={`${phase.name} progress`}
+                      >
+                        <span
+                          className={cn(
+                            "block h-full rounded-full transition-all duration-500",
+                            theme.progress
+                          )}
+                          style={{ width: `${phase.percent}%` }}
+                        />
+                      </span>
+                    </div>
                     <ChevronDown
                       className={cn(
-                        "h-4 w-4 text-slate-400 transition-transform",
+                        "h-4 w-4 shrink-0 text-slate-400 transition-transform",
                         open && "rotate-180"
                       )}
                     />
                   </div>
                 </button>
-                <div className="h-1 bg-slate-100 dark:bg-slate-800">
-                  <div
-                    className={cn("h-full transition-all duration-500", theme.progress)}
-                    style={{ width: `${phase.percent}%` }}
-                  />
-                </div>
 
                 {open ? (
                   <ul className="divide-y divide-slate-100 dark:divide-slate-800">
