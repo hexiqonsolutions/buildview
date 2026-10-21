@@ -1,4 +1,8 @@
-export type ProgressionStepStatus = "pending" | "completed";
+import type { ProgressionTrack } from "@/lib/progression/catalog";
+
+export type { ProgressionTrack };
+
+export type ProgressionStepStatus = "pending" | "in_progress" | "completed";
 
 export type ProgressionStepView = {
   id: string;
@@ -9,6 +13,14 @@ export type ProgressionStepView = {
   phaseStage: string;
   title: string;
   status: ProgressionStepStatus;
+  /** Start button moment (ISO timestamp). */
+  startedAt: string | null;
+  startedBy: string | null;
+  startedByName: string | null;
+  /** End button moment (ISO timestamp); mirrors completedAt for completed steps. */
+  endedAt: string | null;
+  endedBy: string | null;
+  endedByName: string | null;
   completedAt: string | null;
   completedBy: string | null;
   completedByName: string | null;
@@ -21,8 +33,14 @@ export type ProgressionPhaseView = {
   name: string;
   stage: string;
   total: number;
+  /** Ended steps (count toward %). */
   completed: number;
+  inProgress: number;
   percent: number;
+  /** Earliest step Start in this phase (ISO), null when nothing started. */
+  startedAt: string | null;
+  /** Latest step End in this phase (ISO), null when nothing ended. */
+  endedAt: string | null;
   steps: ProgressionStepView[];
 };
 
@@ -37,10 +55,11 @@ export type ProgressionWeeklyPoint = {
   completions: number;
 };
 
-/** One floor's tick checklist (same 56-step template). */
+/** One floor's checklist for a single track (56 steps). */
 export type ProjectProgressionView = {
   id: string;
   projectId: string;
+  track: ProgressionTrack;
   floorId: string;
   buildingId: string;
   buildingName: string;
@@ -48,6 +67,7 @@ export type ProjectProgressionView = {
   templateKey: string;
   overallPercent: number;
   completedCount: number;
+  inProgressCount: number;
   totalCount: number;
   activated: boolean;
   phases: ProgressionPhaseView[];
@@ -56,30 +76,59 @@ export type ProjectProgressionView = {
   canEdit: boolean;
 };
 
-/** Floor row for Overview strip / Progression switcher. */
+/** Per-floor summary for one track. */
 export type FloorProgressionSummary = {
+  track: ProgressionTrack;
   floorId: string;
   buildingId: string;
   buildingName: string;
   floorName: string;
   percent: number;
   completedCount: number;
+  inProgressCount: number;
   totalCount: number;
-  /** True once at least one step is completed (counts toward project health). */
+  /** True once any step in either track on this floor has Started. */
   activated: boolean;
+};
+
+/** Physical floor summary pooled across both tracks (Overview / combined %). */
+export type CombinedFloorSummary = {
+  floorId: string;
+  buildingId: string;
+  buildingName: string;
+  floorName: string;
+  percent: number;
+  completedCount: number;
+  inProgressCount: number;
+  totalCount: number;
+  activated: boolean;
+};
+
+export type TrackProgressionSummary = {
+  track: ProgressionTrack;
+  percent: number;
+  completedCount: number;
+  inProgressCount: number;
+  totalCount: number;
 };
 
 /**
  * Project-level Progression bundle.
- * overallPercent averages activated floors only (equal step weight).
+ * overallPercent pools Ended steps across both tracks for activated floors.
  */
 export type ProjectProgressionBundle = {
   projectId: string;
   overallPercent: number;
   floorCount: number;
   activatedFloorCount: number;
+  /** Per-track floor summaries (two rows per physical floor). */
   floors: FloorProgressionSummary[];
-  /** Selected floor checklist; null when the project has no floors yet. */
+  /** Physical floors pooled across tracks. */
+  combinedFloors: CombinedFloorSummary[];
+  tracks: TrackProgressionSummary[];
+  /** Selected checklist per track (independent Tower/Floor per section). */
+  selectedByTrack: Record<ProgressionTrack, ProjectProgressionView | null>;
+  /** Legacy alias: Post-Slab selection. */
   selected: ProjectProgressionView | null;
   canEdit: boolean;
 };

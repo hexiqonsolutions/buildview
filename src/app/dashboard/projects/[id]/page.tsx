@@ -42,8 +42,13 @@ export default async function ProjectDetailPage({
 }) {
   const { id } = await params;
   const query = await searchParams;
-  const floorParam = query.floor;
-  const floorId = typeof floorParam === "string" ? floorParam : null;
+  const asString = (v: string | string[] | undefined) =>
+    typeof v === "string" ? v : null;
+  const floorSelections = {
+    preFloorId: asString(query.preFloor),
+    // Legacy `?floor=` links keep selecting the Post-Slab floor.
+    postFloorId: asString(query.postFloor) ?? asString(query.floor),
+  };
 
   const projectData = await getProjectWithClient(id).catch(() => null);
   if (!projectData) notFound();
@@ -62,7 +67,7 @@ export default async function ProjectDetailPage({
       getProjectTeam(id).catch(() => []),
       getProjectMedia(id).catch(() => ({ videos: [], photos: [] })),
       allowProgression
-        ? getProjectProgression(id, floorId).catch(() => null)
+        ? getProjectProgression(id, floorSelections).catch(() => null)
         : Promise.resolve(null),
     ]);
 

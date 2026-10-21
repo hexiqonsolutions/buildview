@@ -37,6 +37,8 @@ const checks = [
   { name: "032 progression report", table: "project_progressions" },
   { name: "032 progression steps", table: "project_progression_steps" },
   { name: "034 progression per floor", table: "project_progressions", column: "floor_id" },
+  { name: "036 progression track", table: "project_progressions", column: "track" },
+  { name: "036 step started_at", table: "project_progression_steps", column: "started_at" },
 ];
 
 async function probe(check) {

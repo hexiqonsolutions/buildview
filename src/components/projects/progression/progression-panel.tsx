@@ -2,15 +2,34 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Building2, Check, ChevronDown, Layers, Loader2 } from "lucide-react";
 import {
-  selectProgressionFloor,
-  setProgressionStep,
+  Building2,
+  Check,
+  ChevronDown,
+  Layers,
+  Loader2,
+  Pencil,
+  Play,
+  RotateCcw,
+  X,
+} from "lucide-react";
+import {
+  endProgressionStep,
+  resetProgressionStep,
+  selectProgressionSection,
+  startProgressionStep,
+  updateProgressionStepDates,
 } from "@/lib/actions/progression";
+import {
+  PROGRESSION_TRACKS,
+  PROGRESSION_TRACK_LABELS,
+  type ProgressionTrack,
+} from "@/lib/progression/catalog";
 import type {
   FloorProgressionSummary,
   ProjectProgressionBundle,
   ProjectProgressionView,
+  ProgressionStepView,
 } from "@/lib/progression/types";
 import { formatDate, cn } from "@/lib/utils";
 import {
@@ -20,15 +39,54 @@ import {
   ProgressionWeeklyChart,
 } from "@/components/projects/progression/progression-charts";
 
-function todayIso(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+/* ---------------------------------------------------------------- helpers */
+
+function formatDateTime(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(d);
 }
 
-function groupFloorsByBuilding(floors: FloorProgressionSummary[]) {
+function toDateTimeLocal(iso: string | null): string {
+  if (!iso) return "";
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date(iso));
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
+}
+
+function fromDateTimeLocal(value: string): string | null {
+  if (!value) return null;
+  // Inputs are wall-clock India time (no DST).
+  return new Date(`${value}:00+05:30`).toISOString();
+}
+
+function durationLabel(start: string | null, end: string | null): string | null {
+  if (!start || !end) return null;
+  const ms = new Date(end).getTime() - new Date(start).getTime();
+  if (ms < 0) return null;
+  const days = Math.floor(ms / 86_400_000);
+  if (days <= 0) return "Same day";
+  return days === 1 ? "1 day" : `${days} days`;
+}
+
+function groupSummariesByBuilding(floors: FloorProgressionSummary[]) {
   const map = new Map<string, { buildingName: string; floors: FloorProgressionSummary[] }>();
   for (const floor of floors) {
     const entry = map.get(floor.buildingId) ?? {
@@ -44,125 +102,132 @@ function groupFloorsByBuilding(floors: FloorProgressionSummary[]) {
   }));
 }
 
-function patchStepLocally(
+type StepTransition = "start" | "end" | "reset";
+
+function recomputeBundle(
   bundle: ProjectProgressionBundle,
-  stepId: string,
-  completed: boolean,
-  workDate: string
+  track: ProgressionTrack,
+  nextSelected: ProjectProgressionView
 ): ProjectProgressionBundle {
-  const selected = bundle.selected;
-  if (!selected) return bundle;
-
-  const phases = selected.phases.map((phase) => {
-    const steps = phase.steps.map((step) => {
-      if (step.id !== stepId) return step;
-      return completed
-        ? {
-            ...step,
-            status: "completed" as const,
-            workDate,
-            completedAt: new Date().toISOString(),
-          }
-        : {
-            ...step,
-            status: "pending" as const,
-            workDate: null,
-            completedAt: null,
-            completedBy: null,
-            completedByName: null,
-            note: null,
-          };
-    });
-    const phaseCompleted = steps.filter((s) => s.status === "completed").length;
-    return {
-      ...phase,
-      steps,
-      completed: phaseCompleted,
-      percent:
-        phase.total > 0 ? Math.round((phaseCompleted / phase.total) * 100) : 0,
-    };
-  });
-
-  const completedCount = phases.reduce((sum, p) => sum + p.completed, 0);
-  const totalCount = selected.totalCount;
-  const overallPercent =
-    totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
-  const activated = completedCount > 0;
-
-  const nextSelected: ProjectProgressionView = {
-    ...selected,
-    phases,
-    completedCount,
-    overallPercent,
-    activated,
-  };
-
   const floors = bundle.floors.map((floor) =>
-    floor.floorId === selected.floorId
+    floor.track === track && floor.floorId === nextSelected.floorId
       ? {
           ...floor,
-          completedCount,
-          totalCount,
-          percent: overallPercent,
-          activated,
+          completedCount: nextSelected.completedCount,
+          inProgressCount: nextSelected.inProgressCount,
+          totalCount: nextSelected.totalCount,
+          percent: nextSelected.overallPercent,
+          activated: nextSelected.activated || floor.activated,
         }
       : floor
   );
 
-  const activatedFloors = floors.filter((f) => f.activated);
-  let projectCompleted = 0;
-  let projectTotal = 0;
-  for (const floor of activatedFloors) {
-    projectCompleted += floor.completedCount;
-    projectTotal += floor.totalCount;
-  }
+  const combinedFloors = bundle.combinedFloors.map((combined) => {
+    const parts = floors.filter((f) => f.floorId === combined.floorId);
+    const completed = parts.reduce((s, f) => s + f.completedCount, 0);
+    const inProgress = parts.reduce((s, f) => s + f.inProgressCount, 0);
+    const total = parts.reduce((s, f) => s + f.totalCount, 0);
+    return {
+      ...combined,
+      completedCount: completed,
+      inProgressCount: inProgress,
+      totalCount: total,
+      percent: total > 0 ? Math.round((completed / total) * 100) : 0,
+      activated:
+        combined.activated ||
+        parts.some((f) => f.completedCount + f.inProgressCount > 0),
+    };
+  });
 
+  const activatedIds = new Set(
+    combinedFloors.filter((f) => f.activated).map((f) => f.floorId)
+  );
+  const tracks = PROGRESSION_TRACKS.map((t) => {
+    let completed = 0;
+    let inProgress = 0;
+    let total = 0;
+    for (const floor of floors) {
+      if (floor.track !== t || !activatedIds.has(floor.floorId)) continue;
+      completed += floor.completedCount;
+      inProgress += floor.inProgressCount;
+      total += floor.totalCount;
+    }
+    return {
+      track: t,
+      percent: total > 0 ? Math.round((completed / total) * 100) : 0,
+      completedCount: completed,
+      inProgressCount: inProgress,
+      totalCount: total,
+    };
+  });
+
+  const activatedFloors = combinedFloors.filter((f) => f.activated);
+  const pooledCompleted = activatedFloors.reduce((s, f) => s + f.completedCount, 0);
+  const pooledTotal = activatedFloors.reduce((s, f) => s + f.totalCount, 0);
+
+  const selectedByTrack = { ...bundle.selectedByTrack, [track]: nextSelected };
   return {
     ...bundle,
     floors,
-    selected: nextSelected,
+    combinedFloors,
+    tracks,
+    selectedByTrack,
+    selected: selectedByTrack.post_slab,
     activatedFloorCount: activatedFloors.length,
     overallPercent:
-      projectTotal > 0 ? Math.round((projectCompleted / projectTotal) * 100) : 0,
+      pooledTotal > 0 ? Math.round((pooledCompleted / pooledTotal) * 100) : 0,
   };
 }
 
-function FloorChip({
-  floor,
-  active,
-  disabled,
-  onSelect,
-}: {
-  floor: FloorProgressionSummary;
-  active: boolean;
-  disabled?: boolean;
-  onSelect: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onSelect}
-      className={cn(
-        "shrink-0 cursor-pointer rounded-lg border px-2.5 py-1.5 text-left transition-colors duration-150",
-        active
-          ? "border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900"
-          : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200",
-        disabled && "opacity-60"
-      )}
-    >
-      <span className="block text-xs font-medium leading-tight">{floor.floorName}</span>
-      <span
-        className={cn(
-          "block text-[10px] tabular-nums leading-tight",
-          active ? "text-white/70 dark:text-slate-500" : "text-slate-400"
-        )}
-      >
-        {floor.activated ? `${floor.percent}%` : "—"}
-      </span>
-    </button>
-  );
+function patchStep(
+  bundle: ProjectProgressionBundle,
+  track: ProgressionTrack,
+  stepId: string,
+  patch: (step: ProgressionStepView) => ProgressionStepView
+): ProjectProgressionBundle {
+  const selected = bundle.selectedByTrack[track];
+  if (!selected) return bundle;
+
+  const phases = selected.phases.map((phase) => {
+    const steps = phase.steps.map((s) => (s.id === stepId ? patch(s) : s));
+    const completed = steps.filter((s) => s.status === "completed").length;
+    const inProgress = steps.filter((s) => s.status === "in_progress").length;
+    const starts = steps
+      .map((s) => s.startedAt ?? s.completedAt)
+      .filter((v): v is string => Boolean(v))
+      .sort();
+    const ends = steps
+      .map((s) => s.endedAt ?? s.completedAt)
+      .filter((v): v is string => Boolean(v))
+      .sort();
+    return {
+      ...phase,
+      steps,
+      completed,
+      inProgress,
+      percent: phase.total > 0 ? Math.round((completed / phase.total) * 100) : 0,
+      startedAt: starts[0] ?? null,
+      endedAt: ends[ends.length - 1] ?? null,
+    };
+  });
+
+  const completedCount = phases.reduce((s, p) => s + p.completed, 0);
+  const inProgressCount = phases.reduce((s, p) => s + p.inProgress, 0);
+  const nextSelected: ProjectProgressionView = {
+    ...selected,
+    phases,
+    completedCount,
+    inProgressCount,
+    overallPercent:
+      selected.totalCount > 0
+        ? Math.round((completedCount / selected.totalCount) * 100)
+        : 0,
+    activated: completedCount + inProgressCount > 0,
+  };
+  return recomputeBundle(bundle, track, nextSelected);
 }
+
+/* ------------------------------------------------------------------- CTA */
 
 /** Overview entry point — opens the Progression tab checklist. */
 export function CheckProgressionReportCta({
@@ -208,7 +273,7 @@ export function CheckProgressionReportCta({
       <button
         type="button"
         onClick={openReport}
-        className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+        className="inline-flex min-h-11 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
       >
         Check Progression Report
       </button>
@@ -216,72 +281,282 @@ export function CheckProgressionReportCta({
   );
 }
 
-export function ProgressionPanel({
-  initial,
-  compact = false,
-  checklistOnly = false,
-  summaryOnly = false,
-}: {
-  initial: ProjectProgressionBundle;
-  /** @deprecated Prefer summaryOnly or CheckProgressionReportCta. */
-  compact?: boolean;
-  /** Progression tab: floor switcher + checklist, no summary charts. */
-  checklistOnly?: boolean;
-  /** Overview: floor health summary charts + Check Progression Report CTA. */
-  summaryOnly?: boolean;
-}) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const [data, setData] = useState(initial);
-  /** Floor the user is viewing — ignores stale RSC props that still say Floor 1. */
-  const lockedFloorIdRef = useRef<string | null>(initial.selected?.floorId ?? null);
+/* --------------------------------------------------------------- Step row */
 
-  useEffect(() => {
-    const serverFloor = initial.selected?.floorId ?? null;
-    // Server Actions refresh the route; ignore payloads for a different floor.
-    if (
-      lockedFloorIdRef.current &&
-      serverFloor &&
-      serverFloor !== lockedFloorIdRef.current
-    ) {
+function StepRow({
+  step,
+  canEdit,
+  busy,
+  anyBusy,
+  onTransition,
+  onSaveDates,
+}: {
+  step: ProgressionStepView;
+  canEdit: boolean;
+  busy: boolean;
+  anyBusy: boolean;
+  onTransition: (step: ProgressionStepView, transition: StepTransition) => void;
+  onSaveDates: (
+    step: ProgressionStepView,
+    startedAt: string | null,
+    endedAt: string | null
+  ) => void;
+}) {
+  const [editingDates, setEditingDates] = useState(false);
+  const [draftStart, setDraftStart] = useState("");
+  const [draftEnd, setDraftEnd] = useState("");
+  const [dateError, setDateError] = useState<string | null>(null);
+
+  const started = step.startedAt ?? step.completedAt;
+  const ended = step.endedAt ?? step.completedAt;
+  const duration = durationLabel(started, ended);
+
+  function openEditor() {
+    setDraftStart(toDateTimeLocal(started));
+    setDraftEnd(toDateTimeLocal(ended));
+    setDateError(null);
+    setEditingDates(true);
+  }
+
+  function saveDates() {
+    const startedAt = fromDateTimeLocal(draftStart);
+    const endedAt = fromDateTimeLocal(draftEnd);
+    if (startedAt && endedAt && new Date(endedAt) < new Date(startedAt)) {
+      setDateError("End must be after Start.");
       return;
     }
-    setData(initial);
-    if (serverFloor) lockedFloorIdRef.current = serverFloor;
-  }, [initial]);
+    setEditingDates(false);
+    onSaveDates(step, startedAt, endedAt);
+  }
 
-  const selected = data.selected;
-  const [workDate, setWorkDate] = useState(todayIso);
-  const [openPhases, setOpenPhases] = useState<Set<number>>(
-    () =>
-      new Set(
-        (initial.selected?.phases ?? [])
-          .filter((p) => p.completed < p.total)
-          .map((p) => p.number)
-          .slice(0, 2)
-      )
+  return (
+    <li className="px-3 py-3 hover:bg-slate-50/80 dark:hover:bg-slate-900/40">
+      <div className="flex flex-wrap items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm text-slate-800 dark:text-slate-100">
+            <span className="mr-1.5 font-medium tabular-nums text-slate-400">
+              {step.stepNumber}.
+            </span>
+            {step.title}
+          </p>
+
+          {step.status === "in_progress" ? (
+            <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+              <span className="font-semibold">In progress</span>
+              {" · Started "}
+              {formatDateTime(started)}
+              {step.startedByName ? ` · by ${step.startedByName}` : ""}
+            </p>
+          ) : step.status === "completed" ? (
+            <p className="mt-1 text-xs text-emerald-700 dark:text-emerald-300">
+              <span className="font-semibold">Completed</span>
+              {started ? ` · ${formatDateTime(started)}` : ""}
+              {ended ? ` → ${formatDateTime(ended)}` : ""}
+              {duration ? ` · ${duration}` : ""}
+              {step.endedByName ?? step.completedByName
+                ? ` · Ended by ${step.endedByName ?? step.completedByName}`
+                : ""}
+            </p>
+          ) : (
+            <p className="mt-1 text-xs text-slate-400">Not started</p>
+          )}
+        </div>
+
+        {canEdit ? (
+          <div className="flex shrink-0 items-center gap-2">
+            {step.status === "pending" ? (
+              <button
+                type="button"
+                disabled={anyBusy}
+                onClick={() => onTransition(step, "start")}
+                className="inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-900 px-3.5 text-sm font-medium text-slate-900 transition-colors hover:bg-slate-900 hover:text-white disabled:cursor-wait disabled:opacity-60 dark:border-slate-200 dark:text-slate-100 dark:hover:bg-slate-200 dark:hover:text-slate-900"
+              >
+                {busy ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Play className="h-4 w-4" aria-hidden />
+                )}
+                Start
+              </button>
+            ) : step.status === "in_progress" ? (
+              <>
+                <button
+                  type="button"
+                  disabled={anyBusy}
+                  onClick={() => onTransition(step, "end")}
+                  className="inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-lg bg-slate-900 px-3.5 text-sm font-medium text-white transition-colors hover:bg-slate-800 disabled:cursor-wait disabled:opacity-60 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+                >
+                  {busy ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Check className="h-4 w-4" aria-hidden />
+                  )}
+                  End
+                </button>
+                <button
+                  type="button"
+                  disabled={anyBusy}
+                  aria-label={`Reset step ${step.stepNumber}`}
+                  title="Reset step"
+                  onClick={() => {
+                    if (window.confirm("Reset this step to Not started?")) {
+                      onTransition(step, "reset");
+                    }
+                  }}
+                  className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:border-slate-300 hover:text-slate-800 disabled:opacity-60 dark:border-slate-700 dark:hover:text-slate-100"
+                >
+                  <RotateCcw className="h-4 w-4" aria-hidden />
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  disabled={anyBusy}
+                  aria-label={`Correct dates for step ${step.stepNumber}`}
+                  title="Correct Start/End dates"
+                  onClick={openEditor}
+                  className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:border-slate-300 hover:text-slate-800 disabled:opacity-60 dark:border-slate-700 dark:hover:text-slate-100"
+                >
+                  <Pencil className="h-4 w-4" aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  disabled={anyBusy}
+                  aria-label={`Reset step ${step.stepNumber}`}
+                  title="Reset step"
+                  onClick={() => {
+                    if (window.confirm("Reset this step to Not started?")) {
+                      onTransition(step, "reset");
+                    }
+                  }}
+                  className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:border-slate-300 hover:text-slate-800 disabled:opacity-60 dark:border-slate-700 dark:hover:text-slate-100"
+                >
+                  <RotateCcw className="h-4 w-4" aria-hidden />
+                </button>
+              </>
+            )}
+          </div>
+        ) : null}
+      </div>
+
+      {canEdit && step.status === "in_progress" ? (
+        <button
+          type="button"
+          onClick={openEditor}
+          className="mt-1.5 cursor-pointer text-xs font-medium text-slate-500 underline-offset-2 hover:underline"
+        >
+          Correct Start date
+        </button>
+      ) : null}
+
+      {editingDates ? (
+        <div className="mt-3 space-y-2 rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+          <div className="grid gap-2 sm:grid-cols-2">
+            <label className="text-xs text-slate-500">
+              Start date &amp; time
+              <input
+                type="datetime-local"
+                value={draftStart}
+                onChange={(e) => setDraftStart(e.target.value)}
+                className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              />
+            </label>
+            <label className="text-xs text-slate-500">
+              End date &amp; time
+              <input
+                type="datetime-local"
+                value={draftEnd}
+                disabled={step.status !== "completed"}
+                onChange={(e) => setDraftEnd(e.target.value)}
+                className="mt-1 min-h-11 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-800 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              />
+            </label>
+          </div>
+          {dateError ? <p className="text-xs text-red-600">{dateError}</p> : null}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={saveDates}
+              className="inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-lg bg-slate-900 px-3 text-sm font-medium text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900"
+            >
+              <Check className="h-4 w-4" aria-hidden /> Save dates
+            </button>
+            <button
+              type="button"
+              onClick={() => setEditingDates(false)}
+              className="inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-sm text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
+            >
+              <X className="h-4 w-4" aria-hidden /> Cancel
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </li>
   );
-  const [pendingStepId, setPendingStepId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
-  const [switching, setSwitching] = useState(false);
+}
 
+/* ------------------------------------------------------------ Track section */
+
+function TrackSection({
+  track,
+  data,
+  switching,
+  pendingKey,
+  onSelectFloor,
+  onTransition,
+  onSaveDates,
+}: {
+  track: ProgressionTrack;
+  data: ProjectProgressionBundle;
+  switching: boolean;
+  pendingKey: string | null;
+  onSelectFloor: (track: ProgressionTrack, floorId: string) => void;
+  onTransition: (
+    track: ProgressionTrack,
+    step: ProgressionStepView,
+    transition: StepTransition
+  ) => void;
+  onSaveDates: (
+    track: ProgressionTrack,
+    step: ProgressionStepView,
+    startedAt: string | null,
+    endedAt: string | null
+  ) => void;
+}) {
+  const selected = data.selectedByTrack[track];
+  const trackFloors = useMemo(
+    () => data.floors.filter((f) => f.track === track),
+    [data.floors, track]
+  );
+  const buildings = useMemo(
+    () => groupSummariesByBuilding(trackFloors),
+    [trackFloors]
+  );
+  const trackSummary = data.tracks.find((t) => t.track === track);
+  const label = PROGRESSION_TRACK_LABELS[track];
+
+  const [openPhases, setOpenPhases] = useState<Set<number>>(new Set());
+  const phasesRef = useRef(selected?.phases);
+  phasesRef.current = selected?.phases;
+  const selectedId = selected?.id;
   useEffect(() => {
-    if (!selected) return;
+    const phases = phasesRef.current;
+    if (!selectedId || !phases) return;
     setOpenPhases(
       new Set(
-        selected.phases.filter((p) => p.completed < p.total).map((p) => p.number).slice(0, 2)
+        phases
+          .filter((p) => p.completed < p.total)
+          .map((p) => p.number)
+          .slice(0, 1)
       )
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when floor checklist identity changes
-  }, [selected?.id]);
+  }, [selectedId]);
 
-  const nextPending = useMemo(
-    () => selected?.phases.flatMap((p) => p.steps).find((s) => s.status !== "completed") ?? null,
-    [selected]
-  );
-
-  const buildings = useMemo(() => groupFloorsByBuilding(data.floors), [data.floors]);
+  const selectedBuildingId =
+    selected?.buildingId ?? buildings[0]?.buildingId ?? "";
+  const floorsOfBuilding =
+    buildings.find((b) => b.buildingId === selectedBuildingId)?.floors ?? [];
 
   function togglePhase(n: number) {
     setOpenPhases((prev) => {
@@ -292,59 +567,378 @@ export function ProgressionPanel({
     });
   }
 
-  /** Keep ?floor= in Next.js searchParams so post-action refreshes stay on this floor. */
-  function syncFloorInUrl(floorId: string) {
+  return (
+    <section
+      aria-label={`${label} Progression`}
+      className="space-y-3 rounded-2xl border border-slate-200 bg-white/60 p-3 sm:p-4 dark:border-slate-800 dark:bg-slate-900/30"
+    >
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h4 className="font-display text-base font-semibold text-slate-900 dark:text-white">
+            {label}
+          </h4>
+          <p className="text-sm text-slate-500">
+            {selected ? (
+              <>
+                <span className="font-semibold tabular-nums text-slate-800 dark:text-slate-200">
+                  {selected.overallPercent}%
+                </span>
+                {" · "}
+                {selected.completedCount}/{selected.totalCount} ended
+                {selected.inProgressCount > 0
+                  ? ` · ${selected.inProgressCount} in progress`
+                  : ""}
+              </>
+            ) : trackSummary ? (
+              `${trackSummary.percent}% · ${trackSummary.completedCount} ended`
+            ) : (
+              "No checklist yet"
+            )}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="text-xs text-slate-500">
+            <span className="sr-only">Tower for {label}</span>
+            <select
+              aria-label={`${label} tower`}
+              value={selectedBuildingId}
+              disabled={switching || buildings.length === 0}
+              onChange={(e) => {
+                const building = buildings.find((b) => b.buildingId === e.target.value);
+                const first = building?.floors[0];
+                if (first) onSelectFloor(track, first.floorId);
+              }}
+              className="min-h-11 max-w-44 cursor-pointer rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            >
+              {buildings.map((b) => (
+                <option key={b.buildingId} value={b.buildingId}>
+                  {b.buildingName}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="text-xs text-slate-500">
+            <span className="sr-only">Floor for {label}</span>
+            <select
+              aria-label={`${label} floor`}
+              value={selected?.floorId ?? ""}
+              disabled={switching || floorsOfBuilding.length === 0}
+              onChange={(e) => {
+                if (e.target.value) onSelectFloor(track, e.target.value);
+              }}
+              className="min-h-11 max-w-44 cursor-pointer rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            >
+              {floorsOfBuilding.map((floor) => (
+                <option key={floor.floorId} value={floor.floorId}>
+                  {floor.floorName}
+                  {floor.activated ? ` (${floor.percent}%)` : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </div>
+
+      {selected ? (
+        <div
+          className="h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"
+          role="progressbar"
+          aria-valuenow={selected.overallPercent}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={`${label} progress`}
+        >
+          <div
+            className="h-full rounded-full bg-slate-800 transition-all duration-500 dark:bg-slate-200"
+            style={{ width: `${selected.overallPercent}%` }}
+          />
+        </div>
+      ) : null}
+
+      {switching && !selected ? (
+        <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-500">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading floor…
+        </div>
+      ) : !selected ? (
+        <p className="py-6 text-center text-sm text-slate-500">
+          Add buildings and floors in admin to start monitoring.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {selected.phases.map((phase) => {
+            const open = openPhases.has(phase.number);
+            return (
+              <div
+                key={phase.number}
+                className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60"
+              >
+                <button
+                  type="button"
+                  onClick={() => togglePhase(phase.number)}
+                  aria-expanded={open}
+                  className="flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 bg-slate-50 px-3 py-2.5 text-left dark:bg-slate-900/50"
+                >
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                      Phase {phase.number}
+                    </p>
+                    <p className="truncate font-display text-sm font-semibold text-slate-900 dark:text-white">
+                      {phase.name}
+                    </p>
+                    <p className="mt-0.5 text-[11px] tabular-nums text-slate-400">
+                      Start {phase.startedAt ? formatDate(phase.startedAt) : "—"}
+                      {"  →  End "}
+                      {phase.endedAt ? formatDate(phase.endedAt) : "—"}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {phase.inProgress > 0 ? (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                        {phase.inProgress} in progress
+                      </span>
+                    ) : null}
+                    <span className="text-xs tabular-nums text-slate-500">
+                      {phase.completed}/{phase.total}
+                    </span>
+                    <ChevronDown
+                      className={cn(
+                        "h-4 w-4 text-slate-400 transition-transform",
+                        open && "rotate-180"
+                      )}
+                    />
+                  </div>
+                </button>
+                <div className="h-1 bg-slate-100 dark:bg-slate-800">
+                  <div
+                    className="h-full bg-slate-700 transition-all duration-500 dark:bg-slate-300"
+                    style={{ width: `${phase.percent}%` }}
+                  />
+                </div>
+
+                {open ? (
+                  <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {phase.steps.map((step) => (
+                      <StepRow
+                        key={step.id}
+                        step={step}
+                        canEdit={data.canEdit}
+                        busy={pendingKey === `${track}:${step.id}`}
+                        anyBusy={Boolean(pendingKey)}
+                        onTransition={(s, t) => onTransition(track, s, t)}
+                        onSaveDates={(s, a, b) => onSaveDates(track, s, a, b)}
+                      />
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ Panel */
+
+export function ProgressionPanel({
+  initial,
+  compact = false,
+  checklistOnly = false,
+  summaryOnly = false,
+}: {
+  initial: ProjectProgressionBundle;
+  /** @deprecated Prefer summaryOnly or CheckProgressionReportCta. */
+  compact?: boolean;
+  /** Progression tab: two track sections, no summary charts. */
+  checklistOnly?: boolean;
+  /** Overview: combined + per-track summary + Check Progression Report CTA. */
+  summaryOnly?: boolean;
+}) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [data, setData] = useState(initial);
+  const lockedRef = useRef<{ pre: string | null; post: string | null }>({
+    pre: initial.selectedByTrack.pre_slab?.floorId ?? null,
+    post: initial.selectedByTrack.post_slab?.floorId ?? null,
+  });
+  const [pendingKey, setPendingKey] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [switchingTrack, setSwitchingTrack] = useState<ProgressionTrack | null>(null);
+  const [, startTransition] = useTransition();
+
+  useEffect(() => {
+    const serverPre = initial.selectedByTrack.pre_slab?.floorId ?? null;
+    const serverPost = initial.selectedByTrack.post_slab?.floorId ?? null;
+    const locked = lockedRef.current;
+    // Ignore stale RSC payloads that still point at an older floor selection.
+    if (
+      (locked.pre && serverPre && locked.pre !== serverPre) ||
+      (locked.post && serverPost && locked.post !== serverPost)
+    ) {
+      return;
+    }
+    setData(initial);
+    lockedRef.current = { pre: serverPre ?? locked.pre, post: serverPost ?? locked.post };
+  }, [initial]);
+
+  const selectedPost = data.selectedByTrack.post_slab;
+
+  function syncSelectionInUrl(track: ProgressionTrack, floorId: string) {
     const params = new URLSearchParams(window.location.search);
     params.set("tab", "progression");
-    params.set("floor", floorId);
+    params.set(track === "pre_slab" ? "preFloor" : "postFloor", floorId);
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   }
 
-  function selectFloor(floorId: string) {
-    if (selected?.floorId === floorId || switching) return;
+  function selectionsFor(track: ProgressionTrack, floorId: string) {
+    return {
+      preFloorId:
+        track === "pre_slab"
+          ? floorId
+          : (lockedRef.current.pre ?? data.selectedByTrack.pre_slab?.floorId ?? undefined),
+      postFloorId:
+        track === "post_slab"
+          ? floorId
+          : (lockedRef.current.post ?? data.selectedByTrack.post_slab?.floorId ?? undefined),
+    };
+  }
+
+  function selectFloor(track: ProgressionTrack, floorId: string) {
+    const current =
+      track === "pre_slab"
+        ? data.selectedByTrack.pre_slab?.floorId
+        : data.selectedByTrack.post_slab?.floorId;
+    if (current === floorId || switchingTrack) return;
     setError(null);
-    setSwitching(true);
-    lockedFloorIdRef.current = floorId;
-    syncFloorInUrl(floorId);
+    setSwitchingTrack(track);
+    if (track === "pre_slab") lockedRef.current.pre = floorId;
+    else lockedRef.current.post = floorId;
+    syncSelectionInUrl(track, floorId);
     startTransition(async () => {
-      const result = await selectProgressionFloor(data.projectId, floorId);
-      setSwitching(false);
+      const result = await selectProgressionSection({
+        projectId: data.projectId,
+        track,
+        floorId,
+        ...selectionsFor(track, floorId),
+      });
+      setSwitchingTrack(null);
       if (!result.ok) {
         setError(result.error);
         return;
       }
-      lockedFloorIdRef.current = result.progression.selected?.floorId ?? floorId;
+      lockedRef.current = {
+        pre: result.progression.selectedByTrack.pre_slab?.floorId ?? lockedRef.current.pre,
+        post: result.progression.selectedByTrack.post_slab?.floorId ?? lockedRef.current.post,
+      };
       setData(result.progression);
     });
   }
 
-  function onToggle(stepId: string, completed: boolean) {
-    if (!data.canEdit || !selected || pendingStepId) return;
+  function applyOptimistic(
+    track: ProgressionTrack,
+    step: ProgressionStepView,
+    patch: (s: ProgressionStepView) => ProgressionStepView
+  ) {
+    setData((prev) => patchStep(prev, track, step.id, patch));
+  }
+
+  function onTransition(
+    track: ProgressionTrack,
+    step: ProgressionStepView,
+    transition: StepTransition
+  ) {
+    const selected = data.selectedByTrack[track];
+    if (!data.canEdit || !selected || pendingKey) return;
     setError(null);
-    lockedFloorIdRef.current = selected.floorId;
-    syncFloorInUrl(selected.floorId);
     const snapshot = data;
-    setData(patchStepLocally(data, stepId, completed, workDate));
-    setPendingStepId(stepId);
+    const nowIso = new Date().toISOString();
+    applyOptimistic(track, step, (s) =>
+      transition === "start"
+        ? { ...s, status: "in_progress", startedAt: nowIso }
+        : transition === "end"
+          ? {
+              ...s,
+              status: "completed",
+              endedAt: nowIso,
+              completedAt: nowIso,
+            }
+          : {
+              ...s,
+              status: "pending",
+              startedAt: null,
+              startedBy: null,
+              startedByName: null,
+              endedAt: null,
+              endedBy: null,
+              endedByName: null,
+              completedAt: null,
+              completedBy: null,
+              completedByName: null,
+              workDate: null,
+              note: null,
+            }
+    );
+    setPendingKey(`${track}:${step.id}`);
     startTransition(async () => {
-      const result = await setProgressionStep({
+      const action =
+        transition === "start"
+          ? startProgressionStep
+          : transition === "end"
+            ? endProgressionStep
+            : resetProgressionStep;
+      const result = await action({
         projectId: data.projectId,
         floorId: selected.floorId,
-        stepId,
-        completed,
-        workDate,
-        note: null,
+        track,
+        stepId: step.id,
+        ...selectionsFor(track, selected.floorId),
       });
-      setPendingStepId(null);
+      setPendingKey(null);
       if (!result.ok) {
         setData(snapshot);
         setError(result.error);
         return;
       }
-      if (result.progression) {
-        lockedFloorIdRef.current = result.progression.selected?.floorId ?? selected.floorId;
-        setData(result.progression);
+      if (result.progression) setData(result.progression);
+    });
+  }
+
+  function onSaveDates(
+    track: ProgressionTrack,
+    step: ProgressionStepView,
+    startedAt: string | null,
+    endedAt: string | null
+  ) {
+    const selected = data.selectedByTrack[track];
+    if (!data.canEdit || !selected || pendingKey) return;
+    setError(null);
+    const snapshot = data;
+    applyOptimistic(track, step, (s) => ({
+      ...s,
+      startedAt,
+      endedAt,
+      completedAt: s.status === "completed" ? endedAt : s.completedAt,
+    }));
+    setPendingKey(`${track}:${step.id}`);
+    startTransition(async () => {
+      const result = await updateProgressionStepDates({
+        projectId: data.projectId,
+        floorId: selected.floorId,
+        track,
+        stepId: step.id,
+        startedAt,
+        endedAt,
+        ...selectionsFor(track, selected.floorId),
+      });
+      setPendingKey(null);
+      if (!result.ok) {
+        setData(snapshot);
+        setError(result.error);
+        return;
       }
+      if (result.progression) setData(result.progression);
     });
   }
 
@@ -352,8 +946,9 @@ export function ProgressionPanel({
     const params = new URLSearchParams(window.location.search);
     params.set("tab", "progression");
     if (floorId) {
-      params.set("floor", floorId);
-      lockedFloorIdRef.current = floorId;
+      params.set("preFloor", floorId);
+      params.set("postFloor", floorId);
+      lockedRef.current = { pre: floorId, post: floorId };
     }
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   }
@@ -369,9 +964,9 @@ export function ProgressionPanel({
   }
 
   if (summaryOnly) {
-    const activatedFloors = data.floors.filter((f) => f.activated);
-    const projectCompleted = activatedFloors.reduce((sum, f) => sum + f.completedCount, 0);
-    const projectTotal = activatedFloors.reduce((sum, f) => sum + f.totalCount, 0);
+    const activatedFloors = data.combinedFloors.filter((f) => f.activated);
+    const projectCompleted = activatedFloors.reduce((s, f) => s + f.completedCount, 0);
+    const projectTotal = activatedFloors.reduce((s, f) => s + f.totalCount, 0);
 
     return (
       <div className="space-y-4">
@@ -394,14 +989,14 @@ export function ProgressionPanel({
           </div>
           <button
             type="button"
-            onClick={() => openFullTab(selected?.floorId)}
-            className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+            onClick={() => openFullTab(selectedPost?.floorId)}
+            className="inline-flex min-h-11 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
           >
             Check Progression Report
           </button>
         </div>
 
-        {data.floors.length === 0 ? (
+        {data.combinedFloors.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-500 dark:border-slate-700">
             Add buildings and floors in admin to start monitoring.
           </p>
@@ -414,49 +1009,68 @@ export function ProgressionPanel({
               label="Overall project"
             />
 
-            <div className="space-y-2">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                By floor
-              </p>
-              {buildings.map((building) => (
-                <div key={building.buildingId} className="space-y-1.5">
-                  {buildings.length > 1 ? (
-                    <p className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
-                      <Building2 className="h-3 w-3" aria-hidden />
-                      {building.buildingName}
+            <div className="grid gap-3 sm:grid-cols-2">
+              {data.tracks.map((t) => (
+                <div
+                  key={t.track}
+                  className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/60"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                      {PROGRESSION_TRACK_LABELS[t.track]}
                     </p>
-                  ) : null}
-                  <div className="flex gap-1.5 overflow-x-auto pb-1">
-                    {building.floors.map((floor) => (
-                      <FloorChip
-                        key={floor.floorId}
-                        floor={floor}
-                        active={selected?.floorId === floor.floorId}
-                        disabled={switching || isPending}
-                        onSelect={() => selectFloor(floor.floorId)}
-                      />
-                    ))}
+                    <span className="font-display text-sm font-semibold tabular-nums text-slate-900 dark:text-white">
+                      {t.percent}%
+                    </span>
                   </div>
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                    <div
+                      className="h-full rounded-full bg-slate-800 transition-all duration-500 dark:bg-slate-200"
+                      style={{ width: `${t.percent}%` }}
+                    />
+                  </div>
+                  <p className="mt-2 text-xs tabular-nums text-slate-500">
+                    {t.completedCount}/{t.totalCount} ended
+                    {t.inProgressCount > 0 ? ` · ${t.inProgressCount} in progress` : ""}
+                  </p>
                 </div>
               ))}
             </div>
 
-            {switching && !selected ? (
-              <div className="flex items-center justify-center gap-2 py-8 text-sm text-slate-500">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Loading floor…
+            <div className="space-y-2">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                By floor
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {data.combinedFloors.map((floor) => (
+                  <button
+                    key={floor.floorId}
+                    type="button"
+                    onClick={() => openFullTab(floor.floorId)}
+                    className="min-h-11 shrink-0 cursor-pointer rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-left transition-colors hover:border-slate-300 dark:border-slate-700 dark:bg-slate-950"
+                  >
+                    <span className="block text-xs font-medium leading-tight text-slate-700 dark:text-slate-200">
+                      {floor.buildingName} · {floor.floorName}
+                    </span>
+                    <span className="block text-[10px] tabular-nums leading-tight text-slate-400">
+                      {floor.activated ? `${floor.percent}%` : "—"}
+                    </span>
+                  </button>
+                ))}
               </div>
-            ) : selected ? (
+            </div>
+
+            {selectedPost ? (
               <div className="grid gap-3 lg:grid-cols-2">
                 <ProgressionOverallCard
-                  percent={selected.overallPercent}
-                  completed={selected.completedCount}
-                  total={selected.totalCount}
-                  label={selected.floorName}
+                  percent={selectedPost.overallPercent}
+                  completed={selectedPost.completedCount}
+                  total={selectedPost.totalCount}
+                  label={`${selectedPost.floorName} · Post-Slab`}
                 />
-                <ProgressionPhaseBars phases={selected.phases} />
-                <ProgressionDailyChart daily={selected.daily} />
-                <ProgressionWeeklyChart weekly={selected.weekly} />
+                <ProgressionPhaseBars phases={selectedPost.phases} />
+                <ProgressionDailyChart daily={selectedPost.daily} />
+                <ProgressionWeeklyChart weekly={selectedPost.weekly} />
               </div>
             ) : null}
           </>
@@ -465,6 +1079,8 @@ export function ProgressionPanel({
     );
   }
 
+  // Checklist tab (also default): Pre-Slab + Post-Slab sections.
+  void checklistOnly;
   return (
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -473,35 +1089,36 @@ export function ProgressionPanel({
             Progression Report
           </h3>
           <p className="text-sm text-slate-500">
-            Project health{" "}
+            Overall project{" "}
             <span className="font-semibold tabular-nums text-slate-800 dark:text-slate-200">
               {data.overallPercent}%
             </span>
             {" · "}
             {data.activatedFloorCount}/{data.floorCount} floors activated
+            {" · Pre-Slab "}
+            {data.tracks.find((t) => t.track === "pre_slab")?.percent ?? 0}%
+            {" · Post-Slab "}
+            {data.tracks.find((t) => t.track === "post_slab")?.percent ?? 0}%
           </p>
         </div>
-        {data.canEdit && selected ? (
-          <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Work date
-            </span>
-            <input
-              type="date"
-              value={workDate}
-              onChange={(e) => setWorkDate(e.target.value)}
-              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-900"
-            />
-          </label>
-        ) : !data.canEdit ? (
+        {!data.canEdit ? (
           <p className="rounded-lg border border-dashed border-slate-200 px-3 py-2 text-xs text-slate-500 dark:border-slate-700">
-            View only — Client Admin, Site Engineer, Site Supervisor, and BuildView staff can tick
-            steps.
+            View only — Client Admin, Site Engineer, Site Supervisor, and BuildView staff can
+            start and end steps.
           </p>
         ) : null}
       </div>
 
-      {data.floors.length === 0 ? (
+      {error ? (
+        <div
+          role="alert"
+          className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200"
+        >
+          {error}
+        </div>
+      ) : null}
+
+      {data.combinedFloors.length === 0 ? (
         <div className="intel-card px-6 py-12 text-center">
           <Layers className="mx-auto h-8 w-8 text-slate-300" aria-hidden />
           <p className="mt-3 text-sm font-medium text-slate-800 dark:text-slate-100">
@@ -512,178 +1129,27 @@ export function ProgressionPanel({
           </p>
         </div>
       ) : (
-        <>
-          <div className="space-y-2">
-            {buildings.map((building) => (
-              <div key={building.buildingId} className="space-y-1.5">
-                {buildings.length > 1 ? (
-                  <p className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
-                    <Building2 className="h-3 w-3" aria-hidden />
-                    {building.buildingName}
-                  </p>
-                ) : null}
-                <div className="flex gap-1.5 overflow-x-auto pb-1">
-                  {building.floors.map((floor) => (
-                    <FloorChip
-                      key={floor.floorId}
-                      floor={floor}
-                      active={selected?.floorId === floor.floorId}
-                      disabled={switching || isPending}
-                      onSelect={() => selectFloor(floor.floorId)}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {switching && !selected ? (
-            <div className="flex items-center justify-center gap-2 py-12 text-sm text-slate-500">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Loading floor…
-            </div>
-          ) : selected ? (
-            <>
-              <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                {switching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                <span className="font-medium text-slate-900 dark:text-white">
-                  {selected.buildingName} · {selected.floorName}
-                </span>
-                <span className="text-slate-400">·</span>
-                <span className="tabular-nums">
-                  {selected.completedCount}/{selected.totalCount} · {selected.overallPercent}%
-                </span>
-              </div>
-
-              {!checklistOnly ? (
-                <div className="grid gap-3 lg:grid-cols-2">
-                  <ProgressionOverallCard
-                    percent={selected.overallPercent}
-                    completed={selected.completedCount}
-                    total={selected.totalCount}
-                    label={selected.floorName}
-                  />
-                  <ProgressionPhaseBars phases={selected.phases} />
-                  <ProgressionDailyChart daily={selected.daily} />
-                  <ProgressionWeeklyChart weekly={selected.weekly} />
-                </div>
-              ) : null}
-
-              {nextPending && data.canEdit ? (
-                <p className="text-xs text-slate-500">
-                  Suggested next:{" "}
-                  <span className="font-medium text-slate-700 dark:text-slate-300">
-                    Step {nextPending.stepNumber} — {nextPending.title}
-                  </span>
-                </p>
-              ) : null}
-
-              {error ? (
-                <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">
-                  {error}
-                </div>
-              ) : null}
-
-              <div className="space-y-2">
-                {selected.phases.map((phase) => {
-                  const open = openPhases.has(phase.number);
-                  return (
-                    <div
-                      key={phase.number}
-                      className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => togglePhase(phase.number)}
-                        aria-expanded={open}
-                        className="flex w-full cursor-pointer items-center justify-between gap-3 bg-slate-50 px-3 py-2.5 text-left dark:bg-slate-900/50"
-                      >
-                        <div className="min-w-0">
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-                            Phase {phase.number}
-                          </p>
-                          <p className="truncate font-display text-sm font-semibold text-slate-900 dark:text-white">
-                            {phase.name}
-                          </p>
-                        </div>
-                        <div className="flex shrink-0 items-center gap-2">
-                          <span className="text-xs tabular-nums text-slate-500">
-                            {phase.completed}/{phase.total}
-                          </span>
-                          <ChevronDown
-                            className={cn(
-                              "h-4 w-4 text-slate-400 transition-transform",
-                              open && "rotate-180"
-                            )}
-                          />
-                        </div>
-                      </button>
-
-                      {open ? (
-                        <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-                          {phase.steps.map((step) => {
-                            const done = step.status === "completed";
-                            const busy = isPending && pendingStepId === step.id;
-                            return (
-                              <li
-                                key={step.id}
-                                className="flex items-start gap-3 px-3 py-2.5 hover:bg-slate-50/80 dark:hover:bg-slate-900/40"
-                              >
-                                <button
-                                  type="button"
-                                  disabled={!data.canEdit || Boolean(pendingStepId)}
-                                  onClick={() => onToggle(step.id, !done)}
-                                  aria-pressed={done}
-                                  aria-label={`${done ? "Reopen" : "Complete"} step ${step.stepNumber}`}
-                                  className={cn(
-                                    "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors",
-                                    done
-                                      ? "border-slate-800 bg-slate-800 text-white dark:border-slate-200 dark:bg-slate-200 dark:text-slate-900"
-                                      : "border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-900",
-                                    !data.canEdit && "cursor-default opacity-80",
-                                    data.canEdit && "cursor-pointer"
-                                  )}
-                                >
-                                  {busy ? (
-                                    <Loader2 className="h-3 w-3 animate-spin" />
-                                  ) : done ? (
-                                    <Check className="h-3 w-3" strokeWidth={3} />
-                                  ) : null}
-                                </button>
-                                <div className="min-w-0 flex-1">
-                                  <p
-                                    className={cn(
-                                      "text-sm",
-                                      done
-                                        ? "text-slate-500 line-through decoration-slate-300"
-                                        : "text-slate-800 dark:text-slate-100"
-                                    )}
-                                  >
-                                    <span className="mr-1.5 font-medium tabular-nums text-slate-400">
-                                      {step.stepNumber}.
-                                    </span>
-                                    {step.title}
-                                  </p>
-                                  {done && step.workDate ? (
-                                    <p className="mt-0.5 text-xs text-slate-400">
-                                      Done {formatDate(step.workDate)}
-                                      {step.completedByName ? ` · ${step.completedByName}` : ""}
-                                    </p>
-                                  ) : null}
-                                </div>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      ) : null}
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          ) : null}
-        </>
+        <div className="space-y-5">
+          {PROGRESSION_TRACKS.map((track) => (
+            <TrackSection
+              key={track}
+              track={track}
+              data={data}
+              switching={switchingTrack === track}
+              pendingKey={pendingKey}
+              onSelectFloor={selectFloor}
+              onTransition={onTransition}
+              onSaveDates={onSaveDates}
+            />
+          ))}
+        </div>
       )}
+
+      <p className="flex items-center gap-1.5 text-xs text-slate-400">
+        <Building2 className="h-3.5 w-3.5" aria-hidden />
+        Tower and floor selections are independent for Pre-Slab and Post-Slab. Start and End
+        presses are recorded in the project Timeline.
+      </p>
     </div>
   );
 }

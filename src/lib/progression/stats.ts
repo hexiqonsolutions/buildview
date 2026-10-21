@@ -37,7 +37,10 @@ export function buildPhases(steps: ProgressionStepView[]): ProgressionPhaseView[
         stage: step.phaseStage,
         total: 0,
         completed: 0,
+        inProgress: 0,
         percent: 0,
+        startedAt: null,
+        endedAt: null,
         steps: [],
       };
       byPhase.set(step.phaseNumber, phase);
@@ -45,6 +48,15 @@ export function buildPhases(steps: ProgressionStepView[]): ProgressionPhaseView[
     phase.steps.push(step);
     phase.total += 1;
     if (step.status === "completed") phase.completed += 1;
+    if (step.status === "in_progress") phase.inProgress += 1;
+    const startedAt = step.startedAt ?? step.completedAt;
+    if (startedAt && (!phase.startedAt || startedAt < phase.startedAt)) {
+      phase.startedAt = startedAt;
+    }
+    const endedAt = step.endedAt ?? step.completedAt;
+    if (endedAt && (!phase.endedAt || endedAt > phase.endedAt)) {
+      phase.endedAt = endedAt;
+    }
   }
 
   return [...byPhase.values()]
@@ -71,7 +83,7 @@ export function buildDailySeries(
   }
 
   for (const log of logs) {
-    if (log.action !== "completed") continue;
+    if (log.action !== "completed" && log.action !== "ended") continue;
     const day = calendarDay(log.work_date);
     if (!day || !counts.has(day)) continue;
     counts.set(day, (counts.get(day) ?? 0) + 1);
@@ -103,7 +115,7 @@ export function buildWeeklySeries(
   const counts = new Map(weekDays.map((w) => [w, 0]));
 
   for (const log of logs) {
-    if (log.action !== "completed") continue;
+    if (log.action !== "completed" && log.action !== "ended") continue;
     const day = calendarDay(log.work_date);
     if (!day) continue;
     const w = weekStart(day);

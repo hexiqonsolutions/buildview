@@ -9,7 +9,7 @@ Client: `client_admin`, `site_supervisor`, `site_engineer`, `client`, `client_us
 
 | ID | Severity | Status | Summary |
 |----|----------|--------|---------|
-| BV-SEC-PROG-001 | High | Fixed (app) + migration 035 | Progression readable by any project assignee via RSC props / service-role read / REST SELECT |
+| BV-SEC-PROG-001 | High | Fixed (app + RLS 035 applied) | Progression readable by any project assignee via RSC props / service-role read / REST SELECT |
 | BV-SEC-PROG-002 | Medium | Fixed | Bulk floor seed on read for non-editors |
 | BV-SEC-MW-001 | High | Fixed | Missing Supabase env left protected routes open |
 | BV-SEC-PROG-003 | Low | Open | Mutations use service role after app check only |

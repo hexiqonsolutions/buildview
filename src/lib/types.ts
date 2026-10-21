@@ -1078,6 +1078,7 @@ export type ProjectProgression = Timestamps &
     floor_id: string;
     building_id: string | null;
     template_id: string;
+    track: "pre_slab" | "post_slab";
   };
 
 export type ProjectProgressionStep = Timestamps & {
@@ -1085,7 +1086,11 @@ export type ProjectProgressionStep = Timestamps & {
   progression_id: string;
   template_step_id: string;
   step_number: number;
-  status: "pending" | "completed";
+  status: "pending" | "in_progress" | "completed";
+  started_at: string | null;
+  started_by: string | null;
+  ended_at: string | null;
+  ended_by: string | null;
   completed_at: string | null;
   completed_by: string | null;
   work_date: string | null;
@@ -1096,7 +1101,7 @@ export type ProjectProgressionLog = {
   id: string;
   progression_id: string;
   step_id: string;
-  action: "completed" | "reopened";
+  action: "completed" | "reopened" | "started" | "ended" | "reset" | "date_corrected";
   work_date: string;
   actor_id: string | null;
   note: string | null;
@@ -1131,6 +1136,7 @@ export type ProjectProgressionInsert = {
   floor_id: string;
   building_id?: string | null;
   template_id: string;
+  track?: "pre_slab" | "post_slab";
   created_by?: string | null;
   updated_by?: string | null;
 };
@@ -1142,7 +1148,11 @@ export type ProjectProgressionStepInsert = {
   progression_id: string;
   template_step_id: string;
   step_number: number;
-  status?: "pending" | "completed";
+  status?: "pending" | "in_progress" | "completed";
+  started_at?: string | null;
+  started_by?: string | null;
+  ended_at?: string | null;
+  ended_by?: string | null;
   completed_at?: string | null;
   completed_by?: string | null;
   work_date?: string | null;
@@ -1157,7 +1167,7 @@ export type ProjectProgressionLogInsert = {
   id?: string;
   progression_id: string;
   step_id: string;
-  action: "completed" | "reopened";
+  action: "completed" | "reopened" | "started" | "ended" | "reset" | "date_corrected";
   work_date: string;
   actor_id?: string | null;
   note?: string | null;

@@ -12,11 +12,27 @@ interface TimelineEventCardProps {
   showMatterportEmbed?: boolean;
 }
 
+function formatEventDateTime(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(d);
+}
+
 export function TimelineEventCard({
   event,
   showProject = false,
   showMatterportEmbed = true,
 }: TimelineEventCardProps) {
+  const eventDateTime = formatEventDateTime(event.created_at);
   const activePhotos =
     event.timeline_photos?.filter((photo) => !photo.deleted_at) ?? [];
 
@@ -37,10 +53,27 @@ export function TimelineEventCard({
               </Link>
             </p>
           )}
+          {event.author_name ? (
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              by {event.author_name}
+            </p>
+          ) : null}
+          {event.building || event.floor ? (
+            <p className="mt-0.5 text-xs text-slate-400">
+              {[event.building, event.floor].filter(Boolean).join(" · ")}
+            </p>
+          ) : null}
         </div>
-        <span className="shrink-0 text-sm font-medium text-slate-600 dark:text-slate-400">
-          {formatDate(event.event_date)}
-        </span>
+        <div className="shrink-0 text-right">
+          <span className="block text-sm font-medium text-slate-600 dark:text-slate-400">
+            {formatDate(event.event_date)}
+          </span>
+          {eventDateTime ? (
+            <span className="mt-0.5 block text-xs tabular-nums text-slate-400">
+              {eventDateTime}
+            </span>
+          ) : null}
+        </div>
       </div>
 
       {event.progress_note && (

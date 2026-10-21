@@ -2,7 +2,7 @@
 
 | ID | Severity | Feature | Status | Evidence / fix |
 |----|----------|---------|--------|----------------|
-| BV-SEC-PROG-001 | High | Progression confidentiality | Fixed | Gate reads with `canViewProgression` + `canViewProject`; do not pass `progression` props unless allowed; migration 035 RLS SELECT |
+| BV-SEC-PROG-001 | High | Progression confidentiality | Fixed (app + RLS applied) | Gate reads with `canViewProgression` + `canViewProject`; do not pass `progression` props unless allowed; migration 035 RLS SELECT applied |
 | BV-SEC-PROG-002 | Medium | Progression seeding | Fixed | No bulk ensure on default read |
 | BV-SEC-MW-001 | High | Middleware auth | Fixed | Protected routes redirect to `/login` when Supabase env missing |
 | BV-PROG-FLOOR-001 | Medium | Floor URL | Fixed | Unknown `floorId` returns null / error instead of Floor 1 |

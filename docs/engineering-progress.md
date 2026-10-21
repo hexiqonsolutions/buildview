@@ -1,6 +1,24 @@
 # Engineering progress
 
-Last updated: 2026-10-19
+Last updated: 2026-10-21
+
+## Pre-Slab / Post-Slab Progression redesign (2026-10-21)
+
+- Migration `036_progression_pre_post_start_end.sql`: `track` column + unique
+  `(floor_id, track)`, step `started_at/started_by/ended_at/ended_by`,
+  `in_progress` status, new log actions, Pre-Slab `pre_slab_v1` seed
+  (6 phases / 56 steps), per-floor Pre-Slab seeding, Post-Slab backfill
+  (`ended_at = completed_at`). **Not yet applied** — `npm run db:check`
+  reports the 036 probes MISSING until operators apply it.
+- Two independent Tower/Floor sections (Pre-Slab over Post-Slab) on the
+  Progression tab; Start/End/Reset step workflow with conditional-update
+  idempotency, server timestamps (Asia/Kolkata display), editor date
+  correction, and automatic Timeline entries with author name/role/time.
+- Only Ended steps count toward %; project % pools both tracks over
+  activated floors. Overview shows combined % + per-track bars.
+- Verification: `node scripts/test-progression-stats.mjs` pass,
+  `npx tsc --noEmit` pass, `npm run lint` pass (no warnings),
+  `npm run build` pass. Catalog ↔ migration step titles verified identical.
 
 ## Completed
 
@@ -37,7 +55,10 @@ Last updated: 2026-10-19
 3. Introduce minimal unit tests for progression `%` helpers (no test runner yet).
 4. Measure dashboard N+1 / progression list latency after seed change.
 
+## Ops
+
+- Migration `035_progression_select_rls.sql` applied by operators (2026-10-19).
+
 ## Blocked
 
 - No Vitest/Jest/Playwright in repo — `README` states tsc/lint/build are the gate.
-- Production DB not mutated by this agent; migration 035 must be applied by operators.

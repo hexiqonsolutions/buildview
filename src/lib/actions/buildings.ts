@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireBuildViewStaff } from "@/lib/supabase/server";
 import { ensureFloorProgression } from "@/lib/data/progression";
+import { PROGRESSION_TRACKS } from "@/lib/progression/catalog";
 import type { Building, Floor } from "@/lib/types";
 import { parseOrThrow, validate } from "@/lib/validations/parse";
 import { LIMITS, text, uuid } from "@/lib/validations/primitives";
@@ -132,9 +133,11 @@ export async function createFloor(buildingId: string, name: string) {
 
   if (error) throw internalError("createFloor", error);
 
-  // Every floor gets its own Progression checklist (construction monitoring).
+  // Every floor gets Pre-Slab + Post-Slab Progression checklists.
   try {
-    await ensureFloorProgression(building.project_id, data.id, buildingId, null);
+    for (const track of PROGRESSION_TRACKS) {
+      await ensureFloorProgression(building.project_id, data.id, buildingId, null, track);
+    }
   } catch (err) {
     console.warn("[createFloor] progression seed failed:", err);
   }
@@ -196,7 +199,9 @@ export async function createFloorsByCount(buildingId: string, count: number) {
     createdIds.push(data.id);
 
     try {
-      await ensureFloorProgression(building.project_id, data.id, buildingId, null);
+      for (const track of PROGRESSION_TRACKS) {
+        await ensureFloorProgression(building.project_id, data.id, buildingId, null, track);
+      }
     } catch (err) {
       console.warn("[createFloorsByCount] progression seed failed:", err);
     }
