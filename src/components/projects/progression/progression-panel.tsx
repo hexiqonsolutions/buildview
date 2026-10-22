@@ -194,7 +194,7 @@ const TRACK_THEMES: Record<
   pre_slab: {
     subtitle: "Before slab casting · structure cycle",
     section:
-      "border-[#c3dd8b] border-l-4 border-l-brand-accent-dark bg-[#f7fbec] dark:border-[#4a6b16] dark:border-l-brand-accent dark:bg-[#1c2907]/70",
+      "border-[#c3dd8b] bg-[#f7fbec] dark:border-[#4a6b16] dark:bg-[#1c2907]/70",
     chip: "bg-brand-accent text-slate-950",
     progress: "bg-brand-accent-dark dark:bg-brand-accent",
     startButton:
@@ -205,7 +205,7 @@ const TRACK_THEMES: Record<
   post_slab: {
     subtitle: "After slab casting · finishing cycle",
     section:
-      "border-slate-300 border-l-4 border-l-slate-900 bg-slate-100/90 dark:border-slate-600 dark:border-l-white dark:bg-slate-900/80",
+      "border-slate-300 bg-slate-100/90 dark:border-slate-600 dark:bg-slate-900/80",
     chip: "bg-slate-900 text-white dark:bg-white dark:text-slate-900",
     progress: "bg-slate-900 dark:bg-white",
     startButton:
