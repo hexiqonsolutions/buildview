@@ -10,7 +10,6 @@ import {
   RotateCcw,
   FileText,
   FolderOpen,
-  Building2,
   Send,
   Reply,
   X,
@@ -20,13 +19,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import {
   addProjectComment,
@@ -125,21 +117,15 @@ function ProjectCommentsPanel({
   comments,
   currentUserId,
   isAdmin = false,
-  reports = [],
-  documents = [],
 }: ProjectCommentsSectionProps) {
   const [items, setItems] = useState(comments);
   const [message, setMessage] = useState("");
-  const [contextType, setContextType] = useState<"project" | "report" | "document">("project");
-  const [contextId, setContextId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [replyToId, setReplyToId] = useState<string | null>(null);
   const [replyMessage, setReplyMessage] = useState("");
-  const showReportOption = reports.length > 0;
-  const showDocumentOption = documents.length > 0;
 
   const threads = useMemo(() => buildThreads(items), [items]);
   const openCount = useMemo(
@@ -151,17 +137,6 @@ function ProjectCommentsPanel({
     setItems(comments);
   }, [comments]);
 
-  useEffect(() => {
-    if (contextType === "report" && !showReportOption) {
-      setContextType("project");
-      setContextId("");
-    }
-    if (contextType === "document" && !showDocumentOption) {
-      setContextType("project");
-      setContextId("");
-    }
-  }, [contextType, showReportOption, showDocumentOption]);
-
   function refreshComments() {
     return getProjectComments(projectId).then(setItems);
   }
@@ -172,28 +147,11 @@ function ProjectCommentsPanel({
     setError(null);
     setSuccess(null);
 
-    let context_label: string | undefined;
-    if (contextType === "report") {
-      context_label = reports.find((r) => r.id === contextId)?.title;
-      if (!context_label) {
-        setError("Select a report to comment on.");
-        return;
-      }
-    }
-    if (contextType === "document") {
-      context_label = documents.find((d) => d.id === contextId)?.name;
-      if (!context_label) {
-        setError("Select a document to comment on.");
-        return;
-      }
-    }
-
     startTransition(async () => {
       const result = await addProjectComment({
         project_id: projectId,
         message: message.trim(),
-        context_type: contextType,
-        context_label,
+        context_type: "project",
       });
 
       if (!result.ok) {
@@ -202,8 +160,6 @@ function ProjectCommentsPanel({
       }
 
       setMessage("");
-      setContextType("project");
-      setContextId("");
       setError(null);
       setSuccess("Comment posted");
       await refreshComments();
@@ -312,89 +268,6 @@ function ProjectCommentsPanel({
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-3">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                  Comment on
-                </Label>
-                <Select
-                  value={contextType}
-                  onValueChange={(v) => {
-                    setContextType(v as "project" | "report" | "document");
-                    setContextId("");
-                  }}
-                >
-                  <SelectTrigger className="h-10 rounded-xl border-slate-200 bg-slate-50/80 dark:border-slate-700 dark:bg-slate-900">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="project">
-                      <span className="inline-flex items-center gap-2">
-                        <Building2 className="h-3.5 w-3.5 text-slate-500" />
-                        Project
-                      </span>
-                    </SelectItem>
-                    {showReportOption && (
-                      <SelectItem value="report">
-                        <span className="inline-flex items-center gap-2">
-                          <FileText className="h-3.5 w-3.5 text-slate-500" />
-                          Report
-                        </span>
-                      </SelectItem>
-                    )}
-                    {showDocumentOption && (
-                      <SelectItem value="document">
-                        <span className="inline-flex items-center gap-2">
-                          <FolderOpen className="h-3.5 w-3.5 text-slate-600" />
-                          Document
-                        </span>
-                      </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {contextType === "report" && (
-                <div className="space-y-1.5">
-                  <Label className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                    Report
-                  </Label>
-                  <Select value={contextId || undefined} onValueChange={setContextId}>
-                    <SelectTrigger className="h-10 rounded-xl border-slate-200 bg-slate-50/80 dark:border-slate-700 dark:bg-slate-900">
-                      <SelectValue placeholder="Select report" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {reports.map((r) => (
-                        <SelectItem key={r.id} value={r.id}>
-                          {r.title}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {contextType === "document" && (
-                <div className="space-y-1.5">
-                  <Label className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                    Document
-                  </Label>
-                  <Select value={contextId || undefined} onValueChange={setContextId}>
-                    <SelectTrigger className="h-10 rounded-xl border-slate-200 bg-slate-50/80 dark:border-slate-700 dark:bg-slate-900">
-                      <SelectValue placeholder="Select document" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {documents.map((d) => (
-                        <SelectItem key={d.id} value={d.id}>
-                          {d.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </div>
-
             <div className="space-y-1.5">
               <Label
                 htmlFor="project-comment-message"
