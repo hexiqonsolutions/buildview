@@ -54,7 +54,7 @@ export function TabWorkspace({
 
   return (
     <Tabs value={activeTab} onValueChange={onTabChange} className={cn("w-full", className)}>
-      <TabsList className="dashboard-tabs-list grid w-full grid-cols-3 items-stretch sm:flex sm:flex-wrap sm:items-center">
+      <TabsList className="dashboard-tabs-list grid h-auto w-full grid-cols-3 items-stretch sm:flex sm:flex-wrap sm:items-center">
         {tabs.map((tab) => (
           <TabsTrigger
             key={tab.id}
