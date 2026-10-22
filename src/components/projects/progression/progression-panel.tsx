@@ -1461,7 +1461,7 @@ export function ProgressionPanel({
     ];
 
     return (
-      <div className="space-y-5">
+      <div className="space-y-4 sm:space-y-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
@@ -1474,7 +1474,7 @@ export function ProgressionPanel({
           <button
             type="button"
             onClick={() => openFullTab(overviewFloorId ?? undefined)}
-            className="inline-flex min-h-11 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+            className="inline-flex min-h-11 w-full shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-800 sm:w-auto dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
           >
             Check Progression Report
             <ArrowRight className="h-4 w-4" aria-hidden />
@@ -1497,10 +1497,10 @@ export function ProgressionPanel({
         ) : (
           <>
             {/* Stat cards */}
-            <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
-              <div className="col-span-2 flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-4 sm:col-span-1 dark:border-slate-800 dark:bg-slate-900/60">
-                <div className="relative h-20 w-20 shrink-0">
-                  <svg viewBox="0 0 100 100" className="h-20 w-20 -rotate-90">
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-3 xl:grid-cols-5">
+              <div className="col-span-2 flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 sm:gap-4 sm:p-4 md:col-span-1 dark:border-slate-800 dark:bg-slate-900/60">
+                <div className="relative h-16 w-16 shrink-0 sm:h-20 sm:w-20">
+                  <svg viewBox="0 0 100 100" className="h-16 w-16 -rotate-90 sm:h-20 sm:w-20">
                     <circle
                       cx="50"
                       cy="50"
@@ -1526,7 +1526,7 @@ export function ProgressionPanel({
                     />
                   </svg>
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="font-display text-lg font-bold tabular-nums text-slate-900 dark:text-white">
+                    <span className="font-display text-base font-bold tabular-nums text-slate-900 sm:text-lg dark:text-white">
                       {data.overallPercent}%
                     </span>
                   </div>
@@ -1564,7 +1564,7 @@ export function ProgressionPanel({
               {statCards.map((card) => (
                 <div
                   key={card.label}
-                  className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/60"
+                  className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4 dark:border-slate-800 dark:bg-slate-900/60"
                 >
                   <span
                     className={cn(
@@ -1575,7 +1575,7 @@ export function ProgressionPanel({
                     <card.icon className="h-4.5 w-4.5" aria-hidden />
                   </span>
                   <p className="mt-2 text-xs font-medium text-slate-500">{card.label}</p>
-                  <p className="font-display text-2xl font-bold tabular-nums text-slate-900 dark:text-white">
+                  <p className="font-display text-xl font-bold tabular-nums text-slate-900 sm:text-2xl dark:text-white">
                     {card.value}
                   </p>
                   <p className="text-[11px] tabular-nums text-slate-400">{card.sub}</p>
@@ -1655,7 +1655,7 @@ export function ProgressionPanel({
             </div>
 
             {/* Floor progress */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/60">
+            <div className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4 dark:border-slate-800 dark:bg-slate-900/60">
               <div className="mb-3 flex items-center justify-between">
                 <h4 className="font-display text-sm font-semibold text-slate-900 dark:text-white">
                   Floor Progress
@@ -1714,7 +1714,7 @@ export function ProgressionPanel({
             {/* Phase completion + daily progress */}
             {overviewView ? (
               <div className="grid gap-3 lg:grid-cols-2">
-                <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/60">
+                <div className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4 dark:border-slate-800 dark:bg-slate-900/60">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                       Phase Completion · {overviewView.buildingName} · {overviewView.floorName}
@@ -1751,7 +1751,7 @@ export function ProgressionPanel({
                         <span className="min-w-0 flex-1 truncate text-slate-700 dark:text-slate-300">
                           {phase.number}. {phase.name}
                         </span>
-                        <span className="h-1.5 w-24 shrink-0 overflow-hidden rounded-full bg-slate-100 sm:w-32 dark:bg-slate-800">
+                        <span className="h-1.5 w-14 shrink-0 overflow-hidden rounded-full bg-slate-100 min-[420px]:w-20 sm:w-32 dark:bg-slate-800">
                           <span
                             className={cn(
                               "block h-full rounded-full transition-all duration-500",
@@ -1766,7 +1766,7 @@ export function ProgressionPanel({
                             style={{ width: `${phase.percent}%` }}
                           />
                         </span>
-                        <span className="w-10 shrink-0 text-right font-semibold tabular-nums text-slate-700 dark:text-slate-200">
+                        <span className="w-9 shrink-0 text-right text-xs font-semibold tabular-nums text-slate-700 sm:w-10 sm:text-sm dark:text-slate-200">
                           {phase.percent}%
                         </span>
                       </div>

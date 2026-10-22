@@ -176,7 +176,7 @@ export function ProjectDetailTabs({
 
   return (
     <TabWorkspace variant={variant} defaultTab="overview" tabs={tabs}>
-      <TabPanel value="overview" className="mt-6 space-y-8">
+      <TabPanel value="overview" className="mt-4 space-y-5 sm:mt-6 sm:space-y-8">
         {isPortfolioIntel && projectId ? (
           <ProjectMatterportPanel
             projectId={projectId}
