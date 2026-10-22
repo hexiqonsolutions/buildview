@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Building2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { IssueImageGallery } from "@/components/issues/issue-image-gallery";
@@ -71,6 +72,12 @@ export function IssueCard({
                 <Badge className={getStatusColor(issue.status)}>
                   {ISSUE_STATUS_LABELS[issue.status]}
                 </Badge>
+              )}
+              {(issue.building || issue.floor) && (
+                <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 dark:text-slate-300">
+                  <Building2 className="h-3.5 w-3.5 text-slate-400" />
+                  {[issue.building, issue.floor].filter(Boolean).join(" · ")}
+                </span>
               )}
               {issue.location && (
                 <span className="text-xs text-slate-500">{issue.location}</span>

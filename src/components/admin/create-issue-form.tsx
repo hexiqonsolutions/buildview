@@ -32,6 +32,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { getErrorMessage } from "@/lib/errors/public";
+import { TowerFloorSelects, useSpatialSelection } from "@/components/issues/spatial-selects";
 
 interface CreateIssueFormProps {
   projects: Project[];
@@ -49,6 +50,7 @@ export function CreateIssueForm({ projects, users = [] }: CreateIssueFormProps) 
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const spatial = useSpatialSelection(projectId, open);
 
   function handleFileSelect(selected: FileList | null) {
     if (!selected || selected.length === 0) return;
@@ -81,6 +83,7 @@ export function CreateIssueForm({ projects, users = [] }: CreateIssueFormProps) 
     setAssignedTo("none");
     setFiles([]);
     setError(null);
+    spatial.reset();
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -99,6 +102,8 @@ export function CreateIssueForm({ projects, users = [] }: CreateIssueFormProps) 
         priority,
         status,
         location: (form.get("location") as string) || undefined,
+        building: spatial.buildingName,
+        floor: spatial.floorName,
         assigned_to: assignedTo === "none" ? null : assignedTo,
         due_date: (form.get("due_date") as string) || null,
       });
@@ -147,6 +152,8 @@ export function CreateIssueForm({ projects, users = [] }: CreateIssueFormProps) 
               </SelectContent>
             </Select>
           </div>
+
+          <TowerFloorSelects projectId={projectId} spatial={spatial} idPrefix="admin-issue" />
 
           <div className="space-y-2">
             <Label htmlFor="issue-title">Title</Label>
@@ -213,11 +220,11 @@ export function CreateIssueForm({ projects, users = [] }: CreateIssueFormProps) 
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="issue-location">Location on Site</Label>
+            <Label htmlFor="issue-location">Location details</Label>
             <Input
               id="issue-location"
               name="location"
-              placeholder="Floor 8, Grid C-14"
+              placeholder="e.g. Grid C-14, near the lift"
             />
           </div>
 

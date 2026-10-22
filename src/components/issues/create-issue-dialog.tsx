@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/lib/errors/public";
+import { TowerFloorSelects, useSpatialSelection } from "@/components/issues/spatial-selects";
 
 type ProjectOption = { id: string; name: string };
 
@@ -47,7 +48,7 @@ export function CreateIssueDialog({
   triggerClassName,
   size = "sm",
 }: CreateIssueDialogProps) {
-  const lockedProject =
+  const initialProjectId =
     defaultProjectId && projects.some((p) => p.id === defaultProjectId)
       ? defaultProjectId
       : projects.length === 1
@@ -56,12 +57,13 @@ export function CreateIssueDialog({
 
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [projectId, setProjectId] = useState(lockedProject);
+  const [projectId, setProjectId] = useState(initialProjectId);
   const [priority, setPriority] = useState<IssuePriority>("medium");
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const spatial = useSpatialSelection(projectId, open);
 
   function handleFileSelect(selected: FileList | null) {
     if (!selected || selected.length === 0) return;
@@ -80,10 +82,11 @@ export function CreateIssueDialog({
   }
 
   function resetForm() {
-    setProjectId(lockedProject);
+    setProjectId(initialProjectId);
     setPriority("medium");
     setFiles([]);
     setError(null);
+    spatial.reset();
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -105,6 +108,8 @@ export function CreateIssueDialog({
         priority,
         status: "open",
         location: (form.get("location") as string) || undefined,
+        building: spatial.buildingName,
+        floor: spatial.floorName,
       });
 
       await attachIssueImages(projectId, issueId, files);
@@ -126,7 +131,7 @@ export function CreateIssueDialog({
       onOpenChange={(next) => {
         setOpen(next);
         if (!next) resetForm();
-        else if (lockedProject) setProjectId(lockedProject);
+        else if (initialProjectId) setProjectId(initialProjectId);
       }}
     >
       <DialogTrigger asChild>
@@ -151,7 +156,7 @@ export function CreateIssueDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {!(defaultProjectId || projects.length === 1) && (
+          {projects.length > 1 ? (
             <div className="space-y-1.5">
               <Label htmlFor="portal-issue-project">Project</Label>
               <Select value={projectId} onValueChange={setProjectId} required>
@@ -167,9 +172,7 @@ export function CreateIssueDialog({
                 </SelectContent>
               </Select>
             </div>
-          )}
-
-          {(defaultProjectId || projects.length === 1) && (
+          ) : (
             <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800/50">
               <span className="text-slate-500">Project · </span>
               <span className="font-medium text-slate-900 dark:text-white">
@@ -177,6 +180,12 @@ export function CreateIssueDialog({
               </span>
             </div>
           )}
+
+          <TowerFloorSelects
+            projectId={projectId}
+            spatial={spatial}
+            idPrefix="portal-issue"
+          />
 
           <div className="space-y-1.5">
             <Label htmlFor="portal-issue-title">Title</Label>
@@ -220,11 +229,11 @@ export function CreateIssueDialog({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="portal-issue-location">Location on site</Label>
+              <Label htmlFor="portal-issue-location">Location details</Label>
               <Input
                 id="portal-issue-location"
                 name="location"
-                placeholder="Building / floor / area"
+                placeholder="e.g. Stairwell B, near the lift"
                 className="h-10"
               />
             </div>

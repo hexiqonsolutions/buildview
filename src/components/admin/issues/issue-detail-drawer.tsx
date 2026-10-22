@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { ImagePlus, Loader2, MapPin, Trash2, User as UserIcon } from "lucide-react";
+import { Building2, ImagePlus, Loader2, MapPin, Trash2, User as UserIcon } from "lucide-react";
 import { deleteIssue, deleteIssueImage, updateIssue } from "@/lib/actions/issues";
 import { attachIssueImages } from "@/lib/issues/attach-images";
 import { validateIssueImageFiles } from "@/lib/validations/issue";
@@ -254,6 +254,15 @@ export function IssueDetailDrawer({
               </SelectContent>
             </Select>
           </div>
+
+          {(issue.building || issue.floor) && (
+            <div className="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-slate-800/50">
+              <Building2 className="h-4 w-4 shrink-0 text-slate-400" />
+              <span className="text-slate-600 dark:text-slate-300">
+                {[issue.building, issue.floor].filter(Boolean).join(" · ")}
+              </span>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="issue-location">Location</Label>
