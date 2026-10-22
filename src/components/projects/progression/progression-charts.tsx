@@ -113,72 +113,124 @@ export function ProgressionDailyChart({
   accentClassName?: string;
 }) {
   const max = Math.max(1, ...daily.map((d) => d.completions));
+  const total = daily.reduce((s, d) => s + d.completions, 0);
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/60">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-        Daily completions (14 days)
-      </p>
-      <div className="mt-4 flex h-28 items-end gap-1 sm:gap-1.5">
-        {daily.map((point) => {
-          const height = Math.max(point.completions === 0 ? 2 : 8, Math.round((point.completions / max) * 100));
-          return (
-            <div key={point.date} className="flex min-w-0 flex-1 flex-col items-center gap-1">
-              <span className="text-[10px] tabular-nums text-slate-400">
-                {point.completions || ""}
-              </span>
-              <div
-                className={cn(
-                  "w-full max-w-6 rounded-t-sm transition-all duration-300",
-                  point.completions > 0
-                    ? accentClassName
-                    : "bg-slate-100 dark:bg-slate-800"
-                )}
-                style={{ height: `${height}%` }}
-                title={`${formatDayLabel(point.date)}: ${point.completions}`}
-              />
-              <span className="max-w-full truncate text-[9px] text-slate-400">
-                {formatDayLabel(point.date)}
-              </span>
-            </div>
-          );
-        })}
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+          Daily completions (14 days)
+        </p>
+        <span className="text-xs font-semibold tabular-nums text-slate-500">
+          {total} ended
+        </span>
       </div>
+      {total === 0 ? (
+        <p className="flex h-44 items-center justify-center text-center text-sm text-slate-400">
+          No steps ended in the last 14 days yet.
+        </p>
+      ) : (
+        <div className="mt-3 flex h-44 items-stretch gap-1 sm:gap-1.5">
+          {daily.map((point) => {
+            const height =
+              point.completions === 0
+                ? 0
+                : Math.max(4, Math.round((point.completions / max) * 100));
+            return (
+              <div
+                key={point.date}
+                className="flex min-w-0 flex-1 flex-col items-center"
+              >
+                <span className="flex h-4 items-center text-[10px] font-medium tabular-nums text-slate-400">
+                  {point.completions || ""}
+                </span>
+                <div className="flex w-full flex-1 items-end justify-center border-b border-slate-100 dark:border-slate-800">
+                  <div
+                    className={cn(
+                      "w-full max-w-7 rounded-t transition-all duration-300",
+                      point.completions > 0
+                        ? accentClassName
+                        : "bg-slate-100 dark:bg-slate-800"
+                    )}
+                    style={{
+                      height: point.completions > 0 ? `${height}%` : "2px",
+                    }}
+                    title={`${formatDayLabel(point.date)}: ${point.completions} ended`}
+                  />
+                </div>
+                <span className="flex h-4 max-w-full items-center truncate text-[9px] text-slate-400">
+                  {formatDayLabel(point.date)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
 
-export function ProgressionWeeklyChart({ weekly }: { weekly: ProgressionWeeklyPoint[] }) {
+export function ProgressionWeeklyChart({
+  weekly,
+  accentClassName = "bg-slate-800 dark:bg-slate-200",
+}: {
+  weekly: ProgressionWeeklyPoint[];
+  accentClassName?: string;
+}) {
   const max = Math.max(1, ...weekly.map((w) => w.completions));
+  const total = weekly.reduce((s, w) => s + w.completions, 0);
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/60">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-        Weekly completions (8 weeks)
-      </p>
-      <div className="mt-4 flex h-28 items-end gap-1.5 sm:gap-2">
-        {weekly.map((point) => {
-          const height = Math.max(point.completions === 0 ? 2 : 8, Math.round((point.completions / max) * 100));
-          return (
-            <div key={point.weekStart} className="flex min-w-0 flex-1 flex-col items-center gap-1">
-              <span className="text-[10px] tabular-nums text-slate-400">
-                {point.completions || ""}
-              </span>
-              <div
-                className={cn(
-                  "w-full max-w-8 rounded-t-sm transition-all duration-300",
-                  point.completions > 0
-                    ? "bg-slate-800 dark:bg-slate-200"
-                    : "bg-slate-100 dark:bg-slate-800"
-                )}
-                style={{ height: `${height}%` }}
-                title={`${point.label}: ${point.completions}`}
-              />
-              <span className="max-w-full truncate text-[9px] text-slate-400">{point.label}</span>
-            </div>
-          );
-        })}
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+          Weekly completions (8 weeks)
+        </p>
+        <span className="text-xs font-semibold tabular-nums text-slate-500">
+          {total} ended
+        </span>
       </div>
+      {total === 0 ? (
+        <p className="flex h-44 items-center justify-center text-center text-sm text-slate-400">
+          No steps ended in the last 8 weeks yet.
+        </p>
+      ) : (
+        <div className="mt-3 flex h-44 items-stretch gap-1.5 sm:gap-2">
+          {weekly.map((point) => {
+            const height =
+              point.completions === 0
+                ? 0
+                : Math.max(4, Math.round((point.completions / max) * 100));
+            return (
+              <div
+                key={point.weekStart}
+                className="flex min-w-0 flex-1 flex-col items-center"
+              >
+                <span className="flex h-4 items-center text-[10px] font-medium tabular-nums text-slate-400">
+                  {point.completions || ""}
+                </span>
+                <div className="flex w-full flex-1 items-end justify-center border-b border-slate-100 dark:border-slate-800">
+                  <div
+                    className={cn(
+                      "w-full max-w-9 rounded-t transition-all duration-300",
+                      point.completions > 0
+                        ? accentClassName
+                        : "bg-slate-100 dark:bg-slate-800"
+                    )}
+                    style={{
+                      height: point.completions > 0 ? `${height}%` : "2px",
+                    }}
+                    title={`${point.label}: ${point.completions} ended`}
+                  />
+                </div>
+                <span className="flex h-4 max-w-full items-center truncate text-[9px] text-slate-400">
+                  {point.label}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

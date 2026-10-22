@@ -41,7 +41,10 @@ import type {
   ProgressionStepView,
 } from "@/lib/progression/types";
 import { formatDate, cn } from "@/lib/utils";
-import { ProgressionDailyChart } from "@/components/projects/progression/progression-charts";
+import {
+  ProgressionDailyChart,
+  ProgressionWeeklyChart,
+} from "@/components/projects/progression/progression-charts";
 
 /* ---------------------------------------------------------------- helpers */
 
@@ -1403,6 +1406,26 @@ export function ProgressionPanel({
       .sort(([a], [b]) => (a < b ? -1 : 1))
       .map(([date, completions]) => ({ date, completions }));
 
+    const weeklyByStart = new Map<string, { label: string; completions: number }>();
+    for (const track of PROGRESSION_TRACKS) {
+      const view = data.selectedByTrack[track];
+      if (!view || view.floorId !== overviewFloorId) continue;
+      for (const point of view.weekly) {
+        const existing = weeklyByStart.get(point.weekStart);
+        weeklyByStart.set(point.weekStart, {
+          label: point.label,
+          completions: (existing?.completions ?? 0) + point.completions,
+        });
+      }
+    }
+    const mergedWeekly = [...weeklyByStart.entries()]
+      .sort(([a], [b]) => (a < b ? -1 : 1))
+      .map(([weekStart, v]) => ({
+        weekStart,
+        label: v.label,
+        completions: v.completions,
+      }));
+
     const statCards = [
       {
         icon: CheckCircle2,
@@ -1632,8 +1655,8 @@ export function ProgressionPanel({
             </div>
 
             {/* Floor progress */}
-            <div>
-              <div className="mb-2 flex items-center justify-between">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/60">
+              <div className="mb-3 flex items-center justify-between">
                 <h4 className="font-display text-sm font-semibold text-slate-900 dark:text-white">
                   Floor Progress
                 </h4>
@@ -1645,7 +1668,7 @@ export function ProgressionPanel({
                   View All Floors <ArrowRight className="h-3.5 w-3.5" aria-hidden />
                 </button>
               </div>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-nowrap gap-1.5 overflow-x-auto pb-2 [scrollbar-width:thin]">
                 {data.combinedFloors.map((floor) => {
                   const active = floor.floorId === overviewFloorId;
                   return (
@@ -1758,8 +1781,16 @@ export function ProgressionPanel({
               </div>
             ) : null}
 
-            {/* Summary insights (computed from live progression data) */}
-            <div className="rounded-2xl border border-slate-200 bg-[#f7fbec] p-4 dark:border-[#4a6b16] dark:bg-[#1c2907]/60">
+            <div className="grid items-start gap-3 lg:grid-cols-2">
+              {overviewView ? (
+                <ProgressionWeeklyChart
+                  weekly={mergedWeekly}
+                  accentClassName="bg-slate-900 dark:bg-white"
+                />
+              ) : null}
+
+              {/* Summary insights (computed from live progression data) */}
+              <div className="rounded-2xl border border-slate-200 bg-[#f7fbec] p-4 dark:border-[#4a6b16] dark:bg-[#1c2907]/60">
               <div className="flex items-start justify-between gap-3">
                 <p className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
                   <Sparkles className="h-4 w-4 text-[#76b82d] dark:text-brand-accent" aria-hidden />
@@ -1773,11 +1804,12 @@ export function ProgressionPanel({
                   View Actions <ArrowRight className="h-3.5 w-3.5" aria-hidden />
                 </button>
               </div>
-              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700 dark:text-slate-200">
-                {insights.map((line, i) => (
-                  <li key={i}>{line}</li>
-                ))}
-              </ul>
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700 dark:text-slate-200">
+                  {insights.map((line, i) => (
+                    <li key={i}>{line}</li>
+                  ))}
+                </ul>
+              </div>
             </div>
           </>
         )}

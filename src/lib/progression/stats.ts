@@ -68,18 +68,27 @@ export function buildPhases(steps: ProgressionStepView[]): ProgressionPhaseView[
     }));
 }
 
+/** Today as YYYY-MM-DD in Asia/Kolkata (site work is logged in India time). */
+function todayKolkataDay(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
 export function buildDailySeries(
   logs: Array<{ action: string; work_date: string }>,
   days = 14
 ): ProgressionDailyPoint[] {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const [y, m, d] = todayKolkataDay().split("-").map(Number);
+  const todayUtc = Date.UTC(y, m - 1, d);
   const counts = new Map<string, number>();
 
   for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
-    counts.set(d.toISOString().slice(0, 10), 0);
+    const day = new Date(todayUtc - i * 86_400_000).toISOString().slice(0, 10);
+    counts.set(day, 0);
   }
 
   for (const log of logs) {
@@ -96,10 +105,7 @@ export function buildWeeklySeries(
   logs: Array<{ action: string; work_date: string }>,
   weeks = 8
 ): ProgressionWeeklyPoint[] {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const todayDay = today.toISOString().slice(0, 10);
-  const thisWeek = weekStart(todayDay);
+  const thisWeek = weekStart(todayKolkataDay());
 
   const weekDays: string[] = [];
   {
