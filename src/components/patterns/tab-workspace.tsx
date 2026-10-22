@@ -54,13 +54,13 @@ export function TabWorkspace({
 
   return (
     <Tabs value={activeTab} onValueChange={onTabChange} className={cn("w-full", className)}>
-      <TabsList className="dashboard-tabs-list flex h-auto min-h-10 w-full flex-wrap items-center justify-start">
+      <TabsList className="dashboard-tabs-list grid w-full grid-cols-3 items-stretch sm:flex sm:flex-wrap sm:items-center">
         {tabs.map((tab) => (
           <TabsTrigger
             key={tab.id}
             value={tab.id}
             disabled={tab.disabled}
-            className="dashboard-tabs-trigger"
+            className="dashboard-tabs-trigger min-h-11 w-full justify-center px-2 py-2 text-[11px] leading-tight sm:min-h-9 sm:w-auto sm:px-3 sm:py-1.5 sm:text-sm"
           >
             {tab.label}
             {tab.badge !== undefined && (
