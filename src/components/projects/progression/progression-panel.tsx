@@ -1668,41 +1668,68 @@ export function ProgressionPanel({
                   View All Floors <ArrowRight className="h-3.5 w-3.5" aria-hidden />
                 </button>
               </div>
-              <div className="flex flex-wrap gap-1.5">
-                {data.combinedFloors.map((floor) => {
-                  const active = floor.floorId === overviewFloorId;
-                  return (
-                    <button
-                      key={floor.floorId}
-                      type="button"
-                      disabled={overviewSwitching}
-                      onClick={() => selectOverviewFloor(floor.floorId)}
-                      aria-pressed={active}
-                      className={cn(
-                        "min-h-11 shrink-0 cursor-pointer rounded-xl border px-3 py-1.5 text-left transition-colors disabled:opacity-60",
-                        active
-                          ? "border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900"
-                          : "border-slate-200 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-slate-950"
-                      )}
-                    >
-                      <span className="block text-xs font-medium leading-tight">
-                        {floor.buildingName} · {floor.floorName}
-                      </span>
-                      <span
-                        className={cn(
-                          "block text-[11px] font-semibold tabular-nums leading-tight",
-                          active
-                            ? "text-white dark:text-slate-900"
-                            : floor.percent >= 100 && floor.activated
-                              ? "text-emerald-600 dark:text-emerald-300"
-                              : "text-slate-400"
-                        )}
-                      >
-                        {floor.activated ? `${floor.percent}%` : "Not started"}
-                      </span>
-                    </button>
-                  );
-                })}
+              <div className="space-y-3">
+                {groupSummariesByBuilding(
+                  data.combinedFloors.map((f) => ({
+                    track: "post_slab" as const,
+                    floorId: f.floorId,
+                    buildingId: f.buildingId,
+                    buildingName: f.buildingName,
+                    floorName: f.floorName,
+                    percent: f.percent,
+                    completedCount: f.completedCount,
+                    inProgressCount: f.inProgressCount,
+                    totalCount: f.totalCount,
+                    plannedStartDate: null,
+                    plannedEndDate: null,
+                    activated: f.activated,
+                  }))
+                ).map((group) => (
+                  <div key={group.buildingId}>
+                    <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                      {group.buildingName}
+                    </p>
+                    <div className="grid grid-cols-4 gap-1 min-[480px]:grid-cols-5 sm:grid-cols-6 lg:grid-cols-8">
+                      {group.floors.map((floor) => {
+                        const active = floor.floorId === overviewFloorId;
+                        return (
+                          <button
+                            key={floor.floorId}
+                            type="button"
+                            disabled={overviewSwitching}
+                            onClick={() => selectOverviewFloor(floor.floorId)}
+                            aria-pressed={active}
+                            title={`${floor.buildingName} · ${floor.floorName}`}
+                            className={cn(
+                              "min-h-10 cursor-pointer rounded-lg border px-1.5 py-1 text-center transition-colors disabled:opacity-60",
+                              active
+                                ? "border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900"
+                                : "border-slate-200 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-slate-950"
+                            )}
+                          >
+                            <span className="block truncate text-[11px] font-medium leading-tight">
+                              {floor.floorName.replace(/^Floor\s*/i, "F")}
+                            </span>
+                            <span
+                              className={cn(
+                                "block text-[10px] font-semibold tabular-nums leading-tight",
+                                active
+                                  ? "text-white dark:text-slate-900"
+                                  : floor.percent >= 100 && floor.activated
+                                    ? "text-emerald-600 dark:text-emerald-300"
+                                    : floor.activated
+                                      ? "text-slate-600 dark:text-slate-300"
+                                      : "text-slate-400"
+                              )}
+                            >
+                              {floor.activated ? `${floor.percent}%` : "—"}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
                 {overviewSwitching ? (
                   <span className="inline-flex items-center gap-1.5 text-xs text-slate-400">
                     <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading floor…
