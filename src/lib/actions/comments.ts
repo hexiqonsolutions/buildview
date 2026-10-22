@@ -109,10 +109,134 @@ export async function getProjectComments(
       return [];
     }
 
-    return (data ?? []) as unknown as ProjectCommentWithUser[];
+    const comments = (data ?? []) as unknown as ProjectCommentWithUser[];
+    if (comments.length === 0) return comments;
+
+    // Enrich with like counts + whether the signed-in user liked each comment.
+    // Graceful before migration 038 is applied (likes just read as zero).
+    try {
+      const supabase = await createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      const { data: likes, error: likesError } = await admin
+        .from("project_comment_likes")
+        .select("comment_id, user_id")
+        .in(
+          "comment_id",
+          comments.map((c) => c.id)
+        );
+
+      if (!likesError && likes) {
+        const counts = new Map<string, number>();
+        const mine = new Set<string>();
+        for (const like of likes) {
+          counts.set(like.comment_id, (counts.get(like.comment_id) ?? 0) + 1);
+          if (user && like.user_id === user.id) mine.add(like.comment_id);
+        }
+        for (const comment of comments) {
+          comment.like_count = counts.get(comment.id) ?? 0;
+          comment.liked_by_me = mine.has(comment.id);
+        }
+      }
+    } catch {
+      // Likes are decorative — never fail the comment list over them.
+    }
+
+    return comments;
   } catch (err) {
     logServerError("getProjectComments", err, { projectId });
     return [];
+  }
+}
+
+type ToggleLikeResult =
+  | { ok: true; liked: boolean; likeCount: number }
+  | { ok: false; error: string };
+
+export async function toggleProjectCommentLike(
+  commentId: string
+): Promise<ToggleLikeResult> {
+  const validation = validate(commentIdSchema, commentId);
+  if (!validation.success) return { ok: false, error: validation.error };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "You must be signed in." };
+
+  try {
+    const admin = createServiceRoleClient();
+    const { data: comment, error: fetchError } = await admin
+      .from("project_comments")
+      .select("id, project_id")
+      .eq("id", validation.data)
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    if (fetchError || !comment) return { ok: false, error: "Comment not found." };
+
+    const profile = await getActorProfile(user.id);
+    if (!profile || !canCommentOnProject(profile.role as UserRole)) {
+      return { ok: false, error: "You do not have permission to like comments" };
+    }
+
+    const allowed = await canAccessProjectForComment(
+      comment.project_id,
+      profile.role as UserRole,
+      profile.client_id,
+      user.id
+    );
+    if (!allowed) {
+      return { ok: false, error: "You do not have access to this project" };
+    }
+
+    const { data: existing, error: existingError } = await admin
+      .from("project_comment_likes")
+      .select("id")
+      .eq("comment_id", validation.data)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (existingError) {
+      if (existingError.code === "42P01") {
+        return {
+          ok: false,
+          error: "Likes are not available yet. Contact BuildView support.",
+        };
+      }
+      return { ok: false, error: "Failed to update like. Please try again." };
+    }
+
+    if (existing) {
+      const { error: deleteError } = await admin
+        .from("project_comment_likes")
+        .delete()
+        .eq("id", existing.id);
+      if (deleteError) return { ok: false, error: "Failed to update like. Please try again." };
+    } else {
+      const { error: insertError } = await admin
+        .from("project_comment_likes")
+        .insert({ comment_id: validation.data, user_id: user.id });
+      // 23505 = a parallel tap already inserted it — treat as liked.
+      if (insertError && insertError.code !== "23505") {
+        return { ok: false, error: "Failed to update like. Please try again." };
+      }
+    }
+
+    const { count } = await admin
+      .from("project_comment_likes")
+      .select("id", { count: "exact", head: true })
+      .eq("comment_id", validation.data);
+
+    return { ok: true, liked: !existing, likeCount: count ?? 0 };
+  } catch (err) {
+    return {
+      ok: false,
+      error: toPublicMessage("toggleProjectCommentLike", err, "Failed to update like."),
+    };
   }
 }
 

@@ -11,8 +11,8 @@ import {
   FileText,
   FolderOpen,
   Send,
-  Reply,
   X,
+  Heart,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +24,7 @@ import {
   addProjectComment,
   deleteProjectComment,
   getProjectComments,
+  toggleProjectCommentLike,
   updateCommentStatus,
 } from "@/lib/actions/comments";
 import { isBuildViewStaffRole } from "@/lib/auth/roles";
@@ -91,8 +92,8 @@ function CommentAuthor({ comment }: { comment: ProjectCommentWithUser }) {
   const authorIsStaff = authorRole ? isBuildViewStaffRole(authorRole) : false;
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="text-sm font-semibold text-slate-900 dark:text-white">
+    <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+      <span className="truncate text-[13px] font-bold text-slate-800 dark:text-slate-100">
         {comment.author?.full_name || comment.author?.email || "Unknown user"}
       </span>
       {authorIsStaff && (
@@ -100,8 +101,7 @@ function CommentAuthor({ comment }: { comment: ProjectCommentWithUser }) {
           <ShieldCheck className="h-3 w-3" /> BuildView Team
         </Badge>
       )}
-      <span className="text-xs text-slate-400">{formatRelativeTime(comment.created_at)}</span>
-    </div>
+    </span>
   );
 }
 
@@ -124,6 +124,7 @@ function ProjectCommentsPanel({
   const [success, setSuccess] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [likePendingId, setLikePendingId] = useState<string | null>(null);
   const [replyToId, setReplyToId] = useState<string | null>(null);
   const [replyMessage, setReplyMessage] = useState("");
 
@@ -210,6 +211,49 @@ function ProjectCommentsPanel({
         await refreshComments();
       }
       setPendingId(null);
+    });
+  }
+
+  function handleToggleLike(comment: ProjectCommentWithUser) {
+    if (likePendingId === comment.id) return;
+    const prevLiked = Boolean(comment.liked_by_me);
+    const prevCount = comment.like_count ?? 0;
+
+    // Optimistic flip; reconciled with the server count below.
+    setItems((current) =>
+      current.map((c) =>
+        c.id === comment.id
+          ? {
+              ...c,
+              liked_by_me: !prevLiked,
+              like_count: Math.max(0, prevCount + (prevLiked ? -1 : 1)),
+            }
+          : c
+      )
+    );
+    setLikePendingId(comment.id);
+
+    startTransition(async () => {
+      const result = await toggleProjectCommentLike(comment.id);
+      setLikePendingId(null);
+      if (result.ok) {
+        setItems((current) =>
+          current.map((c) =>
+            c.id === comment.id
+              ? { ...c, liked_by_me: result.liked, like_count: result.likeCount }
+              : c
+          )
+        );
+      } else {
+        setItems((current) =>
+          current.map((c) =>
+            c.id === comment.id
+              ? { ...c, liked_by_me: prevLiked, like_count: prevCount }
+              : c
+          )
+        );
+        setError(result.error);
+      }
     });
   }
 
@@ -344,7 +388,7 @@ function ProjectCommentsPanel({
             <span className="text-xs text-slate-400">Reply to keep the thread going</span>
           </div>
 
-          <ul className="space-y-3">
+          <ul className="space-y-7">
             {threads.map(({ root, replies }, index) => {
               const isOwn = root.created_by === currentUserId;
               const canManage = isAdmin || isOwn;
@@ -357,72 +401,102 @@ function ProjectCommentsPanel({
                 <li
                   key={root.id}
                   style={{ animationDelay: `${Math.min(index, 8) * 50}ms` }}
-                  className={cn(
-                    "group overflow-hidden rounded-2xl border bg-white",
-                    "shadow-[0_1px_2px_rgba(15,23,42,0.03),0_8px_20px_-12px_rgba(15,23,42,0.1)]",
-                    "dark:bg-slate-900/60 dark:shadow-none",
-                    "motion-safe:animate-[fadeInUp_0.4s_ease-out_both]",
-                    isOpen
-                      ? "border-slate-200/80 dark:border-slate-800"
-                      : "border-slate-300 bg-slate-50/60 dark:border-slate-700 dark:bg-slate-900/40"
-                  )}
+                  className="motion-safe:animate-[fadeInUp_0.4s_ease-out_both]"
                 >
-                  <div className="flex gap-3 p-4 sm:p-5">
-                    <Avatar className="mt-0.5 h-10 w-10 shrink-0 ring-2 ring-white dark:ring-slate-900">
-                      <AvatarImage
-                        src={root.author?.avatar_url || undefined}
-                        alt={root.author?.full_name || "User"}
-                      />
-                      <AvatarFallback className="bg-slate-100 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                        {getInitials(root.author?.full_name, root.author?.email)}
-                      </AvatarFallback>
-                    </Avatar>
+                  <div className="flex gap-3 sm:gap-3.5">
+                    {/* Avatar rail — the line links the comment to its replies */}
+                    <div className="flex flex-col items-center self-stretch">
+                      <Avatar className="h-10 w-10 shrink-0 ring-2 ring-white dark:ring-slate-900">
+                        <AvatarImage
+                          src={root.author?.avatar_url || undefined}
+                          alt={root.author?.full_name || "User"}
+                        />
+                        <AvatarFallback className="bg-[#e4e7fb] text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                          {getInitials(root.author?.full_name, root.author?.email)}
+                        </AvatarFallback>
+                      </Avatar>
+                      {(replies.length > 0 || isReplying) && (
+                        <span
+                          aria-hidden
+                          className="mt-1.5 w-px flex-1 bg-slate-200 dark:bg-slate-700/70"
+                        />
+                      )}
+                    </div>
 
-                    <div className="min-w-0 flex-1 space-y-2.5">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <CommentAuthor comment={root} />
-                        <Badge
-                          className={cn(
-                            "capitalize",
-                            isOpen
-                              ? "bg-slate-100 text-slate-700 ring-1 ring-slate-200/80 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700"
-                              : "bg-slate-800 text-white hover:bg-slate-800 dark:bg-slate-200 dark:text-slate-900 dark:hover:bg-slate-200"
-                          )}
-                        >
-                          {isOpen ? "Open" : "Resolved"}
-                        </Badge>
+                    <div className="min-w-0 flex-1">
+                      {/* Comment bubble */}
+                      <div
+                        className={cn(
+                          "rounded-2xl rounded-tl-md px-4 py-3",
+                          isOpen
+                            ? "bg-slate-100 dark:bg-slate-800/70"
+                            : "bg-slate-50 opacity-75 ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700"
+                        )}
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <CommentAuthor comment={root} />
+                          <Badge
+                            className={cn(
+                              "capitalize",
+                              isOpen
+                                ? "bg-white/70 text-slate-600 ring-1 ring-slate-200/80 hover:bg-white/70 dark:bg-slate-900/60 dark:text-slate-300 dark:ring-slate-700"
+                                : "bg-slate-800 text-white hover:bg-slate-800 dark:bg-slate-200 dark:text-slate-900 dark:hover:bg-slate-200"
+                            )}
+                          >
+                            {isOpen ? "Open" : "Resolved"}
+                          </Badge>
+                        </div>
+
+                        {parsed.contextKind && parsed.contextLabel && (
+                          <div className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-full border border-slate-200 bg-white/70 px-2.5 py-1 text-[11px] font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                            {parsed.contextKind === "report" ? (
+                              <FileText className="h-3 w-3 shrink-0" />
+                            ) : (
+                              <FolderOpen className="h-3 w-3 shrink-0" />
+                            )}
+                            <span className="truncate">
+                              {parsed.contextKind === "report" ? "Report" : "Document"}:{" "}
+                              {parsed.contextLabel}
+                            </span>
+                          </div>
+                        )}
+
+                        <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-slate-500 dark:text-slate-300">
+                          {parsed.body}
+                        </p>
                       </div>
 
-                      {parsed.contextKind && parsed.contextLabel && (
-                        <div className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                          {parsed.contextKind === "report" ? (
-                            <FileText className="h-3 w-3 shrink-0" />
-                          ) : (
-                            <FolderOpen className="h-3 w-3 shrink-0" />
-                          )}
-                          <span className="truncate">
-                            {parsed.contextKind === "report" ? "Report" : "Document"}:{" "}
-                            {parsed.contextLabel}
-                          </span>
-                        </div>
-                      )}
-
-                      <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-                        {parsed.body}
-                      </p>
-
-                      <div className="flex flex-wrap gap-1.5 pt-0.5">
-                        <Button
+                      {/* Quiet action row under the bubble */}
+                      <div className="mt-0.5 flex flex-wrap items-center gap-x-0.5 px-1">
+                        <button
                           type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 cursor-pointer gap-1.5 rounded-lg px-2.5 text-xs text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
+                          onClick={() => handleToggleLike(root)}
+                          disabled={likePendingId === root.id}
+                          aria-pressed={Boolean(root.liked_by_me)}
+                          className={cn(
+                            "inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-full px-2 text-xs font-semibold transition-colors disabled:opacity-60",
+                            root.liked_by_me
+                              ? "text-[#6a9a10] dark:text-lime-300"
+                              : "text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                          )}
+                        >
+                          <Heart
+                            className={cn("h-3.5 w-3.5", root.liked_by_me && "fill-current")}
+                          />
+                          Like
+                          {(root.like_count ?? 0) > 0 && (
+                            <span className="tabular-nums">{root.like_count}</span>
+                          )}
+                        </button>
+                        <button
+                          type="button"
                           disabled={isPending}
                           onClick={() => {
                             setReplyToId(isReplying ? null : root.id);
                             setReplyMessage("");
                             setError(null);
                           }}
+                          className="inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-full px-2 text-xs font-semibold text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 disabled:opacity-60 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                         >
                           {isReplying ? (
                             <>
@@ -431,20 +505,25 @@ function ProjectCommentsPanel({
                             </>
                           ) : (
                             <>
-                              <Reply className="h-3.5 w-3.5" />
                               Reply
-                              {replies.length > 0 ? ` (${replies.length})` : ""}
+                              {replies.length > 0 && (
+                                <span className="tabular-nums">({replies.length})</span>
+                              )}
                             </>
                           )}
-                        </Button>
+                        </button>
+                        <span className="px-1.5 text-xs text-slate-400">
+                          {formatRelativeTime(root.created_at)}
+                        </span>
+
+                        <span className="min-w-2 flex-1" />
+
                         {canManage && isAdmin && (
-                          <Button
+                          <button
                             type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 cursor-pointer gap-1.5 rounded-lg px-2.5 text-xs text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800"
                             disabled={busy}
                             onClick={() => handleToggleStatus(root)}
+                            className="inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-full px-2 text-xs font-medium text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:opacity-60 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                           >
                             {isOpen ? (
                               <>
@@ -457,16 +536,14 @@ function ProjectCommentsPanel({
                                 Reopen
                               </>
                             )}
-                          </Button>
+                          </button>
                         )}
                         {canManage && (
-                          <Button
+                          <button
                             type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 cursor-pointer gap-1.5 rounded-lg px-2.5 text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800"
                             disabled={busy}
                             onClick={() => handleDelete(root.id)}
+                            className="inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-full px-2 text-xs font-medium text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:opacity-60 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                           >
                             {busy ? (
                               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -474,69 +551,96 @@ function ProjectCommentsPanel({
                               <Trash2 className="h-3.5 w-3.5" />
                             )}
                             Delete
-                          </Button>
+                          </button>
                         )}
                       </div>
-                    </div>
-                  </div>
 
-                  {(replies.length > 0 || isReplying) && (
-                    <div className="space-y-3 border-t border-slate-100 bg-slate-50/50 px-4 py-4 sm:px-5 dark:border-slate-800 dark:bg-slate-950/40">
                       {replies.length > 0 && (
-                        <ul className="space-y-3 border-l border-slate-200 pl-4 dark:border-slate-700">
+                        <ul className="mt-4 space-y-4">
                           {replies.map((reply) => {
                             const replyOwn = reply.created_by === currentUserId;
                             const replyManage = isAdmin || replyOwn;
                             const replyBusy = pendingId === reply.id;
 
                             return (
-                              <li key={reply.id} className="flex gap-3">
-                                <Avatar className="mt-0.5 h-8 w-8 shrink-0 ring-2 ring-white dark:ring-slate-900">
+                              <li key={reply.id} className="relative flex gap-2.5 sm:gap-3">
+                                {/* Elbow joining the reply to the thread rail */}
+                                <span
+                                  aria-hidden
+                                  className="absolute -left-8 top-4 h-px w-2.5 bg-slate-200 sm:-left-[34px] sm:w-3.5 dark:bg-slate-700/70"
+                                />
+                                <Avatar className="relative z-10 h-8 w-8 shrink-0 ring-2 ring-white dark:ring-slate-900">
                                   <AvatarImage
                                     src={reply.author?.avatar_url || undefined}
                                     alt={reply.author?.full_name || "User"}
                                   />
-                                  <AvatarFallback className="bg-slate-200 text-[10px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                  <AvatarFallback className="bg-[#e4e7fb] text-[10px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                                     {getInitials(reply.author?.full_name, reply.author?.email)}
                                   </AvatarFallback>
                                 </Avatar>
-                                <div className="min-w-0 flex-1 space-y-1.5">
-                                  <CommentAuthor comment={reply} />
-                                  <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-                                    {reply.message}
-                                  </p>
-                                  <div className="flex flex-wrap gap-1">
-                                    <Button
+                                <div className="min-w-0 flex-1">
+                                  <div className="rounded-2xl rounded-tl-md bg-slate-100 px-3.5 py-2.5 dark:bg-slate-800/70">
+                                    <CommentAuthor comment={reply} />
+                                    <p className="mt-0.5 whitespace-pre-wrap text-sm leading-relaxed text-slate-500 dark:text-slate-300">
+                                      {reply.message}
+                                    </p>
+                                  </div>
+                                  <div className="mt-0.5 flex flex-wrap items-center gap-x-0.5 px-1">
+                                    <button
                                       type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-7 cursor-pointer gap-1 rounded-lg px-2 text-[11px] text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                                      onClick={() => handleToggleLike(reply)}
+                                      disabled={likePendingId === reply.id}
+                                      aria-pressed={Boolean(reply.liked_by_me)}
+                                      className={cn(
+                                        "inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-full px-2 text-xs font-semibold transition-colors disabled:opacity-60",
+                                        reply.liked_by_me
+                                          ? "text-[#6a9a10] dark:text-lime-300"
+                                          : "text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                                      )}
+                                    >
+                                      <Heart
+                                        className={cn(
+                                          "h-3.5 w-3.5",
+                                          reply.liked_by_me && "fill-current"
+                                        )}
+                                      />
+                                      Like
+                                      {(reply.like_count ?? 0) > 0 && (
+                                        <span className="tabular-nums">{reply.like_count}</span>
+                                      )}
+                                    </button>
+                                    <button
+                                      type="button"
                                       disabled={isPending}
                                       onClick={() => {
                                         setReplyToId(root.id);
                                         setReplyMessage("");
                                         setError(null);
                                       }}
+                                      className="inline-flex min-h-8 cursor-pointer items-center rounded-full px-2 text-xs font-semibold text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 disabled:opacity-60 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                                     >
-                                      <Reply className="h-3 w-3" />
                                       Reply
-                                    </Button>
+                                    </button>
+                                    <span className="px-1.5 text-xs text-slate-400">
+                                      {formatRelativeTime(reply.created_at)}
+                                    </span>
                                     {replyManage && (
-                                      <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-7 cursor-pointer gap-1 rounded-lg px-2 text-[11px] text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
-                                        disabled={replyBusy}
-                                        onClick={() => handleDelete(reply.id)}
-                                      >
-                                        {replyBusy ? (
-                                          <Loader2 className="h-3 w-3 animate-spin" />
-                                        ) : (
-                                          <Trash2 className="h-3 w-3" />
-                                        )}
-                                        Delete
-                                      </Button>
+                                      <>
+                                        <span className="min-w-2 flex-1" />
+                                        <button
+                                          type="button"
+                                          disabled={replyBusy}
+                                          onClick={() => handleDelete(reply.id)}
+                                          className="inline-flex min-h-8 cursor-pointer items-center gap-1.5 rounded-full px-2 text-xs font-medium text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 disabled:opacity-60 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                                        >
+                                          {replyBusy ? (
+                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                          ) : (
+                                            <Trash2 className="h-3 w-3" />
+                                          )}
+                                          Delete
+                                        </button>
+                                      </>
                                     )}
                                   </div>
                                 </div>
@@ -547,7 +651,7 @@ function ProjectCommentsPanel({
                       )}
 
                       {isReplying && (
-                        <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+                        <div className="mt-3 space-y-2 rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
                           <Label
                             htmlFor={`reply-${root.id}`}
                             className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400"
@@ -598,7 +702,7 @@ function ProjectCommentsPanel({
                         </div>
                       )}
                     </div>
-                  )}
+                  </div>
                 </li>
               );
             })}

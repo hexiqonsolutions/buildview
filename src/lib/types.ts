@@ -411,6 +411,27 @@ export interface Database {
           },
         ];
       };
+      project_comment_likes: {
+        Row: ProjectCommentLike;
+        Insert: ProjectCommentLikeInsert;
+        Update: Partial<ProjectCommentLikeInsert>;
+        Relationships: [
+          {
+            foreignKeyName: "project_comment_likes_comment_id_fkey";
+            columns: ["comment_id"];
+            isOneToOne: false;
+            referencedRelation: "project_comments";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "project_comment_likes_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       timeline_events: {
         Row: TimelineEvent;
         Insert: TimelineEventInsert;
@@ -1343,6 +1364,18 @@ export type ProjectCommentInsert = Omit<
   updated_by?: string | null;
 };
 
+export type ProjectCommentLike = {
+  id: string;
+  comment_id: string;
+  user_id: string;
+  created_at: string;
+};
+
+export type ProjectCommentLikeInsert = Omit<ProjectCommentLike, "id" | "created_at"> & {
+  id?: string;
+  created_at?: string;
+};
+
 export type IssueImageInsert = Omit<
   IssueImage,
   "id" | "created_at" | "updated_at" | "deleted_at" | "deleted_by"
@@ -1458,6 +1491,9 @@ export interface IssueWithRelations extends Issue {
 
 export interface ProjectCommentWithUser extends ProjectComment {
   author?: (UserSummary & { role: UserRole }) | null;
+  /** Populated by getProjectComments when the likes table is available. */
+  like_count?: number;
+  liked_by_me?: boolean;
 }
 
 export interface TimelineEventWithRelations extends TimelineEvent {
