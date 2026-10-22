@@ -1461,9 +1461,9 @@ export function ProgressionPanel({
     ];
 
     return (
-      <div className="space-y-4 sm:space-y-5">
+      <div className="w-full min-w-0 max-w-full space-y-4 overflow-x-clip sm:space-y-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
+          <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
               Progression Report
             </p>
@@ -1497,7 +1497,7 @@ export function ProgressionPanel({
         ) : (
           <>
             {/* Stat cards */}
-            <div className="grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-3 xl:grid-cols-5">
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-3 xl:grid-cols-5 [&>*]:min-w-0">
               <div className="col-span-2 flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 sm:gap-4 sm:p-4 md:col-span-1 dark:border-slate-800 dark:bg-slate-900/60">
                 <div className="relative h-16 w-16 shrink-0 sm:h-20 sm:w-20">
                   <svg viewBox="0 0 100 100" className="h-16 w-16 -rotate-90 sm:h-20 sm:w-20">
@@ -1597,7 +1597,7 @@ export function ProgressionPanel({
                   View All <ArrowRight className="h-3.5 w-3.5" aria-hidden />
                 </button>
               </div>
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid gap-3 md:grid-cols-2 [&>*]:min-w-0">
                 {data.tracks.map((t) => {
                   const trackOverdue = overdueForTrack(t.track).length;
                   const status =
@@ -1668,7 +1668,7 @@ export function ProgressionPanel({
                   View All Floors <ArrowRight className="h-3.5 w-3.5" aria-hidden />
                 </button>
               </div>
-              <div className="flex flex-nowrap gap-1.5 overflow-x-auto pb-2 [scrollbar-width:thin]">
+              <div className="flex flex-wrap gap-1.5">
                 {data.combinedFloors.map((floor) => {
                   const active = floor.floorId === overviewFloorId;
                   return (
@@ -1713,7 +1713,7 @@ export function ProgressionPanel({
 
             {/* Phase completion + daily progress */}
             {overviewView ? (
-              <div className="grid gap-3 lg:grid-cols-2">
+              <div className="grid gap-3 lg:grid-cols-2 [&>*]:min-w-0">
                 <div className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4 dark:border-slate-800 dark:bg-slate-900/60">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
@@ -1781,7 +1781,7 @@ export function ProgressionPanel({
               </div>
             ) : null}
 
-            <div className="grid items-start gap-3 lg:grid-cols-2">
+            <div className="grid items-start gap-3 lg:grid-cols-2 [&>*]:min-w-0">
               {overviewView ? (
                 <ProgressionWeeklyChart
                   weekly={mergedWeekly}

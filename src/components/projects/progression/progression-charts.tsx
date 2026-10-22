@@ -130,9 +130,8 @@ export function ProgressionDailyChart({
           No steps ended in the last 14 days yet.
         </p>
       ) : (
-        <div className="mt-3 overflow-x-auto pb-1 [scrollbar-width:thin]">
-          <div className="flex h-44 min-w-[540px] items-stretch gap-1 sm:min-w-0 sm:gap-1.5">
-          {daily.map((point) => {
+        <div className="mt-3 flex h-44 items-stretch gap-0.5 sm:gap-1.5">
+          {daily.map((point, index) => {
             const height =
               point.completions === 0
                 ? 0
@@ -159,13 +158,17 @@ export function ProgressionDailyChart({
                     title={`${formatDayLabel(point.date)}: ${point.completions} ended`}
                   />
                 </div>
-                <span className="flex h-4 max-w-full items-center truncate text-[9px] text-slate-400">
+                <span
+                  className={cn(
+                    "flex h-4 max-w-full items-center truncate text-[9px] text-slate-400",
+                    index % 2 === 1 && "max-sm:opacity-0"
+                  )}
+                >
                   {formatDayLabel(point.date)}
                 </span>
               </div>
             );
           })}
-          </div>
         </div>
       )}
     </div>
@@ -197,8 +200,7 @@ export function ProgressionWeeklyChart({
           No steps ended in the last 8 weeks yet.
         </p>
       ) : (
-        <div className="mt-3 overflow-x-auto pb-1 [scrollbar-width:thin]">
-          <div className="flex h-44 min-w-[400px] items-stretch gap-1.5 sm:min-w-0 sm:gap-2">
+        <div className="mt-3 flex h-44 items-stretch gap-1 sm:gap-2">
           {weekly.map((point) => {
             const height =
               point.completions === 0
@@ -232,7 +234,6 @@ export function ProgressionWeeklyChart({
               </div>
             );
           })}
-          </div>
         </div>
       )}
     </div>
