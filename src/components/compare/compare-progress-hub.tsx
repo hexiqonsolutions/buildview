@@ -28,19 +28,6 @@ import { isValidMatterportUrl } from "@/lib/matterport";
 import type { ComparisonProjectsData, ComparisonSnapshot, EnrichedTour, SavedComparison } from "@/lib/comparison/types";
 import { buildShellComparisonSnapshot, buildBlankComparisonSnapshot, isBlankComparisonSnapshot } from "@/lib/comparison/analytics";
 import { SyncedViewerPair } from "@/components/compare/synced-viewer-pair";
-import {
-  CompareKpiRow,
-  CompareProgressSummary,
-  CompareChangesOverview,
-  CompareDocumentsMatrix,
-  CompareIssuesStats,
-  CompareReportsTable,
-  ComparePhotoCarousel,
-  CompareHorizontalTimeline,
-  CompareAiSummary,
-  CompareActivityFeed,
-  CompareEngineerNotes,
-} from "@/components/compare/compare-sections";
 import { CompareDetailedReportDialog } from "@/components/compare/compare-detailed-report";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1094,37 +1081,6 @@ export function CompareProgressHub({
               rightTitle={displaySnapshot.scanB.name}
               syncEnabled={!isBlankUi}
               immersive
-            />
-          </div>
-
-          <CompareKpiRow snapshot={displaySnapshot} blank={isBlankUi} />
-
-          <CompareProgressSummary snapshot={displaySnapshot} />
-
-          {/* Dashboard grid */}
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <CompareChangesOverview snapshot={displaySnapshot} />
-            <CompareDocumentsMatrix snapshot={displaySnapshot} />
-            <CompareIssuesStats snapshot={displaySnapshot} />
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <CompareReportsTable snapshot={displaySnapshot} />
-            <ComparePhotoCarousel snapshot={displaySnapshot} />
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <CompareEngineerNotes snapshot={displaySnapshot} blank={isBlankUi} />
-            <CompareActivityFeed snapshot={displaySnapshot} />
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <div className="lg:col-span-2">
-              <CompareHorizontalTimeline snapshot={displaySnapshot} />
-            </div>
-            <CompareAiSummary
-              snapshot={displaySnapshot}
-              onOpenReport={() => setReportOpen(true)}
             />
           </div>
         </div>
