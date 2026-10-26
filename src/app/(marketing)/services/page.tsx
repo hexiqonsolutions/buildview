@@ -31,13 +31,8 @@ const services = [
     icon: Camera,
     title: "360° Virtual Site Tours",
     description:
-      "Create immersive digital twins of construction sites for remote inspections, stakeholder reviews, and historical documentation.",
-    features: [
-      "Professional 360° site captures",
-      "Remote walkthroughs for every stakeholder",
-      "Historical digital twin archive",
-      "Immersive project reviews",
-    ],
+      "Immersive site captures for remote inspections and stakeholder reviews.",
+    features: ["360° captures", "Remote walkthroughs", "Visit archive"],
     imageSrc: "/marketing/services/virtual-tours.jpg",
     imageAlt: "BuildView project scans with a live Matterport virtual tour",
   },
@@ -46,13 +41,8 @@ const services = [
     icon: GitCompareArrows,
     title: "Compare Progress",
     description:
-      "Compare different site visits to identify completed work, pending activities, and project changes.",
-    features: [
-      "Date-to-date site comparison",
-      "Completed vs pending visibility",
-      "Change detection across visits",
-      "Investor-ready progress reviews",
-    ],
+      "Compare site visits side by side to see what changed between dates.",
+    features: ["Date-to-date compare", "Change visibility", "Progress reviews"],
     imageSrc: "/marketing/services/compare-progress.jpg",
     imageAlt: "BuildView Compare Progress with side-by-side site visits",
   },
@@ -61,13 +51,8 @@ const services = [
     icon: FileText,
     title: "Progress Reports",
     description:
-      "Generate professional reports for developers, contractors, consultants, and clients with consistent project updates.",
-    features: [
-      "Milestone and observation summaries",
-      "Executive-ready documentation",
-      "Consistent reporting cadence",
-      "Downloadable project history",
-    ],
+      "Consistent, executive-ready updates for developers, contractors, and clients.",
+    features: ["Milestone summaries", "Downloadable history"],
     imageSrc: "/marketing/services/reports.jpg",
     imageAlt: "BuildView reports dashboard",
   },
@@ -76,13 +61,8 @@ const services = [
     icon: Clock,
     title: "Construction Timeline",
     description:
-      "Monitor milestones, project events, and progress history with a visual timeline.",
-    features: [
-      "Interactive milestone tracking",
-      "Photos, tours, and notes in sequence",
-      "Clear project event history",
-      "Shared progress context",
-    ],
+      "Milestones, photos, and tours in one shared project history.",
+    features: ["Milestone tracking", "Event history"],
     imageSrc: "/marketing/services/timeline.jpg",
     imageAlt: "BuildView construction timeline dashboard",
   },
@@ -91,13 +71,8 @@ const services = [
     icon: FolderOpen,
     title: "Document Management",
     description:
-      "Store drawings, BOQs, contracts, RFIs, approvals, and technical documents in one secure repository.",
-    features: [
-      "Centralized document repository",
-      "Drawings, BOQs, and contracts",
-      "Secure stakeholder access",
-      "Organized project folders",
-    ],
+      "Drawings, BOQs, contracts, and approvals in one secure place.",
+    features: ["Central repository", "Secure access"],
     imageSrc: "/marketing/services/documents.jpg",
     imageAlt: "BuildView documents dashboard",
   },
@@ -106,13 +81,8 @@ const services = [
     icon: AlertTriangle,
     title: "Issue Tracking",
     description:
-      "Track observations, assign responsibilities, and monitor issue resolution from reporting to closure.",
-    features: [
-      "Capture and assign observations",
-      "Priority and ownership workflows",
-      "Photo-backed issue evidence",
-      "Resolution to closure tracking",
-    ],
+      "Capture observations, assign owners, and track resolution to closure.",
+    features: ["Photo evidence", "Priority workflows"],
     imageSrc: "/marketing/services/issues.jpg",
     imageAlt: "BuildView issues dashboard",
   },
@@ -121,13 +91,8 @@ const services = [
     icon: LayoutDashboard,
     title: "Client Dashboard",
     description:
-      "Provide controlled access to live project information, reports, and documentation for every stakeholder.",
-    features: [
-      "Role-based portal access",
-      "Live project visibility",
-      "Reports and documentation hub",
-      "Multi-project monitoring",
-    ],
+      "Role-based access to live project status, reports, and documents.",
+    features: ["Role-based access", "Multi-project view"],
     imageSrc: "/marketing/services/dashboard.jpg",
     imageAlt: "BuildView client construction intelligence dashboard",
   },
@@ -184,12 +149,11 @@ export default function ServicesPage() {
           title="Everything required for remote construction monitoring"
           description="Each service connects through one construction intelligence platform—so progress, documents, and decisions stay aligned."
         />
-        <div className="mt-4 space-y-0 lg:mt-8">
+        <div className="mt-6 divide-y divide-slate-200/80 dark:divide-slate-800 lg:mt-10">
           {services.map((service, index) => (
             <ServiceSection
               key={service.id}
               {...service}
-              index={index + 1}
               reversed={index % 2 === 1}
             />
           ))}
