@@ -302,16 +302,37 @@ export default function HomePage() {
             icon={Camera}
             title="360°-native virtual tours"
             description="Immersive site captures embedded in the platform for remote inspections and stakeholder reviews."
+            imageSrc="/marketing/why-buildview/project-scans.jpg"
+            imageAlt="BuildView project scans with a live Matterport virtual tour"
           />
           <FeatureCard
             icon={FileText}
             title="Reports, docs, and issues together"
             description="Progress tracking, documentation, and issue resolution live in one construction intelligence workspace."
+            slides={[
+              {
+                src: "/marketing/why-buildview/reports.jpg",
+                alt: "BuildView reports dashboard",
+                label: "Reports",
+              },
+              {
+                src: "/marketing/why-buildview/documents.jpg",
+                alt: "BuildView documents dashboard",
+                label: "Documents",
+              },
+              {
+                src: "/marketing/why-buildview/issues.jpg",
+                alt: "BuildView issues dashboard",
+                label: "Issues",
+              },
+            ]}
           />
           <FeatureCard
             icon={CheckCircle2}
             title="Role-based client access"
             description="Give every stakeholder controlled visibility without chasing updates across emails and chats."
+            imageSrc="/marketing/why-buildview/roles.jpg"
+            imageAlt="BuildView user manager with role-based client access"
           />
         </div>
       </Section>
