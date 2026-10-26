@@ -8,6 +8,7 @@ import { OpsCommandHeader } from "@/components/admin/layout/ops-command-header";
 import { AdminWorkspaceProvider } from "@/components/admin/workspace/admin-workspace-provider";
 import { PortalErrorBoundary } from "@/components/dashboard/portal-error-boundary";
 import { PortalTheme } from "@/components/integrations/portal-theme";
+import { PresenceTracker } from "@/components/presence/presence-tracker";
 import type { AdminWorkspaceBootstrap } from "@/lib/admin/workspace";
 import type { User } from "@/lib/types";
 
@@ -28,6 +29,7 @@ export function AdminShell({ user, workspaceBootstrap, unreadNotifications = 0, 
 
   return (
     <PortalErrorBoundary>
+      <PresenceTracker area="admin" />
       <AdminWorkspaceProvider bootstrap={workspaceBootstrap}>
         <div className="ops-shell">
           <PortalTheme />

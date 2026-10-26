@@ -30,7 +30,7 @@ import {
   resolveClientDashboardType,
 } from "@/lib/portal/dashboard-type";
 import { USER_ROLE_LABELS, type Client, type Project } from "@/lib/types";
-import { cn, formatDate, formatRelativeTime, getInitials } from "@/lib/utils";
+import { cn, formatDate, formatRelativeTime, formatTimeOnSite, getInitials } from "@/lib/utils";
 
 const GROUP_STYLES: Record<UserGroupKind, { icon: LucideIcon; tile: string }> = {
   staff: {
@@ -258,7 +258,7 @@ function UserGroupCard({
               <Table>
                 <TableHeader>
                   <TableRow className="border-slate-200/80 hover:bg-transparent dark:border-slate-800">
-                    {["Name", "Role", ...(showDashboard ? ["Dashboard"] : []), "Last login", "Status", "Joined", ""].map(
+                    {["Name", "Role", ...(showDashboard ? ["Dashboard"] : []), "Time on site", "Status", "Joined", ""].map(
                       (label) => (
                         <TableHead
                           key={label || "actions"}
@@ -297,12 +297,25 @@ function UserGroupCard({
                         </TableCell>
                       )}
                       <TableCell>
-                        {user.last_sign_in_at ? (
+                        {user.time_on_site_seconds > 0 ? (
                           <div className="min-w-0">
-                            <p className="text-sm text-slate-700 dark:text-slate-300">
-                              {formatRelativeTime(user.last_sign_in_at)}
+                            <p className="text-sm font-medium tabular-nums text-slate-800 dark:text-slate-100">
+                              {formatTimeOnSite(user.time_on_site_seconds)}
                             </p>
-                            <p className="text-xs text-slate-400">{formatDate(user.last_sign_in_at)}</p>
+                            <p className="text-xs text-slate-400">
+                              {user.last_seen_at
+                                ? `Last seen ${formatRelativeTime(user.last_seen_at)}`
+                                : user.last_sign_in_at
+                                  ? `Last login ${formatRelativeTime(user.last_sign_in_at)}`
+                                  : "Tracked since sessions started"}
+                            </p>
+                          </div>
+                        ) : user.last_sign_in_at ? (
+                          <div className="min-w-0">
+                            <p className="text-sm text-slate-500">—</p>
+                            <p className="text-xs text-slate-400">
+                              Last login {formatRelativeTime(user.last_sign_in_at)}
+                            </p>
                           </div>
                         ) : (
                           <span className="text-sm text-slate-400">Never</span>

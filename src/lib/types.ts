@@ -432,6 +432,20 @@ export interface Database {
           },
         ];
       };
+      user_sessions: {
+        Row: UserSession;
+        Insert: UserSessionInsert;
+        Update: Partial<UserSessionInsert>;
+        Relationships: [
+          {
+            foreignKeyName: "user_sessions_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       timeline_events: {
         Row: TimelineEvent;
         Insert: TimelineEventInsert;
@@ -1374,6 +1388,28 @@ export type ProjectCommentLike = {
 export type ProjectCommentLikeInsert = Omit<ProjectCommentLike, "id" | "created_at"> & {
   id?: string;
   created_at?: string;
+};
+
+export type UserSessionArea = "app" | "admin" | "dashboard";
+
+export type UserSession = {
+  id: string;
+  user_id: string;
+  started_at: string;
+  last_seen_at: string;
+  ended_at: string | null;
+  duration_seconds: number;
+  area: UserSessionArea;
+};
+
+export type UserSessionInsert = {
+  id?: string;
+  user_id: string;
+  started_at?: string;
+  last_seen_at?: string;
+  ended_at?: string | null;
+  duration_seconds?: number;
+  area?: UserSessionArea;
 };
 
 export type IssueImageInsert = Omit<

@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { IntelShell } from "@/components/intel/shell/intel-shell";
 import { PortalErrorBoundary } from "@/components/dashboard/portal-error-boundary";
 import { PortalWorkspaceProvider } from "@/components/portal/workspace/portal-workspace-provider";
+import { PresenceTracker } from "@/components/presence/presence-tracker";
 import type { PortalWorkspaceBootstrap } from "@/lib/portal/workspace";
 import type { User } from "@/lib/types";
 
@@ -23,6 +24,7 @@ export function PortalLayout({
 }: PortalLayoutProps) {
   return (
     <PortalErrorBoundary>
+      <PresenceTracker area="dashboard" />
       <Suspense fallback={null}>
         <PortalWorkspaceProvider bootstrap={workspaceBootstrap}>
           <IntelShell user={user} unreadNotifications={unreadNotifications}>

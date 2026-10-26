@@ -42,6 +42,7 @@ const checks = [
   { name: "037 planned start", table: "project_progressions", column: "planned_start_date" },
   { name: "037 planned deadline", table: "project_progressions", column: "planned_end_date" },
   { name: "038 comment likes", table: "project_comment_likes", column: "comment_id" },
+  { name: "039 user sessions", table: "user_sessions", column: "last_seen_at" },
 ];
 
 async function probe(check) {

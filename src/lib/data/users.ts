@@ -8,9 +8,14 @@ import { validate } from "@/lib/validations/parse";
 import { userIdSchema } from "@/lib/validations/data";
 import { getActiveActor } from "@/lib/auth/project-access";
 import { getAuthActivity } from "@/lib/data/auth-activity";
+import { getUserPresenceStats } from "@/lib/data/user-presence";
 
 export type AdminUserRow = User & {
   last_sign_in_at: string | null;
+  /** Total seconds actively using the app (from user_sessions heartbeats). */
+  time_on_site_seconds: number;
+  /** Most recent presence heartbeat, falling back to Auth last_sign_in_at. */
+  last_seen_at: string | null;
   client: {
     id: string;
     name: string;
@@ -64,15 +69,22 @@ export async function getAllUsers(): Promise<AdminUserRow[]> {
       profiles = (withClient.data as Array<Record<string, unknown>>) ?? [];
     }
 
-    const { lastSignInById, emailById } = await getAuthActivity();
+    const ids = (profiles ?? []).map((row) => String(row.id));
+    const [{ lastSignInById, emailById }, presenceById] = await Promise.all([
+      getAuthActivity(),
+      getUserPresenceStats(ids),
+    ]);
 
     return (profiles ?? []).map((row) => {
-      const email = (String(row.email ?? "").trim() || emailById.get(String(row.id)) || "").trim();
+      const id = String(row.id);
+      const email = (String(row.email ?? "").trim() || emailById.get(id) || "").trim();
       const fullName = String(row.full_name ?? "").trim() || email.split("@")[0] || "User";
       const client = (row.client as AdminUserRow["client"]) ?? null;
+      const lastSignIn = lastSignInById.get(id) ?? null;
+      const presence = presenceById.get(id);
 
       return {
-        id: String(row.id),
+        id,
         email: email || "—",
         full_name: fullName,
         role: row.role as AdminUserRow["role"],
@@ -87,7 +99,9 @@ export async function getAllUsers(): Promise<AdminUserRow[]> {
         updated_by: (row.updated_by as string | null) ?? null,
         deleted_by: (row.deleted_by as string | null) ?? null,
         dashboard_type: (row.dashboard_type as AdminUserRow["dashboard_type"]) ?? null,
-        last_sign_in_at: lastSignInById.get(String(row.id)) ?? null,
+        last_sign_in_at: lastSignIn,
+        time_on_site_seconds: presence?.timeOnSiteSeconds ?? 0,
+        last_seen_at: presence?.lastSeenAt ?? lastSignIn,
         client,
       };
     });
@@ -126,6 +140,8 @@ export async function getAllUsers(): Promise<AdminUserRow[]> {
       deleted_by: (row.deleted_by as string | null) ?? null,
       dashboard_type: (row.dashboard_type as AdminUserRow["dashboard_type"]) ?? null,
       last_sign_in_at: null,
+      time_on_site_seconds: 0,
+      last_seen_at: null,
       client: null,
     }));
   }
@@ -147,6 +163,8 @@ export async function getAllUsers(): Promise<AdminUserRow[]> {
     deleted_by: (row.deleted_by as string | null) ?? null,
     dashboard_type: (row.dashboard_type as AdminUserRow["dashboard_type"]) ?? null,
     last_sign_in_at: null,
+    time_on_site_seconds: 0,
+    last_seen_at: null,
     client: (row.client as AdminUserRow["client"]) ?? null,
   }));
 }

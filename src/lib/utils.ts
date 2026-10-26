@@ -64,6 +64,27 @@ export function formatFileSize(bytes: number | null | undefined): string {
   return `${size.toFixed(1)} ${units[unitIndex]}`;
 }
 
+/** Human-readable time-on-site duration (e.g. "4h 32m", "2d 5h", "12m"). */
+export function formatTimeOnSite(totalSeconds: number | null | undefined): string {
+  if (totalSeconds == null || !Number.isFinite(totalSeconds)) return "—";
+  const seconds = Math.max(0, Math.floor(totalSeconds));
+  if (seconds < 60) return seconds < 5 ? "—" : `${seconds}s`;
+
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  if (days > 0) {
+    const remHours = hours % 24;
+    return remHours > 0 ? `${days}d ${remHours}h` : `${days}d`;
+  }
+  if (hours > 0) {
+    const remMinutes = minutes % 60;
+    return remMinutes > 0 ? `${hours}h ${remMinutes}m` : `${hours}h`;
+  }
+  return `${minutes}m`;
+}
+
 export function getStatusColor(status: string): string {
   // Minimal slate system — differentiate by weight, not rainbow accents
   const colors: Record<string, string> = {
