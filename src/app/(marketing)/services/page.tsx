@@ -38,6 +38,8 @@ const services = [
       "Historical digital twin archive",
       "Immersive project reviews",
     ],
+    imageSrc: "/marketing/services/virtual-tours.jpg",
+    imageAlt: "BuildView project scans with a live Matterport virtual tour",
   },
   {
     id: "compare-tours",
@@ -51,6 +53,8 @@ const services = [
       "Change detection across visits",
       "Investor-ready progress reviews",
     ],
+    imageSrc: "/marketing/services/compare-progress.jpg",
+    imageAlt: "BuildView Compare Progress with side-by-side site visits",
   },
   {
     id: "reports",
@@ -64,6 +68,8 @@ const services = [
       "Consistent reporting cadence",
       "Downloadable project history",
     ],
+    imageSrc: "/marketing/services/reports.jpg",
+    imageAlt: "BuildView reports dashboard",
   },
   {
     id: "timeline",
@@ -77,6 +83,8 @@ const services = [
       "Clear project event history",
       "Shared progress context",
     ],
+    imageSrc: "/marketing/services/timeline.jpg",
+    imageAlt: "BuildView construction timeline dashboard",
   },
   {
     id: "documents",
@@ -90,6 +98,8 @@ const services = [
       "Secure stakeholder access",
       "Organized project folders",
     ],
+    imageSrc: "/marketing/services/documents.jpg",
+    imageAlt: "BuildView documents dashboard",
   },
   {
     id: "issues",
@@ -103,6 +113,8 @@ const services = [
       "Photo-backed issue evidence",
       "Resolution to closure tracking",
     ],
+    imageSrc: "/marketing/services/issues.jpg",
+    imageAlt: "BuildView issues dashboard",
   },
   {
     id: "dashboard",
@@ -116,6 +128,8 @@ const services = [
       "Reports and documentation hub",
       "Multi-project monitoring",
     ],
+    imageSrc: "/marketing/services/dashboard.jpg",
+    imageAlt: "BuildView client construction intelligence dashboard",
   },
 ];
 

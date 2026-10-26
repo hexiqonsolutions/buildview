@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { ArrowRight } from "lucide-react";
@@ -10,6 +11,8 @@ interface ServiceSectionProps {
   description: string;
   features: string[];
   reversed?: boolean;
+  imageSrc?: string;
+  imageAlt?: string;
 }
 
 export function ServiceSection({
@@ -19,6 +22,8 @@ export function ServiceSection({
   description,
   features,
   reversed = false,
+  imageSrc,
+  imageAlt,
 }: ServiceSectionProps) {
   return (
     <article
@@ -59,9 +64,23 @@ export function ServiceSection({
             Request this service <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
-        <div className="relative flex min-h-[240px] items-center justify-center overflow-hidden bg-slate-100 dark:bg-slate-800/80 lg:min-h-full">
-          <div className="absolute inset-0 bg-linear-to-br from-brand-accent/10 via-transparent to-brand-primary/5" />
-          <Icon className="relative h-28 w-28 text-brand-accent/25" strokeWidth={1} />
+        <div className="relative min-h-[240px] overflow-hidden bg-slate-100 dark:bg-slate-800/80 lg:min-h-[340px]">
+          {imageSrc ? (
+            <Image
+              src={imageSrc}
+              alt={imageAlt ?? title}
+              fill
+              sizes="(max-width: 1024px) 100vw, 50vw"
+              className="object-cover object-top"
+            />
+          ) : (
+            <>
+              <div className="absolute inset-0 bg-linear-to-br from-brand-accent/10 via-transparent to-brand-primary/5" />
+              <div className="relative flex h-full min-h-[240px] items-center justify-center lg:min-h-[340px]">
+                <Icon className="h-28 w-28 text-brand-accent/25" strokeWidth={1} />
+              </div>
+            </>
+          )}
         </div>
       </div>
     </article>
