@@ -88,59 +88,83 @@ export function HomePartnersSection() {
         {spotlight && (
           <article
             className={cn(
-              "relative mt-10 overflow-hidden rounded-2xl border border-slate-200/80 bg-linear-to-br from-slate-50 via-white to-slate-50 p-6 shadow-soft md:mt-12 md:p-8",
-              "dark:border-slate-800 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900"
+              "relative mt-10 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-soft md:mt-12",
+              "dark:border-slate-800 dark:bg-slate-950"
             )}
           >
-            <div
-              aria-hidden
-              className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-brand-accent/10 blur-3xl"
-            />
-
-            <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:gap-10">
-              <div className="flex h-24 w-full shrink-0 items-center justify-center rounded-xl border border-slate-200/80 bg-white px-6 dark:border-slate-700 dark:bg-slate-900 lg:h-28 lg:w-52">
-                {spotlight.logoSrc ? (
+            <div className="relative grid lg:grid-cols-2">
+              <div className="relative aspect-4/3 overflow-hidden bg-slate-100 sm:aspect-16/10 lg:aspect-auto lg:min-h-[320px] dark:bg-slate-900">
+                {spotlight.imageSrc ? (
                   <Image
-                    src={spotlight.logoSrc}
-                    alt={`${spotlight.name} logo`}
-                    width={180}
-                    height={64}
-                    className="h-11 w-auto max-w-full object-contain md:h-12"
+                    src={spotlight.imageSrc}
+                    alt={`${spotlight.name} on a construction site`}
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 50vw"
+                    className="object-cover"
+                    priority={false}
                   />
                 ) : (
-                  <span className="font-display text-xl font-bold text-slate-700 dark:text-slate-200">
-                    {spotlight.name}
-                  </span>
+                  <div className="flex h-full min-h-[220px] items-center justify-center px-8">
+                    {spotlight.logoSrc ? (
+                      <Image
+                        src={spotlight.logoSrc}
+                        alt={`${spotlight.name} logo`}
+                        width={220}
+                        height={80}
+                        className="h-14 w-auto max-w-full object-contain"
+                      />
+                    ) : (
+                      <span className="font-display text-2xl font-bold text-slate-700 dark:text-slate-200">
+                        {spotlight.name}
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
 
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="inline-flex rounded-full border border-brand-accent/30 bg-brand-accent/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand-accent-dark dark:text-brand-accent">
-                    {spotlight.kind === "technology"
-                      ? "Capture technology"
-                      : "Partner spotlight"}
-                  </span>
+              <div className="relative flex flex-col justify-center p-6 md:p-8 lg:p-10">
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-brand-accent/10 blur-3xl"
+                />
+                <div className="relative">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex rounded-full border border-brand-accent/30 bg-brand-accent/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand-accent-dark dark:text-brand-accent">
+                      {spotlight.kind === "technology"
+                        ? "Capture technology"
+                        : "Partner spotlight"}
+                    </span>
+                    {spotlight.logoSrc && spotlight.imageSrc && (
+                      <Image
+                        src={spotlight.logoSrc}
+                        alt=""
+                        width={88}
+                        height={28}
+                        className="h-5 w-auto object-contain opacity-80"
+                        aria-hidden
+                      />
+                    )}
+                  </div>
+                  <h3 className="mt-3 font-display text-xl font-bold text-brand-primary dark:text-white md:text-2xl">
+                    {spotlight.name}
+                  </h3>
+                  {spotlight.description && (
+                    <p className="mt-2 max-w-xl text-sm leading-relaxed text-slate-600 dark:text-slate-400 md:text-base">
+                      {spotlight.description}
+                    </p>
+                  )}
+                  {spotlight.href && (
+                    <Link
+                      href={spotlight.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group/link mt-5 inline-flex min-h-11 items-center gap-1.5 rounded-lg text-sm font-semibold text-brand-accent-dark transition-colors duration-200 hover:text-brand-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2 dark:hover:text-brand-accent"
+                    >
+                      Learn more
+                      <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover/link:translate-x-0.5" />
+                    </Link>
+                  )}
                 </div>
-                <h3 className="mt-3 font-display text-xl font-bold text-brand-primary dark:text-white md:text-2xl">
-                  {spotlight.name}
-                </h3>
-                {spotlight.description && (
-                  <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600 dark:text-slate-400 md:text-base">
-                    {spotlight.description}
-                  </p>
-                )}
-                {spotlight.href && (
-                  <Link
-                    href={spotlight.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group/link mt-5 inline-flex min-h-11 items-center gap-1.5 rounded-lg text-sm font-semibold text-brand-accent-dark transition-colors duration-200 hover:text-brand-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2 dark:hover:text-brand-accent"
-                  >
-                    Learn more
-                    <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover/link:translate-x-0.5" />
-                  </Link>
-                )}
               </div>
             </div>
           </article>

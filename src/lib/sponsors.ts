@@ -5,6 +5,8 @@ export interface Sponsor {
   name: string;
   /** Path under /public, e.g. /sponsors/insta360.svg */
   logoSrc?: string;
+  /** Optional product / lifestyle photo for the spotlight card */
+  imageSrc?: string;
   href?: string;
   kind?: "technology" | "partner";
   /** Spotlight card copy */
@@ -23,6 +25,7 @@ const sponsors: Sponsor[] = [
     id: "insta360",
     name: "Insta360",
     logoSrc: "/sponsors/insta360.svg",
+    imageSrc: "/sponsors/insta360-x4-site.jpg",
     href: "https://www.insta360.com/enterprise",
     kind: "technology",
     description:
