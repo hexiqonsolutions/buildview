@@ -163,24 +163,6 @@ const processSteps = [
   },
 ];
 
-const visibilityOutcomes = [
-  {
-    title: "Remote site review",
-    description:
-      "Walk a construction project from anywhere using 360° site captures instead of waiting on scattered photos.",
-  },
-  {
-    title: "One visual project record",
-    description:
-      "Keep tours, progress reports, documents, timelines, and issues together in one construction workspace.",
-  },
-  {
-    title: "Stakeholder alignment",
-    description:
-      "Give developers, architects, contractors, and PMCs role-based access to the same site record.",
-  },
-];
-
 export default function HomePage() {
   return (
     <>
@@ -334,26 +316,6 @@ export default function HomePage() {
             imageSrc="/marketing/why-buildview/roles.jpg"
             imageAlt="BuildView user manager with role-based client access"
           />
-        </div>
-      </Section>
-
-      <Section>
-        <SectionHeader
-          eyebrow="Visibility"
-          title="Know what's happening on site, without always being on site."
-          description="BuildView is built for construction monitoring—not as a photography service, and not as a generic project tool with a camera added on."
-        />
-        <div className="grid gap-6 md:grid-cols-3">
-          {visibilityOutcomes.map((item) => (
-            <article key={item.title} className="surface-card h-full p-6 lg:p-8">
-              <h3 className="font-display text-lg font-semibold text-brand-primary dark:text-white">
-                {item.title}
-              </h3>
-              <p className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-                {item.description}
-              </p>
-            </article>
-          ))}
         </div>
       </Section>
 
