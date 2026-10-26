@@ -21,6 +21,12 @@ const items: Array<{
     envHint: "RESEND_API_KEY (+ optional NOTIFICATION_FROM_EMAIL)",
   },
   {
+    key: "whatsapp",
+    label: "WhatsApp alerts",
+    description: "Twilio WhatsApp for critical issues, invoices, and removals",
+    envHint: "TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM",
+  },
+  {
     key: "googleAnalytics",
     label: "Google Analytics",
     description: "GA4 on marketing pages (consent-gated)",

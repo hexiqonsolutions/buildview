@@ -358,12 +358,15 @@ export async function createIssue(data: {
     (await isNotificationRuleEnabled("onCriticalIssue"))
   ) {
     try {
-      await notifySuperAdmins({
-        title: `${validated.priority === "critical" ? "Critical" : "High"} issue reported`,
-        message: validated.title,
-        type: "issue_update",
-        link: "/admin/issues",
-      });
+      await notifySuperAdmins(
+        {
+          title: `${validated.priority === "critical" ? "Critical" : "High"} issue reported`,
+          message: validated.title,
+          type: "issue_update",
+          link: "/admin/issues",
+        },
+        { rule: "onCriticalIssue" }
+      );
     } catch (err) {
       console.error("[createIssue] notifySuperAdmins", err);
     }

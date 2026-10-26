@@ -6,9 +6,14 @@ import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { getSupabaseUrl } from "@/lib/supabase/env";
 import { logServerError, toPublicMessage } from "@/lib/errors/server";
 import { validate, validateFormData } from "@/lib/validations/parse";
-import { avatarUrlSchema, updateProfileSchema } from "@/lib/validations/profile";
+import {
+  avatarUrlSchema,
+  updateNotificationPreferencesSchema,
+  updateProfileSchema,
+} from "@/lib/validations/profile";
 import { publicObjectPath, UPLOAD_RULES, verifyStoredUpload } from "@/lib/uploads/verify";
 import { STORAGE_BUCKETS } from "@/lib/types";
+import { toE164Phone } from "@/lib/notifications/phone";
 
 export type ProfileActionState = {
   error?: string;
@@ -62,6 +67,68 @@ export async function updateProfile(
   revalidateProfileSurfaces();
 
   return { success: "Profile updated successfully." };
+}
+
+export async function updateNotificationPreferences(
+  _prevState: ProfileActionState,
+  formData: FormData
+): Promise<ProfileActionState> {
+  const parsed = validateFormData(updateNotificationPreferencesSchema, formData);
+  if (!parsed.success) {
+    return { error: parsed.error };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "You must be signed in to update notification preferences." };
+  }
+
+  const emailEnabled = parsed.data.email_notifications;
+  const whatsappEnabled = parsed.data.whatsapp_notifications;
+  const phoneE164 = whatsappEnabled ? toE164Phone(parsed.data.phone) : toE164Phone(parsed.data.phone);
+
+  const { data: existing } = await supabase
+    .from("users")
+    .select("whatsapp_opt_in_at, phone")
+    .eq("id", user.id)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  const wasOptedIn = Boolean(existing?.whatsapp_opt_in_at);
+  const whatsappOptInAt = whatsappEnabled
+    ? wasOptedIn
+      ? existing?.whatsapp_opt_in_at ?? new Date().toISOString()
+      : new Date().toISOString()
+    : null;
+
+  const { error } = await supabase
+    .from("users")
+    .update({
+      email_notifications: emailEnabled,
+      whatsapp_notifications: whatsappEnabled,
+      phone_e164: phoneE164,
+      whatsapp_opt_in_at: whatsappOptInAt,
+      // Keep display phone in sync when provided
+      phone: parsed.data.phone ?? existing?.phone ?? null,
+      updated_by: user.id,
+    })
+    .eq("id", user.id)
+    .is("deleted_at", null);
+
+  if (error) {
+    logServerError("updateNotificationPreferences", error, { userId: user.id });
+    return {
+      error:
+        "Could not save notification preferences. Apply migration 040 if columns are missing, then try again.",
+    };
+  }
+
+  revalidateProfileSurfaces();
+  return { success: "Notification preferences saved." };
 }
 
 /** Persist avatar_url for the signed-in user (service role — client RLS can silently block). */

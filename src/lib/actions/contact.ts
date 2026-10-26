@@ -50,7 +50,7 @@ export async function submitContact(
       text: formatContactEmailBody(data),
     });
 
-    if (!sent) {
+    if (!sent.ok) {
       return {
         error: "Unable to send your message right now. Please email us directly.",
       };

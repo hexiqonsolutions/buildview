@@ -537,6 +537,34 @@ export interface Database {
           },
         ];
       };
+      notification_deliveries: {
+        Row: NotificationDelivery;
+        Insert: {
+          id?: string;
+          user_id: string;
+          channel: NotificationDeliveryChannel;
+          rule?: string | null;
+          status: NotificationDeliveryStatus;
+          provider_id?: string | null;
+          error?: string | null;
+          title?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          status?: NotificationDeliveryStatus;
+          provider_id?: string | null;
+          error?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "notification_deliveries_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       activity_logs: {
         Row: ActivityLog;
         Insert: ActivityLogInsert;
@@ -819,7 +847,30 @@ export type User = Timestamps &
     is_active: boolean;
     /** Overrides client org default when set */
     dashboard_type?: ClientDashboardType | null;
+    /** Prefer email channel for platform notification rules (default true). */
+    email_notifications?: boolean;
+    /** Prefer WhatsApp for critical rules only (default false). */
+    whatsapp_notifications?: boolean;
+    /** E.164 phone for WhatsApp, e.g. +918655224990. */
+    phone_e164?: string | null;
+    /** When the user explicitly opted into WhatsApp alerts. */
+    whatsapp_opt_in_at?: string | null;
   };
+
+export type NotificationDeliveryChannel = "email" | "whatsapp";
+export type NotificationDeliveryStatus = "sent" | "skipped" | "failed";
+
+export type NotificationDelivery = {
+  id: string;
+  user_id: string;
+  channel: NotificationDeliveryChannel;
+  rule: string | null;
+  status: NotificationDeliveryStatus;
+  provider_id: string | null;
+  error: string | null;
+  title: string | null;
+  created_at: string;
+};
 
 export type PortfolioCategory =
   | "architecture"

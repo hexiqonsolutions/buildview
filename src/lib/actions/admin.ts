@@ -936,7 +936,11 @@ export async function createInvoice(data: {
 
     try {
       if (await isNotificationRuleEnabled(rule)) {
-        await notifyInvoiceRecipients(created, buildInvoiceNotificationPayload(created, kind));
+        await notifyInvoiceRecipients(
+          created,
+          buildInvoiceNotificationPayload(created, kind),
+          rule
+        );
       }
     } catch (err) {
       console.error("[createInvoice] notify", kind, err);
@@ -1596,7 +1600,8 @@ export async function updateInvoiceStatus(invoiceId: string, status: string) {
         if (await isNotificationRuleEnabled(rule)) {
           await notifyInvoiceRecipients(
             invoice,
-            buildInvoiceNotificationPayload(invoice, kind)
+            buildInvoiceNotificationPayload(invoice, kind),
+            rule
           );
         }
       } catch (err) {
@@ -1651,9 +1656,11 @@ export async function sendInvoiceNotification(
   }
 
   try {
+    const rule = kind === "paid" ? "onInvoicePaid" : ("onInvoiceSent" as const);
     await notifyInvoiceRecipients(
       invoice,
-      buildInvoiceNotificationPayload(invoice, kind)
+      buildInvoiceNotificationPayload(invoice, kind),
+      rule
     );
     revalidatePath("/admin/invoices");
     revalidatePath("/dashboard/invoices");

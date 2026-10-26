@@ -1,6 +1,7 @@
 import "server-only";
 import { isCalendlyEnabled, isGoogleAnalyticsEnabled } from "@/lib/integrations";
 import { isContactEmailEnabled, isTransactionalEmailEnabled } from "@/lib/email/config";
+import { isWhatsAppEnabled } from "@/lib/whatsapp/config";
 import { hasStaffPermission } from "@/lib/auth/staff";
 
 export type IntegrationsStatus = {
@@ -8,6 +9,7 @@ export type IntegrationsStatus = {
   googleAnalytics: boolean;
   contactEmail: boolean;
   notificationEmail: boolean;
+  whatsapp: boolean;
   siteUrl: boolean;
   cronSecret: boolean;
 };
@@ -17,6 +19,7 @@ const NONE_CONFIGURED: IntegrationsStatus = {
   googleAnalytics: false,
   contactEmail: false,
   notificationEmail: false,
+  whatsapp: false,
   siteUrl: false,
   cronSecret: false,
 };
@@ -29,6 +32,7 @@ export async function getIntegrationsStatus(): Promise<IntegrationsStatus> {
     googleAnalytics: isGoogleAnalyticsEnabled(),
     contactEmail: isContactEmailEnabled(),
     notificationEmail: isTransactionalEmailEnabled(),
+    whatsapp: isWhatsAppEnabled(),
     siteUrl: Boolean(
       process.env.NEXT_PUBLIC_SITE_URL ?? process.env.NEXT_PUBLIC_APP_URL
     ),

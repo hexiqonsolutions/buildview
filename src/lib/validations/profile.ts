@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { LIMITS, optionalPhone, personName, uuid } from "@/lib/validations/primitives";
+import { toE164Phone } from "@/lib/notifications/phone";
 
 export const updateProfileSchema = z
   .object({
@@ -7,6 +8,37 @@ export const updateProfileSchema = z
     phone: optionalPhone("Phone number"),
   })
   .strict();
+
+const boolFromForm = z.preprocess((value) => {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true" || normalized === "1" || normalized === "on") return true;
+    if (normalized === "false" || normalized === "0" || normalized === "off" || normalized === "") {
+      return false;
+    }
+  }
+  return value;
+}, z.boolean({ invalid_type_error: "Preference must be true or false" }));
+
+export const updateNotificationPreferencesSchema = z
+  .object({
+    email_notifications: boolFromForm,
+    whatsapp_notifications: boolFromForm,
+    phone: optionalPhone("WhatsApp phone"),
+  })
+  .strict()
+  .superRefine((data, ctx) => {
+    if (!data.whatsapp_notifications) return;
+    const e164 = toE164Phone(data.phone);
+    if (!e164) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Enter a valid mobile number with country code to enable WhatsApp alerts.",
+        path: ["phone"],
+      });
+    }
+  });
 
 const AVATAR_OBJECT_PATH = "storage/v1/object/public/avatars/";
 const AVATAR_FILE_NAME = /^[A-Za-z0-9._-]{1,255}$/;

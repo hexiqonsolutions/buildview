@@ -9,10 +9,17 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { getPlatformSettings } from "@/lib/actions/platform-settings";
-import { sendTransactionalEmail } from "@/lib/email/send";
+import {
+  buildNotificationEmailHtml,
+  sendTransactionalEmail,
+} from "@/lib/email/send";
 import { siteConfig } from "@/lib/site-config";
 import type { NotificationRuleKey, PlatformSettings } from "@/lib/admin/platform-settings";
-import type { NotificationType } from "@/lib/types";
+import type {
+  NotificationDeliveryChannel,
+  NotificationDeliveryStatus,
+  NotificationType,
+} from "@/lib/types";
 import type { InvoiceNotifyFields, InvoiceNotifyPayload } from "@/lib/portal/invoice-notifications";
 import { validate, type ValidationResult } from "@/lib/validations/parse";
 import { uuid } from "@/lib/validations/primitives";
@@ -25,6 +32,11 @@ import {
   notifyPayloadSchema,
 } from "@/lib/validations/notifications";
 import { internalError } from "@/lib/errors/server";
+import { isValidE164 } from "@/lib/notifications/phone";
+import {
+  isWhatsAppCriticalRule,
+  sendWhatsAppMessage,
+} from "@/lib/whatsapp/send";
 
 type NotifyPayload = {
   title: string;
@@ -32,6 +44,20 @@ type NotifyPayload = {
   type?: NotificationType;
   link?: string | null;
   sendEmail?: boolean;
+};
+
+type NotifyOptions = {
+  rule?: NotificationRuleKey;
+};
+
+type RecipientRow = {
+  id: string;
+  email: string;
+  full_name: string;
+  email_notifications: boolean | null;
+  whatsapp_notifications: boolean | null;
+  phone_e164: string | null;
+  whatsapp_opt_in_at: string | null;
 };
 
 function warnInvalidInput(fn: string, ...results: ValidationResult<unknown>[]) {
@@ -44,6 +70,36 @@ function warnInvalidInput(fn: string, ...results: ValidationResult<unknown>[]) {
 function revalidateNotificationPaths() {
   revalidatePath("/admin/notifications");
   revalidatePath("/dashboard/notifications");
+}
+
+function absoluteLink(link?: string | null): string | null {
+  if (!link) return null;
+  return link.startsWith("http") ? link : `${siteConfig.url}${link}`;
+}
+
+async function logDelivery(entry: {
+  user_id: string;
+  channel: NotificationDeliveryChannel;
+  rule?: NotificationRuleKey | null;
+  status: NotificationDeliveryStatus;
+  provider_id?: string | null;
+  error?: string | null;
+  title?: string | null;
+}) {
+  try {
+    const admin = createServiceRoleClient();
+    await admin.from("notification_deliveries").insert({
+      user_id: entry.user_id,
+      channel: entry.channel,
+      rule: entry.rule ?? null,
+      status: entry.status,
+      provider_id: entry.provider_id ?? null,
+      error: entry.error ?? null,
+      title: entry.title ?? null,
+    });
+  } catch (err) {
+    console.error("[logDelivery]", err);
+  }
 }
 
 export async function isNotificationRuleEnabled(
@@ -123,8 +179,6 @@ async function createNotification(data: {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Always write via service role — RLS only allows inserting notifications for
-  // yourself / super_admin, which blocks admin→client upload alerts.
   await insertNotificationSystem({
     user_id: parsed.data.user_id,
     title: parsed.data.title,
@@ -135,37 +189,195 @@ async function createNotification(data: {
   });
 }
 
+async function loadRecipients(userIds: string[]): Promise<RecipientRow[]> {
+  const admin = createServiceRoleClient();
+  const withPrefs = await admin
+    .from("users")
+    .select(
+      "id, email, full_name, email_notifications, whatsapp_notifications, phone_e164, whatsapp_opt_in_at"
+    )
+    .in("id", userIds)
+    .eq("is_active", true)
+    .is("deleted_at", null);
+
+  if (!withPrefs.error) {
+    return (withPrefs.data ?? []).map((row) => ({
+      id: row.id,
+      email: row.email,
+      full_name: row.full_name,
+      email_notifications: row.email_notifications ?? true,
+      whatsapp_notifications: row.whatsapp_notifications ?? false,
+      phone_e164: row.phone_e164 ?? null,
+      whatsapp_opt_in_at: row.whatsapp_opt_in_at ?? null,
+    }));
+  }
+
+  // Migration 040 not applied yet — fall back so email still attempts to send.
+  console.warn(
+    "[loadRecipients] preference columns missing; apply migration 040. Falling back to email-only.",
+    withPrefs.error.message
+  );
+
+  const fallback = await admin
+    .from("users")
+    .select("id, email, full_name")
+    .in("id", userIds)
+    .eq("is_active", true)
+    .is("deleted_at", null);
+
+  return (fallback.data ?? []).map((row) => ({
+    id: row.id,
+    email: row.email,
+    full_name: row.full_name,
+    email_notifications: true,
+    whatsapp_notifications: false,
+    phone_e164: null,
+    whatsapp_opt_in_at: null,
+  }));
+}
+
 async function emailNotificationRecipients(
   userIds: string[],
-  payload: { title: string; message: string; link?: string | null }
+  payload: { title: string; message: string; link?: string | null },
+  rule?: NotificationRuleKey
 ) {
   if (userIds.length === 0) return;
 
   try {
-    const admin = createServiceRoleClient();
-    const { data: users } = await admin
-      .from("users")
-      .select("email, full_name")
-      .in("id", userIds)
-      .eq("is_active", true)
-      .is("deleted_at", null);
-
-    const emails = users?.map((u) => u.email).filter(Boolean) as string[];
-    if (!emails?.length) return;
-
-    const linkLine = payload.link ? `\n\nView: ${siteConfig.url}${payload.link}` : "";
-
-    await sendTransactionalEmail({
-      to: emails,
-      subject: `[BuildView] ${payload.title}`,
-      text: `${payload.message}${linkLine}`,
+    const users = await loadRecipients(userIds);
+    const absolute = absoluteLink(payload.link);
+    const linkLine = absolute ? `\n\nView: ${absolute}` : "";
+    const html = buildNotificationEmailHtml({
+      title: payload.title,
+      message: payload.message,
+      link: payload.link,
     });
+
+    await Promise.all(
+      users.map(async (user) => {
+        if (user.email_notifications === false) {
+          await logDelivery({
+            user_id: user.id,
+            channel: "email",
+            rule,
+            status: "skipped",
+            error: "email_notifications disabled",
+            title: payload.title,
+          });
+          return;
+        }
+
+        if (!user.email?.includes("@")) {
+          await logDelivery({
+            user_id: user.id,
+            channel: "email",
+            rule,
+            status: "skipped",
+            error: "missing email",
+            title: payload.title,
+          });
+          return;
+        }
+
+        const result = await sendTransactionalEmail({
+          to: user.email,
+          subject: `[BuildView] ${payload.title}`,
+          text: `${payload.message}${linkLine}`,
+          html,
+        });
+
+        await logDelivery({
+          user_id: user.id,
+          channel: "email",
+          rule,
+          status: result.ok ? "sent" : result.skipped ? "skipped" : "failed",
+          provider_id: result.providerId ?? null,
+          error: result.error ?? null,
+          title: payload.title,
+        });
+      })
+    );
   } catch (err) {
     console.error("[emailNotificationRecipients]", err);
   }
 }
 
-async function notifyUsers(userIds: string[], payload: NotifyPayload) {
+async function whatsappNotificationRecipients(
+  userIds: string[],
+  payload: { title: string; message: string; link?: string | null },
+  rule: NotificationRuleKey
+) {
+  if (!isWhatsAppCriticalRule(rule) || userIds.length === 0) return;
+
+  try {
+    const users = await loadRecipients(userIds);
+    const absolute = absoluteLink(payload.link);
+    const body = [
+      `*BuildView* — ${payload.title}`,
+      payload.message,
+      absolute ? `Open: ${absolute}` : null,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+
+    await Promise.all(
+      users.map(async (user) => {
+        if (!user.whatsapp_notifications || !user.whatsapp_opt_in_at) {
+          await logDelivery({
+            user_id: user.id,
+            channel: "whatsapp",
+            rule,
+            status: "skipped",
+            error: "whatsapp not opted in",
+            title: payload.title,
+          });
+          return;
+        }
+
+        if (!isValidE164(user.phone_e164)) {
+          await logDelivery({
+            user_id: user.id,
+            channel: "whatsapp",
+            rule,
+            status: "skipped",
+            error: "missing or invalid phone_e164",
+            title: payload.title,
+          });
+          return;
+        }
+
+        const result = await sendWhatsAppMessage({
+          toE164: user.phone_e164!,
+          body,
+          rule,
+          variables: {
+            title: payload.title,
+            message: payload.message,
+            link: absolute ?? undefined,
+          },
+        });
+
+        await logDelivery({
+          user_id: user.id,
+          channel: "whatsapp",
+          rule,
+          status: result.ok ? "sent" : result.skipped ? "skipped" : "failed",
+          provider_id: result.providerId ?? null,
+          error: result.error ?? null,
+          title: payload.title,
+        });
+      })
+    );
+  } catch (err) {
+    console.error("[whatsappNotificationRecipients]", err);
+  }
+}
+
+async function notifyUsers(
+  userIds: string[],
+  payload: NotifyPayload,
+  options?: NotifyOptions
+) {
   const parsedIds = validate(notificationRecipientIdsSchema, userIds);
   const parsedPayload = validate(notifyPayloadSchema, payload);
   if (!parsedIds.success || !parsedPayload.success) {
@@ -180,6 +392,7 @@ async function notifyUsers(userIds: string[], payload: NotifyPayload) {
   }
 
   const { sendEmail, ...notification } = parsedPayload.data;
+  const rule = options?.rule;
 
   await Promise.all(
     uniqueIds.map((userId) =>
@@ -191,7 +404,11 @@ async function notifyUsers(userIds: string[], payload: NotifyPayload) {
   );
 
   if (sendEmail !== false) {
-    await emailNotificationRecipients(uniqueIds, notification);
+    await emailNotificationRecipients(uniqueIds, notification, rule);
+  }
+
+  if (rule) {
+    await whatsappNotificationRecipients(uniqueIds, notification, rule);
   }
 
   revalidateNotificationPaths();
@@ -200,7 +417,8 @@ async function notifyUsers(userIds: string[], payload: NotifyPayload) {
 /** Notify Client Admin users for an invoice (billing is org-admin scoped). */
 export async function notifyInvoiceRecipients(
   invoice: InvoiceNotifyFields,
-  payload: InvoiceNotifyPayload
+  payload: InvoiceNotifyPayload,
+  rule?: NotificationRuleKey
 ) {
   const parsedInvoice = validate(invoiceNotifyFieldsSchema, invoice);
   const parsedPayload = validate(notifyPayloadSchema, payload);
@@ -218,10 +436,14 @@ export async function notifyInvoiceRecipients(
     .eq("is_active", true)
     .is("deleted_at", null);
 
-  await notifyUsers(admins?.map((u) => u.id) ?? [], parsedPayload.data);
+  await notifyUsers(admins?.map((u) => u.id) ?? [], parsedPayload.data, { rule });
 }
 
-async function notifyClientUsers(clientId: string, payload: NotifyPayload) {
+async function notifyClientUsers(
+  clientId: string,
+  payload: NotifyPayload,
+  options?: NotifyOptions
+) {
   const parsedClientId = validate(uuid("Client ID"), clientId);
   const parsedPayload = validate(notifyPayloadSchema, payload);
   if (!parsedClientId.success || !parsedPayload.success) {
@@ -237,10 +459,14 @@ async function notifyClientUsers(clientId: string, payload: NotifyPayload) {
     .eq("is_active", true)
     .is("deleted_at", null);
 
-  await notifyUsers(users?.map((u) => u.id) ?? [], parsedPayload.data);
+  await notifyUsers(users?.map((u) => u.id) ?? [], parsedPayload.data, options);
 }
 
-export async function notifyProjectClientUsers(projectId: string, payload: NotifyPayload) {
+export async function notifyProjectClientUsers(
+  projectId: string,
+  payload: NotifyPayload,
+  options?: NotifyOptions
+) {
   const parsedProjectId = validate(uuid("Project ID"), projectId);
   const parsedPayload = validate(notifyPayloadSchema, payload);
   if (!parsedProjectId.success || !parsedPayload.success) {
@@ -286,10 +512,13 @@ export async function notifyProjectClientUsers(projectId: string, payload: Notif
     return;
   }
 
-  await notifyUsers([...recipientIds], parsedPayload.data);
+  await notifyUsers([...recipientIds], parsedPayload.data, options);
 }
 
-export async function notifySuperAdmins(payload: NotifyPayload) {
+export async function notifySuperAdmins(
+  payload: NotifyPayload,
+  options?: NotifyOptions
+) {
   const parsedPayload = validate(notifyPayloadSchema, payload);
   if (!parsedPayload.success) {
     warnInvalidInput("notifySuperAdmins", parsedPayload);
@@ -304,7 +533,7 @@ export async function notifySuperAdmins(payload: NotifyPayload) {
     .eq("is_active", true)
     .is("deleted_at", null);
 
-  await notifyUsers(admins?.map((a) => a.id) ?? [], parsedPayload.data);
+  await notifyUsers(admins?.map((a) => a.id) ?? [], parsedPayload.data, options);
 }
 
 /**
@@ -325,7 +554,9 @@ export async function notifyClientsIfEnabled(
 
   try {
     if (!(await isNotificationRuleEnabled(parsedRule.data))) return;
-    await notifyProjectClientUsers(parsedProjectId.data, parsedPayload.data);
+    await notifyProjectClientUsers(parsedProjectId.data, parsedPayload.data, {
+      rule: parsedRule.data,
+    });
   } catch (err) {
     console.error("[notifyClientsIfEnabled]", rule, projectId, err);
   }
@@ -346,7 +577,9 @@ export async function notifyClientOrgIfEnabled(
 
   try {
     if (!(await isNotificationRuleEnabled(parsedRule.data))) return;
-    await notifyClientUsers(parsedClientId.data, parsedPayload.data);
+    await notifyClientUsers(parsedClientId.data, parsedPayload.data, {
+      rule: parsedRule.data,
+    });
   } catch (err) {
     console.error("[notifyClientOrgIfEnabled]", rule, clientId, err);
   }
@@ -367,7 +600,7 @@ export async function notifyUsersIfEnabled(
 
   try {
     if (!(await isNotificationRuleEnabled(parsedRule.data))) return;
-    await notifyUsers(parsedIds.data, parsedPayload.data);
+    await notifyUsers(parsedIds.data, parsedPayload.data, { rule: parsedRule.data });
   } catch (err) {
     console.error("[notifyUsersIfEnabled]", rule, err);
   }

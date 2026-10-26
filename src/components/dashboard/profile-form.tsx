@@ -1,8 +1,12 @@
 "use client";
 
 import { useEffect, useState, useActionState } from "react";
-import { Loader2, Moon, Sun, Building2, Bell } from "lucide-react";
-import { updateProfile, type ProfileActionState } from "@/lib/actions/profile";
+import { Loader2, Moon, Sun, Building2, Bell, MessageCircle } from "lucide-react";
+import {
+  updateProfile,
+  updateNotificationPreferences,
+  type ProfileActionState,
+} from "@/lib/actions/profile";
 import { ProfileAvatarEditor } from "@/components/dashboard/profile-avatar-editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,15 +22,68 @@ interface ProfileFormProps {
   client?: Client | null;
 }
 
+function PreferenceSwitch({
+  checked,
+  onCheckedChange,
+  label,
+}: {
+  checked: boolean;
+  onCheckedChange: (next: boolean) => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={() => onCheckedChange(!checked)}
+      className={cn(
+        "relative h-6 w-11 cursor-pointer rounded-full transition-colors duration-200",
+        checked ? "bg-slate-900 dark:bg-white" : "bg-slate-200 dark:bg-slate-700"
+      )}
+    >
+      <span
+        className={cn(
+          "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 dark:bg-slate-900",
+          checked ? "left-5" : "left-0.5"
+        )}
+      />
+    </button>
+  );
+}
+
 export function ProfileForm({ user, client }: ProfileFormProps) {
   const [state, formAction, isPending] = useActionState(updateProfile, initialState);
+  const [notifyState, notifyAction, notifyPending] = useActionState(
+    updateNotificationPreferences,
+    initialState
+  );
   const [darkMode, setDarkMode] = useState(false);
-  const [emailNotifications, setEmailNotifications] = useState(true);
-  const [issueAlerts, setIssueAlerts] = useState(true);
+  const [emailNotifications, setEmailNotifications] = useState(
+    user.email_notifications !== false
+  );
+  const [whatsappNotifications, setWhatsappNotifications] = useState(
+    Boolean(user.whatsapp_notifications)
+  );
+  const [whatsappPhone, setWhatsappPhone] = useState(
+    user.phone_e164 || user.phone || ""
+  );
 
   useEffect(() => {
     setDarkMode(document.documentElement.classList.contains("dark"));
   }, []);
+
+  useEffect(() => {
+    setEmailNotifications(user.email_notifications !== false);
+    setWhatsappNotifications(Boolean(user.whatsapp_notifications));
+    setWhatsappPhone(user.phone_e164 || user.phone || "");
+  }, [
+    user.email_notifications,
+    user.whatsapp_notifications,
+    user.phone_e164,
+    user.phone,
+  ]);
 
   function toggleDarkMode(checked: boolean) {
     setDarkMode(checked);
@@ -69,14 +126,14 @@ export function ProfileForm({ user, client }: ProfileFormProps) {
                     {client.email}
                   </dd>
                 </div>
-                {client.phone && (
+                {client.phone ? (
                   <div>
                     <dt className="text-xs text-slate-500">Phone</dt>
                     <dd className="mt-1 text-sm font-medium text-slate-900 dark:text-white">
                       {client.phone}
                     </dd>
                   </div>
-                )}
+                ) : null}
                 <div>
                   <dt className="text-xs text-slate-500">Subscription</dt>
                   <dd className="mt-1 text-sm font-medium capitalize text-slate-900 dark:text-white">
@@ -136,13 +193,15 @@ export function ProfileForm({ user, client }: ProfileFormProps) {
                 />
               </div>
 
-              {state.error && <p className="text-sm text-red-600 dark:text-red-400">{state.error}</p>}
-              {state.success && (
+              {state.error ? (
+                <p className="text-sm text-red-600 dark:text-red-400">{state.error}</p>
+              ) : null}
+              {state.success ? (
                 <p className="text-sm text-green-600 dark:text-green-400">{state.success}</p>
-              )}
+              ) : null}
 
               <Button type="submit" variant="outline" disabled={isPending}>
-                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Save Changes
               </Button>
             </form>
@@ -162,59 +221,103 @@ export function ProfileForm({ user, client }: ProfileFormProps) {
         </TabsContent>
 
         <TabsContent value="notifications" className="mt-6">
-          <div className="portal-card divide-y divide-slate-100 dark:divide-slate-800">
-            <div className="flex items-center justify-between p-5">
-              <div className="flex items-start gap-3">
-                <Bell className="mt-0.5 h-4 w-4 text-slate-400" />
+          <form action={notifyAction} className="space-y-4">
+            <input
+              type="hidden"
+              name="email_notifications"
+              value={emailNotifications ? "true" : "false"}
+            />
+            <input
+              type="hidden"
+              name="whatsapp_notifications"
+              value={whatsappNotifications ? "true" : "false"}
+            />
+
+            <div className="portal-card divide-y divide-slate-100 dark:divide-slate-800">
+              <div className="flex items-center justify-between gap-4 p-5">
+                <div className="flex items-start gap-3">
+                  <Bell className="mt-0.5 h-4 w-4 text-slate-400" />
+                  <div>
+                    <p className="text-sm font-medium text-slate-900 dark:text-white">
+                      Email notifications
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Uploads, timeline, reports, issues, and invoices
+                    </p>
+                  </div>
+                </div>
+                <PreferenceSwitch
+                  label="Email notifications"
+                  checked={emailNotifications}
+                  onCheckedChange={setEmailNotifications}
+                />
+              </div>
+
+              <div className="space-y-4 p-5">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-start gap-3">
+                    <MessageCircle className="mt-0.5 h-4 w-4 text-slate-400" />
+                    <div>
+                      <p className="text-sm font-medium text-slate-900 dark:text-white">
+                        WhatsApp alerts
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        Critical issues, invoices, and project removal only
+                      </p>
+                    </div>
+                  </div>
+                  <PreferenceSwitch
+                    label="WhatsApp alerts"
+                    checked={whatsappNotifications}
+                    onCheckedChange={setWhatsappNotifications}
+                  />
+                </div>
+
                 <div>
-                  <p className="text-sm font-medium text-slate-900 dark:text-white">
-                    Email notifications
+                  <Label
+                    htmlFor="whatsapp_phone"
+                    className="text-slate-700 dark:text-slate-300"
+                  >
+                    WhatsApp mobile
+                  </Label>
+                  <Input
+                    id="whatsapp_phone"
+                    name="phone"
+                    value={whatsappPhone}
+                    onChange={(event) => setWhatsappPhone(event.target.value)}
+                    placeholder="+91 86552 24990"
+                    className="mt-1.5"
+                    disabled={!whatsappNotifications}
+                  />
+                  <p className="mt-1 text-xs text-slate-500">
+                    Use country code. Indian 10-digit numbers are stored as +91…
                   </p>
-                  <p className="text-xs text-slate-500">Reports and document uploads</p>
                 </div>
               </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={emailNotifications}
-                onClick={() => setEmailNotifications((v) => !v)}
-                className={cn(
-                  "relative h-6 w-11 rounded-full transition-colors",
-                  emailNotifications ? "bg-slate-900 dark:bg-white" : "bg-slate-200 dark:bg-slate-700"
-                )}
-              >
-                <span
-                  className={cn(
-                    "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform dark:bg-slate-900",
-                    emailNotifications ? "left-5" : "left-0.5"
-                  )}
-                />
-              </button>
             </div>
-            <div className="flex items-center justify-between p-5">
-              <div>
-                <p className="text-sm font-medium text-slate-900 dark:text-white">Issue alerts</p>
-                <p className="text-xs text-slate-500">Critical and high-priority issues</p>
-              </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={issueAlerts}
-                onClick={() => setIssueAlerts((v) => !v)}
-                className={cn(
-                  "relative h-6 w-11 rounded-full transition-colors",
-                  issueAlerts ? "bg-slate-900 dark:bg-white" : "bg-slate-200 dark:bg-slate-700"
+
+            {notifyState.error ? (
+              <p className="text-sm text-red-600 dark:text-red-400">{notifyState.error}</p>
+            ) : null}
+            {notifyState.success ? (
+              <p className="text-sm text-emerald-600 dark:text-emerald-400">
+                {notifyState.success}
+              </p>
+            ) : null}
+
+            <div className="flex justify-end">
+              <Button type="submit" disabled={notifyPending}>
+                {notifyPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving…
+                  </>
+                ) : (
+                  "Save notification preferences"
                 )}
-              >
-                <span
-                  className={cn(
-                    "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform dark:bg-slate-900",
-                    issueAlerts ? "left-5" : "left-0.5"
-                  )}
-                />
-              </button>
+              </Button>
             </div>
-          </div>
+          </form>
         </TabsContent>
 
         <TabsContent value="theme" className="mt-6">
@@ -231,23 +334,11 @@ export function ProfileForm({ user, client }: ProfileFormProps) {
                   <p className="text-xs text-slate-500">Switch between light and dark interface</p>
                 </div>
               </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={darkMode}
-                onClick={() => toggleDarkMode(!darkMode)}
-                className={cn(
-                  "relative h-6 w-11 rounded-full transition-colors",
-                  darkMode ? "bg-slate-900 dark:bg-white" : "bg-slate-200 dark:bg-slate-700"
-                )}
-              >
-                <span
-                  className={cn(
-                    "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform dark:bg-slate-900",
-                    darkMode ? "left-5" : "left-0.5"
-                  )}
-                />
-              </button>
+              <PreferenceSwitch
+                label="Dark mode"
+                checked={darkMode}
+                onCheckedChange={toggleDarkMode}
+              />
             </div>
           </div>
         </TabsContent>
