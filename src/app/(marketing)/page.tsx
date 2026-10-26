@@ -231,7 +231,13 @@ export default function HomePage() {
       <Section id="platform">
         <SectionHeader
           eyebrow="Platform"
-          title="One Platform. Complete Site Visibility."
+          title={
+            <>
+              One Platform,
+              <br />
+              Complete Site Visibility.
+            </>
+          }
           description="From the first excavation to final handover, BuildView gives every stakeholder real-time visibility into construction progress, project documentation, and site activity."
         />
         <div className="grid gap-6 lg:grid-cols-3">
