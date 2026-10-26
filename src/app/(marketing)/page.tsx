@@ -228,8 +228,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      <HomePartnersSection />
-
       <Section id="platform">
         <SectionHeader
           eyebrow="Platform"
@@ -370,6 +368,8 @@ export default function HomePage() {
           </div>
         </div>
       </Section>
+
+      <HomePartnersSection />
     </>
   );
 }

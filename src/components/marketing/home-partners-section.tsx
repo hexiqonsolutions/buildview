@@ -30,10 +30,10 @@ export function HomePartnersSection() {
       aria-labelledby="home-partners-heading"
       className="relative border-b border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-950"
     >
-      {/* Soft bridge from dark hero */}
+      {/* Soft bridge from the dark CTA above */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-linear-to-b from-brand-primary/8 to-transparent dark:from-slate-950"
+        className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-linear-to-b from-brand-primary/10 to-transparent dark:from-slate-950"
       />
       <div
         aria-hidden
