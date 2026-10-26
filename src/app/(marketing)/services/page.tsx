@@ -154,6 +154,16 @@ const faqs = [
     answer:
       "Absolutely. BuildView supports drawings, BOQs, contracts, reports, and other project documentation.",
   },
+  {
+    question: "Can BuildView fit into our existing construction reporting workflow?",
+    answer:
+      "BuildView provides a centralized workspace for project information, reports, drawings, visual records, and issue tracking. Our team can discuss how your existing workflow can be organized within the platform and confirm any specific integration requirements.",
+  },
+  {
+    question: "How often do we need to capture our construction site?",
+    answer:
+      "Capture frequency can be planned according to your project milestones, reporting requirements, and monitoring needs. BuildView can help organize dated visual records so teams can review site conditions across different visits.",
+  },
 ];
 
 export default function ServicesPage() {

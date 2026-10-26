@@ -44,10 +44,10 @@ export function MarketingFooter() {
 
           <div className="lg:col-span-2">
             <h4 className="mb-4 text-sm font-semibold uppercase tracking-wider text-white">
-              Product
+              Features
             </h4>
             <ul className="space-y-2.5 text-sm">
-              {siteConfig.footer.product.map((item) => (
+              {siteConfig.footer.features.map((item) => (
                 <li key={item.label}>
                   <Link href={item.href} className="transition-colors hover:text-brand-accent">
                     {item.label}

@@ -51,7 +51,7 @@ export const siteConfig = {
     { href: "/contact", label: "Contact" },
   ],
   footer: {
-    product: [
+    features: [
       { label: "Virtual Tours", href: "/services#virtual-tours" },
       { label: "Compare Progress", href: "/services#compare-tours" },
       { label: "Progress Reports", href: "/services#reports" },
