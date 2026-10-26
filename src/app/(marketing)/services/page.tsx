@@ -184,11 +184,12 @@ export default function ServicesPage() {
           title="Everything required for remote construction monitoring"
           description="Each service connects through one construction intelligence platform—so progress, documents, and decisions stay aligned."
         />
-        <div className="space-y-8">
+        <div className="mt-4 space-y-0 lg:mt-8">
           {services.map((service, index) => (
             <ServiceSection
               key={service.id}
               {...service}
+              index={index + 1}
               reversed={index % 2 === 1}
             />
           ))}
