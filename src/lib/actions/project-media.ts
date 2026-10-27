@@ -12,6 +12,7 @@ import {
 import { type ProjectMediaGroups, type ProjectMediaItem } from "@/lib/project-media";
 import { parseOrThrow, validate } from "@/lib/validations/parse";
 import {
+  addProjectMediaBatchSchema,
   addProjectMediaSchema,
   projectMediaDirectionSchema,
   projectMediaIdSchema,
@@ -123,23 +124,22 @@ export async function getProjectMediaAdmin(
   return { isPortfolio, media: await getProjectMedia(projectId) };
 }
 
-export async function addProjectMedia(
-  fields: {
-    project_id: string;
-    media_type: ProjectMediaType;
-    title: string;
-    storage_path: string;
-    file_name: string;
-    mime_type: string;
-    file_size: number;
-  },
-  options?: {
-    /** Skip path revalidation during multi-file batches (caller refreshes once at the end). */
-    skipRevalidate?: boolean;
-  }
-): Promise<ProjectMediaItem> {
+type AddProjectMediaFields = {
+  project_id: string;
+  media_type: ProjectMediaType;
+  title: string;
+  storage_path: string;
+  file_name: string;
+  mime_type: string;
+  file_size: number;
+};
+
+async function insertVerifiedMedia(
+  fields: AddProjectMediaFields,
+  actorId: string,
+  sortOrder: number
+): Promise<ProjectMedia> {
   const input = parseOrThrow(addProjectMediaSchema, fields);
-  const actor = await requireBuildViewStaff();
 
   if (!input.storage_path.startsWith(`${input.project_id}/`)) {
     throw new PublicError("File upload is outside the project folder.");
@@ -150,15 +150,6 @@ export async function addProjectMedia(
     "addProjectMedia"
   );
 
-  const admin = createServiceRoleClient();
-
-  const { count } = await admin
-    .from("project_media")
-    .select("id", { count: "exact", head: true })
-    .eq("project_id", input.project_id)
-    .eq("media_type", input.media_type)
-    .is("deleted_at", null);
-
   const payload: ProjectMediaInsert = {
     project_id: input.project_id,
     media_type: input.media_type,
@@ -167,24 +158,91 @@ export async function addProjectMedia(
     file_name: input.file_name,
     mime_type: stored.mimeType,
     file_size: stored.size,
-    sort_order: count ?? 0,
-    created_by: actor.id,
-    updated_by: actor.id,
+    sort_order: sortOrder,
+    created_by: actorId,
+    updated_by: actorId,
   };
 
-  // Service role insert — avoids RLS flakes mid-batch and keeps multi-upload reliable.
-  const { data, error } = await admin
+  const { data, error } = await createServiceRoleClient()
     .from("project_media")
     .insert(payload)
     .select("*")
     .single();
   if (error || !data) throw internalError("addProjectMedia", error);
+  return data as ProjectMedia;
+}
 
-  if (!options?.skipRevalidate) {
-    revalidateProjectMedia(input.project_id);
-  }
-  const [item] = await withSignedUrls([data as ProjectMedia]);
+export async function addProjectMedia(
+  fields: AddProjectMediaFields
+): Promise<ProjectMediaItem> {
+  const actor = await requireBuildViewStaff();
+  const admin = createServiceRoleClient();
+  const { count } = await admin
+    .from("project_media")
+    .select("id", { count: "exact", head: true })
+    .eq("project_id", fields.project_id)
+    .eq("media_type", fields.media_type)
+    .is("deleted_at", null);
+
+  const row = await insertVerifiedMedia(fields, actor.id, count ?? 0);
+  revalidateProjectMedia(fields.project_id);
+  const [item] = await withSignedUrls([row]);
   return item;
+}
+
+/**
+ * Register many already-uploaded storage objects in one server round-trip.
+ * Used by multi-select photo/video upload so the page doesn't refresh mid-batch.
+ */
+export async function addProjectMediaBatch(fields: {
+  items: AddProjectMediaFields[];
+}): Promise<{ items: ProjectMediaItem[]; errors: string[] }> {
+  const parsed = parseOrThrow(addProjectMediaBatchSchema, fields);
+  const actor = await requireBuildViewStaff();
+  const items = parsed.items;
+
+  const projectId = items[0]?.project_id;
+  const mediaType = items[0]?.media_type;
+  if (!projectId || !mediaType) return { items: [], errors: [] };
+  if (items.some((item) => item.project_id !== projectId || item.media_type !== mediaType)) {
+    throw new PublicError("All files in a batch must belong to the same project and type.");
+  }
+
+  const admin = createServiceRoleClient();
+  const { count } = await admin
+    .from("project_media")
+    .select("id", { count: "exact", head: true })
+    .eq("project_id", projectId)
+    .eq("media_type", mediaType)
+    .is("deleted_at", null);
+
+  let sortOrder = count ?? 0;
+  const saved: ProjectMedia[] = [];
+  const errors: string[] = [];
+
+  for (const item of items) {
+    try {
+      const row = await insertVerifiedMedia(item, actor.id, sortOrder);
+      saved.push(row);
+      sortOrder += 1;
+    } catch (err) {
+      const message =
+        err instanceof PublicError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "Could not save file";
+      errors.push(`${item.file_name}: ${message}`);
+      // Best-effort cleanup of orphaned storage object
+      await admin.storage.from(BUCKET).remove([item.storage_path]).catch(() => undefined);
+    }
+  }
+
+  if (saved.length > 0) {
+    revalidateProjectMedia(projectId);
+  }
+
+  return { items: await withSignedUrls(saved), errors };
 }
 
 async function getMediaRow(id: string): Promise<ProjectMedia> {

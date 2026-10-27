@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { buildStoragePath, uploadFileToStorage } from "@/lib/supabase/storage";
 import {
-  addProjectMedia,
+  addProjectMediaBatch,
   deleteProjectMedia,
   moveProjectMedia,
   renameProjectMedia,
@@ -27,6 +27,7 @@ import {
   PROJECT_MEDIA_ACCEPT,
   isGifMedia,
   projectMediaFormatLabel,
+  resolveProjectMediaMime,
   titleFromFileName,
   validateProjectMediaFile,
   type ProjectMediaGroups,
@@ -213,51 +214,76 @@ function MediaSection({
     if (files.length === 0) return;
 
     const nextErrors: string[] = [];
-    let added = 0;
+    const uploaded: Array<{
+      project_id: string;
+      media_type: ProjectMediaType;
+      title: string;
+      storage_path: string;
+      file_name: string;
+      mime_type: string;
+      file_size: number;
+    }> = [];
+
     onUploadingChange(true);
     setErrors([]);
 
     try {
+      // 1) Push every file to storage first (no server-action refresh mid-batch).
       for (const [index, file] of files.entries()) {
         const invalid = validateProjectMediaFile(file, type);
         if (invalid) {
           nextErrors.push(invalid);
           continue;
         }
+
+        const mime = resolveProjectMediaMime(file);
         setProgress(
           files.length > 1
             ? `Uploading ${index + 1} of ${files.length}…`
             : `Uploading ${file.name}…`
         );
+
         try {
           const upload = await uploadFileToStorage(
             STORAGE_BUCKETS.PROJECT_MEDIA,
             buildStoragePath(projectId, file.name),
-            file
+            file,
+            { contentType: mime, timeoutMs: 120_000 }
           );
-          const item = await addProjectMedia(
-            {
-              project_id: projectId,
-              media_type: type,
-              title: titleFromFileName(file.name),
-              storage_path: upload.path,
-              file_name: upload.fileName,
-              mime_type: upload.mimeType,
-              file_size: upload.fileSize,
-            },
-            { skipRevalidate: true }
-          );
-          onAdded(item);
-          added += 1;
+          uploaded.push({
+            project_id: projectId,
+            media_type: type,
+            title: titleFromFileName(file.name),
+            storage_path: upload.path,
+            file_name: upload.fileName,
+            mime_type: upload.mimeType,
+            file_size: upload.fileSize,
+          });
         } catch (err) {
           nextErrors.push(`${file.name}: ${getErrorMessage(err, "upload failed")}`);
+        }
+      }
+
+      // 2) One server round-trip to verify + save all successful uploads.
+      if (uploaded.length > 0) {
+        setProgress(
+          uploaded.length > 1
+            ? `Saving ${uploaded.length} ${isVideo ? "videos" : "photos"}…`
+            : "Saving…"
+        );
+        try {
+          const result = await addProjectMediaBatch({ items: uploaded });
+          for (const item of result.items) onAdded(item);
+          nextErrors.push(...result.errors);
+          if (result.items.length > 0) onChanged();
+        } catch (err) {
+          nextErrors.push(getErrorMessage(err, "Could not save uploaded files"));
         }
       }
     } finally {
       setProgress(null);
       onUploadingChange(false);
       setErrors(nextErrors);
-      if (added > 0) onChanged();
     }
   }
 

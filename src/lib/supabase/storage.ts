@@ -22,26 +22,54 @@ export function buildStoragePath(projectId: string, fileName: string): string {
   return `${projectId}/${Date.now()}-${unique}-${sanitizeFileName(fileName)}`;
 }
 
+type UploadFileOptions = {
+  /** Override Content-Type (required when browser leaves file.type empty). */
+  contentType?: string;
+  /** Abort / fail the upload after this many ms (default 120s). */
+  timeoutMs?: number;
+};
+
 /** Upload a file from the browser (Client Components). */
 export async function uploadFileToStorage(
   bucket: StorageBucket,
   path: string,
-  file: File
+  file: File,
+  options?: UploadFileOptions
 ): Promise<UploadResult> {
   const supabase = createClient();
+  const contentType =
+    options?.contentType ||
+    file.type ||
+    "application/octet-stream";
+  const timeoutMs = options?.timeoutMs ?? 120_000;
 
-  const { error } = await supabase.storage.from(bucket).upload(path, file, {
-    contentType: file.type || "application/octet-stream",
+  const uploadPromise = supabase.storage.from(bucket).upload(path, file, {
+    contentType,
     upsert: false,
   });
 
-  if (error) throw new Error(error.message);
+  const timed = await Promise.race([
+    uploadPromise,
+    new Promise<{ error: { message: string } }>((resolve) => {
+      setTimeout(
+        () =>
+          resolve({
+            error: {
+              message: `Upload timed out after ${Math.round(timeoutMs / 1000)}s. Try a smaller file or check your connection.`,
+            },
+          }),
+        timeoutMs
+      );
+    }),
+  ]);
+
+  if (timed.error) throw new Error(timed.error.message);
 
   return {
     path,
     fileName: file.name,
     fileSize: file.size,
-    mimeType: file.type || "application/octet-stream",
+    mimeType: contentType,
   };
 }
 

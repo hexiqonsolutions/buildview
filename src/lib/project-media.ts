@@ -24,6 +24,27 @@ export const PROJECT_MEDIA_MAX_BYTES: Record<ProjectMediaType, number> = {
   photo: 20 * 1024 * 1024,
 };
 
+const EXT_MIME: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+  gif: "image/gif",
+  mp4: "video/mp4",
+  webm: "video/webm",
+  mov: "video/quicktime",
+};
+
+/** Normalize browser quirks: empty type, image/jpg, etc. Prefer extension when needed. */
+export function resolveProjectMediaMime(file: File): string {
+  const raw = (file.type || "").split(";")[0].trim().toLowerCase();
+  if (raw === "image/jpg") return "image/jpeg";
+  if (raw && raw !== "application/octet-stream") return raw;
+
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  return EXT_MIME[ext] ?? raw;
+}
+
 /** Badge shown on video cards, e.g. "MP4" or "GIF". */
 export function projectMediaFormatLabel(item: Pick<ProjectMedia, "mime_type" | "file_name">): string {
   if (item.mime_type === "image/gif") return "GIF";
@@ -38,14 +59,18 @@ export function isGifMedia(item: Pick<ProjectMedia, "mime_type">): boolean {
 }
 
 export function validateProjectMediaFile(file: File, type: ProjectMediaType): string | null {
-  if (!PROJECT_MEDIA_MIME_TYPES[type].includes(file.type)) {
+  const mime = resolveProjectMediaMime(file);
+  if (!PROJECT_MEDIA_MIME_TYPES[type].includes(mime)) {
     return type === "video"
       ? `${file.name}: videos must be MP4, WebM, MOV, or GIF.`
-      : `${file.name}: photos must be JPEG, PNG, or WebP.`;
+      : `${file.name}: photos must be JPEG, PNG, or WebP (not HEIC).`;
   }
   const max = PROJECT_MEDIA_MAX_BYTES[type];
   if (file.size > max) {
     return `${file.name}: must be ${Math.round(max / 1024 / 1024)} MB or smaller.`;
+  }
+  if (file.size <= 0) {
+    return `${file.name}: file is empty.`;
   }
   return null;
 }

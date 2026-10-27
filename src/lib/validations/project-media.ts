@@ -58,3 +58,12 @@ export const addProjectMediaSchema = z
       });
     }
   });
+
+export const addProjectMediaBatchSchema = z
+  .object({
+    items: z
+      .array(addProjectMediaSchema)
+      .min(1, "Add at least one file")
+      .max(30, "Upload at most 30 files at once"),
+  })
+  .strict();

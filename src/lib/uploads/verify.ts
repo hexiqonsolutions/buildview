@@ -175,6 +175,23 @@ async function readHead(bucket: Bucket, path: string): Promise<Head> {
   return head.subarray(0, length);
 }
 
+const PATH_EXT_MIME: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+  gif: "image/gif",
+  mp4: "video/mp4",
+  webm: "video/webm",
+  mov: "video/quicktime",
+};
+
+function mimeFromStoragePath(path: string): string {
+  const base = path.split("/").pop() ?? path;
+  const ext = base.split(".").pop()?.toLowerCase() ?? "";
+  return PATH_EXT_MIME[ext] ?? "";
+}
+
 async function findRejection(
   bucket: Bucket,
   rule: UploadRule,
@@ -190,9 +207,21 @@ async function findRejection(
       message: `Files must be ${Math.round(rule.maxBytes / 1024 / 1024)} MB or smaller.`,
     };
   }
-  const signature = CONTENT_SIGNATURES[stored.mimeType];
-  if (!rule.mimeTypes.includes(stored.mimeType) || signature === undefined) {
-    return { reason: `content type "${stored.mimeType}" not allowed`, message: "This file type isn't allowed." };
+
+  // Storage sometimes omits Content-Type; fall back to the file extension.
+  let mime = stored.mimeType;
+  if (!mime || mime === "application/octet-stream") {
+    mime = mimeFromStoragePath(path);
+    stored.mimeType = mime;
+  }
+  if (mime === "image/jpg") {
+    mime = "image/jpeg";
+    stored.mimeType = mime;
+  }
+
+  const signature = CONTENT_SIGNATURES[mime];
+  if (!rule.mimeTypes.includes(mime) || signature === undefined) {
+    return { reason: `content type "${mime}" not allowed`, message: "This file type isn't allowed." };
   }
 
   const head = await readHead(bucket, path);
@@ -204,7 +233,7 @@ async function findRejection(
   }
   if (signature && !signature(head)) {
     return {
-      reason: `content does not match "${stored.mimeType}"`,
+      reason: `content does not match "${mime}"`,
       message: "The file's contents don't match its file type. Please upload a valid file.",
     };
   }
