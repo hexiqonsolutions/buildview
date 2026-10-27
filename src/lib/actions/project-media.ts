@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { createClient, requireBuildViewStaff } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
-import { isRlsOrPermissionError } from "@/lib/supabase/rls";
 import {
   STORAGE_BUCKETS,
   type ProjectMedia,
@@ -124,15 +123,21 @@ export async function getProjectMediaAdmin(
   return { isPortfolio, media: await getProjectMedia(projectId) };
 }
 
-export async function addProjectMedia(fields: {
-  project_id: string;
-  media_type: ProjectMediaType;
-  title: string;
-  storage_path: string;
-  file_name: string;
-  mime_type: string;
-  file_size: number;
-}): Promise<ProjectMediaItem> {
+export async function addProjectMedia(
+  fields: {
+    project_id: string;
+    media_type: ProjectMediaType;
+    title: string;
+    storage_path: string;
+    file_name: string;
+    mime_type: string;
+    file_size: number;
+  },
+  options?: {
+    /** Skip path revalidation during multi-file batches (caller refreshes once at the end). */
+    skipRevalidate?: boolean;
+  }
+): Promise<ProjectMediaItem> {
   const input = parseOrThrow(addProjectMediaSchema, fields);
   const actor = await requireBuildViewStaff();
 
@@ -145,9 +150,9 @@ export async function addProjectMedia(fields: {
     "addProjectMedia"
   );
 
-  const supabase = await createClient();
+  const admin = createServiceRoleClient();
 
-  const { count } = await supabase
+  const { count } = await admin
     .from("project_media")
     .select("id", { count: "exact", head: true })
     .eq("project_id", input.project_id)
@@ -167,17 +172,17 @@ export async function addProjectMedia(fields: {
     updated_by: actor.id,
   };
 
-  let { data, error } = await supabase.from("project_media").insert(payload).select("*").single();
-  if (error && isRlsOrPermissionError(error.message)) {
-    ({ data, error } = await createServiceRoleClient()
-      .from("project_media")
-      .insert(payload)
-      .select("*")
-      .single());
-  }
+  // Service role insert — avoids RLS flakes mid-batch and keeps multi-upload reliable.
+  const { data, error } = await admin
+    .from("project_media")
+    .insert(payload)
+    .select("*")
+    .single();
   if (error || !data) throw internalError("addProjectMedia", error);
 
-  revalidateProjectMedia(input.project_id);
+  if (!options?.skipRevalidate) {
+    revalidateProjectMedia(input.project_id);
+  }
   const [item] = await withSignedUrls([data as ProjectMedia]);
   return item;
 }

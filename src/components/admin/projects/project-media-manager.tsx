@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowDown,
@@ -191,6 +191,7 @@ function MediaSection({
   onAdded,
   onChanged,
   onRemoved,
+  onUploadingChange,
 }: {
   projectId: string;
   type: ProjectMediaType;
@@ -198,6 +199,7 @@ function MediaSection({
   onAdded: (item: ProjectMediaItem) => void;
   onChanged: () => void;
   onRemoved: (id: string) => void;
+  onUploadingChange: (uploading: boolean) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [progress, setProgress] = useState<string | null>(null);
@@ -212,39 +214,51 @@ function MediaSection({
 
     const nextErrors: string[] = [];
     let added = 0;
-    for (const [index, file] of files.entries()) {
-      const invalid = validateProjectMediaFile(file, type);
-      if (invalid) {
-        nextErrors.push(invalid);
-        continue;
-      }
-      setProgress(
-        files.length > 1 ? `Uploading ${index + 1} of ${files.length}…` : `Uploading ${file.name}…`
-      );
-      try {
-        const upload = await uploadFileToStorage(
-          STORAGE_BUCKETS.PROJECT_MEDIA,
-          buildStoragePath(projectId, file.name),
-          file
+    onUploadingChange(true);
+    setErrors([]);
+
+    try {
+      for (const [index, file] of files.entries()) {
+        const invalid = validateProjectMediaFile(file, type);
+        if (invalid) {
+          nextErrors.push(invalid);
+          continue;
+        }
+        setProgress(
+          files.length > 1
+            ? `Uploading ${index + 1} of ${files.length}…`
+            : `Uploading ${file.name}…`
         );
-        const item = await addProjectMedia({
-          project_id: projectId,
-          media_type: type,
-          title: titleFromFileName(file.name),
-          storage_path: upload.path,
-          file_name: upload.fileName,
-          mime_type: upload.mimeType,
-          file_size: upload.fileSize,
-        });
-        onAdded(item);
-        added += 1;
-      } catch (err) {
-        nextErrors.push(`${file.name}: ${getErrorMessage(err, "upload failed")}`);
+        try {
+          const upload = await uploadFileToStorage(
+            STORAGE_BUCKETS.PROJECT_MEDIA,
+            buildStoragePath(projectId, file.name),
+            file
+          );
+          const item = await addProjectMedia(
+            {
+              project_id: projectId,
+              media_type: type,
+              title: titleFromFileName(file.name),
+              storage_path: upload.path,
+              file_name: upload.fileName,
+              mime_type: upload.mimeType,
+              file_size: upload.fileSize,
+            },
+            { skipRevalidate: true }
+          );
+          onAdded(item);
+          added += 1;
+        } catch (err) {
+          nextErrors.push(`${file.name}: ${getErrorMessage(err, "upload failed")}`);
+        }
       }
+    } finally {
+      setProgress(null);
+      onUploadingChange(false);
+      setErrors(nextErrors);
+      if (added > 0) onChanged();
     }
-    setProgress(null);
-    setErrors(nextErrors);
-    if (added > 0) onChanged();
   }
 
   return (
@@ -261,7 +275,7 @@ function MediaSection({
           accept={PROJECT_MEDIA_ACCEPT[type]}
           multiple
           className="hidden"
-          onChange={(e) => handleFiles(e.target.files)}
+          onChange={(e) => void handleFiles(e.target.files)}
         />
         <Button
           size="sm"
@@ -323,13 +337,15 @@ export function ProjectMediaManager({
   const router = useRouter();
   const [videos, setVideos] = useState(initialMedia.videos);
   const [photos, setPhotos] = useState(initialMedia.photos);
-  const [syncedFrom, setSyncedFrom] = useState(initialMedia);
+  const [isUploading, setIsUploading] = useState(false);
+  const uploadingRef = useRef(false);
 
-  if (syncedFrom !== initialMedia) {
-    setSyncedFrom(initialMedia);
+  useEffect(() => {
+    // Don't clobber optimistic tiles while a multi-file batch is in flight.
+    if (uploadingRef.current || isUploading) return;
     setVideos(initialMedia.videos);
     setPhotos(initialMedia.photos);
-  }
+  }, [initialMedia, isUploading]);
 
   const refresh = () => router.refresh();
   const remove = (id: string) => {
@@ -337,6 +353,11 @@ export function ProjectMediaManager({
     setPhotos((current) => current.filter((item) => item.id !== id));
     refresh();
   };
+
+  function setUploading(next: boolean) {
+    uploadingRef.current = next;
+    setIsUploading(next);
+  }
 
   return (
     <section className="ops-card space-y-6 p-6">
@@ -355,6 +376,7 @@ export function ProjectMediaManager({
         onAdded={(item) => setVideos((current) => [...current, item])}
         onChanged={refresh}
         onRemoved={remove}
+        onUploadingChange={setUploading}
       />
       <MediaSection
         projectId={projectId}
@@ -363,6 +385,7 @@ export function ProjectMediaManager({
         onAdded={(item) => setPhotos((current) => [...current, item])}
         onChanged={refresh}
         onRemoved={remove}
+        onUploadingChange={setUploading}
       />
     </section>
   );

@@ -13,9 +13,13 @@ function sanitizeFileName(name: string): string {
   return name.replace(/[^a-zA-Z0-9._-]/g, "_");
 }
 
-/** Build a storage path: {projectId}/{timestamp}-{filename} */
+/** Build a storage path: {projectId}/{timestamp}-{unique}-{filename} */
 export function buildStoragePath(projectId: string, fileName: string): string {
-  return `${projectId}/${Date.now()}-${sanitizeFileName(fileName)}`;
+  const unique =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID().slice(0, 8)
+      : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  return `${projectId}/${Date.now()}-${unique}-${sanitizeFileName(fileName)}`;
 }
 
 /** Upload a file from the browser (Client Components). */
