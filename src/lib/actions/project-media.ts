@@ -137,7 +137,8 @@ type AddProjectMediaFields = {
 async function insertVerifiedMedia(
   fields: AddProjectMediaFields,
   actorId: string,
-  sortOrder: number
+  sortOrder: number,
+  options?: { skipMagicBytes?: boolean }
 ): Promise<ProjectMedia> {
   const input = parseOrThrow(addProjectMediaSchema, fields);
 
@@ -147,7 +148,13 @@ async function insertVerifiedMedia(
   const stored = await verifyStoredUpload(
     input.media_type === "video" ? UPLOAD_RULES.projectVideo : UPLOAD_RULES.projectPhoto,
     input.storage_path,
-    "addProjectMedia"
+    "addProjectMedia",
+    {
+      // Photos: skip slow magic-byte fetch so multi-select batches finish quickly.
+      // Videos keep full content scanning.
+      skipMagicBytes:
+        options?.skipMagicBytes ?? input.media_type === "photo",
+    }
   );
 
   const payload: ProjectMediaInsert = {
@@ -216,33 +223,47 @@ export async function addProjectMediaBatch(fields: {
     .eq("media_type", mediaType)
     .is("deleted_at", null);
 
-  let sortOrder = count ?? 0;
-  const saved: ProjectMedia[] = [];
+  const baseOrder = count ?? 0;
+  const saved: ProjectMedia[] = new Array(items.length);
   const errors: string[] = [];
 
-  for (const item of items) {
-    try {
-      const row = await insertVerifiedMedia(item, actor.id, sortOrder);
-      saved.push(row);
-      sortOrder += 1;
-    } catch (err) {
-      const message =
-        err instanceof PublicError
-          ? err.message
-          : err instanceof Error
+  // Parallelize saves (cap concurrency) — sequential verify was hanging multi-photo batches.
+  const CONCURRENCY = 5;
+  let cursor = 0;
+
+  async function worker() {
+    while (cursor < items.length) {
+      const index = cursor;
+      cursor += 1;
+      const item = items[index];
+      if (!item) continue;
+      try {
+        saved[index] = await insertVerifiedMedia(item, actor.id, baseOrder + index, {
+          skipMagicBytes: mediaType === "photo",
+        });
+      } catch (err) {
+        const message =
+          err instanceof PublicError
             ? err.message
-            : "Could not save file";
-      errors.push(`${item.file_name}: ${message}`);
-      // Best-effort cleanup of orphaned storage object
-      await admin.storage.from(BUCKET).remove([item.storage_path]).catch(() => undefined);
+            : err instanceof Error
+              ? err.message
+              : "Could not save file";
+        errors.push(`${item.file_name}: ${message}`);
+        await admin.storage.from(BUCKET).remove([item.storage_path]).catch(() => undefined);
+      }
     }
   }
 
-  if (saved.length > 0) {
+  await Promise.all(
+    Array.from({ length: Math.min(CONCURRENCY, items.length) }, () => worker())
+  );
+
+  const savedRows = saved.filter(Boolean);
+  if (savedRows.length > 0) {
     revalidateProjectMedia(projectId);
   }
 
-  return { items: await withSignedUrls(saved), errors };
+  return { items: await withSignedUrls(savedRows), errors };
 }
 
 async function getMediaRow(id: string): Promise<ProjectMedia> {

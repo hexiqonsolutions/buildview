@@ -152,27 +152,34 @@ async function readHead(bucket: Bucket, path: string): Promise<Head> {
   const { data, error } = await bucket.createSignedUrl(path, 60);
   if (error || !data?.signedUrl) throw error ?? new Error("Storage returned no signed URL");
 
-  const response = await fetch(data.signedUrl, {
-    headers: { Range: `bytes=0-${HEAD_BYTES - 1}` },
-    cache: "no-store",
-  });
-  if (!response.ok || !response.body) {
-    throw new Error(`Storage read failed with status ${response.status}`);
-  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8_000);
+  try {
+    const response = await fetch(data.signedUrl, {
+      headers: { Range: `bytes=0-${HEAD_BYTES - 1}` },
+      cache: "no-store",
+      signal: controller.signal,
+    });
+    if (!response.ok || !response.body) {
+      throw new Error(`Storage read failed with status ${response.status}`);
+    }
 
-  // Read only the first chunk(s) even if the server ignores the Range header.
-  const reader = response.body.getReader();
-  const head = new Uint8Array(HEAD_BYTES);
-  let length = 0;
-  while (length < HEAD_BYTES) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    const take = Math.min(value.length, HEAD_BYTES - length);
-    head.set(value.subarray(0, take), length);
-    length += take;
+    // Read only the first chunk(s) even if the server ignores the Range header.
+    const reader = response.body.getReader();
+    const head = new Uint8Array(HEAD_BYTES);
+    let length = 0;
+    while (length < HEAD_BYTES) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const take = Math.min(value.length, HEAD_BYTES - length);
+      head.set(value.subarray(0, take), length);
+      length += take;
+    }
+    await reader.cancel().catch(() => undefined);
+    return head.subarray(0, length);
+  } finally {
+    clearTimeout(timer);
   }
-  await reader.cancel().catch(() => undefined);
-  return head.subarray(0, length);
 }
 
 const PATH_EXT_MIME: Record<string, string> = {
@@ -240,6 +247,14 @@ async function findRejection(
   return null;
 }
 
+export type VerifyStoredUploadOptions = {
+  /**
+   * Skip magic-byte download (still checks size + allowlisted MIME).
+   * Use for trusted staff multi-photo batches where Storage already enforces MIME.
+   */
+  skipMagicBytes?: boolean;
+};
+
 /**
  * Verifies an object the browser uploaded directly to Storage before the app
  * records it: real size and Content-Type come from Storage (not the client),
@@ -249,7 +264,8 @@ async function findRejection(
 export async function verifyStoredUpload(
   rule: UploadRule,
   path: string,
-  scope: string
+  scope: string,
+  options?: VerifyStoredUploadOptions
 ): Promise<VerifiedUpload> {
   const bucket = createServiceRoleClient().storage.from(rule.bucket);
 
@@ -257,7 +273,38 @@ export async function verifyStoredUpload(
   let stored: VerifiedUpload | null;
   try {
     stored = await statObject(bucket, path);
-    rejection = stored ? await findRejection(bucket, rule, path, stored) : null;
+    if (stored) {
+      // Normalize empty / octet-stream MIME from storage using the path extension.
+      if (!stored.mimeType || stored.mimeType === "application/octet-stream") {
+        const fromPath = mimeFromStoragePath(path);
+        if (fromPath) stored = { ...stored, mimeType: fromPath };
+      }
+      if (stored.mimeType === "image/jpg") {
+        stored = { ...stored, mimeType: "image/jpeg" };
+      }
+    }
+
+    if (!stored) {
+      rejection = null;
+    } else if (options?.skipMagicBytes) {
+      if (stored.size <= 0) {
+        rejection = { reason: "empty object", message: "The uploaded file is empty." };
+      } else if (stored.size > rule.maxBytes) {
+        rejection = {
+          reason: `size ${stored.size} exceeds ${rule.maxBytes}`,
+          message: `Files must be ${Math.round(rule.maxBytes / 1024 / 1024)} MB or smaller.`,
+        };
+      } else if (!rule.mimeTypes.includes(stored.mimeType)) {
+        rejection = {
+          reason: `content type "${stored.mimeType}" not allowed`,
+          message: "This file type isn't allowed.",
+        };
+      } else {
+        rejection = null;
+      }
+    } else {
+      rejection = await findRejection(bucket, rule, path, stored);
+    }
   } catch (err) {
     throw internalError(scope, err, { bucket: rule.bucket, path });
   }

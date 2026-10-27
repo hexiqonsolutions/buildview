@@ -8,6 +8,9 @@ import { EditProjectDetailsDialog } from "@/components/admin/edit-project-detail
 import { getProjectSpatialHierarchy } from "@/lib/actions/buildings";
 import { getProjectMediaAdmin } from "@/lib/actions/project-media";
 import { ProjectMediaManager } from "@/components/admin/projects/project-media-manager";
+
+/** Multi-photo portfolio uploads need more than the default serverless window. */
+export const maxDuration = 60;
 import { getCurrentUser } from "@/lib/actions/auth";
 import { canCommentOnProject, canUploadMatterport, canViewProgression } from "@/lib/auth/permissions";
 import { ProjectWorkspaceTabs } from "@/components/admin/projects/project-workspace-tabs";

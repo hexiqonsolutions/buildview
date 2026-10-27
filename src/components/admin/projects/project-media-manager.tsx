@@ -264,21 +264,32 @@ function MediaSection({
         }
       }
 
-      // 2) One server round-trip to verify + save all successful uploads.
+      // 2) Save in small chunks so UI progresses and Vercel doesn't time out.
       if (uploaded.length > 0) {
-        setProgress(
-          uploaded.length > 1
-            ? `Saving ${uploaded.length} ${isVideo ? "videos" : "photos"}…`
-            : "Saving…"
-        );
-        try {
-          const result = await addProjectMediaBatch({ items: uploaded });
-          for (const item of result.items) onAdded(item);
-          nextErrors.push(...result.errors);
-          if (result.items.length > 0) onChanged();
-        } catch (err) {
-          nextErrors.push(getErrorMessage(err, "Could not save uploaded files"));
+        const CHUNK = 5;
+        let savedCount = 0;
+        for (let offset = 0; offset < uploaded.length; offset += CHUNK) {
+          const chunk = uploaded.slice(offset, offset + CHUNK);
+          setProgress(
+            uploaded.length > 1
+              ? `Saving ${Math.min(offset + chunk.length, uploaded.length)} of ${uploaded.length} ${isVideo ? "videos" : "photos"}…`
+              : "Saving…"
+          );
+          try {
+            const result = await addProjectMediaBatch({ items: chunk });
+            for (const item of result.items) onAdded(item);
+            savedCount += result.items.length;
+            nextErrors.push(...result.errors);
+          } catch (err) {
+            nextErrors.push(
+              getErrorMessage(
+                err,
+                `Could not save files ${offset + 1}–${offset + chunk.length}`
+              )
+            );
+          }
         }
+        if (savedCount > 0) onChanged();
       }
     } finally {
       setProgress(null);
