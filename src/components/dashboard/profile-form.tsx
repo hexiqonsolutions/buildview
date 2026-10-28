@@ -262,7 +262,7 @@ export function ProfileForm({ user, client }: ProfileFormProps) {
                         WhatsApp alerts
                       </p>
                       <p className="text-xs text-slate-500">
-                        Critical issues, invoices, and project removal only
+                        High/critical issues, invoices, and project removal only
                       </p>
                     </div>
                   </div>

@@ -353,14 +353,15 @@ export async function createIssue(data: {
     }
   }
 
-  if (
-    (validated.priority === "critical" || validated.priority === "high") &&
-    (await isNotificationRuleEnabled("onCriticalIssue"))
-  ) {
+  const isHotPriority =
+    validated.priority === "critical" || validated.priority === "high";
+  const hotTitle = `${validated.priority === "critical" ? "Critical" : "High"} issue reported`;
+
+  if (isHotPriority && (await isNotificationRuleEnabled("onCriticalIssue"))) {
     try {
       await notifySuperAdmins(
         {
-          title: `${validated.priority === "critical" ? "Critical" : "High"} issue reported`,
+          title: hotTitle,
           message: validated.title,
           type: "issue_update",
           link: "/admin/issues",
@@ -375,12 +376,25 @@ export async function createIssue(data: {
   if (!validated.skipClientNotify) {
     try {
       const projectName = await getProjectNameForNotify(validated.project_id);
-      await notifyClientsIfEnabled("onIssueUpdate", validated.project_id, {
-        title: "New issue reported",
-        message: formatUploadNotifyMessage(validated.title, projectName, "Issues"),
-        type: "issue_update",
-        link: portalIssuesLink(validated.project_id, issueId),
-      });
+      const message = formatUploadNotifyMessage(validated.title, projectName, "Issues");
+      const link = portalIssuesLink(validated.project_id, issueId);
+      // Critical/high → onCriticalIssue so opted-in clients get WhatsApp too.
+      // Other priorities stay on onIssueUpdate (in-app / email only).
+      if (isHotPriority && (await isNotificationRuleEnabled("onCriticalIssue"))) {
+        await notifyClientsIfEnabled("onCriticalIssue", validated.project_id, {
+          title: hotTitle,
+          message,
+          type: "issue_update",
+          link,
+        });
+      } else {
+        await notifyClientsIfEnabled("onIssueUpdate", validated.project_id, {
+          title: isHotPriority ? hotTitle : "New issue reported",
+          message,
+          type: "issue_update",
+          link,
+        });
+      }
     } catch (err) {
       console.error("[createIssue] client notify failed:", err);
     }
