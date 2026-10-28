@@ -148,19 +148,36 @@ export async function getProgressionExportPayload(
       phase_name: string;
       title: string;
     } | null;
+    started_by_user?: { full_name: string | null } | null;
+    ended_by_user?: { full_name: string | null } | null;
+    completed_by_user?: { full_name: string | null } | null;
   };
 
   const stepsByProgression = new Map<string, StepRow[]>();
   if (progressionIds.length > 0) {
-    const { data: steps } = await admin
+    const withActors = await admin
       .from("project_progression_steps")
       .select(
-        "id, progression_id, step_number, status, started_at, ended_at, completed_at, work_date, note, template_step:progression_template_steps(phase_number, phase_name, title)"
+        "id, progression_id, step_number, status, started_at, ended_at, completed_at, work_date, note, template_step:progression_template_steps(phase_number, phase_name, title), started_by_user:users!project_progression_steps_started_by_fkey(full_name), ended_by_user:users!project_progression_steps_ended_by_fkey(full_name), completed_by_user:users!project_progression_steps_completed_by_fkey(full_name)"
       )
       .in("progression_id", progressionIds)
       .order("step_number", { ascending: true });
 
-    for (const step of (steps ?? []) as unknown as StepRow[]) {
+    const stepsRes = withActors.error
+      ? await admin
+          .from("project_progression_steps")
+          .select(
+            "id, progression_id, step_number, status, started_at, ended_at, completed_at, work_date, note, template_step:progression_template_steps(phase_number, phase_name, title)"
+          )
+          .in("progression_id", progressionIds)
+          .order("step_number", { ascending: true })
+      : withActors;
+
+    if (withActors.error) {
+      console.warn("[progression-export] actor join failed:", withActors.error.message);
+    }
+
+    for (const step of (stepsRes.data ?? []) as unknown as StepRow[]) {
       const list = stepsByProgression.get(step.progression_id) ?? [];
       list.push(step);
       stepsByProgression.set(step.progression_id, list);
@@ -242,7 +259,10 @@ export async function getProgressionExportPayload(
             title: row.template_step?.title ?? `Step ${row.step_number}`,
             status,
             startedAt: row.started_at,
+            startedByName: row.started_by_user?.full_name ?? null,
             endedAt: row.ended_at ?? row.completed_at,
+            endedByName:
+              row.ended_by_user?.full_name ?? row.completed_by_user?.full_name ?? null,
             workDate: row.work_date,
             note: row.note,
             activityInPeriod: stepActivityInPeriod(row, from, to),

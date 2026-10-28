@@ -7,7 +7,9 @@ export type ProgressionExportStep = {
   title: string;
   status: "pending" | "in_progress" | "completed";
   startedAt: string | null;
+  startedByName: string | null;
   endedAt: string | null;
+  endedByName: string | null;
   workDate: string | null;
   note: string | null;
   /** True when this step had start/end/work activity inside the selected period. */

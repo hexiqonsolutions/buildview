@@ -32,41 +32,25 @@ function row(values: Array<string | number | null | undefined>): string {
   return `<Row>${values.map(cell).join("")}</Row>`;
 }
 
-function blank(): string {
-  return row([]);
-}
-
 function worksheet(name: string, rows: string[]): string {
   return `<Worksheet ss:Name="${xmlEscape(name)}"><Table>${rows.join("")}</Table></Worksheet>`;
 }
 
-/**
- * SpreadsheetML (.xls) — opens in Excel.
- * Four clear sheets; blank rows between buildings; dates without timestamps.
- * All original fields kept.
- */
+/** SpreadsheetML (.xls) — opens natively in Microsoft Excel. */
 export function buildProgressionExcelXml(payload: ProgressionExportPayload): string {
-  // —— 1. Overview ————————————————————————————————————————————————
-  const overview: string[] = [
-    row(["Progression export"]),
-    blank(),
+  const summaryRows = [
     row(["Project", payload.projectName]),
-    row(["Location", payload.projectLocation ?? ""]),
-    row(["Client", payload.clientName ?? ""]),
-    row(["Period", `${payload.from}  →  ${payload.to}`]),
-    row(["Generated", formatCellDate(payload.generatedAt)]),
-    blank(),
+    row(["Location", payload.projectLocation]),
+    row(["Client", payload.clientName]),
+    row(["Period from", payload.from]),
+    row(["Period to", payload.to]),
+    row(["Generated at", formatCellDate(payload.generatedAt)]),
     row(["Overall %", payload.overallPercent]),
-    row(["Floors activated", payload.activatedFloorCount]),
-    row(["Floors total", payload.floorCount]),
+    row(["Activated floors", `${payload.activatedFloorCount} / ${payload.floorCount}`]),
     row(["Completions in period", payload.periodCompletions]),
-    blank(),
-    row(["Building totals"]),
-    row(["Building", "Floors", "%", "Completed steps", "Total steps", "Completions in period"]),
-  ];
-
-  for (const b of payload.buildings) {
-    overview.push(
+    row([]),
+    row(["Building", "Floors", "%", "Completed", "Total", "Period completions"]),
+    ...payload.buildings.map((b) =>
       row([
         b.buildingName,
         b.floors.length,
@@ -75,11 +59,10 @@ export function buildProgressionExcelXml(payload: ProgressionExportPayload): str
         b.totalCount,
         b.periodCompletions,
       ])
-    );
-  }
+    ),
+  ];
 
-  // —— 2. Floors (one row per building + floor + track) ——————————————
-  const floorsSheet: string[] = [
+  const floorRows = [
     row([
       "Building",
       "Floor",
@@ -90,18 +73,15 @@ export function buildProgressionExcelXml(payload: ProgressionExportPayload): str
       "Completed",
       "In progress",
       "Total",
-      "In period",
+      "Period completions",
       "Planned start",
       "Planned end",
     ]),
   ];
-
   for (const building of payload.buildings) {
-    floorsSheet.push(blank());
-    floorsSheet.push(row([building.buildingName]));
     for (const floor of building.floors) {
       for (const track of floor.tracks) {
-        floorsSheet.push(
+        floorRows.push(
           row([
             building.buildingName,
             floor.floorName,
@@ -121,8 +101,7 @@ export function buildProgressionExcelXml(payload: ProgressionExportPayload): str
     }
   }
 
-  // —— 3. Steps ————————————————————————————————————————————————————
-  const stepsSheet: string[] = [
+  const stepRows = [
     row([
       "Building",
       "Floor",
@@ -133,20 +112,19 @@ export function buildProgressionExcelXml(payload: ProgressionExportPayload): str
       "Step",
       "Status",
       "Started",
+      "Started by",
       "Ended",
+      "Ended by",
       "Work date",
-      "In period",
+      "Activity in period",
       "Note",
     ]),
   ];
-
   for (const building of payload.buildings) {
-    stepsSheet.push(blank());
-    stepsSheet.push(row([building.buildingName]));
     for (const floor of building.floors) {
       for (const track of floor.tracks) {
         for (const step of track.steps) {
-          stepsSheet.push(
+          stepRows.push(
             row([
               building.buildingName,
               floor.floorName,
@@ -157,7 +135,9 @@ export function buildProgressionExcelXml(payload: ProgressionExportPayload): str
               step.title,
               statusLabel(step.status),
               formatCellDate(step.startedAt),
+              step.startedByName ?? "",
               formatCellDate(step.endedAt),
+              step.endedByName ?? "",
               formatCellDate(step.workDate),
               step.activityInPeriod ? "Yes" : "No",
               step.note ?? "",
@@ -168,42 +148,29 @@ export function buildProgressionExcelXml(payload: ProgressionExportPayload): str
     }
   }
 
-  // —— 4. Period activity ——————————————————————————————————————————
-  const activitySheet: string[] = [
+  const activityRows = [
     row(["Work date", "Action", "Building", "Floor", "Track", "Step #", "Step"]),
+    ...payload.periodActivity.map((a) =>
+      row([
+        formatCellDate(a.workDate),
+        a.action,
+        a.buildingName,
+        a.floorName,
+        a.trackLabel,
+        a.stepNumber,
+        a.stepTitle,
+      ])
+    ),
   ];
-
-  if (payload.periodActivity.length === 0) {
-    activitySheet.push(row(["(No activity in this period)"]));
-  } else {
-    let lastBuilding = "";
-    for (const a of payload.periodActivity) {
-      if (a.buildingName !== lastBuilding) {
-        activitySheet.push(blank());
-        lastBuilding = a.buildingName;
-      }
-      activitySheet.push(
-        row([
-          formatCellDate(a.workDate),
-          a.action,
-          a.buildingName,
-          a.floorName,
-          a.trackLabel,
-          a.stepNumber,
-          a.stepTitle,
-        ])
-      );
-    }
-  }
 
   return `<?xml version="1.0"?>
 <?mso-application progid="Excel.Sheet"?>
 <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
  xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
-${worksheet("Overview", overview)}
-${worksheet("Floors", floorsSheet)}
-${worksheet("Steps", stepsSheet)}
-${worksheet("Period activity", activitySheet)}
+${worksheet("Summary", summaryRows)}
+${worksheet("Building Floor Track", floorRows)}
+${worksheet("Steps", stepRows)}
+${worksheet("Period Activity", activityRows)}
 </Workbook>`;
 }
 
