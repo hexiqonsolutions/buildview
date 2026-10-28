@@ -45,6 +45,7 @@ import {
   ProgressionDailyChart,
   ProgressionWeeklyChart,
 } from "@/components/projects/progression/progression-charts";
+import { ProgressionExportControls } from "@/components/projects/progression/progression-export-controls";
 
 /* ---------------------------------------------------------------- helpers */
 
@@ -1848,7 +1849,7 @@ export function ProgressionPanel({
   void checklistOnly;
   return (
     <div className="space-y-5">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <h3 className="font-display text-base font-semibold text-slate-900 dark:text-white">
             Progression Report
@@ -1877,13 +1878,14 @@ export function ProgressionPanel({
               );
             })}
           </div>
+          {!data.canEdit ? (
+            <p className="mt-3 rounded-lg border border-dashed border-slate-200 px-3 py-2 text-xs text-slate-500 dark:border-slate-700">
+              View only — Client Admin, Site Engineer, Site Supervisor, and BuildView staff can
+              start and end steps.
+            </p>
+          ) : null}
         </div>
-        {!data.canEdit ? (
-          <p className="rounded-lg border border-dashed border-slate-200 px-3 py-2 text-xs text-slate-500 dark:border-slate-700">
-            View only — Client Admin, Site Engineer, Site Supervisor, and BuildView staff can
-            start and end steps.
-          </p>
-        ) : null}
+        <ProgressionExportControls projectId={data.projectId} />
       </div>
 
       {error ? (
