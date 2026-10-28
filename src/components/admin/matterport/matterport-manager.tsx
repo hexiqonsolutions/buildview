@@ -8,13 +8,14 @@ import {
   Columns2,
   Eye,
   Archive,
-  Copy,
   ImagePlus,
+  Share2,
   Trash2,
 } from "lucide-react";
 import { useAdminWorkspace } from "@/components/admin/workspace/admin-workspace-provider";
 import { PreviewTourDialog } from "@/components/admin/preview-tour-dialog";
 import { TourThumbnailDialog } from "@/components/admin/matterport/tour-thumbnail-dialog";
+import { ShareTourDialog } from "@/components/share/share-tour-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -125,8 +126,16 @@ export function MatterportManager({ tours }: { tours: TourRow[] }) {
                             <Columns2 className="mr-2 h-4 w-4" /> Compare
                           </Link>
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Copy className="mr-2 h-4 w-4" /> Copy link
+                        <DropdownMenuItem asChild>
+                          <ShareTourDialog
+                            tourId={tour.id}
+                            tourName={tour.name}
+                            trigger={
+                              <span className="flex w-full cursor-pointer items-center px-2 py-1.5 text-sm">
+                                <Share2 className="mr-2 h-4 w-4" /> Share link
+                              </span>
+                            }
+                          />
                         </DropdownMenuItem>
                         <DropdownMenuItem>
                           <Archive className="mr-2 h-4 w-4" /> Archive
@@ -150,15 +159,27 @@ export function MatterportManager({ tours }: { tours: TourRow[] }) {
                         {tour.capture_date ? ` · ${formatDate(tour.capture_date)}` : ""}
                       </p>
                     </div>
-                    <PreviewTourDialog
-                      name={tour.name}
-                      matterportUrl={tour.matterport_url}
-                      trigger={
-                        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      }
-                    />
+                    <div className="flex shrink-0 items-center gap-0.5">
+                      <ShareTourDialog
+                        tourId={tour.id}
+                        tourName={tour.name}
+                        size="icon"
+                        trigger={
+                          <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Share tour">
+                            <Share2 className="h-4 w-4" />
+                          </Button>
+                        }
+                      />
+                      <PreviewTourDialog
+                        name={tour.name}
+                        matterportUrl={tour.matterport_url}
+                        trigger={
+                          <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Preview tour">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        }
+                      />
+                    </div>
                   </div>
 
                   {(buildingLabel || floorLabel) && (

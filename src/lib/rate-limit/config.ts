@@ -69,6 +69,7 @@ const DEFAULT_POLICIES = {
   publicApi: window(60, 60),
   publicAction: window(30, 60),
   publicContact: window(5, 600),
+  publicTourShareView: window(20, 600),
   publicAuthCallback: window(20, 300),
 
   // Signed-in users, per account — loose.

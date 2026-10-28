@@ -446,6 +446,41 @@ export interface Database {
           },
         ];
       };
+      tour_shares: {
+        Row: TourShare;
+        Insert: TourShareInsert;
+        Update: Partial<TourShareInsert> & { revoked_at?: string | null };
+        Relationships: [
+          {
+            foreignKeyName: "tour_shares_tour_id_fkey";
+            columns: ["tour_id"];
+            isOneToOne: false;
+            referencedRelation: "project_tours";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "tour_shares_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      tour_share_views: {
+        Row: TourShareView;
+        Insert: TourShareViewInsert;
+        Update: Partial<TourShareViewInsert>;
+        Relationships: [
+          {
+            foreignKeyName: "tour_share_views_share_id_fkey";
+            columns: ["share_id"];
+            isOneToOne: false;
+            referencedRelation: "tour_shares";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       timeline_events: {
         Row: TimelineEvent;
         Insert: TimelineEventInsert;
@@ -924,6 +959,49 @@ export type ProjectTour = Timestamps &
     building_id?: string | null;
     floor_id?: string | null;
   };
+
+/** Public shareable tour link (no login). Expires after 10 days unless revoked. */
+export type TourShare = {
+  id: string;
+  tour_id: string;
+  project_id: string;
+  token: string;
+  created_by: string | null;
+  expires_at: string;
+  revoked_at: string | null;
+  created_at: string;
+};
+
+export type TourShareInsert = {
+  id?: string;
+  tour_id: string;
+  project_id: string;
+  token: string;
+  created_by?: string | null;
+  expires_at: string;
+  revoked_at?: string | null;
+  created_at?: string;
+};
+
+export type TourShareView = {
+  id: string;
+  share_id: string;
+  viewer_name: string;
+  viewer_email: string | null;
+  user_agent: string | null;
+  ip_hash: string | null;
+  created_at: string;
+};
+
+export type TourShareViewInsert = {
+  id?: string;
+  share_id: string;
+  viewer_name: string;
+  viewer_email?: string | null;
+  user_agent?: string | null;
+  ip_hash?: string | null;
+  created_at?: string;
+};
 
 export type Building = Timestamps & {
   id: string;

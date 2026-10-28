@@ -16,6 +16,7 @@ const PUBLIC_ROUTE_PREFIXES = [
   "/privacy",
   "/terms",
   "/cookies",
+  "/share",
 ] as const;
 
 /** Auth pages for unauthenticated users (redirect away when signed in). */

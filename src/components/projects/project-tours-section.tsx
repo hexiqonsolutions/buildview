@@ -19,6 +19,7 @@ import {
   MatterportMetadataGrid,
   MatterportNotes,
 } from "@/components/intel/matterport/matterport-metadata";
+import { ShareTourDialog } from "@/components/share/share-tour-dialog";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/utils";
@@ -313,6 +314,7 @@ export function ProjectToursSection({
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
+              <ShareTourDialog tourId={selectedTour.id} tourName={selectedTour.name} />
               {!isPortfolio && tours.length > 1 && (
                 <Button variant="outline" size="sm" onClick={() => setComparing(true)}>
                   <Columns2 className="mr-1.5 h-4 w-4" />
