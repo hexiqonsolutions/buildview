@@ -1849,7 +1849,7 @@ export function ProgressionPanel({
   void checklistOnly;
   return (
     <div className="space-y-5">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h3 className="font-display text-base font-semibold text-slate-900 dark:text-white">
             Progression Report
@@ -1885,7 +1885,9 @@ export function ProgressionPanel({
             </p>
           ) : null}
         </div>
-        <ProgressionExportControls projectId={data.projectId} />
+        <div className="shrink-0 sm:pt-0.5">
+          <ProgressionExportControls projectId={data.projectId} />
+        </div>
       </div>
 
       {error ? (
