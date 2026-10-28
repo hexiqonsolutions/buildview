@@ -69,66 +69,128 @@ export async function updateProfile(
   return { success: "Profile updated successfully." };
 }
 
+function isMissingNotificationColumnError(error: { message?: string; code?: string } | null): boolean {
+  if (!error?.message) return false;
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("email_notifications") ||
+    message.includes("whatsapp_notifications") ||
+    message.includes("phone_e164") ||
+    message.includes("whatsapp_opt_in_at") ||
+    message.includes("schema cache")
+  );
+}
+
 export async function updateNotificationPreferences(
   _prevState: ProfileActionState,
   formData: FormData
 ): Promise<ProfileActionState> {
-  const parsed = validateFormData(updateNotificationPreferencesSchema, formData);
-  if (!parsed.success) {
-    return { error: parsed.error };
-  }
+  try {
+    const parsed = validateFormData(updateNotificationPreferencesSchema, formData);
+    if (!parsed.success) {
+      return { error: parsed.error };
+    }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  if (!user) {
-    return { error: "You must be signed in to update notification preferences." };
-  }
+    if (!user) {
+      return { error: "You must be signed in to update notification preferences." };
+    }
 
-  const emailEnabled = parsed.data.email_notifications;
-  const whatsappEnabled = parsed.data.whatsapp_notifications;
-  const phoneE164 = whatsappEnabled ? toE164Phone(parsed.data.phone) : toE164Phone(parsed.data.phone);
+    const emailEnabled = parsed.data.email_notifications;
+    const whatsappEnabled = parsed.data.whatsapp_notifications;
+    const submittedPhone = parsed.data.phone;
+    const phoneE164 = toE164Phone(submittedPhone);
 
-  const { data: existing } = await supabase
-    .from("users")
-    .select("whatsapp_opt_in_at, phone")
-    .eq("id", user.id)
-    .is("deleted_at", null)
-    .maybeSingle();
+    if (whatsappEnabled && !phoneE164) {
+      return {
+        error: "Enter a valid mobile number with country code to enable WhatsApp alerts.",
+      };
+    }
 
-  const wasOptedIn = Boolean(existing?.whatsapp_opt_in_at);
-  const whatsappOptInAt = whatsappEnabled
-    ? wasOptedIn
-      ? existing?.whatsapp_opt_in_at ?? new Date().toISOString()
-      : new Date().toISOString()
-    : null;
+    // Prefer service role so preference columns always persist (same pattern as avatar).
+    let writer;
+    try {
+      writer = createServiceRoleClient();
+    } catch {
+      writer = supabase;
+    }
 
-  const { error } = await supabase
-    .from("users")
-    .update({
-      email_notifications: emailEnabled,
-      whatsapp_notifications: whatsappEnabled,
-      phone_e164: phoneE164,
-      whatsapp_opt_in_at: whatsappOptInAt,
-      // Keep display phone in sync when provided
-      phone: parsed.data.phone ?? existing?.phone ?? null,
-      updated_by: user.id,
-    })
-    .eq("id", user.id)
-    .is("deleted_at", null);
+    const { data: existing, error: existingError } = await writer
+      .from("users")
+      .select("whatsapp_opt_in_at, phone, phone_e164")
+      .eq("id", user.id)
+      .is("deleted_at", null)
+      .maybeSingle();
 
-  if (error) {
-    logServerError("updateNotificationPreferences", error, { userId: user.id });
+    if (existingError) {
+      logServerError("updateNotificationPreferences", existingError, { userId: user.id });
+      if (isMissingNotificationColumnError(existingError)) {
+        return {
+          error:
+            "Notification columns are missing in the database. Apply migration 040_notification_preferences.sql in Supabase, then try again.",
+        };
+      }
+      return { error: "Could not load your notification preferences. Please try again." };
+    }
+
+    const wasOptedIn = Boolean(existing?.whatsapp_opt_in_at);
+    const whatsappOptInAt = whatsappEnabled
+      ? wasOptedIn
+        ? existing?.whatsapp_opt_in_at ?? new Date().toISOString()
+        : new Date().toISOString()
+      : null;
+
+    // Keep a stored number even when WhatsApp is off (disabled inputs used to wipe it).
+    const nextPhoneE164 = phoneE164 ?? (whatsappEnabled ? null : existing?.phone_e164 ?? null);
+    const nextDisplayPhone = submittedPhone ?? existing?.phone ?? null;
+
+    const { data: updated, error } = await writer
+      .from("users")
+      .update({
+        email_notifications: emailEnabled,
+        whatsapp_notifications: whatsappEnabled,
+        phone_e164: nextPhoneE164,
+        whatsapp_opt_in_at: whatsappOptInAt,
+        phone: nextDisplayPhone,
+        updated_by: user.id,
+      })
+      .eq("id", user.id)
+      .is("deleted_at", null)
+      .select("id")
+      .maybeSingle();
+
+    if (error) {
+      logServerError("updateNotificationPreferences", error, { userId: user.id });
+      if (isMissingNotificationColumnError(error)) {
+        return {
+          error:
+            "Notification columns are missing in the database. Apply migration 040_notification_preferences.sql in Supabase, then try again.",
+        };
+      }
+      return { error: "Could not save notification preferences. Please try again." };
+    }
+
+    if (!updated) {
+      logServerError("updateNotificationPreferences", "No row updated", { userId: user.id });
+      return { error: "Could not save notification preferences. Please try again." };
+    }
+
+    revalidatePath("/dashboard/profile");
+    revalidatePath("/dashboard", "layout");
+    return { success: "Notification preferences saved." };
+  } catch (err) {
     return {
-      error:
-        "Could not save notification preferences. Apply migration 040 if columns are missing, then try again.",
+      error: toPublicMessage(
+        "updateNotificationPreferences",
+        err,
+        "Could not save notification preferences. Please try again."
+      ),
     };
   }
-
-  revalidateProfileSurfaces();
-  return { success: "Notification preferences saved." };
 }
 
 /** Persist avatar_url for the signed-in user (service role — client RLS can silently block). */

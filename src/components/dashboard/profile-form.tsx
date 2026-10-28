@@ -280,6 +280,7 @@ export function ProfileForm({ user, client }: ProfileFormProps) {
                   >
                     WhatsApp mobile
                   </Label>
+                  {/* Always submit phone — HTML omits disabled inputs from FormData. */}
                   <Input
                     id="whatsapp_phone"
                     name="phone"
@@ -287,10 +288,12 @@ export function ProfileForm({ user, client }: ProfileFormProps) {
                     onChange={(event) => setWhatsappPhone(event.target.value)}
                     placeholder="+91 86552 24990"
                     className="mt-1.5"
-                    disabled={!whatsappNotifications}
+                    inputMode="tel"
+                    autoComplete="tel"
                   />
                   <p className="mt-1 text-xs text-slate-500">
-                    Use country code. Indian 10-digit numbers are stored as +91…
+                    Turn WhatsApp alerts on, then save. Use country code (Indian
+                    10-digit numbers are stored as +91…).
                   </p>
                 </div>
               </div>
