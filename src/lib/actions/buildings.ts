@@ -1,5 +1,6 @@
 "use server";
 
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireBuildViewStaff } from "@/lib/supabase/server";
@@ -10,6 +11,32 @@ import { parseOrThrow, validate } from "@/lib/validations/parse";
 import { LIMITS, text, uuid } from "@/lib/validations/primitives";
 import { PublicError } from "@/lib/errors/public";
 import { internalError } from "@/lib/errors/server";
+
+/** Seed Pre/Post progression after the response so floor create stays fast. */
+function seedProgressionAfter(
+  projectId: string,
+  floors: Array<{ id: string; buildingId: string }>
+) {
+  after(async () => {
+    try {
+      for (const floor of floors) {
+        for (const track of PROGRESSION_TRACKS) {
+          await ensureFloorProgression(
+            projectId,
+            floor.id,
+            floor.buildingId,
+            null,
+            track
+          );
+        }
+      }
+      revalidatePath(`/dashboard/projects/${projectId}`);
+      revalidateSpatialPaths(projectId);
+    } catch (err) {
+      console.warn("[buildings] deferred progression seed failed:", err);
+    }
+  });
+}
 
 export type SpatialHierarchy = {
   buildings: Array<Building & { floors: Floor[] }>;
@@ -121,30 +148,72 @@ export async function createFloor(buildingId: string, name: string) {
 
   if (buildingError || !building) throw new PublicError("Building not found.");
 
-  const { data, error } = await supabase
+  // Active name clash
+  const { data: activeClash } = await supabase
     .from("floors")
-    .insert({
-      building_id: buildingId,
-      name: trimmed,
-      sort_order: 0,
-    })
     .select("id")
-    .single();
+    .eq("building_id", buildingId)
+    .eq("name", trimmed)
+    .is("deleted_at", null)
+    .maybeSingle();
 
-  if (error) throw internalError("createFloor", error);
-
-  // Every floor gets Pre-Slab + Post-Slab Progression checklists.
-  try {
-    for (const track of PROGRESSION_TRACKS) {
-      await ensureFloorProgression(building.project_id, data.id, buildingId, null, track);
-    }
-  } catch (err) {
-    console.warn("[createFloor] progression seed failed:", err);
+  if (activeClash) {
+    throw new PublicError(`A floor named "${trimmed}" already exists on this building.`);
   }
 
+  // Revive soft-deleted floor with the same name (old unique constraint / prior deletes)
+  const { data: softDeleted } = await supabase
+    .from("floors")
+    .select("id, sort_order")
+    .eq("building_id", buildingId)
+    .eq("name", trimmed)
+    .not("deleted_at", "is", null)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  let floorId: string;
+
+  if (softDeleted?.id) {
+    const { error: reviveError } = await supabase
+      .from("floors")
+      .update({ deleted_at: null })
+      .eq("id", softDeleted.id);
+    if (reviveError) throw internalError("createFloor", reviveError);
+    floorId = softDeleted.id;
+  } else {
+    const { data: existing } = await supabase
+      .from("floors")
+      .select("sort_order")
+      .eq("building_id", buildingId)
+      .is("deleted_at", null);
+
+    const sortOrders = (existing ?? []).map((f) => f.sort_order ?? 0);
+    const sortOrder = (sortOrders.length ? Math.max(...sortOrders) : 0) + 1;
+
+    const { data, error } = await supabase
+      .from("floors")
+      .insert({
+        building_id: buildingId,
+        name: trimmed,
+        sort_order: sortOrder,
+      })
+      .select("id")
+      .single();
+
+    if (error) {
+      if (error.code === "23505") {
+        throw new PublicError(`A floor named "${trimmed}" already exists on this building.`);
+      }
+      throw internalError("createFloor", error);
+    }
+    floorId = data.id;
+  }
+
+  seedProgressionAfter(building.project_id, [{ id: floorId, buildingId }]);
   revalidateSpatialPaths(building.project_id);
   revalidatePath(`/dashboard/projects/${building.project_id}`);
-  return data.id;
+  return floorId;
 }
 
 /** Bulk-create Floor 1…N (or custom start), then rename later if needed. */
@@ -166,16 +235,24 @@ export async function createFloorsByCount(buildingId: string, count: number) {
 
   if (buildingError || !building) throw new PublicError("Building not found.");
 
-  const { data: existing } = await supabase
+  const { data: allFloors } = await supabase
     .from("floors")
-    .select("name, sort_order")
-    .eq("building_id", buildingId)
-    .is("deleted_at", null);
+    .select("id, name, sort_order, deleted_at")
+    .eq("building_id", buildingId);
 
-  const usedNames = new Set((existing ?? []).map((f) => f.name.toLowerCase()));
-  let sortBase = Math.max(0, ...(existing ?? []).map((f) => f.sort_order ?? 0)) + 1;
+  const active = (allFloors ?? []).filter((f) => !f.deleted_at);
+  const softByName = new Map(
+    (allFloors ?? [])
+      .filter((f) => f.deleted_at)
+      .map((f) => [f.name.toLowerCase(), f] as const)
+  );
+  const usedNames = new Set(active.map((f) => f.name.toLowerCase()));
+  const sortOrders = active.map((f) => f.sort_order ?? 0);
+  let sortBase = (sortOrders.length ? Math.max(...sortOrders) : 0) + 1;
 
   const createdIds: string[] = [];
+  const toInsert: Array<{ building_id: string; name: string; sort_order: number }> = [];
+
   for (let i = 1; i <= n; i++) {
     let name = `Floor ${i}`;
     let suffix = 0;
@@ -185,27 +262,45 @@ export async function createFloorsByCount(buildingId: string, count: number) {
     }
     usedNames.add(name.toLowerCase());
 
-    const { data, error } = await supabase
-      .from("floors")
-      .insert({
+    const soft = softByName.get(name.toLowerCase());
+    if (soft) {
+      const { error: reviveError } = await supabase
+        .from("floors")
+        .update({ deleted_at: null, sort_order: sortBase++ })
+        .eq("id", soft.id);
+      if (reviveError) throw internalError("createFloorsByCount", reviveError);
+      createdIds.push(soft.id);
+      softByName.delete(name.toLowerCase());
+    } else {
+      toInsert.push({
         building_id: buildingId,
         name,
         sort_order: sortBase++,
-      })
-      .select("id")
-      .single();
-
-    if (error) throw internalError("createFloorsByCount", error);
-    createdIds.push(data.id);
-
-    try {
-      for (const track of PROGRESSION_TRACKS) {
-        await ensureFloorProgression(building.project_id, data.id, buildingId, null, track);
-      }
-    } catch (err) {
-      console.warn("[createFloorsByCount] progression seed failed:", err);
+      });
     }
   }
+
+  if (toInsert.length > 0) {
+    const { data: inserted, error } = await supabase
+      .from("floors")
+      .insert(toInsert)
+      .select("id");
+
+    if (error) {
+      if (error.code === "23505") {
+        throw new PublicError(
+          "Could not add floors because of a name conflict. Refresh and try again."
+        );
+      }
+      throw internalError("createFloorsByCount", error);
+    }
+    for (const row of inserted ?? []) createdIds.push(row.id);
+  }
+
+  seedProgressionAfter(
+    building.project_id,
+    createdIds.map((id) => ({ id, buildingId }))
+  );
 
   revalidateSpatialPaths(building.project_id);
   revalidatePath(`/dashboard/projects/${building.project_id}`);

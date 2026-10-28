@@ -8,6 +8,7 @@ import {
   createFloorsByCount,
   deleteBuilding,
   deleteFloor,
+  getProjectSpatialHierarchy,
   renameFloor,
   type SpatialHierarchy,
 } from "@/lib/actions/buildings";
@@ -29,7 +30,13 @@ export function BuildingsFloorsManager({
   const [editingFloorId, setEditingFloorId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
   const [pending, startTransition] = useTransition();
+  const [busyBuildingId, setBusyBuildingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  async function refreshHierarchy() {
+    const next = await getProjectSpatialHierarchy(projectId);
+    setHierarchy(next);
+  }
 
   function handleAddBuilding() {
     if (!buildingName.trim()) return;
@@ -38,7 +45,7 @@ export function BuildingsFloorsManager({
       try {
         await createBuilding(projectId, buildingName);
         setBuildingName("");
-        window.location.reload();
+        await refreshHierarchy();
       } catch (err) {
         setError(getErrorMessage(err, "Failed to add building"));
       }
@@ -47,15 +54,21 @@ export function BuildingsFloorsManager({
 
   function handleAddFloor(buildingId: string) {
     const name = floorNames[buildingId]?.trim();
-    if (!name) return;
+    if (!name) {
+      setError("Enter a floor name first.");
+      return;
+    }
     setError(null);
+    setBusyBuildingId(buildingId);
     startTransition(async () => {
       try {
         await createFloor(buildingId, name);
         setFloorNames((prev) => ({ ...prev, [buildingId]: "" }));
-        window.location.reload();
+        await refreshHierarchy();
       } catch (err) {
         setError(getErrorMessage(err, "Failed to add floor"));
+      } finally {
+        setBusyBuildingId(null);
       }
     });
   }
@@ -63,15 +76,21 @@ export function BuildingsFloorsManager({
   function handleBulkFloors(buildingId: string) {
     const raw = floorCounts[buildingId]?.trim();
     const count = raw ? Number.parseInt(raw, 10) : 0;
-    if (!Number.isFinite(count) || count < 1) return;
+    if (!Number.isFinite(count) || count < 1) {
+      setError("Enter how many floors to add (1–200).");
+      return;
+    }
     setError(null);
+    setBusyBuildingId(buildingId);
     startTransition(async () => {
       try {
         await createFloorsByCount(buildingId, count);
         setFloorCounts((prev) => ({ ...prev, [buildingId]: "" }));
-        window.location.reload();
+        await refreshHierarchy();
       } catch (err) {
         setError(getErrorMessage(err, "Failed to add floors"));
+      } finally {
+        setBusyBuildingId(null);
       }
     });
   }
@@ -258,6 +277,12 @@ export function BuildingsFloorsManager({
                       onChange={(e) =>
                         setFloorCounts((prev) => ({ ...prev, [building.id]: e.target.value }))
                       }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleBulkFloors(building.id);
+                        }
+                      }}
                       disabled={pending}
                     />
                     <Button
@@ -265,7 +290,11 @@ export function BuildingsFloorsManager({
                       onClick={() => handleBulkFloors(building.id)}
                       disabled={pending || !floorCounts[building.id]?.trim()}
                     >
-                      <Plus className="mr-2 h-4 w-4" />
+                      {busyBuildingId === building.id ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Plus className="mr-2 h-4 w-4" />
+                      )}
                       Bulk add
                     </Button>
                   </div>
@@ -276,6 +305,12 @@ export function BuildingsFloorsManager({
                       onChange={(e) =>
                         setFloorNames((prev) => ({ ...prev, [building.id]: e.target.value }))
                       }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddFloor(building.id);
+                        }
+                      }}
                       disabled={pending}
                     />
                     <Button
@@ -283,7 +318,11 @@ export function BuildingsFloorsManager({
                       onClick={() => handleAddFloor(building.id)}
                       disabled={pending || !floorNames[building.id]?.trim()}
                     >
-                      <Plus className="mr-2 h-4 w-4" />
+                      {busyBuildingId === building.id ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Plus className="mr-2 h-4 w-4" />
+                      )}
                       Add floor
                     </Button>
                   </div>
