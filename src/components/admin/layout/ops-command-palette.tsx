@@ -42,6 +42,7 @@ const routes = [
   { href: "/admin/issues", label: "Issue Manager", icon: FileText },
   { href: "/admin/invoices", label: "Invoices", icon: ReceiptIndianRupee },
   { href: "/admin/users", label: "User Manager", icon: Users },
+  { href: "/admin/tour-viewers", label: "Tour Viewers", icon: Users },
   { href: "/admin/analytics", label: "Analytics", icon: FileText },
   { href: "/admin/storage", label: "Storage Manager", icon: FolderOpen },
   { href: "/admin/activity", label: "Activity Logs", icon: Calendar },

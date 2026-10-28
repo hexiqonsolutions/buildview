@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { isBuildViewStaffRole } from "@/lib/auth/roles";
+import { requireStaffPermission } from "@/lib/auth/staff";
 import { getErrorMessage, PublicError } from "@/lib/errors/public";
 import { consumeRateLimit, formatRetryAfter, getClientIp } from "@/lib/rate-limit";
 import { getTourDisplayFields } from "@/lib/comparison/metadata";
@@ -46,6 +47,17 @@ export type TourShareViewerRow = {
   viewerEmail: string | null;
   viewerPhone: string | null;
   createdAt: string;
+};
+
+/** Full lead row for the superadmin Tour Viewers dashboard. */
+export type TourShareViewerAdminRow = TourShareViewerRow & {
+  projectId: string;
+  projectName: string;
+  tourId: string;
+  tourName: string;
+  shareId: string;
+  shareExpiresAt: string;
+  shareRevokedAt: string | null;
 };
 
 function normalizePhone(raw: string): string {
@@ -302,7 +314,6 @@ export async function revokeTourShare(
 
 /**
  * All people who opened any share link for this tour (current + past links).
- * Shown in the Share dialog under Viewers.
  */
 export async function getTourShareViewers(
   tourId: string
@@ -351,6 +362,99 @@ export async function getTourShareViewers(
   } catch (err) {
     return { ok: false, error: getErrorMessage(err, "Could not load viewers.") };
   }
+}
+
+/**
+ * Superadmin dashboard: every shared-tour viewer with name, phone, email,
+ * and project/tour context.
+ */
+export async function listAllTourShareViewers(options?: {
+  query?: string | null;
+  projectId?: string | null;
+  limit?: number;
+}): Promise<TourShareViewerAdminRow[]> {
+  await requireStaffPermission("read", "tour_viewers");
+  const admin = createServiceRoleClient();
+  const limit = Math.min(Math.max(options?.limit ?? 500, 1), 1000);
+
+  let sharesQuery = admin
+    .from("tour_shares")
+    .select("id, tour_id, project_id, expires_at, revoked_at");
+
+  if (options?.projectId) {
+    sharesQuery = sharesQuery.eq("project_id", options.projectId);
+  }
+
+  const { data: shares, error: sharesError } = await sharesQuery;
+  if (sharesError) {
+    console.error("[tour-shares] admin list shares failed:", sharesError);
+    throw new PublicError("Could not load tour viewers.");
+  }
+  if (!shares?.length) return [];
+
+  const shareIds = shares.map((s) => s.id);
+  const shareById = new Map(shares.map((s) => [s.id, s]));
+
+  const { data: views, error: viewsError } = await admin
+    .from("tour_share_views")
+    .select("id, share_id, viewer_name, viewer_email, viewer_phone, created_at")
+    .in("share_id", shareIds)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (viewsError) {
+    console.error("[tour-shares] admin list views failed:", viewsError);
+    throw new PublicError("Could not load tour viewers.");
+  }
+  if (!views?.length) return [];
+
+  const tourIds = [...new Set(shares.map((s) => s.tour_id))];
+  const projectIds = [...new Set(shares.map((s) => s.project_id))];
+
+  const [{ data: tours }, { data: projects }] = await Promise.all([
+    admin.from("project_tours").select("id, name").in("id", tourIds),
+    admin.from("projects").select("id, name").in("id", projectIds),
+  ]);
+
+  const tourNameById = new Map((tours ?? []).map((t) => [t.id, t.name]));
+  const projectNameById = new Map((projects ?? []).map((p) => [p.id, p.name]));
+
+  const q = options?.query?.trim().toLowerCase() || null;
+
+  const rows: TourShareViewerAdminRow[] = [];
+  for (const view of views) {
+    const share = shareById.get(view.share_id);
+    if (!share) continue;
+    const row: TourShareViewerAdminRow = {
+      id: view.id,
+      viewerName: view.viewer_name,
+      viewerEmail: view.viewer_email,
+      viewerPhone: view.viewer_phone ?? null,
+      createdAt: view.created_at,
+      projectId: share.project_id,
+      projectName: projectNameById.get(share.project_id) ?? "Project",
+      tourId: share.tour_id,
+      tourName: tourNameById.get(share.tour_id) ?? "Tour",
+      shareId: share.id,
+      shareExpiresAt: share.expires_at,
+      shareRevokedAt: share.revoked_at,
+    };
+    if (q) {
+      const hay = [
+        row.viewerName,
+        row.viewerPhone ?? "",
+        row.viewerEmail ?? "",
+        row.projectName,
+        row.tourName,
+      ]
+        .join(" ")
+        .toLowerCase();
+      if (!hay.includes(q)) continue;
+    }
+    rows.push(row);
+  }
+
+  return rows;
 }
 
 /** Get active share for a tour without creating one. */

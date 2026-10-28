@@ -26,7 +26,8 @@ export type PermissionResource =
   | "analytics"
   | "storage"
   | "notifications"
-  | "activity";
+  | "activity"
+  | "tour_viewers";
 
 type RolePermissions = Partial<Record<PermissionResource, PermissionAction[]>>;
 
@@ -103,6 +104,7 @@ const PERMISSIONS: Record<UserRole, RolePermissions> = {
     storage: STAFF_FULL,
     notifications: STAFF_FULL,
     activity: STAFF_FULL,
+    tour_viewers: STAFF_FULL,
   },
   admin: { ...ADMIN_OPS_MATRIX },
   operations_manager: {

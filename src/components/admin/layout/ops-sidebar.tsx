@@ -19,6 +19,7 @@ import {
   Settings,
   BarChart3,
   UserCog,
+  ContactRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -67,6 +68,12 @@ const navSections: Array<{
     label: "System",
     items: [
       { href: "/admin/users", label: "User Manager", icon: UserCog, resource: "users" },
+      {
+        href: "/admin/tour-viewers",
+        label: "Tour Viewers",
+        icon: ContactRound,
+        resource: "tour_viewers",
+      },
       { href: "/admin/analytics", label: "Analytics", icon: BarChart3, resource: "analytics" },
       { href: "/admin/storage", label: "Storage Manager", icon: HardDrive, resource: "storage" },
       { href: "/admin/activity", label: "Activity Logs", icon: Activity, resource: "activity" },
