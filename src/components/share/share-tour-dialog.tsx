@@ -57,15 +57,18 @@ export function ShareTourDialog({
     setCanNativeShare(typeof navigator !== "undefined" && typeof navigator.share === "function");
   }, []);
 
-  const refreshViewers = useCallback(async (shareId: string) => {
-    const result = await getTourShareViewers(shareId);
+  const refreshViewers = useCallback(async () => {
+    const result = await getTourShareViewers(tourId);
     if (result.ok) setViewers(result.viewers);
-  }, []);
+  }, [tourId]);
 
   const loadOrCreate = useCallback(() => {
     setLoading(true);
     setError(null);
     startTransition(async () => {
+      const viewersResult = await getTourShareViewers(tourId);
+      if (viewersResult.ok) setViewers(viewersResult.viewers);
+
       const existing = await getActiveTourShare(tourId);
       if (!existing.ok) {
         setError(existing.error);
@@ -74,7 +77,6 @@ export function ShareTourDialog({
       }
       if (existing.share) {
         setShare(existing.share);
-        await refreshViewers(existing.share.id);
         setLoading(false);
         return;
       }
@@ -85,10 +87,9 @@ export function ShareTourDialog({
         return;
       }
       setShare(created.share);
-      setViewers([]);
       setLoading(false);
     });
-  }, [tourId, refreshViewers]);
+  }, [tourId]);
 
   useEffect(() => {
     if (!open) return;
@@ -233,43 +234,7 @@ export function ShareTourDialog({
               </Button>
             </div>
 
-            <div className="space-y-2 border-t border-slate-100 pt-4">
-              <div className="flex items-center gap-2 text-sm font-medium text-slate-900">
-                <Users className="h-4 w-4 text-slate-500" />
-                Viewers
-              </div>
-              {viewers.length === 0 ? (
-                <p className="text-sm text-slate-500">No one has opened this link yet.</p>
-              ) : (
-                <ul className="max-h-48 space-y-2 overflow-y-auto">
-                  {viewers.map((v) => (
-                    <li
-                      key={v.id}
-                      className="flex items-start justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2 text-sm"
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate font-medium text-slate-900">{v.viewerName}</p>
-                        {v.viewerEmail && (
-                          <p className="truncate text-xs text-slate-500">{v.viewerEmail}</p>
-                        )}
-                      </div>
-                      <time className="shrink-0 text-xs text-slate-500" dateTime={v.createdAt}>
-                        {formatDate(v.createdAt)}
-                      </time>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-8 px-2 text-xs"
-                onClick={() => share && void refreshViewers(share.id)}
-              >
-                Refresh viewers
-              </Button>
-            </div>
+            <ViewersPanel viewers={viewers} onRefresh={refreshViewers} />
           </div>
         ) : (
           <div className="space-y-4 py-4 text-center">
@@ -287,6 +252,7 @@ export function ShareTourDialog({
                 </>
               )}
             </Button>
+            <ViewersPanel viewers={viewers} onRefresh={refreshViewers} />
           </div>
         )}
 
@@ -297,5 +263,123 @@ export function ShareTourDialog({
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function viewersToCsv(viewers: TourShareViewerRow[]): string {
+  const header = "Name,Phone,Email,Opened at";
+  const rows = viewers.map((v) =>
+    [v.viewerName, v.viewerPhone ?? "", v.viewerEmail ?? "", v.createdAt]
+      .map((cell) => `"${String(cell).replace(/"/g, '""')}"`)
+      .join(",")
+  );
+  return [header, ...rows].join("\n");
+}
+
+function ViewersPanel({
+  viewers,
+  onRefresh,
+}: {
+  viewers: TourShareViewerRow[];
+  onRefresh: () => void | Promise<void>;
+}) {
+  const [copiedCsv, setCopiedCsv] = useState(false);
+
+  async function copyCsv() {
+    try {
+      await navigator.clipboard.writeText(viewersToCsv(viewers));
+      setCopiedCsv(true);
+      window.setTimeout(() => setCopiedCsv(false), 2000);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  return (
+    <div className="space-y-3 border-t border-slate-100 pt-4 text-left">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <div className="flex items-center gap-2 text-sm font-medium text-slate-900">
+            <Users className="h-4 w-4 text-slate-500" />
+            Viewer details ({viewers.length})
+          </div>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Name, phone, and email collected when someone opens the share link.
+          </p>
+        </div>
+        <div className="flex gap-1">
+          {viewers.length > 0 && (
+            <Button type="button" variant="outline" size="sm" className="h-8 text-xs" onClick={copyCsv}>
+              {copiedCsv ? (
+                <>
+                  <Check className="mr-1 h-3.5 w-3.5" /> Copied
+                </>
+              ) : (
+                <>
+                  <Copy className="mr-1 h-3.5 w-3.5" /> Copy CSV
+                </>
+              )}
+            </Button>
+          )}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-8 px-2 text-xs"
+            onClick={() => void onRefresh()}
+          >
+            Refresh
+          </Button>
+        </div>
+      </div>
+
+      {viewers.length === 0 ? (
+        <p className="rounded-lg bg-slate-50 px-3 py-4 text-sm text-slate-500">
+          No viewer details yet. When someone opens the link and enters their name, phone, and
+          email, they will show up here.
+        </p>
+      ) : (
+        <div className="max-h-64 overflow-auto rounded-lg border border-slate-200">
+          <table className="w-full min-w-[28rem] text-left text-sm">
+            <thead className="sticky top-0 bg-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-3 py-2">Name</th>
+                <th className="px-3 py-2">Phone</th>
+                <th className="px-3 py-2">Email</th>
+                <th className="px-3 py-2">Opened</th>
+              </tr>
+            </thead>
+            <tbody>
+              {viewers.map((v) => (
+                <tr key={v.id} className="border-t border-slate-100 bg-white">
+                  <td className="px-3 py-2 font-medium text-slate-900">{v.viewerName}</td>
+                  <td className="px-3 py-2 text-slate-700">
+                    {v.viewerPhone ? (
+                      <a href={`tel:${v.viewerPhone.replace(/\s/g, "")}`} className="hover:underline">
+                        {v.viewerPhone}
+                      </a>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td className="px-3 py-2 text-slate-700">
+                    {v.viewerEmail ? (
+                      <a href={`mailto:${v.viewerEmail}`} className="hover:underline">
+                        {v.viewerEmail}
+                      </a>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-2 text-xs text-slate-500">
+                    {formatDate(v.createdAt)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   );
 }

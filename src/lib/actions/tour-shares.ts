@@ -44,8 +44,18 @@ export type TourShareViewerRow = {
   id: string;
   viewerName: string;
   viewerEmail: string | null;
+  viewerPhone: string | null;
   createdAt: string;
 };
+
+function normalizePhone(raw: string): string {
+  return raw.trim().replace(/\s+/g, " ");
+}
+
+function isValidPhone(phone: string): boolean {
+  const digits = phone.replace(/\D/g, "");
+  return digits.length >= 7 && digits.length <= 15 && phone.length <= 40;
+}
 
 function shareUrl(token: string): string {
   const base = siteConfig.url.replace(/\/$/, "");
@@ -290,26 +300,38 @@ export async function revokeTourShare(
   }
 }
 
+/**
+ * All people who opened any share link for this tour (current + past links).
+ * Shown in the Share dialog under Viewers.
+ */
 export async function getTourShareViewers(
-  shareId: string
+  tourId: string
 ): Promise<{ ok: true; viewers: TourShareViewerRow[] } | { ok: false; error: string }> {
   try {
+    await assertCanShareTour(tourId);
     const admin = createServiceRoleClient();
-    const { data: share } = await admin
-      .from("tour_shares")
-      .select("id, tour_id")
-      .eq("id", shareId)
-      .maybeSingle();
 
-    if (!share) throw new PublicError("Share link not found.");
-    await assertCanShareTour(share.tour_id);
+    const { data: shares, error: sharesError } = await admin
+      .from("tour_shares")
+      .select("id")
+      .eq("tour_id", tourId);
+
+    if (sharesError) {
+      console.error("[tour-shares] list share ids failed:", sharesError);
+      throw new PublicError("Could not load viewers.");
+    }
+
+    const shareIds = (shares ?? []).map((s) => s.id);
+    if (shareIds.length === 0) {
+      return { ok: true, viewers: [] };
+    }
 
     const { data: rows, error } = await admin
       .from("tour_share_views")
-      .select("id, viewer_name, viewer_email, created_at")
-      .eq("share_id", shareId)
+      .select("id, viewer_name, viewer_email, viewer_phone, created_at")
+      .in("share_id", shareIds)
       .order("created_at", { ascending: false })
-      .limit(100);
+      .limit(200);
 
     if (error) {
       console.error("[tour-shares] list viewers failed:", error);
@@ -322,6 +344,7 @@ export async function getTourShareViewers(
         id: r.id,
         viewerName: r.viewer_name,
         viewerEmail: r.viewer_email,
+        viewerPhone: r.viewer_phone ?? null,
         createdAt: r.created_at,
       })),
     };
@@ -362,7 +385,8 @@ export async function getActiveTourShare(
 export async function recordTourShareView(input: {
   token: string;
   name: string;
-  email?: string | null;
+  phone: string;
+  email: string;
 }): Promise<
   | { ok: true; tour: TourShareUnlocked }
   | { ok: false; error: string; unavailable?: boolean }
@@ -373,9 +397,18 @@ export async function recordTourShareView(input: {
       return { ok: false, error: "Please enter your name." };
     }
 
-    const emailRaw = input.email?.trim() || null;
-    if (emailRaw && (emailRaw.length > 200 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailRaw))) {
-      return { ok: false, error: "Please enter a valid email, or leave it blank." };
+    const phone = normalizePhone(input.phone ?? "");
+    if (!isValidPhone(phone)) {
+      return { ok: false, error: "Please enter a valid contact number." };
+    }
+
+    const emailRaw = input.email?.trim() ?? "";
+    if (
+      emailRaw.length < 3 ||
+      emailRaw.length > 200 ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailRaw)
+    ) {
+      return { ok: false, error: "Please enter a valid email address." };
     }
 
     const hdrs = await headers();
@@ -398,6 +431,7 @@ export async function recordTourShareView(input: {
       share_id: loaded.share.id,
       viewer_name: name,
       viewer_email: emailRaw,
+      viewer_phone: phone,
       user_agent: hdrs.get("user-agent")?.slice(0, 500) ?? null,
       ip_hash: hashIp(ip),
     });

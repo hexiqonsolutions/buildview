@@ -20,11 +20,12 @@ function storageKey(token: string) {
   return `bv-tour-share:${token}`;
 }
 
-type StoredGate = { name: string; email?: string };
+type StoredGate = { name: string; phone: string; email: string };
 
 export function TourShareViewer({ meta }: { meta: TourSharePublicMeta }) {
   const [tour, setTour] = useState<TourShareUnlocked | null>(null);
   const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [unavailable, setUnavailable] = useState(false);
@@ -32,13 +33,14 @@ export function TourShareViewer({ meta }: { meta: TourSharePublicMeta }) {
   const [pending, startTransition] = useTransition();
 
   const unlock = useCallback(
-    (viewerName: string, viewerEmail?: string) => {
+    (viewerName: string, viewerPhone: string, viewerEmail: string) => {
       startTransition(async () => {
         setError(null);
         const result = await recordTourShareView({
           token: meta.token,
           name: viewerName,
-          email: viewerEmail || null,
+          phone: viewerPhone,
+          email: viewerEmail,
         });
         if (!result.ok) {
           if (result.unavailable) setUnavailable(true);
@@ -49,7 +51,11 @@ export function TourShareViewer({ meta }: { meta: TourSharePublicMeta }) {
         try {
           sessionStorage.setItem(
             storageKey(meta.token),
-            JSON.stringify({ name: viewerName, email: viewerEmail || undefined } satisfies StoredGate)
+            JSON.stringify({
+              name: viewerName,
+              phone: viewerPhone,
+              email: viewerEmail,
+            } satisfies StoredGate)
           );
         } catch {
           /* private mode */
@@ -66,10 +72,11 @@ export function TourShareViewer({ meta }: { meta: TourSharePublicMeta }) {
       const raw = sessionStorage.getItem(storageKey(meta.token));
       if (raw) {
         const parsed = JSON.parse(raw) as StoredGate;
-        if (parsed?.name?.trim()) {
+        if (parsed?.name?.trim() && parsed?.phone?.trim() && parsed?.email?.trim()) {
           setName(parsed.name);
-          setEmail(parsed.email ?? "");
-          unlock(parsed.name.trim(), parsed.email);
+          setPhone(parsed.phone);
+          setEmail(parsed.email);
+          unlock(parsed.name.trim(), parsed.phone.trim(), parsed.email.trim());
           return;
         }
       }
@@ -99,7 +106,7 @@ export function TourShareViewer({ meta }: { meta: TourSharePublicMeta }) {
           <BrandLogo href="/" size="lg" tone="default" className="mx-auto justify-center" />
           <h1 className="font-display text-2xl font-semibold text-slate-900">View this site tour</h1>
           <p className="text-sm text-slate-600">
-            Enter your name to open the 360° walkthrough for{" "}
+            Enter your name, phone, and email to open the 360° walkthrough for{" "}
             <span className="font-medium text-slate-900">{meta.projectName}</span>.
           </p>
         </div>
@@ -108,11 +115,11 @@ export function TourShareViewer({ meta }: { meta: TourSharePublicMeta }) {
           className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
           onSubmit={(e) => {
             e.preventDefault();
-            unlock(name, email);
+            unlock(name, phone, email);
           }}
         >
           <div className="space-y-2">
-            <Label htmlFor="viewer-name">Your name</Label>
+            <Label htmlFor="viewer-name">Name</Label>
             <Input
               id="viewer-name"
               name="name"
@@ -125,14 +132,27 @@ export function TourShareViewer({ meta }: { meta: TourSharePublicMeta }) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="viewer-email">
-              Email <span className="font-normal text-slate-400">(optional)</span>
-            </Label>
+            <Label htmlFor="viewer-phone">Phone</Label>
+            <Input
+              id="viewer-phone"
+              name="phone"
+              type="tel"
+              autoComplete="tel"
+              required
+              maxLength={40}
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+91 98765 43210"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="viewer-email">Email</Label>
             <Input
               id="viewer-email"
               name="email"
               type="email"
               autoComplete="email"
+              required
               maxLength={200}
               value={email}
               onChange={(e) => setEmail(e.target.value)}

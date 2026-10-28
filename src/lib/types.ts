@@ -988,6 +988,7 @@ export type TourShareView = {
   share_id: string;
   viewer_name: string;
   viewer_email: string | null;
+  viewer_phone: string | null;
   user_agent: string | null;
   ip_hash: string | null;
   created_at: string;
@@ -998,6 +999,7 @@ export type TourShareViewInsert = {
   share_id: string;
   viewer_name: string;
   viewer_email?: string | null;
+  viewer_phone?: string | null;
   user_agent?: string | null;
   ip_hash?: string | null;
   created_at?: string;
