@@ -8,7 +8,8 @@ export const whatsappConfig = {
   from: process.env.TWILIO_WHATSAPP_FROM ?? "",
   /**
    * Optional Content Template SIDs (Twilio Content API).
-   * When unset, falls back to a plain body (sandbox / session window only).
+   * When unset, send.ts uses the shared sandbox Appointment Reminder ContentSid,
+   * then freeform Body (24h session only). Trial accounts require ContentSid.
    */
   templates: {
     onCriticalIssue: process.env.TWILIO_WA_TEMPLATE_CRITICAL_ISSUE ?? "",

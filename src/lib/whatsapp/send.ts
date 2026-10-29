@@ -11,6 +11,14 @@ export const WHATSAPP_CRITICAL_RULES = [
 
 export type WhatsAppCriticalRule = (typeof WHATSAPP_CRITICAL_RULES)[number];
 
+/**
+ * Twilio Sandbox / trial shared "Appointment Reminders" Content Template:
+ * "Your appointment is coming up on {{1}} at {{2}}"
+ * Business-initiated WhatsApp on trial/sandbox requires ContentSid (error 21654).
+ */
+export const TWILIO_SANDBOX_APPOINTMENT_CONTENT_SID =
+  "HXb5b62575e6e4ff6129ad7c8efe1f983e";
+
 export function isWhatsAppCriticalRule(
   rule: NotificationRuleKey | null | undefined
 ): rule is WhatsAppCriticalRule {
@@ -44,6 +52,17 @@ function toWhatsAppAddress(input: string): string {
   const digits = withoutPrefix.replace(/[^\d+]/g, "");
   const e164 = digits.startsWith("+") ? digits : `+${digits.replace(/\D/g, "")}`;
   return `whatsapp:${e164}`;
+}
+
+function truncateVar(value: string, max = 200): string {
+  const cleaned = value.replace(/\s+/g, " ").trim();
+  if (cleaned.length <= max) return cleaned;
+  return `${cleaned.slice(0, max - 1)}…`;
+}
+
+function requiresContentSid(error?: string, code?: number): boolean {
+  if (code === 21654) return true;
+  return Boolean(error && /contentsid required/i.test(error));
 }
 
 async function twilioCreateMessage(
@@ -83,11 +102,52 @@ async function twilioCreateMessage(
   return { ok: true, sid: json.sid };
 }
 
+async function sendWithContentSid(params: {
+  to: string;
+  from: string;
+  contentSid: string;
+  variables: Record<string, string>;
+}): Promise<{ ok: boolean; sid?: string; error?: string; code?: number }> {
+  const form = new URLSearchParams();
+  form.set("To", params.to);
+  form.set("From", params.from);
+  form.set("ContentSid", params.contentSid);
+  if (Object.keys(params.variables).length > 0) {
+    form.set("ContentVariables", JSON.stringify(params.variables));
+  }
+  return twilioCreateMessage(form);
+}
+
+/**
+ * Map BuildView alert fields onto common Twilio sandbox templates.
+ * Custom approved templates with {{1}}/{{2}}/{{3}} still get title/message/link.
+ */
+function contentVariablesForSid(
+  contentSid: string,
+  variables?: SendWhatsAppParams["variables"]
+): Record<string, string> {
+  const title = truncateVar(variables?.title || "BuildView alert");
+  const message = truncateVar(variables?.message || "Open BuildView");
+  const link = truncateVar(variables?.link || "Open BuildView");
+
+  // Sandbox appointment reminder: {{1}} date-like, {{2}} time-like
+  if (contentSid === TWILIO_SANDBOX_APPOINTMENT_CONTENT_SID) {
+    return { "1": title, "2": message };
+  }
+
+  const vars: Record<string, string> = { "1": title, "2": message };
+  if (variables?.link) vars["3"] = link;
+  return vars;
+}
+
 /**
  * Send a WhatsApp message via Twilio.
- * Prefer approved Content Templates when SIDs are configured; otherwise plain body
- * (works in the 24h session window / sandbox). If a ContentSid is rejected, retry
- * with a plain body so sandbox testing still works.
+ *
+ * Trial / Sandbox business-initiated sends require an approved ContentSid
+ * (Twilio 21654 "ContentSid Required"). Freeform Body only works inside the
+ * 24h customer-care window after the user messages the sandbox.
+ *
+ * Order: configured template → sandbox appointment template → freeform Body.
  */
 export async function sendWhatsAppMessage(
   params: SendWhatsAppParams
@@ -98,48 +158,52 @@ export async function sendWhatsAppMessage(
 
   const to = toWhatsAppAddress(params.toE164);
   const from = toWhatsAppAddress(whatsappConfig.from);
+  const configuredSid = templateSidForRule(params.rule);
 
-  const contentSid = templateSidForRule(params.rule);
+  const contentAttempts = [
+    configuredSid,
+    // Always have a sandbox-safe fallback so trial accounts can deliver.
+    TWILIO_SANDBOX_APPOINTMENT_CONTENT_SID,
+  ].filter((sid, index, all) => Boolean(sid) && all.indexOf(sid) === index);
 
   try {
-    if (contentSid) {
-      const templated = new URLSearchParams();
-      templated.set("To", to);
-      templated.set("From", from);
-      templated.set("ContentSid", contentSid);
-      const vars: Record<string, string> = {};
-      if (params.variables?.title) vars["1"] = params.variables.title;
-      if (params.variables?.message) vars["2"] = params.variables.message;
-      if (params.variables?.link) vars["3"] = params.variables.link;
-      if (Object.keys(vars).length > 0) {
-        templated.set("ContentVariables", JSON.stringify(vars));
-      }
+    let lastContentError: string | undefined;
 
-      const first = await twilioCreateMessage(templated);
-      if (first.ok) {
-        return { ok: true, providerId: first.sid };
+    for (const contentSid of contentAttempts) {
+      const result = await sendWithContentSid({
+        to,
+        from,
+        contentSid,
+        variables: contentVariablesForSid(contentSid, params.variables),
+      });
+      if (result.ok) {
+        return { ok: true, providerId: result.sid };
       }
-
-      // Invalid / missing templates (e.g. 21655) — fall back to freeform body.
-      console.warn(
-        "[sendWhatsAppMessage] ContentSid failed; retrying with Body",
-        first.error,
-        first.code
-      );
+      lastContentError = result.error;
+      console.warn("[sendWhatsAppMessage] ContentSid failed", {
+        contentSid,
+        error: result.error,
+        code: result.code,
+      });
     }
 
+    // In-session freeform (only works after the user recently messaged the From number).
     const plain = new URLSearchParams();
     plain.set("To", to);
     plain.set("From", from);
     plain.set("Body", params.body);
 
-    const second = await twilioCreateMessage(plain);
-    if (!second.ok) {
-      console.error("[sendWhatsAppMessage]", second.error, { to, from });
-      return { ok: false, error: second.error };
+    const bodyResult = await twilioCreateMessage(plain);
+    if (bodyResult.ok) {
+      return { ok: true, providerId: bodyResult.sid };
     }
 
-    return { ok: true, providerId: second.sid };
+    const error = requiresContentSid(bodyResult.error, bodyResult.code)
+      ? `${bodyResult.error} — set TWILIO_WA_TEMPLATE_* to an approved ContentSid, or keep From as sandbox whatsapp:+14155238886 and ensure the recipient joined.`
+      : bodyResult.error || lastContentError || "WhatsApp send failed";
+
+    console.error("[sendWhatsAppMessage]", error, { to, from });
+    return { ok: false, error };
   } catch (error) {
     const message = error instanceof Error ? error.message : "WhatsApp send failed";
     console.error("[sendWhatsAppMessage]", message);
