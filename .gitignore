@@ -46,3 +46,7 @@ next-env.d.ts
 # python
 __pycache__/
 *.py[cod]
+
+# Standalone experience demos live in a separate repo
+/experience-demos/
+
