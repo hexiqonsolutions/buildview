@@ -202,11 +202,11 @@ export default function HomePage() {
             Next step
           </p>
           <h2 className="font-display text-3xl font-bold md:text-4xl lg:text-5xl">
-            Your Space Deserves a Better Way to Be Experienced.
+            Space Deserves a Better Way to Be Experienced.
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-lg text-slate-300">
-            Whether you&apos;re managing a construction project, showcasing an interior design, or
-            marketing a property, BuildView helps you create a more immersive digital experience.
+            Whether managing a construction project, showcasing an interior design, or marketing a
+            property, BuildView creates a more immersive digital experience.
           </p>
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
             <Button variant="accent" size="lg" className="shadow-glow" asChild>
