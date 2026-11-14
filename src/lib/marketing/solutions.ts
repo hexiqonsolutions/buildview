@@ -28,7 +28,7 @@ export const solutions = [
     shortLabel: "Construction",
     interest: "construction" as const,
     eyebrow: "Construction Intelligence",
-    cardHeadline: "See Your Project. Track Every Detail.",
+    cardHeadline: "See Project. Track Every Detail.",
     cardDescription:
       "Bring your entire construction site into a digital environment. Monitor project progress, document site conditions, compare development stages, and collaborate with stakeholders through immersive 360° walkthroughs and our project management system.",
     benefits: [
@@ -57,7 +57,7 @@ export const solutions = [
     shortLabel: "Real Estate",
     interest: "real-estate" as const,
     eyebrow: "Real Estate Showcase",
-    cardHeadline: "Let Buyers Experience Properties Before They Visit.",
+    cardHeadline: "Let Buyers Experience Properties.",
     cardDescription:
       "Give potential buyers and investors an immersive virtual experience of your property. Showcase apartments, sample flats, villas, commercial spaces, and completed developments through interactive 360° walkthroughs.",
     benefits: [
@@ -86,7 +86,7 @@ export const solutions = [
     shortLabel: "Interiors",
     interest: "interior" as const,
     eyebrow: "Interior Showcase",
-    cardHeadline: "Let Your Designs Speak for Themselves.",
+    cardHeadline: "Let Designs Speak for Themselves.",
     cardDescription:
       "Showcase your completed interior projects through immersive 360° virtual walkthroughs. Instead of sharing hundreds of photographs and videos, let potential clients explore every corner of your design in an interactive digital experience.",
     benefits: [
