@@ -61,16 +61,6 @@ const benefits = [
   },
 ];
 
-const categories = [
-  "Residential Apartments",
-  "Luxury Villas",
-  "Commercial Properties",
-  "Sample Flats",
-  "Showrooms",
-  "Office Spaces",
-  "Real Estate Developments",
-];
-
 const problems = [
   "Buyers want to understand the complete property before visiting",
   "Photographs show selected views only",
@@ -146,40 +136,6 @@ export default function RealEstateShowcasePage() {
       <Section>
         <SectionHeader eyebrow="Benefits" title="What Your Sales Team Gains." />
         <BenefitsGrid items={benefits} />
-      </Section>
-
-      <Section variant="muted">
-        <SectionHeader
-          eyebrow="Categories"
-          title="Property Types We Showcase."
-          description="Premium category cards. Replace placeholders with your property photography."
-        />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {categories.map((label, i) => (
-            <div
-              key={label}
-              className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-900 dark:border-slate-800"
-            >
-              <div className="relative aspect-[4/3]">
-                <Image
-                  src={
-                    i % 2 === 0
-                      ? "/marketing/services/dashboard.jpg"
-                      : "/marketing/services/compare-progress.jpg"
-                  }
-                  alt={`Placeholder for ${label}`}
-                  fill
-                  className="object-cover opacity-70"
-                  sizes="(max-width: 768px) 100vw, 25vw"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                <p className="absolute bottom-4 left-4 right-4 font-display text-base font-semibold text-white">
-                  {label}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
       </Section>
 
       <Section>

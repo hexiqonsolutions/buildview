@@ -101,7 +101,7 @@ export default function ConstructionIntelligencePage() {
               <Camera className="h-5 w-5 text-brand-accent-dark" />
             </div>
             <h3 className="mt-4 font-display text-xl font-semibold text-brand-primary dark:text-white">
-              A. 360° Virtual Site Walkthroughs
+              360° Virtual Site Walkthroughs
             </h3>
             <ul className="mt-4 space-y-2 text-sm text-slate-600 dark:text-slate-400">
               <li>Capture entire project locations</li>
@@ -116,11 +116,8 @@ export default function ConstructionIntelligencePage() {
               <ClipboardList className="h-5 w-5 text-brand-accent-dark" />
             </div>
             <h3 className="mt-4 font-display text-xl font-semibold text-brand-primary dark:text-white">
-              B. Construction Project Management
+              Construction Project Management
             </h3>
-            <p className="mt-2 text-sm text-slate-500">
-              Existing platform capabilities in BuildView today:
-            </p>
             <ul className="mt-4 space-y-2 text-sm text-slate-600 dark:text-slate-400">
               <li>Centralized project information</li>
               <li>Project progress documentation</li>
