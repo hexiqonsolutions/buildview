@@ -5,13 +5,13 @@
 
 export type SolutionSlug =
   | "construction-intelligence"
-  | "interior-showcase"
-  | "real-estate-showcase";
+  | "real-estate-showcase"
+  | "interior-showcase";
 
 export type SolutionInterest =
   | "construction"
-  | "interior"
   | "real-estate"
+  | "interior"
   | "demo"
   | "quote"
   | "enterprise"
@@ -51,35 +51,6 @@ export const solutions = [
     },
   },
   {
-    slug: "interior-showcase" as const,
-    href: "/interior-showcase",
-    navLabel: "Interior Showcase",
-    shortLabel: "Interiors",
-    interest: "interior" as const,
-    eyebrow: "Interior Showcase",
-    cardHeadline: "Let Your Designs Speak for Themselves.",
-    cardDescription:
-      "Showcase your completed interior projects through immersive 360° virtual walkthroughs. Instead of sharing hundreds of photographs and videos, let potential clients explore every corner of your design in an interactive digital experience.",
-    benefits: [
-      "Interactive 360° interior walkthroughs",
-      "Showcase completed projects",
-      "Present design details and spatial layouts",
-      "Create a premium digital portfolio",
-      "Share projects with clients through a link",
-      "Improve client engagement and presentations",
-    ],
-    ctaLabel: "Explore Interior Showcase",
-    demoCta: "Showcase Your Interior Projects",
-    imageSrc: "/marketing/services/virtual-tours.jpg",
-    imageAlt: "Immersive interior space walkthrough placeholder visual",
-    accentClass: "from-stone-900 via-neutral-800 to-stone-900",
-    seo: {
-      title: "Interior Showcase | 360° Virtual Design Portfolio",
-      description:
-        "Transform completed interiors into interactive 360° walkthroughs. Build a shareable virtual portfolio for designers, architects, and studios.",
-    },
-  },
-  {
     slug: "real-estate-showcase" as const,
     href: "/real-estate-showcase",
     navLabel: "Real Estate Showcase",
@@ -106,6 +77,35 @@ export const solutions = [
       title: "Real Estate Showcase | 360° Virtual Property Tours",
       description:
         "Showcase residential and commercial properties with immersive 360° virtual tours. Engage remote buyers and support sales presentations.",
+    },
+  },
+  {
+    slug: "interior-showcase" as const,
+    href: "/interior-showcase",
+    navLabel: "Interior Showcase",
+    shortLabel: "Interiors",
+    interest: "interior" as const,
+    eyebrow: "Interior Showcase",
+    cardHeadline: "Let Your Designs Speak for Themselves.",
+    cardDescription:
+      "Showcase your completed interior projects through immersive 360° virtual walkthroughs. Instead of sharing hundreds of photographs and videos, let potential clients explore every corner of your design in an interactive digital experience.",
+    benefits: [
+      "Interactive 360° interior walkthroughs",
+      "Showcase completed projects",
+      "Present design details and spatial layouts",
+      "Create a premium digital portfolio",
+      "Share projects with clients through a link",
+      "Improve client engagement and presentations",
+    ],
+    ctaLabel: "Explore Interior Showcase",
+    demoCta: "Showcase Your Interior Projects",
+    imageSrc: "/marketing/services/virtual-tours.jpg",
+    imageAlt: "Immersive interior space walkthrough placeholder visual",
+    accentClass: "from-stone-900 via-neutral-800 to-stone-900",
+    seo: {
+      title: "Interior Showcase | 360° Virtual Design Portfolio",
+      description:
+        "Transform completed interiors into interactive 360° walkthroughs. Build a shareable virtual portfolio for designers, architects, and studios.",
     },
   },
 ] as const;

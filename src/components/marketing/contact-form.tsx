@@ -23,8 +23,8 @@ const initialState: ContactActionState = {};
 
 const interestOptions: { value: (typeof CONTACT_INTERESTS)[number]; label: string }[] = [
   { value: "construction", label: "Construction Intelligence" },
-  { value: "interior", label: "Interior Showcase" },
   { value: "real-estate", label: "Real Estate Showcase" },
+  { value: "interior", label: "Interior Showcase" },
   { value: "demo", label: "Request a Live Demo" },
   { value: "quote", label: "Construction Monitoring Quote" },
   { value: "enterprise", label: "Enterprise Deployment" },

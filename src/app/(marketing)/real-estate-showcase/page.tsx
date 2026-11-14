@@ -144,14 +144,14 @@ export default function RealEstateShowcasePage() {
       </Section>
 
       <Section>
-        <SectionHeader eyebrow="Benefits" title="Key Benefits" />
+        <SectionHeader eyebrow="Benefits" title="What Your Sales Team Gains." />
         <BenefitsGrid items={benefits} />
       </Section>
 
       <Section variant="muted">
         <SectionHeader
           eyebrow="Categories"
-          title="Property Categories"
+          title="Property Types We Showcase."
           description="Premium category cards. Replace placeholders with your property photography."
         />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

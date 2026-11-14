@@ -26,7 +26,7 @@ import { siteConfig } from "@/lib/site-config";
 
 export const metadata: Metadata = {
   ...pageMetadata({
-    title: "360° Visualization for Construction, Interiors & Real Estate",
+    title: "360° Visualization for Construction, Real Estate & Interiors",
     description: siteConfig.description,
     path: "/",
   }),
@@ -109,6 +109,11 @@ const portfolioSlots = [
     alt: "Demo visual — construction site 360° capture",
   },
   {
+    title: "Sample flats & property tours",
+    src: "/marketing/services/compare-progress.jpg",
+    alt: "Demo visual — property tour placeholder",
+  },
+  {
     title: "Residential interior walkthroughs",
     src: "/marketing/services/virtual-tours.jpg",
     alt: "Demo visual — interior walkthrough placeholder",
@@ -117,11 +122,6 @@ const portfolioSlots = [
     title: "Commercial interior spaces",
     src: "/marketing/services/dashboard.jpg",
     alt: "Demo visual — commercial space presentation",
-  },
-  {
-    title: "Sample flats & property tours",
-    src: "/marketing/services/compare-progress.jpg",
-    alt: "Demo visual — property tour placeholder",
   },
 ];
 
@@ -133,16 +133,12 @@ export default function HomePage() {
 
         <div className="site-container relative z-10 flex min-h-svh flex-col justify-center pb-24 pt-28 lg:pb-28 lg:pt-32">
           <div className="max-w-3xl">
-            <p className="inline-flex rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-brand-accent backdrop-blur-sm motion-safe:animate-hero-rise">
-              {siteConfig.name}
-            </p>
-            <h1 className="mt-5 font-display text-4xl font-bold leading-[1.08] tracking-tight text-white motion-safe:animate-hero-rise md:text-5xl lg:text-6xl lg:leading-[1.05] [animation-delay:80ms]">
-              Experience Spaces Beyond Boundaries.
+            <h1 className="font-display text-4xl font-bold leading-[1.08] tracking-tight text-white motion-safe:animate-hero-rise md:text-5xl lg:text-6xl lg:leading-[1.05]">
+              Experience Space Beyond Boundaries.
             </h1>
-            <p className="mt-6 max-w-2xl text-lg leading-relaxed text-slate-100 motion-safe:animate-hero-rise md:text-xl [animation-delay:160ms]">
-              From construction progress to beautifully designed interiors and real estate
-              properties, BuildView transforms physical spaces into immersive 360° digital
-              experiences.
+            <p className="mt-6 max-w-2xl text-lg leading-relaxed text-slate-100 motion-safe:animate-hero-rise md:text-xl [animation-delay:80ms]">
+              From construction progress to real estate properties and beautifully designed
+              interiors, BuildView transforms physical spaces into 360° immersive walkthrough.
             </p>
             <div className="mt-9 flex flex-col gap-3 motion-safe:animate-hero-rise sm:flex-row sm:items-center [animation-delay:240ms]">
               <Button
@@ -175,19 +171,19 @@ export default function HomePage() {
           eyebrow="Platform"
           title={
             <>
-              One Platform.
-              <br />
               Three Powerful Experiences.
+              <br />
+              One Connected Way to Work.
             </>
           }
-          description="Every space has a story. Every project has progress. Every property has potential. BuildView brings these experiences together through immersive 360° technology, helping professionals visualize, showcase, and understand spaces like never before."
+          description="Every space has a story. Every project has progress. Every property has potential. BuildView brings these experiences together through immersive 360° technology, helping professionals showcase, and understand spaces like never before."
         />
       </Section>
 
       <Section id="solutions" variant="muted">
         <SectionHeader
           eyebrow="Solutions"
-          title="Our Three Solutions"
+          title="Built for Construction, Real Estate & Interiors."
           description="All three services use 360° visualization—each solving a different customer problem."
         />
         <div className="grid gap-6 lg:grid-cols-3">
@@ -210,7 +206,7 @@ export default function HomePage() {
         <SectionHeader
           eyebrow="Why BuildView"
           title="More Than Just a Virtual Tour."
-          description="BuildView combines 360° visualization with practical business applications for construction teams, design studios, and property marketers."
+          description="BuildView combines 360° visualization with practical business applications for construction teams, property marketers, and design studios."
         />
         <BenefitsGrid items={whyItems} />
       </Section>
@@ -218,8 +214,8 @@ export default function HomePage() {
       <Section>
         <SectionHeader
           eyebrow="Industries"
-          title="Industries We Serve"
-          description="One immersive technology platform across three industries."
+          title="Where Immersive Walkthroughs Create Value."
+          description="One immersive technology foundation across three industries."
         />
         <div className="grid gap-6 md:grid-cols-3">
           <SolutionLinkCard
@@ -230,18 +226,18 @@ export default function HomePage() {
             imageAlt="Construction intelligence industry visual"
           />
           <SolutionLinkCard
-            title="Interior Design & Architecture"
-            description="Turn completed interiors into interactive digital portfolios."
-            href="/interior-showcase"
-            imageSrc="/marketing/services/virtual-tours.jpg"
-            imageAlt="Interior showcase industry visual"
-          />
-          <SolutionLinkCard
             title="Real Estate & Property Development"
             description="Let buyers explore properties before they visit."
             href="/real-estate-showcase"
             imageSrc="/marketing/services/dashboard.jpg"
             imageAlt="Real estate showcase industry visual"
+          />
+          <SolutionLinkCard
+            title="Interior Design & Architecture"
+            description="Turn completed interiors into interactive digital portfolios."
+            href="/interior-showcase"
+            imageSrc="/marketing/services/virtual-tours.jpg"
+            imageAlt="Interior showcase industry visual"
           />
         </div>
       </Section>
@@ -249,7 +245,7 @@ export default function HomePage() {
       <Section variant="muted" id="experiences">
         <SectionHeader
           eyebrow="Experiences"
-          title="Explore Spaces Through BuildView."
+          title="See What a Walkthrough Feels Like."
           description="Selected experience types we capture. Replace demo visuals with live project tours as they become available."
         />
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">

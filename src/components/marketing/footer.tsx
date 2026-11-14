@@ -17,7 +17,7 @@ export function MarketingFooter() {
               Experience Every Space. Understand Every Progress.
             </h3>
             <p className="mt-2 text-sm leading-relaxed text-slate-400">
-              Construction intelligence, interior showcases, and real estate virtual tours—powered by
+              Construction intelligence, real estate virtual tours, and interior showcases—powered by
               immersive 360° technology.
             </p>
           </div>

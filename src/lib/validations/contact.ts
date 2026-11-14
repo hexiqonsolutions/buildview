@@ -3,8 +3,8 @@ import { email, optionalText, personName, text } from "@/lib/validations/primiti
 
 export const CONTACT_INTERESTS = [
   "construction",
-  "interior",
   "real-estate",
+  "interior",
   "demo",
   "quote",
   "enterprise",

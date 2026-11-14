@@ -10,16 +10,16 @@ export const siteConfig = {
     ogImage: "/opengraph-image",
   },
   tagline: "Experience Every Space. Understand Every Progress.",
-  headline: "Experience Spaces Beyond Boundaries.",
-  socialProofLine: "One platform for construction, interiors, and real estate experiences.",
+  headline: "Experience Space Beyond Boundaries.",
+  socialProofLine: "One platform for construction, real estate, and interior experiences.",
   description:
-    "BuildView transforms physical spaces into immersive 360° digital experiences—construction intelligence, interior showcases, and real estate virtual tours.",
+    "From construction progress to real estate properties and beautifully designed interiors, BuildView transforms physical spaces into 360° immersive walkthrough.",
   url:
     process.env.NEXT_PUBLIC_SITE_URL ??
     process.env.NEXT_PUBLIC_APP_URL ??
     "https://buildview.in",
   seo: {
-    title: "BuildView | 360° Visualization for Construction, Interiors & Real Estate",
+    title: "BuildView | 360° Visualization for Construction, Real Estate & Interiors",
     ogTitle: "BuildView | Experience Every Space. Understand Every Progress.",
   },
   contact: {

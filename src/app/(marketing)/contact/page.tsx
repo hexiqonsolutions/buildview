@@ -15,7 +15,7 @@ import { getWhatsAppUrl, siteConfig } from "@/lib/site-config";
 export const metadata: Metadata = pageMetadata({
   title: "Book a Demo | Contact BuildView",
   description:
-    "Request a BuildView demo for construction intelligence, interior showcase, or real estate virtual tours. Talk to our team about your project.",
+    "Request a BuildView demo for construction intelligence, real estate virtual tours, or interior showcase. Talk to our team about your project.",
   path: "/contact",
 });
 
@@ -67,8 +67,8 @@ const contactMethods: ContactMethod[] = [
 const reasons = [
   "Request a Live Demo",
   "Construction Intelligence",
-  "Interior Showcase Portfolio",
   "Real Estate Property Tours",
+  "Interior Showcase Portfolio",
   "Enterprise Deployment",
   "Partner With Us",
 ];
@@ -77,7 +77,7 @@ const faqs = [
   {
     question: "Which industries does BuildView serve?",
     answer:
-      "BuildView supports construction intelligence, interior design showcases, and real estate virtual property tours—all powered by immersive 360° technology.",
+      "BuildView supports construction intelligence, real estate virtual property tours, and interior design showcases—all powered by immersive 360° technology.",
   },
   {
     question: "How quickly can a project be onboarded?",

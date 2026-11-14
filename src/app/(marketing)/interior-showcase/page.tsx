@@ -137,7 +137,7 @@ export default function InteriorShowcasePage() {
       </Section>
 
       <Section>
-        <SectionHeader eyebrow="Benefits" title="Key Benefits" />
+        <SectionHeader eyebrow="Benefits" title="What Your Studio Gains." />
         <BenefitsGrid items={benefits} />
       </Section>
 
@@ -158,7 +158,7 @@ export default function InteriorShowcasePage() {
       <Section>
         <SectionHeader
           eyebrow="Categories"
-          title="Project Categories"
+          title="Spaces We Capture."
           description="Image-led gallery categories. Replace placeholders with your completed project photography."
         />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

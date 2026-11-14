@@ -6,7 +6,7 @@ const ogImage = {
   url: siteConfig.brand.ogImage,
   width: 1200,
   height: 630,
-  alt: "BuildView — Experience every space. 360° visualization for construction intelligence, interior showcases, and real estate tours.",
+  alt: "BuildView — Experience every space. 360° visualization for construction intelligence, real estate tours, and interior showcases.",
 };
 
 export const defaultMetadata: Metadata = {

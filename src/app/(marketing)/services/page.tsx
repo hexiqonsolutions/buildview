@@ -23,7 +23,7 @@ import { pageMetadata } from "@/lib/seo";
 export const metadata: Metadata = pageMetadata({
   title: "Solutions & Platform Capabilities",
   description:
-    "Explore BuildView solutions for construction intelligence, interior showcase, and real estate tours—plus platform capabilities like 360° tours, reports, timelines, documents, and issues.",
+    "Explore BuildView solutions for construction intelligence, real estate tours, and interior showcase—plus platform capabilities like 360° tours, reports, timelines, documents, and issues.",
   path: "/services",
 });
 
@@ -139,8 +139,8 @@ export default function ServicesPage() {
       <ViewContentTracker contentName="services" contentCategory="product" />
       <PageHero
         eyebrow="Solutions & platform"
-        title="One Platform. Three Experiences. Complete Capabilities."
-        description="Choose the solution that fits your industry, then use BuildView platform capabilities—virtual tours, reports, timelines, documents, issues, and client dashboards—where they apply."
+        title="Three Experiences. Complete Capabilities."
+        description="Choose the solution that fits your industry, then use BuildView capabilities—virtual tours, reports, timelines, documents, issues, and client dashboards—where they apply."
       />
 
       <TrustBar />
@@ -148,7 +148,7 @@ export default function ServicesPage() {
       <Section>
         <SectionHeader
           eyebrow="Solutions"
-          title="Industry solutions"
+          title="Built for Three Distinct Industries."
           description="Three verticals. One immersive 360° technology foundation."
         />
         <div className="grid gap-6 lg:grid-cols-3">
