@@ -4,7 +4,7 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { isBuildViewStaffRole } from "@/lib/auth/roles";
-import type { Client, ClientDashboardType } from "@/lib/types";
+import type { Client, ClientDashboardType, Project } from "@/lib/types";
 import type { AdminWorkspaceBootstrap } from "@/lib/admin/workspace";
 import { parseTourWorkspaceMeta } from "@/lib/admin/tour-metadata";
 import type { PortalWorkspaceBootstrap } from "@/lib/portal/workspace";
@@ -12,19 +12,27 @@ import { resolveClientDashboardType } from "@/lib/portal/dashboard-type";
 import { getCurrentUser } from "@/lib/actions/auth";
 import { requireStaffPermission } from "@/lib/auth/staff";
 import { getProjects } from "@/lib/data/projects";
+import { idsOrNone } from "@/lib/data/query";
+
+const ADMIN_PROJECT_BOOTSTRAP_SELECT =
+  "id, name, client_id, client_name, location, description, status, start_date, completion_date, cover_image_url, area_sqft, portfolio_category, created_by, updated_by, deleted_by, created_at, updated_at, deleted_at";
 
 export const getAdminWorkspaceBootstrap = cache(async (): Promise<AdminWorkspaceBootstrap> => {
   await requireStaffPermission("read", "projects");
   const supabase = await createClient();
 
-  const [{ data: clients }, { data: projects }, { data: tours }, { data: dbBuildings }, { data: dbFloors }] =
+  const [{ data: clients }, { data: projects }, { data: tours }, { data: dbBuildings }] =
     await Promise.all([
     supabase
       .from("clients")
       .select("id, name, company_name, logo_url, email, phone, is_active")
       .is("deleted_at", null)
       .order("name"),
-    supabase.from("projects").select("*").is("deleted_at", null).order("name"),
+    supabase
+      .from("projects")
+      .select(ADMIN_PROJECT_BOOTSTRAP_SELECT)
+      .is("deleted_at", null)
+      .order("name"),
     supabase
       .from("project_tours")
       .select("project_id, description, building_id, floor_id")
@@ -34,17 +42,21 @@ export const getAdminWorkspaceBootstrap = cache(async (): Promise<AdminWorkspace
       .select("id, project_id, name")
       .is("deleted_at", null)
       .order("sort_order"),
-    supabase
-      .from("floors")
-      .select("id, building_id, name")
-      .is("deleted_at", null)
-      .order("sort_order"),
   ]);
+
+  const buildingIds = (dbBuildings ?? []).map((b) => b.id);
+  const { data: dbFloors } = await supabase
+    .from("floors")
+    .select("id, building_id, name")
+    .in("building_id", idsOrNone(buildingIds))
+    .is("deleted_at", null)
+    .order("sort_order");
 
   const buildingsByProject: Record<string, string[]> = {};
   const floorsByProject: Record<string, Record<string, string[]>> = {};
   const buildingIdsByProject: Record<string, Record<string, string>> = {};
   const floorIdsByProject: Record<string, Record<string, Record<string, string>>> = {};
+  const buildingById = new Map((dbBuildings ?? []).map((b) => [b.id, b]));
 
   dbBuildings?.forEach((b) => {
     const set = new Set(buildingsByProject[b.project_id] ?? []);
@@ -55,7 +67,7 @@ export const getAdminWorkspaceBootstrap = cache(async (): Promise<AdminWorkspace
   });
 
   dbFloors?.forEach((f) => {
-    const buildingRow = dbBuildings?.find((b) => b.id === f.building_id);
+    const buildingRow = buildingById.get(f.building_id);
     const projectId = buildingRow?.project_id;
     const buildingName = buildingRow?.name;
     if (!projectId || !buildingName) return;
@@ -107,7 +119,7 @@ export const getAdminWorkspaceBootstrap = cache(async (): Promise<AdminWorkspace
 
   return {
     clients: clients ?? [],
-    projects: projects ?? [],
+    projects: (projects ?? []) as Project[],
     buildingsByProject,
     floorsByProject,
     buildingIdsByProject,
@@ -219,7 +231,7 @@ export const getPortalWorkspaceBootstrap = cache(async (): Promise<PortalWorkspa
 
   const ids = Array.from(projectIds);
 
-  const [{ data: tours }, { data: dbBuildings }, { data: dbFloors }] = await Promise.all([
+  const [{ data: tours }, { data: dbBuildings }] = await Promise.all([
     supabase
       .from("project_tours")
       .select("project_id, description, building_id, floor_id")
@@ -231,17 +243,21 @@ export const getPortalWorkspaceBootstrap = cache(async (): Promise<PortalWorkspa
       .in("project_id", ids)
       .is("deleted_at", null)
       .order("sort_order"),
-    supabase
-      .from("floors")
-      .select("id, building_id, name")
-      .is("deleted_at", null)
-      .order("sort_order"),
   ]);
+
+  const buildingIds = (dbBuildings ?? []).map((b) => b.id);
+  const { data: dbFloors } = await supabase
+    .from("floors")
+    .select("id, building_id, name")
+    .in("building_id", idsOrNone(buildingIds))
+    .is("deleted_at", null)
+    .order("sort_order");
 
   const buildingsByProject: PortalWorkspaceBootstrap["buildingsByProject"] = {};
   const floorsByProject: PortalWorkspaceBootstrap["floorsByProject"] = {};
   const buildingIdsByProject: PortalWorkspaceBootstrap["buildingIdsByProject"] = {};
   const floorIdsByProject: PortalWorkspaceBootstrap["floorIdsByProject"] = {};
+  const buildingById = new Map((dbBuildings ?? []).map((b) => [b.id, b]));
 
   dbBuildings?.forEach((b) => {
     if (!projectIds.has(b.project_id)) return;
@@ -253,7 +269,7 @@ export const getPortalWorkspaceBootstrap = cache(async (): Promise<PortalWorkspa
   });
 
   dbFloors?.forEach((f) => {
-    const buildingRow = dbBuildings?.find((b) => b.id === f.building_id);
+    const buildingRow = buildingById.get(f.building_id);
     const projectId = buildingRow?.project_id;
     const buildingName = buildingRow?.name;
     if (!projectId || !buildingName || !projectIds.has(projectId)) return;

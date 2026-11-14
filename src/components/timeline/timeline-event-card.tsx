@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { FileText } from "lucide-react";
-import { MatterportViewer } from "@/components/projects/MatterportViewer";
+import { MatterportViewerLazy as MatterportViewer } from "@/components/projects/matterport-viewer-lazy";
 import { TimelinePhotoGallery } from "@/components/timeline/timeline-photo-gallery";
 import { PdfPreview } from "@/components/projects/pdf-preview";
 import { formatDate } from "@/lib/utils";

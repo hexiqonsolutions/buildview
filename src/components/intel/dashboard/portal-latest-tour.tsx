@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Columns2, ExternalLink, Camera } from "lucide-react";
-import { MatterportViewer } from "@/components/projects/MatterportViewer";
+import { MatterportViewerLazy as MatterportViewer } from "@/components/projects/matterport-viewer-lazy";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/utils";
 import type { ProjectTour } from "@/lib/types";

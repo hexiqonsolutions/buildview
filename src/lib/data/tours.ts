@@ -5,6 +5,7 @@ import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { isBuildViewStaffRole, isClientPortalRole } from "@/lib/auth/roles";
 import type { Project, UserRole } from "@/lib/types";
 import { isProjectVisibleInClientPortal } from "@/lib/portal/project-visibility";
+import { idsOrNone } from "@/lib/data/query";
 import { validate } from "@/lib/validations/parse";
 import { projectIdSchema } from "@/lib/validations/data";
 
@@ -110,6 +111,30 @@ export async function getAllTours() {
   const { data } = await supabase
     .from("project_tours")
     .select("*, project:projects(id, name)")
+    .is("deleted_at", null)
     .order("created_at", { ascending: false });
+  return data || [];
+}
+
+export async function getToursByProjectIds(projectIds: string[]) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("project_tours")
+    .select("*, project:projects(id, name, client_name, status)")
+    .in("project_id", idsOrNone(projectIds))
+    .is("deleted_at", null)
+    .order("capture_date", { ascending: false })
+    .order("created_at", { ascending: false });
+  return data || [];
+}
+
+/** Lightweight rows for admin list stats — no project join. */
+export async function getTourSummariesByProjectIds(projectIds: string[]) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("project_tours")
+    .select("id, project_id, capture_date")
+    .in("project_id", idsOrNone(projectIds))
+    .is("deleted_at", null);
   return data || [];
 }

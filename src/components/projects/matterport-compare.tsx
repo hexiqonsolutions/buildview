@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { MatterportViewer } from "@/components/projects/MatterportViewer";
+import { MatterportViewerLazy as MatterportViewer } from "@/components/projects/matterport-viewer-lazy";
 import { formatTourScanLabel } from "@/lib/comparison/metadata";
 import { formatDate } from "@/lib/utils";
 import type { ProjectTour } from "@/lib/types";

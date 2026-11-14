@@ -16,10 +16,10 @@ import { isOpenIssueStatus } from "@/lib/issues/status";
 import { getClients } from "@/lib/data/clients";
 import { idsOrNone } from "@/lib/data/query";
 import { getProjectDocuments } from "@/lib/data/documents";
-import { getAllIssues, getProjectIssues } from "@/lib/data/issues";
+import { getIssueSummariesByProjectIds, getProjectIssues } from "@/lib/data/issues";
 import { getProgressionPercentByProjectIds } from "@/lib/data/progression";
 import { getProjectReports } from "@/lib/data/reports";
-import { getAllTours, getProjectTours } from "@/lib/data/tours";
+import { getProjectTours, getTourSummariesByProjectIds } from "@/lib/data/tours";
 
 export type AdminProjectRow = Project & {
   /** Progression Report % for construction clients; null for portfolio showcase. */
@@ -53,12 +53,8 @@ function formatProjectCode(index: number): string {
 
 export async function getAdminProjectsListData(): Promise<AdminProjectsListData> {
   await requireStaffPermission("read", "projects");
-  const [projects, clients, tours, issues] = await Promise.all([
-    getProjects(),
-    getClients(),
-    getAllTours(),
-    getAllIssues(),
-  ]);
+  const [projects, clients] = await Promise.all([getProjects(), getClients()]);
+  const projectIds = projects.map((p) => p.id);
 
   const dashboardTypeByClientId = new Map<string, ClientDashboardType | null>();
   for (const c of clients) {
@@ -72,8 +68,10 @@ export async function getAdminProjectsListData(): Promise<AdminProjectsListData>
     .filter((p) => dashboardTypeByClientId.get(p.client_id) !== "portfolio")
     .map((p) => p.id);
 
-  const [progressionByProject] = await Promise.all([
+  const [progressionByProject, tours, issues] = await Promise.all([
     getProgressionPercentByProjectIds(constructionProjectIds),
+    getTourSummariesByProjectIds(projectIds),
+    getIssueSummariesByProjectIds(projectIds),
   ]);
 
   const tourCountByProject: Record<string, number> = {};

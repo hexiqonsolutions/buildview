@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Document, Page, pdfjs } from "react-pdf";
-import { ChevronLeft, ChevronRight, Download, Loader2, Eye } from "lucide-react";
+import dynamic from "next/dynamic";
+import { Download, Loader2, Eye } from "lucide-react";
 import { getReportSignedUrl } from "@/lib/actions/reports";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,12 +13,21 @@ import {
 } from "@/components/ui/dialog";
 import { getErrorMessage } from "@/lib/errors/public";
 
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.min.mjs",
-  import.meta.url
-).toString();
-
-const PDF_OPTIONS = { isEvalSupported: false };
+const PdfDocumentViewer = dynamic(
+  () =>
+    import("@/components/projects/pdf-document-viewer").then(
+      (mod) => mod.PdfDocumentViewer
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex items-center justify-center gap-2 py-16">
+        <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
+        <span className="text-sm text-slate-500">Loading PDF viewer...</span>
+      </div>
+    ),
+  }
+);
 
 interface PdfPreviewProps {
   reportId: string;
@@ -124,49 +133,15 @@ export function PdfPreview({ reportId, fileName, title }: PdfPreviewProps) {
           )}
 
           {signedUrl && !loading && !error && (
-            <>
-              <div className="mb-4 flex items-center justify-center gap-4">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={pageNumber <= 1}
-                  onClick={() => setPageNumber((p) => p - 1)}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="text-sm">
-                  Page {pageNumber} of {numPages || "—"}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={pageNumber >= numPages}
-                  onClick={() => setPageNumber((p) => p + 1)}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleDownload}>
-                  <Download className="mr-1.5 h-4 w-4" />
-                  Download
-                </Button>
-              </div>
-              <div className="flex justify-center overflow-x-auto">
-                <Document
-                  file={signedUrl}
-                  options={PDF_OPTIONS}
-                  onLoadSuccess={({ numPages: n }) => setNumPages(n)}
-                  onLoadError={() => setError("Failed to render PDF.")}
-                  loading={
-                    <div className="flex items-center gap-2 py-12">
-                      <Loader2 className="h-6 w-6 animate-spin" />
-                      Rendering...
-                    </div>
-                  }
-                >
-                  <Page pageNumber={pageNumber} width={700} />
-                </Document>
-              </div>
-            </>
+            <PdfDocumentViewer
+              signedUrl={signedUrl}
+              pageNumber={pageNumber}
+              numPages={numPages}
+              onPageChange={setPageNumber}
+              onNumPages={setNumPages}
+              onError={setError}
+              onDownload={handleDownload}
+            />
           )}
         </DialogContent>
       </Dialog>

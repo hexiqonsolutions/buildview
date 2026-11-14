@@ -16,12 +16,12 @@ import {
   resolveProjectProgressValues,
 } from "@/lib/portal/progress-metrics";
 import { type ClientDashboardData, getClientDashboardData } from "@/lib/data/dashboard";
-import { getAllDocuments } from "@/lib/data/documents";
+import { getDocumentsByProjectIds } from "@/lib/data/documents";
 import type { ProjectWithMeta } from "@/lib/data/projects";
 import { getProgressionPercentByProjectIds } from "@/lib/data/progression";
-import { getAllReports } from "@/lib/data/reports";
-import { getAllTimelineEvents } from "@/lib/data/timeline";
-import { getAccessibleTours } from "@/lib/data/tours";
+import { getReportsByProjectIds } from "@/lib/data/reports";
+import { getTimelineEventsByProjectIds } from "@/lib/data/timeline";
+import { getToursByProjectIds } from "@/lib/data/tours";
 import { getPortalWorkspaceBootstrap } from "@/lib/data/workspace";
 import type { ProjectTour } from "@/lib/types";
 
@@ -67,11 +67,12 @@ export async function getPortalScopedDashboardData(
   const projects = filterDashboardProjects(base.projects, spatialScope);
   const projectIds = new Set(projects.map((p) => p.id));
 
+  const idList = Array.from(projectIds);
   const [toursRaw, allDocs, allReports, allTimeline] = await Promise.all([
-    getAccessibleTours(),
-    getAllDocuments(),
-    getAllReports(),
-    getAllTimelineEvents(),
+    getToursByProjectIds(idList),
+    getDocumentsByProjectIds(idList),
+    getReportsByProjectIds(idList),
+    getTimelineEventsByProjectIds(idList),
   ]);
 
   const scopedTours = filterToursByScope(

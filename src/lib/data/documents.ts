@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
+import { idsOrNone } from "@/lib/data/query";
 import { validate } from "@/lib/validations/parse";
 import { projectIdSchema } from "@/lib/validations/data";
 
@@ -23,6 +24,17 @@ export async function getAllFolders() {
   const { data } = await supabase
     .from("document_folders")
     .select("*, project:projects(name)")
+    .is("deleted_at", null)
+    .order("name", { ascending: true });
+  return data || [];
+}
+
+export async function getFoldersByProjectIds(projectIds: string[]) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("document_folders")
+    .select("*, project:projects(name)")
+    .in("project_id", idsOrNone(projectIds))
     .is("deleted_at", null)
     .order("name", { ascending: true });
   return data || [];
@@ -56,6 +68,17 @@ export async function getAllDocuments() {
   const { data } = await supabase
     .from("documents")
     .select("*, project:projects(name)")
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false });
+  return data || [];
+}
+
+export async function getDocumentsByProjectIds(projectIds: string[]) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("documents")
+    .select("*, project:projects(name)")
+    .in("project_id", idsOrNone(projectIds))
     .is("deleted_at", null)
     .order("created_at", { ascending: false });
   return data || [];

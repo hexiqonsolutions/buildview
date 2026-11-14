@@ -1,31 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TabWorkspace, TabPanel } from "@/components/patterns/tab-workspace";
 import { ProjectOverview } from "@/components/projects/project-overview";
-import { ProjectMatterportPanel } from "@/components/projects/project-matterport-panel";
-import { ProjectReportsSection } from "@/components/projects/project-reports-section";
 import { ProjectAiSummaryPanel } from "@/components/projects/project-ai-summary-panel";
-import { ProgressionPanel } from "@/components/projects/progression/progression-panel";
-import { ProjectCommentsSection } from "@/components/projects/project-comments-section";
 import { buildProjectReportSummary } from "@/lib/ai/build-project-report-summary";
 import { isOpenIssueStatus } from "@/lib/issues/status";
-import { ProjectDocumentsSection } from "@/components/projects/project-documents-section";
-import { ProjectIssuesSection } from "@/components/projects/project-issues-section";
-import { ProjectInvoicesSection } from "@/components/projects/project-invoices-section";
-import {
-  ProjectSitePhotosSection,
-  flattenProjectSitePhotos,
-} from "@/components/projects/project-site-photos-section";
-import { TimelineView } from "@/components/projects/timeline-view";
-import { BuildingsFloorsManager } from "@/components/admin/projects/buildings-floors-manager";
-import { ProjectTeamSection } from "@/components/projects/project-team-section";
-import { CreateIssueDialog } from "@/components/issues/create-issue-dialog";
-import { ProjectMediaShowcase } from "@/components/projects/project-media-showcase";
 import { useOptionalPortalWorkspace } from "@/components/portal/workspace/portal-workspace-provider";
 import type { ProjectMediaGroups } from "@/lib/project-media";
 import type { SpatialHierarchy } from "@/lib/actions/buildings";
@@ -41,6 +26,105 @@ import type {
   Invoice,
   ProjectCommentWithUser,
 } from "@/lib/types";
+
+function TabLoading() {
+  return (
+    <div className="flex items-center justify-center gap-2 py-16 text-sm text-slate-500">
+      <Loader2 className="h-5 w-5 animate-spin" />
+      Loading…
+    </div>
+  );
+}
+
+const ProjectMatterportPanel = dynamic(
+  () =>
+    import("@/components/projects/project-matterport-panel").then(
+      (mod) => mod.ProjectMatterportPanel
+    ),
+  { loading: () => <TabLoading /> }
+);
+const ProjectReportsSection = dynamic(
+  () =>
+    import("@/components/projects/project-reports-section").then(
+      (mod) => mod.ProjectReportsSection
+    ),
+  { loading: () => <TabLoading /> }
+);
+const ProgressionPanel = dynamic(
+  () =>
+    import("@/components/projects/progression/progression-panel").then(
+      (mod) => mod.ProgressionPanel
+    ),
+  { loading: () => <TabLoading /> }
+);
+const ProjectCommentsSection = dynamic(
+  () =>
+    import("@/components/projects/project-comments-section").then(
+      (mod) => mod.ProjectCommentsSection
+    ),
+  { loading: () => <TabLoading /> }
+);
+const ProjectDocumentsSection = dynamic(
+  () =>
+    import("@/components/projects/project-documents-section").then(
+      (mod) => mod.ProjectDocumentsSection
+    ),
+  { loading: () => <TabLoading /> }
+);
+const ProjectIssuesSection = dynamic(
+  () =>
+    import("@/components/projects/project-issues-section").then(
+      (mod) => mod.ProjectIssuesSection
+    ),
+  { loading: () => <TabLoading /> }
+);
+const ProjectInvoicesSection = dynamic(
+  () =>
+    import("@/components/projects/project-invoices-section").then(
+      (mod) => mod.ProjectInvoicesSection
+    ),
+  { loading: () => <TabLoading /> }
+);
+const ProjectSitePhotosSection = dynamic(
+  () =>
+    import("@/components/projects/project-site-photos-section").then(
+      (mod) => mod.ProjectSitePhotosSection
+    ),
+  { loading: () => <TabLoading /> }
+);
+const TimelineView = dynamic(
+  () =>
+    import("@/components/projects/timeline-view").then((mod) => mod.TimelineView),
+  { loading: () => <TabLoading /> }
+);
+const BuildingsFloorsManager = dynamic(
+  () =>
+    import("@/components/admin/projects/buildings-floors-manager").then(
+      (mod) => mod.BuildingsFloorsManager
+    ),
+  { loading: () => <TabLoading /> }
+);
+const ProjectTeamSection = dynamic(
+  () =>
+    import("@/components/projects/project-team-section").then(
+      (mod) => mod.ProjectTeamSection
+    ),
+  { loading: () => <TabLoading /> }
+);
+const CreateIssueDialog = dynamic(
+  () =>
+    import("@/components/issues/create-issue-dialog").then(
+      (mod) => mod.CreateIssueDialog
+    ),
+  { ssr: false }
+);
+const ProjectMediaShowcase = dynamic(
+  () =>
+    import("@/components/projects/project-media-showcase").then(
+      (mod) => mod.ProjectMediaShowcase
+    ),
+  { loading: () => <TabLoading /> }
+);
 
 interface ProjectDetailTabsProps {
   projectName?: string;
@@ -116,7 +200,11 @@ export function ProjectDetailTabs({
   const openIssueCount = issues.filter(
     (i) => isOpenIssueStatus(i.status)
   ).length;
-  const sitePhotoCount = flattenProjectSitePhotos(timeline).length;
+  const sitePhotoCount = timeline.reduce(
+    (sum, event) =>
+      sum + (event.timeline_photos?.filter((photo) => !photo.deleted_at).length ?? 0),
+    0
+  );
 
   const openScansTab = () => {
     const params = new URLSearchParams(searchParams.toString());

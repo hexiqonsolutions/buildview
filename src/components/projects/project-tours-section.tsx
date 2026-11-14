@@ -13,7 +13,7 @@ import {
   Layers,
   Rotate3d,
 } from "lucide-react";
-import { MatterportViewer } from "@/components/projects/MatterportViewer";
+import { MatterportViewerLazy as MatterportViewer } from "@/components/projects/matterport-viewer-lazy";
 import { MatterportCompare } from "@/components/projects/matterport-compare";
 import {
   MatterportMetadataGrid,

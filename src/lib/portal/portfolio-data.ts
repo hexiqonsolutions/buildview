@@ -5,7 +5,7 @@ import { filterToursByScope } from "@/lib/admin/scope";
 import { normalizeWorkspaceScope } from "@/lib/admin/workspace-scope";
 import { portalToAdminBootstrap } from "@/lib/portal/workspace";
 import { getProjects, type ProjectWithMeta } from "@/lib/data/projects";
-import { getAccessibleTours } from "@/lib/data/tours";
+import { getToursByProjectIds } from "@/lib/data/tours";
 import { getPortalWorkspaceBootstrap } from "@/lib/data/workspace";
 import { getProjectProgressPercent } from "@/lib/utils";
 import type { Project, ProjectTour } from "@/lib/types";
@@ -61,12 +61,13 @@ export async function getPortfolioDashboardData(
     clientId: scope.clientId ?? bootstrap.clientId,
   });
 
-  const [projectsRaw, toursRaw] = await Promise.all([getProjects(), getAccessibleTours()]);
+  const projectsRaw = await getProjects();
 
   // Portfolio home always shows every assigned project.
   // Workspace `?project=` is for navigating into a project, not for hiding the rest.
   const projects = projectsRaw;
   const projectIds = new Set(projects.map((p) => p.id));
+  const toursRaw = await getToursByProjectIds(Array.from(projectIds));
 
   // Tours still respect building/floor filters when set; ignore project-only narrowing.
   const tourScope = {

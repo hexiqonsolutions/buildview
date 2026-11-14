@@ -5,7 +5,7 @@ import { PortalMetricCard } from "@/components/portal/portal-metric-card";
 import {
   PortalOverallProgressDonut,
   PortalProgressTrendChart,
-} from "@/components/portal/portal-charts";
+} from "@/components/portal/portal-charts-lazy";
 import { ConstructionLatestTourCard } from "@/components/intel/dashboard/construction-latest-tour";
 import { ConstructionProjectList } from "@/components/intel/dashboard/construction-project-list";
 import { Badge } from "@/components/ui/badge";

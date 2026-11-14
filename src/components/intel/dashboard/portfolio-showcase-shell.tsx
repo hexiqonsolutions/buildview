@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Building2, Camera, MapPin, Play, Ruler } from "lucide-react";
-import { MatterportViewer } from "@/components/projects/MatterportViewer";
+import { MatterportViewerLazy as MatterportViewer } from "@/components/projects/matterport-viewer-lazy";
 import type { PortfolioDashboardData, PortfolioProjectItem } from "@/lib/portal/portfolio-data";
 import { scopeToPortalQueryString } from "@/lib/admin/scope";
 import { usePortalWorkspace } from "@/components/portal/workspace/portal-workspace-provider";

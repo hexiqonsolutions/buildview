@@ -10,16 +10,21 @@ import {
 import type { WorkspaceScope } from "@/lib/admin/workspace";
 import { normalizeWorkspaceScope } from "@/lib/admin/workspace-scope";
 import { portalToAdminBootstrap } from "@/lib/portal/workspace";
-import { getAllDocuments, getAllFolders } from "@/lib/data/documents";
+import { getDocumentsByProjectIds, getFoldersByProjectIds } from "@/lib/data/documents";
 import { getInvoices } from "@/lib/data/invoices";
-import { getAllIssues } from "@/lib/data/issues";
+import { getIssuesByProjectIds } from "@/lib/data/issues";
 import { getProjects } from "@/lib/data/projects";
-import { getAllReports } from "@/lib/data/reports";
-import { getTimelinePageData } from "@/lib/data/timeline";
-import { getAccessibleTours } from "@/lib/data/tours";
+import { getReportsByProjectIds } from "@/lib/data/reports";
+import { getTimelineEventsByProjectIds } from "@/lib/data/timeline";
+import { getToursByProjectIds } from "@/lib/data/tours";
 import { getPortalWorkspaceBootstrap } from "@/lib/data/workspace";
 import { isNarrowPortalScope } from "@/lib/portal/notification-scope";
-import type { Invoice, ProjectTour } from "@/lib/types";
+import type {
+  Invoice,
+  IssueWithRelations,
+  ProjectTour,
+  TimelineEventWithRelations,
+} from "@/lib/types";
 
 async function withPortalNormalizedScope(scope: WorkspaceScope): Promise<WorkspaceScope> {
   const bootstrap = await getPortalWorkspaceBootstrap();
@@ -59,23 +64,23 @@ export async function getPortalScopedProjects(scope: WorkspaceScope) {
   return filterProjectsByScope(projects, normalized);
 }
 
-export async function getPortalScopedAccessibleTours(scope: WorkspaceScope) {
-  const normalized = await withPortalNormalizedScope(scope);
-  const ids = await scopedProjectIds(normalized);
-  const tours = await getAccessibleTours();
-  return filterToursByScope(tours as ProjectTour[], normalized, ids);
-}
-
 async function scopedProjectIds(scope: WorkspaceScope): Promise<Set<string>> {
   const normalized = await withPortalNormalizedScope(scope);
   const projects = await getProjects();
   return new Set(projectIdsForScope(projects, normalized));
 }
 
+export async function getPortalScopedAccessibleTours(scope: WorkspaceScope) {
+  const normalized = await withPortalNormalizedScope(scope);
+  const ids = await scopedProjectIds(normalized);
+  const tours = await getToursByProjectIds(Array.from(ids));
+  return filterToursByScope(tours as ProjectTour[], normalized, ids);
+}
+
 export async function getPortalScopedDocuments(scope: WorkspaceScope) {
   const normalized = await withPortalNormalizedScope(scope);
   const ids = await scopedProjectIds(normalized);
-  const documents = await getAllDocuments();
+  const documents = await getDocumentsByProjectIds(Array.from(ids));
   const currentOnly = documents.filter((d) => d.is_current !== false);
   return filterBySpatialScope(currentOnly, normalized, ids);
 }
@@ -83,35 +88,48 @@ export async function getPortalScopedDocuments(scope: WorkspaceScope) {
 export async function getPortalScopedFolders(scope: WorkspaceScope) {
   const normalized = await withPortalNormalizedScope(scope);
   const ids = await scopedProjectIds(normalized);
-  const folders = await getAllFolders();
+  const folders = await getFoldersByProjectIds(Array.from(ids));
   return folders.filter((folder) => ids.has(folder.project_id));
 }
 
 export async function getPortalScopedIssues(scope: WorkspaceScope) {
   const normalized = await withPortalNormalizedScope(scope);
   const ids = await scopedProjectIds(normalized);
-  const issues = await getAllIssues();
+  const issues = await getIssuesByProjectIds(Array.from(ids));
   return filterBySpatialScope(issues, normalized, ids);
 }
 
 export async function getPortalScopedReports(scope: WorkspaceScope) {
   const normalized = await withPortalNormalizedScope(scope);
   const ids = await scopedProjectIds(normalized);
-  const reports = await getAllReports();
+  const reports = await getReportsByProjectIds(Array.from(ids));
   return filterBySpatialScope(reports, normalized, ids);
 }
 
 export async function getPortalScopedTimelinePageData(scope: WorkspaceScope) {
   const normalized = await withPortalNormalizedScope(scope);
-  const data = await getTimelinePageData();
-  const ids = await scopedProjectIds(normalized);
+  const projects = await getProjects();
+  const scopedProjects = filterProjectsByScope(projects, normalized);
+  const ids = new Set(projectIdsForScope(projects, normalized));
+  const idList = Array.from(ids);
+
+  const [events, tours, reports, issues] = await Promise.all([
+    getTimelineEventsByProjectIds(idList),
+    getToursByProjectIds(idList),
+    getReportsByProjectIds(idList),
+    getIssuesByProjectIds(idList),
+  ]);
 
   return {
-    projects: filterProjectsByScope(data.projects, normalized),
-    events: filterBySpatialScope(data.events, normalized, ids),
-    tours: filterToursByScope(data.tours, normalized, ids),
-    reports: filterBySpatialScope(data.reports, normalized, ids),
-    issues: filterBySpatialScope(data.issues, normalized, ids),
+    projects: scopedProjects,
+    events: filterBySpatialScope(
+      events as TimelineEventWithRelations[],
+      normalized,
+      ids
+    ),
+    tours: filterToursByScope(tours as ProjectTour[], normalized, ids),
+    reports: filterBySpatialScope(reports, normalized, ids),
+    issues: filterBySpatialScope(issues as IssueWithRelations[], normalized, ids),
   };
 }
 
