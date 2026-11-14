@@ -5,6 +5,9 @@ import { siteConfig } from "@/lib/site-config";
 const priorities: Record<string, number> = {
   "": 1,
   "/contact": 0.9,
+  "/construction-intelligence": 0.9,
+  "/interior-showcase": 0.9,
+  "/real-estate-showcase": 0.9,
   "/links": 0.85,
   "/services": 0.85,
   "/projects": 0.8,

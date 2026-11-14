@@ -1,3 +1,4 @@
+import { solutions } from "@/lib/marketing/solutions";
 import { siteConfig } from "@/lib/site-config";
 
 const contactSchema = {
@@ -32,33 +33,33 @@ export function JsonLd() {
       {
         "@type": "SoftwareApplication",
         "@id": `${siteConfig.url}/#software`,
-        name: `${siteConfig.name} Construction Intelligence Platform`,
+        name: `${siteConfig.name} 360° Visualization Platform`,
         applicationCategory: "BusinessApplication",
         operatingSystem: "Web",
         description: siteConfig.description,
         url: siteConfig.url,
         provider: { "@id": `${siteConfig.url}/#organization` },
         featureList: [
-          "360° virtual site tours",
-          "Construction progress tracking",
+          "360° virtual walkthroughs",
+          "Construction intelligence",
+          "Interior showcase portfolios",
+          "Real estate property tours",
           "Progress reports",
           "Document management",
           "Issue tracking",
-          "Project timelines",
           "Client dashboard",
         ],
       },
-      {
+      ...solutions.map((solution) => ({
         "@type": "Service",
-        "@id": `${siteConfig.url}/#service`,
-        name: "Construction monitoring",
-        serviceType: "Construction monitoring and project visibility",
+        "@id": `${siteConfig.url}${solution.href}#service`,
+        name: solution.navLabel,
+        serviceType: solution.eyebrow,
         provider: { "@id": `${siteConfig.url}/#organization` },
         areaServed: "IN",
-        description:
-          "Construction visibility and monitoring through 360° site capture, progress tracking, documentation, reports and issue management.",
-        url: `${siteConfig.url}/services`,
-      },
+        description: solution.seo.description,
+        url: `${siteConfig.url}${solution.href}`,
+      })),
       {
         "@type": "WebSite",
         "@id": `${siteConfig.url}/#website`,

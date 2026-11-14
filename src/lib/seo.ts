@@ -6,7 +6,7 @@ const ogImage = {
   url: siteConfig.brand.ogImage,
   width: 1200,
   height: 630,
-  alt: "BuildView — Construction Intelligence Platform. Construction monitoring through 360° site capture, progress tracking, reports and issue management.",
+  alt: "BuildView — Experience every space. 360° visualization for construction intelligence, interior showcases, and real estate tours.",
 };
 
 export const defaultMetadata: Metadata = {
@@ -18,15 +18,15 @@ export const defaultMetadata: Metadata = {
   description: siteConfig.description,
   applicationName: siteConfig.name,
   keywords: [
-    "construction monitoring",
+    "360 virtual walkthrough solutions",
+    "immersive 360 experiences",
     "construction intelligence platform",
-    "construction progress tracking",
-    "remote construction monitoring",
-    "360 site walkthrough",
-    "construction documentation",
-    "construction issue tracking",
-    "construction progress reports",
-    "construction project visibility",
+    "360 construction monitoring",
+    "interior design virtual portfolio",
+    "360 interior virtual tour",
+    "real estate virtual tours",
+    "virtual property walkthrough",
+    "360 property photography",
     "BuildView",
   ],
   authors: [{ name: siteConfig.name, url: siteUrl }],

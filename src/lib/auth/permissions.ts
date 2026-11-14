@@ -49,7 +49,12 @@ const CLIENT_UPLOAD_ACTIONS: PermissionAction[] = [
 
 const CLIENT_VIEW: PermissionAction[] = ["read"];
 
-/** Shared ops matrix for Admin + Operations Manager (full dashboard control). */
+/**
+ * Shared ops matrix for Admin + Operations Manager (full dashboard control).
+ * tour_viewers is read-only: lead PII from public share gates; no client roles.
+ * Ops justified — same staff set that already receives critical/staff alerts and
+ * manages projects/tours day-to-day (least privilege: read, not STAFF_FULL).
+ */
 const ADMIN_OPS_MATRIX: RolePermissions = {
   clients: STAFF_FULL,
   projects: STAFF_FULL,
@@ -64,6 +69,7 @@ const ADMIN_OPS_MATRIX: RolePermissions = {
   storage: STAFF_FULL,
   notifications: STAFF_FULL,
   activity: STAFF_FULL,
+  tour_viewers: ["read"],
 };
 
 /** Client Admin / Site Supervisor / Site Engineer — upload & manage project content (not virtual tours). */

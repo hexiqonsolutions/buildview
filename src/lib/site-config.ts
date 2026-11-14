@@ -1,3 +1,5 @@
+import { solutions } from "@/lib/marketing/solutions";
+
 export const siteConfig = {
   name: "BuildView",
   brand: {
@@ -7,34 +9,38 @@ export const siteConfig = {
     logoOnDark: "/db-logo.png",
     ogImage: "/opengraph-image",
   },
-  tagline: "Construction Intelligence Platform",
-  headline: "See Every Construction Project. Make Every Decision Faster.",
-  socialProofLine: "Know what's happening on site, without always being on site.",
+  tagline: "Experience Every Space. Understand Every Progress.",
+  headline: "Experience Spaces Beyond Boundaries.",
+  socialProofLine: "One platform for construction, interiors, and real estate experiences.",
   description:
-    "BuildView helps developers, architects, contractors and PMCs monitor construction projects remotely with 360° site tours, progress reports, documents, timelines and issue tracking.",
+    "BuildView transforms physical spaces into immersive 360° digital experiences—construction intelligence, interior showcases, and real estate virtual tours.",
   url:
     process.env.NEXT_PUBLIC_SITE_URL ??
     process.env.NEXT_PUBLIC_APP_URL ??
-    "https://buildview.io",
+    "https://buildview.in",
   seo: {
-    title: "BuildView | Construction Monitoring & Intelligence Platform",
-    ogTitle: "BuildView | Construction Intelligence Platform",
+    title: "BuildView | 360° Visualization for Construction, Interiors & Real Estate",
+    ogTitle: "BuildView | Experience Every Space. Understand Every Progress.",
   },
   contact: {
-    email: "buildviewsales@gmail.com",
+    email: "buildview360@gmail.com",
+    /** Existing sales inbox retained for continuity */
+    emailSales: "buildviewsales@gmail.com",
     phone: "+91 86552 24990",
     phoneAlt: "+91 83693 61785",
     address: "Lok Upvan Phase 2, Thane, Maharashtra, India",
+    /** WhatsApp uses the primary verified sales number */
+    whatsappE164: "918655224990",
   },
   instagram: {
-    handle: "@buildview.360",
-    handlePlain: "buildview.360",
-    url: "https://www.instagram.com/buildview.360/",
+    handle: "@build_view360",
+    handlePlain: "build_view360",
+    url: "https://www.instagram.com/build_view360/",
     landingPath: "/links",
-    profileName: "BuildView | Construction Tech",
+    profileName: "BuildView | 360° Experiences",
   },
   social: {
-    instagram: "https://www.instagram.com/buildview.360/",
+    instagram: "https://www.instagram.com/build_view360/",
     /**
      * Add official company URLs only after they are verified.
      * Generic / placeholder profiles must not be published.
@@ -45,12 +51,20 @@ export const siteConfig = {
   },
   nav: [
     { href: "/", label: "Home" },
+    {
+      href: "/services",
+      label: "Solutions",
+      children: solutions.map((s) => ({
+        href: s.href,
+        label: s.navLabel,
+        description: s.cardHeadline,
+      })),
+    },
     { href: "/about", label: "About" },
-    { href: "/services", label: "Services" },
-    { href: "/projects", label: "Projects" },
     { href: "/contact", label: "Contact" },
   ],
   footer: {
+    solutions: solutions.map((s) => ({ label: s.navLabel, href: s.href })),
     features: [
       { label: "Virtual Tours", href: "/services#virtual-tours" },
       { label: "Compare Progress", href: "/services#compare-tours" },
@@ -63,7 +77,7 @@ export const siteConfig = {
     company: [
       { label: "About", href: "/about" },
       { label: "Projects", href: "/projects" },
-      { label: "Services", href: "/services" },
+      { label: "Platform", href: "/services" },
       { label: "Contact", href: "/contact" },
     ],
     legal: [
@@ -89,4 +103,10 @@ export function getPublishedSocialLinks(): { key: string; href: string; label: s
       href,
       label: labels[key] ?? key,
     }));
+}
+
+export function getWhatsAppUrl(message?: string): string {
+  const base = `https://wa.me/${siteConfig.contact.whatsappE164}`;
+  if (!message) return base;
+  return `${base}?text=${encodeURIComponent(message)}`;
 }

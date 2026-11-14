@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { SocialLinks } from "@/components/marketing/social-links";
 import { InstagramFollow } from "@/components/marketing/instagram-follow";
 import { TrackedLink } from "@/components/analytics/tracked-link";
-import { siteConfig } from "@/lib/site-config";
-import { Mail, MapPin, Phone } from "lucide-react";
+import { getWhatsAppUrl, siteConfig } from "@/lib/site-config";
+import { Mail, MapPin, MessageCircle, Phone } from "lucide-react";
 
 export function MarketingFooter() {
   return (
@@ -14,15 +14,15 @@ export function MarketingFooter() {
         <div className="site-container flex flex-col items-start justify-between gap-6 py-12 lg:flex-row lg:items-center">
           <div className="max-w-xl">
             <h3 className="font-display text-2xl font-bold text-white md:text-3xl">
-              Ready to Bring Every Project Into One Platform?
+              Experience Every Space. Understand Every Progress.
             </h3>
             <p className="mt-2 text-sm leading-relaxed text-slate-400">
-              Replace scattered updates, manual reports, and endless follow-ups with one
-              intelligent construction monitoring system.
+              Construction intelligence, interior showcases, and real estate virtual tours—powered by
+              immersive 360° technology.
             </p>
           </div>
           <Button variant="accent" size="lg" className="shrink-0 shadow-glow" asChild>
-            <TrackedLink href="/contact" eventLabel="footer_book_demo">
+            <TrackedLink href="/contact?interest=demo" eventLabel="footer_book_demo">
               Book a Demo
             </TrackedLink>
           </Button>
@@ -44,10 +44,10 @@ export function MarketingFooter() {
 
           <div className="lg:col-span-2">
             <h4 className="mb-4 text-sm font-semibold uppercase tracking-wider text-white">
-              Features
+              Solutions
             </h4>
             <ul className="space-y-2.5 text-sm">
-              {siteConfig.footer.features.map((item) => (
+              {siteConfig.footer.solutions.map((item) => (
                 <li key={item.label}>
                   <Link href={item.href} className="transition-colors hover:text-brand-accent">
                     {item.label}
@@ -88,33 +88,65 @@ export function MarketingFooter() {
               </li>
               <li className="flex items-center gap-3">
                 <Phone className="h-4 w-4 shrink-0 text-brand-accent" />
-                <span>{siteConfig.contact.phone}</span>
+                <a
+                  href={`tel:${siteConfig.contact.phone.replace(/\D/g, "")}`}
+                  className="transition-colors hover:text-brand-accent"
+                >
+                  {siteConfig.contact.phone}
+                </a>
               </li>
               <li className="flex items-center gap-3">
                 <Phone className="h-4 w-4 shrink-0 text-brand-accent" />
-                <span>{siteConfig.contact.phoneAlt}</span>
+                <a
+                  href={`tel:${siteConfig.contact.phoneAlt.replace(/\D/g, "")}`}
+                  className="transition-colors hover:text-brand-accent"
+                >
+                  {siteConfig.contact.phoneAlt}
+                </a>
+              </li>
+              <li className="flex items-center gap-3">
+                <MessageCircle className="h-4 w-4 shrink-0 text-brand-accent" />
+                <a
+                  href={getWhatsAppUrl("Hi BuildView, I'd like to learn more about your solutions.")}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="transition-colors hover:text-brand-accent"
+                >
+                  WhatsApp
+                </a>
               </li>
               <li className="flex items-start gap-3">
                 <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-accent" />
                 <span>{siteConfig.contact.address}</span>
               </li>
+              <li className="text-slate-500">
+                Website:{" "}
+                <a
+                  href="https://buildview.in"
+                  className="text-slate-300 transition-colors hover:text-brand-accent"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  buildview.in
+                </a>
+              </li>
             </ul>
           </div>
         </div>
+      </div>
 
-        <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-slate-800 pt-8 text-sm text-slate-500 md:flex-row">
-          <p>&copy; {new Date().getFullYear()} {siteConfig.name}. All rights reserved.</p>
-          <div className="flex flex-wrap justify-center gap-6">
+      <div className="border-t border-slate-800">
+        <div className="site-container flex flex-col gap-4 py-6 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+          <p>© {new Date().getFullYear()} {siteConfig.name}. All rights reserved.</p>
+          <ul className="flex flex-wrap gap-4">
             {siteConfig.footer.legal.map((item) => (
-              <Link
-                key={item.label}
-                href={item.href}
-                className="transition-colors hover:text-brand-accent"
-              >
-                {item.label}
-              </Link>
+              <li key={item.label}>
+                <Link href={item.href} className="transition-colors hover:text-brand-accent">
+                  {item.label}
+                </Link>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       </div>
     </footer>

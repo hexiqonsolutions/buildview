@@ -18,12 +18,22 @@ import {
 import { formatDate } from "@/lib/utils";
 
 function toCsv(rows: TourShareViewerAdminRow[]): string {
-  const header = ["Name", "Phone", "Email", "Project", "Tour", "Opened at", "Share status"];
+  const header = [
+    "Name",
+    "Phone",
+    "Email",
+    "Client",
+    "Project",
+    "Tour",
+    "Opened at",
+    "Share status",
+  ];
   const lines = rows.map((row) =>
     [
       row.viewerName,
       row.viewerPhone ?? "",
       row.viewerEmail ?? "",
+      row.clientName ?? "",
       row.projectName,
       row.tourName,
       row.createdAt,
@@ -85,7 +95,7 @@ export function TourViewersTable({
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <Input
               className="pl-9"
-              placeholder="Search name, phone, email, project, tour…"
+              placeholder="Search name, phone, email, client, project, tour…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => {
@@ -128,12 +138,13 @@ export function TourViewersTable({
       ) : (
         <div className="ops-card overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[56rem] text-left text-sm">
+            <table className="w-full min-w-[64rem] text-left text-sm">
               <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:bg-slate-900/60">
                 <tr>
                   <th className="px-4 py-3">Name</th>
                   <th className="px-4 py-3">Phone</th>
                   <th className="px-4 py-3">Email</th>
+                  <th className="px-4 py-3">Client</th>
                   <th className="px-4 py-3">Project</th>
                   <th className="px-4 py-3">Tour</th>
                   <th className="px-4 py-3">Opened</th>
@@ -168,6 +179,9 @@ export function TourViewersTable({
                       ) : (
                         "—"
                       )}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
+                      {row.clientName ?? "—"}
                     </td>
                     <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{row.projectName}</td>
                     <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{row.tourName}</td>

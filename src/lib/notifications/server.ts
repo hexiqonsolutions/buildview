@@ -31,12 +31,14 @@ import {
   notificationRuleSchema,
   notifyPayloadSchema,
 } from "@/lib/validations/notifications";
+import { can } from "@/lib/auth/permissions";
 import { internalError } from "@/lib/errors/server";
 import { isValidE164 } from "@/lib/notifications/phone";
 import {
   isWhatsAppCriticalRule,
   sendWhatsAppMessage,
 } from "@/lib/whatsapp/send";
+import type { UserRole } from "@/lib/types";
 
 type NotifyPayload = {
   title: string;
@@ -603,5 +605,54 @@ export async function notifyUsersIfEnabled(
     await notifyUsers(parsedIds.data, parsedPayload.data, { rule: parsedRule.data });
   } catch (err) {
     console.error("[notifyUsersIfEnabled]", rule, err);
+  }
+}
+
+/**
+ * Fail-soft staff notify — never throws.
+ * Recipients: active BuildView staff with read access to `tour_viewers`
+ * (super_admin, admin, operations_manager after Phase 2). In-app + email via
+ * existing preference checks. WhatsApp is not used for onTourViewer (not a
+ * critical WhatsApp rule; provider is not assumed reliable).
+ *
+ * Delivery is best-effort: preference skips, missing email, and provider
+ * outages are logged on notification_deliveries and do not guarantee inbox
+ * delivery.
+ */
+export async function notifyTourViewerStaffIfEnabled(payload: NotifyPayload) {
+  const parsedPayload = validate(notifyPayloadSchema, payload);
+  if (!parsedPayload.success) {
+    warnInvalidInput("notifyTourViewerStaffIfEnabled", parsedPayload);
+    return;
+  }
+
+  try {
+    if (!(await isNotificationRuleEnabled("onTourViewer"))) return;
+
+    const admin = createServiceRoleClient();
+    const { data: staff, error } = await admin
+      .from("users")
+      .select("id, role")
+      .in("role", ["super_admin", "admin", "operations_manager"])
+      .eq("is_active", true)
+      .is("deleted_at", null);
+
+    if (error) {
+      console.error("[notifyTourViewerStaffIfEnabled] load staff failed:", error.message);
+      return;
+    }
+
+    const recipientIds = (staff ?? [])
+      .filter((row) => can(row.role as UserRole, "read", "tour_viewers"))
+      .map((row) => row.id);
+
+    if (recipientIds.length === 0) {
+      console.warn("[notifyTourViewerStaffIfEnabled] no staff with tour_viewers access");
+      return;
+    }
+
+    await notifyUsers(recipientIds, parsedPayload.data, { rule: "onTourViewer" });
+  } catch (err) {
+    console.error("[notifyTourViewerStaffIfEnabled]", err);
   }
 }

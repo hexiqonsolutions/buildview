@@ -193,6 +193,16 @@ export function PlatformSettingsPanel({
             }
           />
           <ToggleRow
+            label="Alert staff on new tour viewers"
+            description="When someone unlocks a shared Matterport tour, notify staff who can open Tour Viewers (in-app and email). Contact details stay on the admin page."
+            checked={settings.notifications.onTourViewer}
+            onChange={(onTourViewer) =>
+              updateSettings({
+                notifications: { ...settings.notifications, onTourViewer },
+              })
+            }
+          />
+          <ToggleRow
             label="Notify clients when invoice sent"
             description="Client users receive an alert when invoice status changes to sent."
             checked={settings.notifications.onInvoiceSent}

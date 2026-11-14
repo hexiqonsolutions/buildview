@@ -13,7 +13,7 @@ import { pageMetadata } from "@/lib/seo";
 export const metadata: Metadata = pageMetadata({
   title: "About BuildView",
   description:
-    "BuildView is a construction monitoring and intelligence platform that helps developers, architects, contractors and PMCs see what is happening on site without relying only on site visits.",
+    "BuildView is a 360° visualization platform for construction intelligence, interior showcases, and real estate experiences—helping teams present, monitor, and understand physical spaces digitally.",
   path: "/about",
 });
 

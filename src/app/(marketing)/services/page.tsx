@@ -14,14 +14,16 @@ import { PageHero } from "@/components/marketing/page-hero";
 import { Section } from "@/components/marketing/section";
 import { SectionHeader } from "@/components/marketing/section-header";
 import { ServiceSection } from "@/components/marketing/service-section";
+import { SolutionCard } from "@/components/marketing/solution-card";
 import { TrustBar } from "@/components/marketing/trust-bar";
 import { ViewContentTracker } from "@/components/analytics/view-content-tracker";
+import { solutions } from "@/lib/marketing/solutions";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Construction Monitoring Services",
+  title: "Solutions & Platform Capabilities",
   description:
-    "Construction monitoring with 360° virtual site tours, progress reports, timelines, document management, issue tracking, and role-based client dashboards.",
+    "Explore BuildView solutions for construction intelligence, interior showcase, and real estate tours—plus platform capabilities like 360° tours, reports, timelines, documents, and issues.",
   path: "/services",
 });
 
@@ -136,18 +138,31 @@ export default function ServicesPage() {
     <>
       <ViewContentTracker contentName="services" contentCategory="product" />
       <PageHero
-        eyebrow="Services"
-        title="End-to-End Construction Monitoring Services"
-        description="From virtual site capture to executive dashboards, BuildView provides everything required to monitor, document, and manage construction projects remotely."
+        eyebrow="Solutions & platform"
+        title="One Platform. Three Experiences. Complete Capabilities."
+        description="Choose the solution that fits your industry, then use BuildView platform capabilities—virtual tours, reports, timelines, documents, issues, and client dashboards—where they apply."
       />
 
       <TrustBar />
 
       <Section>
         <SectionHeader
-          eyebrow="Capabilities"
-          title="Everything required for remote construction monitoring"
-          description="Each service connects through one construction intelligence platform—so progress, documents, and decisions stay aligned."
+          eyebrow="Solutions"
+          title="Industry solutions"
+          description="Three verticals. One immersive 360° technology foundation."
+        />
+        <div className="grid gap-6 lg:grid-cols-3">
+          {solutions.map((solution, index) => (
+            <SolutionCard key={solution.slug} solution={solution} index={index} />
+          ))}
+        </div>
+      </Section>
+
+      <Section variant="muted">
+        <SectionHeader
+          eyebrow="Platform capabilities"
+          title="Tools that power construction intelligence"
+          description="These capabilities are available in the BuildView product today—especially for construction monitoring programs."
         />
         <div className="mt-6 divide-y divide-slate-200/80 dark:divide-slate-800 lg:mt-10">
           {services.map((service, index) => (

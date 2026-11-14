@@ -1,10 +1,12 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Send, CheckCircle2, Loader2 } from "lucide-react";
 import { submitContact, type ContactActionState } from "@/lib/actions/contact";
 import { analyticsEvents } from "@/lib/analytics/events";
 import { trackEvent } from "@/lib/analytics/track";
+import { CONTACT_INTERESTS } from "@/lib/validations/contact";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,15 +21,48 @@ import {
 
 const initialState: ContactActionState = {};
 
-export function ContactForm() {
+const interestOptions: { value: (typeof CONTACT_INTERESTS)[number]; label: string }[] = [
+  { value: "construction", label: "Construction Intelligence" },
+  { value: "interior", label: "Interior Showcase" },
+  { value: "real-estate", label: "Real Estate Showcase" },
+  { value: "demo", label: "Request a Live Demo" },
+  { value: "quote", label: "Construction Monitoring Quote" },
+  { value: "enterprise", label: "Enterprise Deployment" },
+  { value: "matterport", label: "Virtual Tour Services" },
+  { value: "partnership", label: "Partner With Us" },
+  { value: "support", label: "Technical Support" },
+  { value: "other", label: "Other" },
+];
+
+function isInterest(value: string | null): value is (typeof CONTACT_INTERESTS)[number] {
+  return Boolean(value && (CONTACT_INTERESTS as readonly string[]).includes(value));
+}
+
+export function ContactForm({
+  defaultInterest,
+}: {
+  defaultInterest?: string;
+} = {}) {
+  const searchParams = useSearchParams();
+  const fromQuery = searchParams.get("interest");
+  const initialInterest = isInterest(defaultInterest ?? null)
+    ? defaultInterest!
+    : isInterest(fromQuery)
+      ? fromQuery
+      : "";
+
   const [state, formAction, pending] = useActionState(submitContact, initialState);
-  const [interest, setInterest] = useState("");
+  const [interest, setInterest] = useState(initialInterest);
+
+  useEffect(() => {
+    if (isInterest(fromQuery)) setInterest(fromQuery);
+  }, [fromQuery]);
 
   useEffect(() => {
     if (state.success) {
       trackEvent(analyticsEvents.contact, { interest: interest || "unknown" });
       trackEvent(analyticsEvents.lead, { interest: interest || "unknown" });
-      if (interest === "demo") {
+      if (interest === "demo" || interest === "construction" || interest === "interior" || interest === "real-estate") {
         trackEvent(analyticsEvents.bookDemo, { interest });
       }
     }
@@ -62,13 +97,7 @@ export function ContactForm() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="name">Full name</Label>
-          <Input
-            id="name"
-            name="name"
-            placeholder="John Smith"
-            required
-            className="h-11"
-          />
+          <Input id="name" name="name" placeholder="John Smith" required className="h-11" />
         </div>
         <div className="space-y-2">
           <Label htmlFor="email">Work email</Label>
@@ -84,39 +113,62 @@ export function ContactForm() {
       </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="company">Company</Label>
+          <Label htmlFor="company">Company name</Label>
+          <Input id="company" name="company" placeholder="Your organization" className="h-11" />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="phone">Phone number</Label>
           <Input
-            id="company"
-            name="company"
-            placeholder="Your organization"
+            id="phone"
+            name="phone"
+            type="tel"
+            placeholder="+91 98765 43210"
             className="h-11"
           />
         </div>
+      </div>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="interest">I&apos;m interested in</Label>
+          <Label htmlFor="interest">Service interested in</Label>
           <input type="hidden" name="interest" value={interest} required />
           <Select value={interest} onValueChange={setInterest} required>
             <SelectTrigger className="h-11">
-              <SelectValue placeholder="Select an option" />
+              <SelectValue placeholder="Select a service" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="demo">Request a Live Demo</SelectItem>
-              <SelectItem value="quote">Construction Monitoring Quote</SelectItem>
-              <SelectItem value="enterprise">Enterprise Deployment</SelectItem>
-              <SelectItem value="matterport">Virtual Tour Services</SelectItem>
-              <SelectItem value="partnership">Partner With Us</SelectItem>
-              <SelectItem value="support">Technical Support</SelectItem>
-              <SelectItem value="other">Other</SelectItem>
+              {interestOptions.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
+        <div className="space-y-2">
+          <Label htmlFor="projectType">Project type</Label>
+          <Input
+            id="projectType"
+            name="projectType"
+            placeholder="e.g. Residential tower, villa, office interior"
+            className="h-11"
+          />
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="projectLocation">Project location</Label>
+        <Input
+          id="projectLocation"
+          name="projectLocation"
+          placeholder="City / region"
+          className="h-11"
+        />
       </div>
       <div className="space-y-2">
         <Label htmlFor="message">Message</Label>
         <Textarea
           id="message"
           name="message"
-          placeholder="Tell us about your project, portfolio size, and monitoring needs..."
+          placeholder="Tell us about your project and what you'd like to achieve..."
           rows={5}
           required
           className="resize-none"
@@ -136,12 +188,8 @@ export function ContactForm() {
         className="w-full shadow-soft"
         disabled={pending}
       >
-        {pending ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <Send className="h-4 w-4" />
-        )}
-        {pending ? "Sending…" : "Schedule My Demo"}
+        {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+        {pending ? "Sending…" : "Send Inquiry"}
       </Button>
       <p className="text-center text-xs text-slate-500">
         By submitting, you agree to our{" "}

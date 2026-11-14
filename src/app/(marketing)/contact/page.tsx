@@ -1,5 +1,6 @@
+import { Suspense } from "react";
 import { Metadata } from "next";
-import { Clock, Instagram, Mail, MapPin, MessageSquare, Phone } from "lucide-react";
+import { Clock, Instagram, Mail, MapPin, MessageCircle, MessageSquare, Phone } from "lucide-react";
 import { BookDemoSection } from "@/components/marketing/book-demo-section";
 import { ContactForm } from "@/components/marketing/contact-form";
 import { FaqSection } from "@/components/marketing/faq-section";
@@ -9,12 +10,12 @@ import { SectionHeader } from "@/components/marketing/section-header";
 import { TrustBar } from "@/components/marketing/trust-bar";
 import { ViewContentTracker } from "@/components/analytics/view-content-tracker";
 import { pageMetadata } from "@/lib/seo";
-import { siteConfig } from "@/lib/site-config";
+import { getWhatsAppUrl, siteConfig } from "@/lib/site-config";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Book a Construction Monitoring Demo",
+  title: "Book a Demo | Contact BuildView",
   description:
-    "Request a live BuildView demo and discuss construction monitoring with 360° site tours, progress reports, documents, timelines and issue tracking.",
+    "Request a BuildView demo for construction intelligence, interior showcase, or real estate virtual tours. Talk to our team about your project.",
   path: "/contact",
 });
 
@@ -45,6 +46,12 @@ const contactMethods: ContactMethod[] = [
     href: `tel:${siteConfig.contact.phoneAlt.replace(/\D/g, "")}`,
   },
   {
+    icon: MessageCircle,
+    label: "WhatsApp",
+    value: siteConfig.contact.phone,
+    href: getWhatsAppUrl("Hi BuildView, I'd like to book a demo."),
+  },
+  {
     icon: MapPin,
     label: "Office",
     value: siteConfig.contact.address,
@@ -59,22 +66,23 @@ const contactMethods: ContactMethod[] = [
 
 const reasons = [
   "Request a Live Demo",
-  "Construction Monitoring Quote",
+  "Construction Intelligence",
+  "Interior Showcase Portfolio",
+  "Real Estate Property Tours",
   "Enterprise Deployment",
-  "Virtual Tour Services",
-  "Technical Support",
   "Partner With Us",
 ];
 
 const faqs = [
   {
-    question: "How quickly can BuildView be deployed?",
+    question: "Which industries does BuildView serve?",
     answer:
-      "Most projects can be onboarded within a few days depending on project size and documentation requirements.",
+      "BuildView supports construction intelligence, interior design showcases, and real estate virtual property tours—all powered by immersive 360° technology.",
   },
   {
-    question: "Does BuildView support multiple projects?",
-    answer: "Yes. Monitor multiple construction projects from one centralized dashboard.",
+    question: "How quickly can a project be onboarded?",
+    answer:
+      "Most projects can be onboarded within a few days depending on project size and capture requirements.",
   },
   {
     question: "Can clients access the platform?",
@@ -82,9 +90,9 @@ const faqs = [
       "Yes. Role-based permissions ensure every stakeholder only sees the information relevant to them.",
   },
   {
-    question: "Can we upload our own reports and drawings?",
+    question: "Can we embed tours on websites?",
     answer:
-      "Absolutely. BuildView supports drawings, BOQs, contracts, reports, and other project documentation.",
+      "Virtual experiences can be shared via secure links and, where compatible, embedded into project websites and landing pages.",
   },
 ];
 
@@ -94,8 +102,8 @@ export default function ContactPage() {
       <ViewContentTracker contentName="contact" contentCategory="conversion" />
       <PageHero
         eyebrow="Contact"
-        title="Let's Talk About Your Construction Project"
-        description="Whether you're managing a residential tower, commercial complex, industrial facility, or infrastructure project, we'll help you build a monitoring solution that fits your workflow."
+        title="Let's Build Your Digital Experience"
+        description="Whether you monitor construction, showcase interiors, or market properties, we'll help you create the right immersive experience for your team and clients."
       />
 
       <TrustBar />
@@ -107,8 +115,8 @@ export default function ContactPage() {
               Contact Information
             </h2>
             <p className="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-              We&apos;re here to answer questions about BuildView, schedule product demonstrations,
-              or discuss construction monitoring requirements.
+              Ask about BuildView solutions, schedule a product demonstration, or discuss capture
+              and presentation requirements.
             </p>
 
             <ul className="mt-8 space-y-5">
@@ -185,10 +193,16 @@ export default function ContactPage() {
                 Tell Us About Your Project
               </h2>
               <p className="mt-1 text-sm text-slate-500">
-                Share your project type, monitoring needs, and preferred demo timing.
+                Share your service interest, project type, location, and preferred demo timing.
               </p>
               <div className="mt-8">
-                <ContactForm />
+                <Suspense
+                  fallback={
+                    <div className="h-96 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
+                  }
+                >
+                  <ContactForm />
+                </Suspense>
               </div>
             </div>
           </div>
@@ -201,7 +215,7 @@ export default function ContactPage() {
         <SectionHeader
           eyebrow="FAQ"
           title="Before you reach out"
-          description="Quick answers about deployment, access, and documentation."
+          description="Quick answers about solutions, access, and deployment."
         />
         <FaqSection items={faqs} />
       </Section>

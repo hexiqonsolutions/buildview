@@ -51,6 +51,9 @@ function rowToSettings(row: SettingsRow): PlatformSettings {
       onProjectRemoved:
         row.notification_rules?.onProjectRemoved ??
         DEFAULT_PLATFORM_SETTINGS.notifications.onProjectRemoved,
+      onTourViewer:
+        row.notification_rules?.onTourViewer ??
+        DEFAULT_PLATFORM_SETTINGS.notifications.onTourViewer,
     },
   };
 }

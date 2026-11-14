@@ -25,6 +25,7 @@ const notificationRulesSchema = z
     onIssueUpdate: ruleToggle,
     onProjectAssigned: ruleToggle,
     onProjectRemoved: ruleToggle,
+    onTourViewer: ruleToggle,
   })
   .strict();
 

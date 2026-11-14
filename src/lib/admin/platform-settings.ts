@@ -6,7 +6,8 @@ export type NotificationRuleKey =
   | "onTimeline"
   | "onIssueUpdate"
   | "onProjectAssigned"
-  | "onProjectRemoved";
+  | "onProjectRemoved"
+  | "onTourViewer";
 
 export type PlatformSettings = {
   companyName: string;
@@ -30,5 +31,7 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
     onIssueUpdate: true,
     onProjectAssigned: true,
     onProjectRemoved: true,
+    /** Staff (tour_viewers permission) when a new share-gate viewer is recorded. */
+    onTourViewer: true,
   },
 };

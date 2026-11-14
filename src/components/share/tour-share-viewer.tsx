@@ -33,7 +33,12 @@ export function TourShareViewer({ meta }: { meta: TourSharePublicMeta }) {
   const [pending, startTransition] = useTransition();
 
   const unlock = useCallback(
-    (viewerName: string, viewerPhone: string, viewerEmail: string) => {
+    (
+      viewerName: string,
+      viewerPhone: string,
+      viewerEmail: string,
+      options?: { recordView?: boolean }
+    ) => {
       startTransition(async () => {
         setError(null);
         const result = await recordTourShareView({
@@ -41,6 +46,8 @@ export function TourShareViewer({ meta }: { meta: TourSharePublicMeta }) {
           name: viewerName,
           phone: viewerPhone,
           email: viewerEmail,
+          // Session restore: unlock without inserting another view row.
+          recordView: options?.recordView !== false,
         });
         if (!result.ok) {
           if (result.unavailable) setUnavailable(true);
@@ -76,7 +83,9 @@ export function TourShareViewer({ meta }: { meta: TourSharePublicMeta }) {
           setName(parsed.name);
           setPhone(parsed.phone);
           setEmail(parsed.email);
-          unlock(parsed.name.trim(), parsed.phone.trim(), parsed.email.trim());
+          unlock(parsed.name.trim(), parsed.phone.trim(), parsed.email.trim(), {
+            recordView: false,
+          });
           return;
         }
       }

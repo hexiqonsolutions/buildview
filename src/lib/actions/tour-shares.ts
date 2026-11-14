@@ -10,6 +10,16 @@ import { getErrorMessage, PublicError } from "@/lib/errors/public";
 import { consumeRateLimit, formatRetryAfter, getClientIp } from "@/lib/rate-limit";
 import { getTourDisplayFields } from "@/lib/comparison/metadata";
 import { siteConfig } from "@/lib/site-config";
+import {
+  normalizeViewerEmail,
+  shouldSkipDuplicateView,
+  VIEW_DEDUPE_WINDOW_MS,
+} from "@/lib/tour-shares/view-dedupe";
+import {
+  buildTourViewerNotifyCopy,
+  shouldNotifyNewTourViewer,
+} from "@/lib/tour-shares/viewer-notify-policy";
+import { notifyTourViewerStaffIfEnabled } from "@/lib/notifications/server";
 import type { ProjectTour, TourShare, UserRole } from "@/lib/types";
 
 const SHARE_TTL_MS = 10 * 24 * 60 * 60 * 1000;
@@ -53,6 +63,8 @@ export type TourShareViewerRow = {
 export type TourShareViewerAdminRow = TourShareViewerRow & {
   projectId: string;
   projectName: string;
+  /** Client organization via projects.client_id → clients.name (name only). */
+  clientName: string | null;
   tourId: string;
   tourName: string;
   shareId: string;
@@ -413,11 +425,38 @@ export async function listAllTourShareViewers(options?: {
 
   const [{ data: tours }, { data: projects }] = await Promise.all([
     admin.from("project_tours").select("id, name").in("id", tourIds),
-    admin.from("projects").select("id, name").in("id", projectIds),
+    admin.from("projects").select("id, name, client_id").in("id", projectIds),
   ]);
 
   const tourNameById = new Map((tours ?? []).map((t) => [t.id, t.name]));
-  const projectNameById = new Map((projects ?? []).map((p) => [p.id, p.name]));
+  const projectById = new Map(
+    (projects ?? []).map((p) => [
+      p.id,
+      { name: p.name, clientId: p.client_id as string | null },
+    ])
+  );
+
+  const clientIds = [
+    ...new Set(
+      [...projectById.values()]
+        .map((p) => p.clientId)
+        .filter((id): id is string => Boolean(id))
+    ),
+  ];
+  const clientNameById = new Map<string, string>();
+  if (clientIds.length > 0) {
+    const { data: clients } = await admin
+      .from("clients")
+      .select("id, name, company_name")
+      .in("id", clientIds);
+    for (const c of clients ?? []) {
+      // Organization display only — prefer company_name when set (same as workspace).
+      const label =
+        (typeof c.company_name === "string" && c.company_name.trim()) ||
+        c.name;
+      clientNameById.set(c.id, label);
+    }
+  }
 
   const q = options?.query?.trim().toLowerCase() || null;
 
@@ -425,6 +464,10 @@ export async function listAllTourShareViewers(options?: {
   for (const view of views) {
     const share = shareById.get(view.share_id);
     if (!share) continue;
+    const project = projectById.get(share.project_id);
+    const clientName = project?.clientId
+      ? (clientNameById.get(project.clientId) ?? null)
+      : null;
     const row: TourShareViewerAdminRow = {
       id: view.id,
       viewerName: view.viewer_name,
@@ -432,7 +475,8 @@ export async function listAllTourShareViewers(options?: {
       viewerPhone: view.viewer_phone ?? null,
       createdAt: view.created_at,
       projectId: share.project_id,
-      projectName: projectNameById.get(share.project_id) ?? "Project",
+      projectName: project?.name ?? "Project",
+      clientName,
       tourId: share.tour_id,
       tourName: tourNameById.get(share.tour_id) ?? "Tour",
       shareId: share.id,
@@ -445,6 +489,7 @@ export async function listAllTourShareViewers(options?: {
         row.viewerPhone ?? "",
         row.viewerEmail ?? "",
         row.projectName,
+        row.clientName ?? "",
         row.tourName,
       ]
         .join(" ")
@@ -483,19 +528,32 @@ export async function getActiveTourShare(
 }
 
 /**
- * Public: record a view after the name gate. Returns Matterport URL only when
- * the share is still valid.
+ * Public: unlock a shared tour after the access gate (or restore a prior unlock).
+ * Returns the Matterport URL only when the share is still valid.
+ *
+ * `recordView` (default true): when false, validates the share and returns the
+ * unlock payload without inserting a tour_share_views row (session restore /
+ * reload of an already-unlocked tour).
+ *
+ * When recording: skips insert if the same share_id + normalized email already
+ * has a view within VIEW_DEDUPE_WINDOW_MS (24h). Distinct emails, or the same
+ * email after the window, still create new rows. Rate limit applies only when
+ * recording.
  */
 export async function recordTourShareView(input: {
   token: string;
   name: string;
   phone: string;
   email: string;
+  /** When false, unlock only — no insert (session restore). Default true. */
+  recordView?: boolean;
 }): Promise<
-  | { ok: true; tour: TourShareUnlocked }
+  | { ok: true; tour: TourShareUnlocked; viewRecorded: boolean }
   | { ok: false; error: string; unavailable?: boolean }
 > {
   try {
+    const shouldRecord = input.recordView !== false;
+
     const name = input.name?.trim() ?? "";
     if (name.length < 1 || name.length > 120) {
       return { ok: false, error: "Please enter your name." };
@@ -506,23 +564,26 @@ export async function recordTourShareView(input: {
       return { ok: false, error: "Please enter a valid contact number." };
     }
 
-    const emailRaw = input.email?.trim() ?? "";
+    const email = normalizeViewerEmail(input.email ?? "");
     if (
-      emailRaw.length < 3 ||
-      emailRaw.length > 200 ||
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailRaw)
+      email.length < 3 ||
+      email.length > 200 ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
     ) {
       return { ok: false, error: "Please enter a valid email address." };
     }
 
     const hdrs = await headers();
     const ip = getClientIp(hdrs);
-    const limit = await consumeRateLimit("publicTourShareView", ip);
-    if (!limit.allowed) {
-      return {
-        ok: false,
-        error: `Too many attempts. Please wait ${formatRetryAfter(limit.retryAfterSeconds)}.`,
-      };
+
+    if (shouldRecord) {
+      const limit = await consumeRateLimit("publicTourShareView", ip);
+      if (!limit.allowed) {
+        return {
+          ok: false,
+          error: `Too many attempts. Please wait ${formatRetryAfter(limit.retryAfterSeconds)}.`,
+        };
+      }
     }
 
     const loaded = await loadPublicShareByToken(input.token);
@@ -530,19 +591,72 @@ export async function recordTourShareView(input: {
       return { ok: false, error: "This share link is no longer available.", unavailable: true };
     }
 
-    const admin = createServiceRoleClient();
-    const { error } = await admin.from("tour_share_views").insert({
-      share_id: loaded.share.id,
-      viewer_name: name,
-      viewer_email: emailRaw,
-      viewer_phone: phone,
-      user_agent: hdrs.get("user-agent")?.slice(0, 500) ?? null,
-      ip_hash: hashIp(ip),
-    });
+    let viewRecorded = false;
 
-    if (error) {
-      console.error("[tour-shares] record view failed:", error);
-      // Still unlock the tour if logging failed — don't block the recipient.
+    if (shouldRecord) {
+      const admin = createServiceRoleClient();
+      const sinceIso = new Date(Date.now() - VIEW_DEDUPE_WINDOW_MS).toISOString();
+
+      // App-level dedupe (indexes today: share_id + created_at only).
+      // Concurrent double-submit can still race without a DB unique index —
+      // a forever-unique (share_id, email) constraint would incorrectly merge
+      // legitimate revisits after the 24h window, so none is applied here.
+      const { data: recentViews, error: recentErr } = await admin
+        .from("tour_share_views")
+        .select("id, viewer_email, created_at")
+        .eq("share_id", loaded.share.id)
+        .gte("created_at", sinceIso)
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (recentErr) {
+        console.error("[tour-shares] dedupe lookup failed:", recentErr);
+      }
+
+      const existing = (recentViews ?? []).find(
+        (row) =>
+          row.viewer_email != null &&
+          normalizeViewerEmail(row.viewer_email) === email &&
+          shouldSkipDuplicateView({ existingCreatedAt: row.created_at })
+      );
+
+      if (!existing) {
+        const { error } = await admin.from("tour_share_views").insert({
+          share_id: loaded.share.id,
+          viewer_name: name,
+          viewer_email: email,
+          viewer_phone: phone,
+          user_agent: hdrs.get("user-agent")?.slice(0, 500) ?? null,
+          ip_hash: hashIp(ip),
+        });
+
+        if (error) {
+          console.error("[tour-shares] record view failed:", error);
+          // Still unlock the tour if logging failed — don't block the recipient.
+        } else {
+          viewRecorded = true;
+        }
+      }
+    }
+
+    // Staff notify only for a successful new insert. Failures / dedupe / restore
+    // must not alert. Notification errors must never block tour unlock.
+    if (shouldNotifyNewTourViewer({ viewRecorded })) {
+      try {
+        const copy = buildTourViewerNotifyCopy({
+          viewerName: name,
+          projectName: loaded.projectName,
+          tourName: loaded.tour.name,
+        });
+        await notifyTourViewerStaffIfEnabled({
+          title: copy.title,
+          message: copy.message,
+          type: "info",
+          link: copy.link,
+        });
+      } catch (notifyErr) {
+        console.error("[tour-shares] staff notify failed:", notifyErr);
+      }
     }
 
     const meta = toPublicMeta(
@@ -555,6 +669,7 @@ export async function recordTourShareView(input: {
 
     return {
       ok: true,
+      viewRecorded,
       tour: {
         ...meta,
         matterportUrl: loaded.tour.matterport_url,

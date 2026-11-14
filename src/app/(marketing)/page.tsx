@@ -1,165 +1,127 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Metadata } from "next";
 import {
-  AlertTriangle,
   ArrowRight,
-  Briefcase,
-  Building2,
-  Camera,
-  CheckCircle2,
-  Clock,
-  FileText,
-  FolderOpen,
-  HardHat,
-  Layers,
-  Play,
-  Ruler,
-  Users,
+  Eye,
+  FileStack,
+  Globe2,
+  Home as HomeIcon,
+  MessageSquare,
+  Presentation,
+  Sparkles,
 } from "lucide-react";
-import { FeatureCard } from "@/components/marketing/feature-card";
+import { BenefitsGrid } from "@/components/marketing/benefits-grid";
 import { HeroCaptureVideo } from "@/components/marketing/hero-capture-video";
-import { ProductModuleCard } from "@/components/marketing/product-module-card";
-import { RoleCard } from "@/components/marketing/role-card";
+import { HomePartnersSection } from "@/components/marketing/home-partners-section";
+import { ProcessTimeline } from "@/components/marketing/process-timeline";
 import { Section } from "@/components/marketing/section";
 import { SectionHeader } from "@/components/marketing/section-header";
-import { HomePartnersSection } from "@/components/marketing/home-partners-section";
+import { SolutionCard, SolutionLinkCard } from "@/components/marketing/solution-card";
 import { Button } from "@/components/ui/button";
 import { TrackedLink } from "@/components/analytics/tracked-link";
+import { solutions } from "@/lib/marketing/solutions";
 import { pageMetadata } from "@/lib/seo";
 import { siteConfig } from "@/lib/site-config";
 
 export const metadata: Metadata = {
   ...pageMetadata({
-    title: "Construction Monitoring & Intelligence Platform",
+    title: "360° Visualization for Construction, Interiors & Real Estate",
     description: siteConfig.description,
     path: "/",
   }),
   title: {
     absolute: siteConfig.seo.title,
   },
+  keywords: [
+    "360 virtual walkthrough solutions",
+    "immersive 360 experiences",
+    "construction intelligence platform",
+    "interior virtual tours",
+    "real estate virtual tours",
+    "BuildView",
+  ],
 };
 
-const products = [
+const whyItems = [
   {
-    icon: Camera,
-    title: "Virtual Tours",
-    description:
-      "Walk through your project from anywhere using immersive 360° site captures.",
-    highlights: [
-      "Professional 360° digital twins",
-      "Remote stakeholder walkthroughs",
-      "Historical site documentation",
-    ],
-    href: "/services#virtual-tours",
-    featured: true,
+    icon: Eye,
+    title: "Immersive Visualization",
+    description: "Explore spaces in 360° with the freedom of a real walkthrough.",
   },
   {
-    icon: FileText,
-    title: "Progress Reports",
-    description:
-      "Generate professional construction reports with milestones, observations, and progress summaries.",
-    highlights: [
-      "Consistent project updates",
-      "Executive-ready PDF deliverables",
-      "Aligned with site milestones",
-    ],
-    href: "/services#reports",
-    featured: false,
+    icon: Globe2,
+    title: "Remote Accessibility",
+    description: "Share experiences securely with stakeholders anywhere.",
   },
   {
-    icon: Clock,
-    title: "Timeline",
-    description:
-      "Track every milestone and construction activity through an interactive project timeline.",
-    highlights: [
-      "Chronological site history",
-      "Photos, tours, and notes together",
-      "Clear progress checkpoints",
-    ],
-    href: "/services#timeline",
-    featured: false,
+    icon: MessageSquare,
+    title: "Better Client Communication",
+    description: "Replace scattered photos and updates with one clear experience.",
   },
   {
-    icon: FolderOpen,
-    title: "Documents",
-    description:
-      "Keep drawings, BOQs, contracts, and technical documents organized and accessible.",
-    highlights: [
-      "Secure project repository",
-      "Folder-based organization",
-      "Controlled stakeholder access",
-    ],
-    href: "/services#documents",
-    featured: false,
+    icon: FileStack,
+    title: "Digital Documentation",
+    description: "Keep captures, reports, and project records connected where needed.",
   },
   {
-    icon: AlertTriangle,
-    title: "Issues",
-    description:
-      "Capture, assign, and resolve construction issues before they impact delivery.",
-    highlights: [
-      "Photo-backed observations",
-      "Ownership and status workflows",
-      "Audit-ready resolution trail",
-    ],
-    href: "/services#issues",
-    featured: false,
+    icon: Sparkles,
+    title: "Interactive Experiences",
+    description: "Let people navigate spaces instead of consuming static media.",
+  },
+  {
+    icon: Presentation,
+    title: "Professional Presentation",
+    description: "Present projects with a premium digital first impression.",
   },
 ];
 
-const roles = [
-  {
-    icon: Building2,
-    title: "Developers",
-    description: "Monitor multiple projects with complete portfolio visibility.",
-  },
-  {
-    icon: Ruler,
-    title: "Architects",
-    description: "Review execution, drawings, and site progress remotely.",
-  },
-  {
-    icon: HardHat,
-    title: "Contractors",
-    description: "Simplify reporting, documentation, and communication.",
-  },
-  {
-    icon: Briefcase,
-    title: "Project Management Consultants",
-    description: "Track quality, milestones, and issue resolution from one dashboard.",
-  },
-  {
-    icon: Users,
-    title: "Project Owners",
-    description: "Stay informed without visiting the site.",
-  },
-  {
-    icon: Layers,
-    title: "Consultants",
-    description: "Access the evidence you need for reviews, audits, and decisions.",
-  },
-];
-
-const processSteps = [
+const workflow = [
   {
     step: "01",
     title: "Capture",
-    description: "Record your project with professional 360° site scans.",
+    description:
+      "Capture spaces using professional 360° cameras and compatible Matterport technology.",
   },
   {
     step: "02",
-    title: "Monitor",
-    description: "Track progress, reports, issues, and documents in one place.",
+    title: "Process",
+    description: "Process and prepare the captured space into an immersive virtual experience.",
   },
   {
     step: "03",
-    title: "Review",
-    description: "Collaborate with architects, consultants, and contractors.",
+    title: "Enhance",
+    description:
+      "Add relevant annotations, information tags, hotspots, documentation, and other applicable features.",
   },
   {
     step: "04",
-    title: "Deliver",
-    description: "Complete projects with complete transparency and organized documentation.",
+    title: "Experience",
+    description:
+      "Share the digital experience through a secure link or an integrated client portal.",
+  },
+];
+
+const portfolioSlots = [
+  {
+    title: "Construction site walkthroughs",
+    src: "/marketing/why-buildview/project-scans.jpg",
+    alt: "Demo visual — construction site 360° capture",
+  },
+  {
+    title: "Residential interior walkthroughs",
+    src: "/marketing/services/virtual-tours.jpg",
+    alt: "Demo visual — interior walkthrough placeholder",
+  },
+  {
+    title: "Commercial interior spaces",
+    src: "/marketing/services/dashboard.jpg",
+    alt: "Demo visual — commercial space presentation",
+  },
+  {
+    title: "Sample flats & property tours",
+    src: "/marketing/services/compare-progress.jpg",
+    alt: "Demo visual — property tour placeholder",
   },
 ];
 
@@ -172,17 +134,15 @@ export default function HomePage() {
         <div className="site-container relative z-10 flex min-h-svh flex-col justify-center pb-24 pt-28 lg:pb-28 lg:pt-32">
           <div className="max-w-3xl">
             <p className="inline-flex rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-brand-accent backdrop-blur-sm motion-safe:animate-hero-rise">
-              Construction Intelligence Platform
+              {siteConfig.name}
             </p>
             <h1 className="mt-5 font-display text-4xl font-bold leading-[1.08] tracking-tight text-white motion-safe:animate-hero-rise md:text-5xl lg:text-6xl lg:leading-[1.05] [animation-delay:80ms]">
-              See Every Construction Project.
-              <span className="mt-1 block text-white">Make Every Decision Faster.</span>
+              Experience Spaces Beyond Boundaries.
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-relaxed text-slate-100 motion-safe:animate-hero-rise md:text-xl [animation-delay:160ms]">
-              BuildView brings together virtual site tours, construction progress tracking,
-              reports, document management, issue tracking, and project timelines into one
-              intelligent platform—so your team always knows what&apos;s happening on site without
-              chasing updates.
+              From construction progress to beautifully designed interiors and real estate
+              properties, BuildView transforms physical spaces into immersive 360° digital
+              experiences.
             </p>
             <div className="mt-9 flex flex-col gap-3 motion-safe:animate-hero-rise sm:flex-row sm:items-center [animation-delay:240ms]">
               <Button
@@ -191,8 +151,8 @@ export default function HomePage() {
                 className="shadow-glow text-brand-primary hover:text-brand-primary"
                 asChild
               >
-                <TrackedLink href="/contact" eventLabel="home_hero_book_demo">
-                  Book Live Demo <ArrowRight className="h-5 w-5" />
+                <TrackedLink href="#solutions" eventLabel="home_hero_explore_solutions">
+                  Explore Our Solutions <ArrowRight className="h-5 w-5" />
                 </TrackedLink>
               </Button>
               <Button
@@ -201,121 +161,127 @@ export default function HomePage() {
                 className="border-white/40 bg-white/10 text-white shadow-none backdrop-blur-sm hover:border-white/55 hover:bg-white/15 hover:text-white"
                 asChild
               >
-                <Link href="/services">
-                  <Play className="h-5 w-5" /> Explore Platform
-                </Link>
+                <TrackedLink href="/contact?interest=demo" eventLabel="home_hero_book_demo">
+                  Book a Demo
+                </TrackedLink>
               </Button>
             </div>
           </div>
         </div>
       </section>
 
-      <Section id="platform">
+      <Section>
         <SectionHeader
           eyebrow="Platform"
           title={
             <>
-              One Platform,
+              One Platform.
               <br />
-              Complete Site Visibility.
+              Three Powerful Experiences.
             </>
           }
-          description="From the first excavation to final handover, BuildView gives every stakeholder real-time visibility into construction progress, project documentation, and site activity."
+          description="Every space has a story. Every project has progress. Every property has potential. BuildView brings these experiences together through immersive 360° technology, helping professionals visualize, showcase, and understand spaces like never before."
         />
-        <div className="grid gap-6 lg:grid-cols-3">
-          {products.slice(0, 3).map((product) => (
-            <ProductModuleCard key={product.title} {...product} />
-          ))}
-        </div>
-        <div className="mt-6 grid gap-6 lg:grid-cols-2">
-          {products.slice(3).map((product) => (
-            <ProductModuleCard key={product.title} {...product} />
-          ))}
-        </div>
       </Section>
 
-      <Section variant="muted">
+      <Section id="solutions" variant="muted">
         <SectionHeader
-          eyebrow="Workflow"
-          title="From Site Capture to Project Delivery"
-          description="A clear operating model for construction monitoring—capture once, keep every stakeholder aligned."
+          eyebrow="Solutions"
+          title="Our Three Solutions"
+          description="All three services use 360° visualization—each solving a different customer problem."
         />
-        <div className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-4 lg:gap-8">
-          {processSteps.map((item, index) => (
-            <div key={item.step} className="relative text-center lg:text-left">
-              {index < processSteps.length - 1 && (
-                <div className="absolute left-[calc(50%+2.25rem)] top-7 hidden h-px w-[calc(100%-4.5rem)] bg-slate-200 dark:bg-slate-700 lg:block" />
-              )}
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl accent-gradient font-display text-lg font-bold text-brand-primary shadow-soft lg:mx-0">
-                {item.step}
-              </div>
-              <h3 className="mt-5 font-display text-lg font-semibold text-brand-primary dark:text-white">
-                {item.title}
-              </h3>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
-                {item.description}
-              </p>
-            </div>
+        <div className="grid gap-6 lg:grid-cols-3">
+          {solutions.map((solution, index) => (
+            <SolutionCard key={solution.slug} solution={solution} index={index} />
           ))}
         </div>
       </Section>
 
       <Section>
         <SectionHeader
-          eyebrow="Users"
-          title="Built for Every Construction Team"
-          description="Whether you develop, design, build, consult, or own—BuildView gives your role the visibility it needs."
+          eyebrow="How it works"
+          title="From Physical Spaces to Digital Experiences."
+          description="A clear path from capture to a shareable immersive experience."
         />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {roles.map((role) => (
-            <RoleCard key={role.title} {...role} />
-          ))}
-        </div>
+        <ProcessTimeline steps={workflow} />
       </Section>
 
       <Section variant="muted">
         <SectionHeader
           eyebrow="Why BuildView"
-          title="Professional construction monitoring without the complexity"
-          description="Purpose-built for construction visibility—not a generic project tool with a camera bolted on."
+          title="More Than Just a Virtual Tour."
+          description="BuildView combines 360° visualization with practical business applications for construction teams, design studios, and property marketers."
         />
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <FeatureCard
-            icon={Camera}
-            title="360°-native virtual tours"
-            description="Immersive site captures embedded in the platform for remote inspections and stakeholder reviews."
+        <BenefitsGrid items={whyItems} />
+      </Section>
+
+      <Section>
+        <SectionHeader
+          eyebrow="Industries"
+          title="Industries We Serve"
+          description="One immersive technology platform across three industries."
+        />
+        <div className="grid gap-6 md:grid-cols-3">
+          <SolutionLinkCard
+            title="Construction & Infrastructure"
+            description="Monitor sites, document progress, and keep stakeholders aligned."
+            href="/construction-intelligence"
             imageSrc="/marketing/why-buildview/project-scans.jpg"
-            imageAlt="BuildView project scans with a live Matterport virtual tour"
+            imageAlt="Construction intelligence industry visual"
           />
-          <FeatureCard
-            icon={FileText}
-            title="Reports, docs, and issues together"
-            description="Progress tracking, documentation, and issue resolution live in one construction intelligence workspace."
-            slides={[
-              {
-                src: "/marketing/why-buildview/reports.jpg",
-                alt: "BuildView reports dashboard",
-                label: "Reports",
-              },
-              {
-                src: "/marketing/why-buildview/documents.jpg",
-                alt: "BuildView documents dashboard",
-                label: "Documents",
-              },
-              {
-                src: "/marketing/why-buildview/issues.jpg",
-                alt: "BuildView issues dashboard",
-                label: "Issues",
-              },
-            ]}
+          <SolutionLinkCard
+            title="Interior Design & Architecture"
+            description="Turn completed interiors into interactive digital portfolios."
+            href="/interior-showcase"
+            imageSrc="/marketing/services/virtual-tours.jpg"
+            imageAlt="Interior showcase industry visual"
           />
-          <FeatureCard
-            icon={CheckCircle2}
-            title="Role-based client access"
-            description="Give every stakeholder controlled visibility without chasing updates across emails and chats."
-            imageSrc="/marketing/why-buildview/roles.jpg"
-            imageAlt="BuildView user manager with role-based client access"
+          <SolutionLinkCard
+            title="Real Estate & Property Development"
+            description="Let buyers explore properties before they visit."
+            href="/real-estate-showcase"
+            imageSrc="/marketing/services/dashboard.jpg"
+            imageAlt="Real estate showcase industry visual"
           />
+        </div>
+      </Section>
+
+      <Section variant="muted" id="experiences">
+        <SectionHeader
+          eyebrow="Experiences"
+          title="Explore Spaces Through BuildView."
+          description="Selected experience types we capture. Replace demo visuals with live project tours as they become available."
+        />
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {portfolioSlots.map((slot) => (
+            <figure
+              key={slot.title}
+              className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft dark:border-slate-800 dark:bg-slate-950"
+            >
+              <div className="relative aspect-[4/3]">
+                <Image
+                  src={slot.src}
+                  alt={slot.alt}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, 25vw"
+                />
+              </div>
+              <figcaption className="space-y-1 p-4">
+                <p className="text-sm font-semibold text-brand-primary dark:text-white">
+                  {slot.title}
+                </p>
+                <p className="text-xs text-slate-500">Demo visual — replace with project tour</p>
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+        <div className="mt-8 flex justify-center">
+          <Button variant="outline" asChild>
+            <Link href="/projects">
+              View project gallery <ArrowRight className="h-4 w-4" />
+            </Link>
+          </Button>
         </div>
       </Section>
 
@@ -334,16 +300,16 @@ export default function HomePage() {
             Next step
           </p>
           <h2 className="font-display text-3xl font-bold md:text-4xl lg:text-5xl">
-            Ready to Modernize Construction Monitoring?
+            Your Space Deserves a Better Way to Be Experienced.
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-lg text-slate-300">
-            Book a personalized demonstration and discover how BuildView improves project
-            visibility and decision-making.
+            Whether you&apos;re managing a construction project, showcasing an interior design, or
+            marketing a property, BuildView helps you create a more immersive digital experience.
           </p>
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
             <Button variant="accent" size="lg" className="shadow-glow" asChild>
-              <TrackedLink href="/contact" eventLabel="home_bottom_book_demo">
-                Book Live Demo
+              <TrackedLink href="/contact?interest=demo" eventLabel="home_bottom_book_demo">
+                Book a Demo
               </TrackedLink>
             </Button>
             <Button
@@ -352,7 +318,9 @@ export default function HomePage() {
               className="border-white/25 bg-white/5 text-white hover:bg-white/10 hover:text-white"
               asChild
             >
-              <Link href="/projects">View Projects</Link>
+              <Link href="/contact">
+                <HomeIcon className="h-4 w-4" /> Contact Our Team
+              </Link>
             </Button>
           </div>
         </div>
