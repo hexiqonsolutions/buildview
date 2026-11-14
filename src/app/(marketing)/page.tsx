@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { Metadata } from "next";
 import {
@@ -17,7 +16,7 @@ import { HomePartnersSection } from "@/components/marketing/home-partners-sectio
 import { ProcessTimeline } from "@/components/marketing/process-timeline";
 import { Section } from "@/components/marketing/section";
 import { SectionHeader } from "@/components/marketing/section-header";
-import { SolutionCard, SolutionLinkCard } from "@/components/marketing/solution-card";
+import { SolutionCard } from "@/components/marketing/solution-card";
 import { Button } from "@/components/ui/button";
 import { TrackedLink } from "@/components/analytics/tracked-link";
 import { solutions } from "@/lib/marketing/solutions";
@@ -99,29 +98,6 @@ const workflow = [
     title: "Experience",
     description:
       "Share the digital experience through a secure link or an integrated client portal.",
-  },
-];
-
-const portfolioSlots = [
-  {
-    title: "Construction site walkthroughs",
-    src: "/marketing/why-buildview/project-scans.jpg",
-    alt: "Demo visual — construction site 360° capture",
-  },
-  {
-    title: "Sample flats & property tours",
-    src: "/marketing/services/compare-progress.jpg",
-    alt: "Demo visual — property tour placeholder",
-  },
-  {
-    title: "Residential interior walkthroughs",
-    src: "/marketing/services/virtual-tours.jpg",
-    alt: "Demo visual — interior walkthrough placeholder",
-  },
-  {
-    title: "Commercial interior spaces",
-    src: "/marketing/services/dashboard.jpg",
-    alt: "Demo visual — commercial space presentation",
   },
 ];
 
@@ -209,76 +185,6 @@ export default function HomePage() {
           description="BuildView combines 360° visualization with practical business applications for construction teams, property marketers, and design studios."
         />
         <BenefitsGrid items={whyItems} />
-      </Section>
-
-      <Section>
-        <SectionHeader
-          eyebrow="Industries"
-          title="Where Immersive Walkthroughs Create Value."
-          description="One immersive technology foundation across three industries."
-        />
-        <div className="grid gap-6 md:grid-cols-3">
-          <SolutionLinkCard
-            title="Construction & Infrastructure"
-            description="Monitor sites, document progress, and keep stakeholders aligned."
-            href="/construction-intelligence"
-            imageSrc="/marketing/why-buildview/project-scans.jpg"
-            imageAlt="Construction intelligence industry visual"
-          />
-          <SolutionLinkCard
-            title="Real Estate & Property Development"
-            description="Let buyers explore properties before they visit."
-            href="/real-estate-showcase"
-            imageSrc="/marketing/services/dashboard.jpg"
-            imageAlt="Real estate showcase industry visual"
-          />
-          <SolutionLinkCard
-            title="Interior Design & Architecture"
-            description="Turn completed interiors into interactive digital portfolios."
-            href="/interior-showcase"
-            imageSrc="/marketing/services/virtual-tours.jpg"
-            imageAlt="Interior showcase industry visual"
-          />
-        </div>
-      </Section>
-
-      <Section variant="muted" id="experiences">
-        <SectionHeader
-          eyebrow="Experiences"
-          title="See What a Walkthrough Feels Like."
-          description="Selected experience types we capture. Replace demo visuals with live project tours as they become available."
-        />
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {portfolioSlots.map((slot) => (
-            <figure
-              key={slot.title}
-              className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft dark:border-slate-800 dark:bg-slate-950"
-            >
-              <div className="relative aspect-[4/3]">
-                <Image
-                  src={slot.src}
-                  alt={slot.alt}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 768px) 100vw, 25vw"
-                />
-              </div>
-              <figcaption className="space-y-1 p-4">
-                <p className="text-sm font-semibold text-brand-primary dark:text-white">
-                  {slot.title}
-                </p>
-                <p className="text-xs text-slate-500">Demo visual — replace with project tour</p>
-              </figcaption>
-            </figure>
-          ))}
-        </div>
-        <div className="mt-8 flex justify-center">
-          <Button variant="outline" asChild>
-            <Link href="/projects">
-              View project gallery <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
-        </div>
       </Section>
 
       <Section variant="accent" className="relative overflow-hidden">
