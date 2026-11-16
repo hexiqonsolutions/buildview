@@ -9,18 +9,18 @@ export const siteConfig = {
     logoOnDark: "/db-logo.png",
     ogImage: "/opengraph-image",
   },
-  tagline: "Experience Every Space. Understand Every Progress.",
-  headline: "Experience Space Beyond Boundaries.",
-  socialProofLine: "One platform for construction, real estate, and interior experiences.",
+  tagline: "Don't imagine it. Walk it.",
+  headline: "Don't imagine it. Walk it.",
+  socialProofLine: "Proof, not promises.",
   description:
-    "From construction progress to real estate properties and beautifully designed interiors, BuildView transforms physical spaces into 360° immersive walkthrough.",
+    "Show sites, flats and finished interiors as 360° walkthroughs. Track construction progress, sell properties faster and win design clients. Book a demo.",
   url:
     process.env.NEXT_PUBLIC_SITE_URL ??
     process.env.NEXT_PUBLIC_APP_URL ??
     "https://buildview.in",
   seo: {
-    title: "BuildView | 360° Visualization for Construction, Real Estate & Interiors",
-    ogTitle: "BuildView | Experience Every Space. Understand Every Progress.",
+    title: "BuildView | 360° Walkthroughs for Construction, Real Estate & Interiors",
+    ogTitle: "BuildView | 360° Walkthroughs for Construction, Real Estate & Interiors",
   },
   contact: {
     email: "buildview360@gmail.com",

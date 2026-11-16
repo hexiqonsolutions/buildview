@@ -3,14 +3,25 @@ import Link from "next/link";
 import { ArrowRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TrackedLink } from "@/components/analytics/tracked-link";
-import type { Solution } from "@/lib/marketing/solutions";
 import { cn } from "@/lib/utils";
+
+export type SolutionCardData = {
+  slug: string;
+  href: string;
+  eyebrow: string;
+  cardHeadline: string;
+  cardDescription: string;
+  benefits: readonly string[];
+  ctaLabel: string;
+  imageSrc: string;
+  imageAlt: string;
+};
 
 export function SolutionCard({
   solution,
   index,
 }: {
-  solution: Solution;
+  solution: SolutionCardData;
   index: number;
 }) {
   return (
