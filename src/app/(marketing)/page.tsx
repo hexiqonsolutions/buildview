@@ -139,7 +139,7 @@ export default function HomePage() {
       {/* SECTION 2: Live sample walkthrough */}
       <Section id="live-walkthrough" variant="muted">
         <SectionHeader
-          title="Step inside. No form, no wait."
+          title="Step inside."
           description="Pick a space and walk through it, just as your clients will."
         />
         <HomeLiveWalkthrough />
