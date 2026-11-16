@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { Metadata } from "next";
 import { ArrowRight, Check } from "lucide-react";
@@ -187,21 +186,7 @@ export default function HomePage() {
           title="Not just a tour. A system where the whole team works."
           description="One channel for timelines, site updates and verified visual proof, with no chasing."
         />
-        <div className="grid items-start gap-10 lg:grid-cols-[1.1fr_0.9fr]">
-          <ProcessTimeline steps={progressSteps} />
-          <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-slate-100 shadow-soft dark:border-slate-800 dark:bg-slate-900">
-            {/* Optional dashboard screenshot slot — using existing marketing asset when present */}
-            <div className="relative aspect-[4/3]">
-              <Image
-                src="/marketing/services/dashboard.jpg"
-                alt="BuildView project dashboard with progress timelines and site documentation"
-                fill
-                className="object-cover"
-                sizes="(max-width: 1024px) 100vw, 40vw"
-              />
-            </div>
-          </div>
-        </div>
+        <ProcessTimeline steps={progressSteps} />
         <p className="mx-auto mt-12 max-w-2xl text-center font-display text-xl font-semibold text-brand-primary dark:text-white md:text-2xl">
           Everyone sees the same truth, without a single call.
         </p>
