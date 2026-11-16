@@ -184,7 +184,7 @@ export default function HomePage() {
       {/* SECTION 5: Progress tracking */}
       <Section>
         <SectionHeader
-          title="Not just a tour. A system your whole team works in."
+          title="Not just a tour. A system where the whole team works."
           description="One channel for timelines, site updates and verified visual proof, with no chasing."
         />
         <div className="grid items-start gap-10 lg:grid-cols-[1.1fr_0.9fr]">
@@ -215,7 +215,7 @@ export default function HomePage() {
 
       {/* SECTION 7: Why BuildView */}
       <Section>
-        <SectionHeader title="Stop explaining. Start showing." />
+        <SectionHeader title="Why teams choose BuildView." />
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {whyBuildViewItems.map((item) => (
             <article
