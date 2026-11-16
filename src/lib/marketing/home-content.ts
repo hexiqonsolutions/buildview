@@ -58,8 +58,8 @@ export const homeSolutionCards = [
     slug: construction.slug,
     href: construction.href,
     eyebrow: construction.eyebrow,
-    imageSrc: construction.imageSrc,
-    imageAlt: construction.imageAlt,
+    imageSrc: "/marketing/solutions/construction-intelligence.jpg",
+    imageAlt: "Construction site in progress captured as a 360° walkthrough",
     cardHeadline: "Know what's built without visiting the site.",
     cardDescription:
       "Monthly 360° scans and a built-in progress tracker give every stakeholder the same, verified picture of your project.",
@@ -74,8 +74,8 @@ export const homeSolutionCards = [
     slug: realEstate.slug,
     href: realEstate.href,
     eyebrow: realEstate.eyebrow,
-    imageSrc: realEstate.imageSrc,
-    imageAlt: realEstate.imageAlt,
+    imageSrc: "/marketing/solutions/real-estate-showcase.jpg",
+    imageAlt: "Ready flat interior ready for a virtual property walkthrough",
     cardHeadline: "Stop sending photos. Let buyers walk in first.",
     cardDescription:
       "Send one link to a ready flat instead of a folder of photos, videos and brochures. Buyers see the real home, and you spend your time on the ones who are serious.",
@@ -90,8 +90,8 @@ export const homeSolutionCards = [
     slug: interior.slug,
     href: interior.href,
     eyebrow: interior.eyebrow,
-    imageSrc: interior.imageSrc,
-    imageAlt: interior.imageAlt,
+    imageSrc: "/marketing/solutions/interior-showcase.jpg",
+    imageAlt: "Finished interior living space showcased as a 360° walkthrough",
     cardHeadline: "Your finished work, doing the pitching for you.",
     cardDescription:
       "Turn completed projects into walkthroughs that prospective clients can explore on their own. They see the space, the finish and the detail, and you stop explaining.",
