@@ -99,7 +99,7 @@ export default function HomePage() {
         <div className="site-container relative z-10 flex min-h-svh flex-col justify-center pb-24 pt-28 lg:pb-28 lg:pt-32">
           <div className="max-w-3xl">
             <h1 className="font-display text-4xl font-bold leading-[1.08] tracking-tight text-white motion-safe:animate-hero-rise md:text-5xl lg:text-6xl lg:leading-[1.05]">
-              Don&apos;t imagine it. Walk it.
+              Stop explaining, Start Showing
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-relaxed text-slate-100 motion-safe:animate-hero-rise md:text-xl [animation-delay:80ms]">
               BuildView turns construction sites, ready flats and finished interiors into 360°
@@ -129,9 +129,6 @@ export default function HomePage() {
             </div>
             <p className="mt-6 text-sm text-slate-200 motion-safe:animate-hero-rise [animation-delay:240ms]">
               Built for builders, real estate teams, architects and interior designers.
-            </p>
-            <p className="mt-2 text-xs font-semibold uppercase tracking-[0.18em] text-brand-accent motion-safe:animate-hero-rise [animation-delay:280ms]">
-              Proof, not promises.
             </p>
           </div>
         </div>

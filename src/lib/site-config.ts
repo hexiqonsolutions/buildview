@@ -9,9 +9,9 @@ export const siteConfig = {
     logoOnDark: "/db-logo.png",
     ogImage: "/opengraph-image",
   },
-  tagline: "Don't imagine it. Walk it.",
-  headline: "Don't imagine it. Walk it.",
-  socialProofLine: "Proof, not promises.",
+  tagline: "Stop explaining, Start Showing",
+  headline: "Stop explaining, Start Showing",
+  socialProofLine: "Built for builders, real estate teams, architects and interior designers.",
   description:
     "Show sites, flats and finished interiors as 360° walkthroughs. Track construction progress, sell properties faster and win design clients. Book a demo.",
   url:
