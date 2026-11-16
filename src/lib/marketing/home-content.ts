@@ -7,13 +7,13 @@ export const SHOW_PROOF = false;
 export const FREE_SAMPLE_OFFER = false;
 
 /**
- * [TODO: I will add the real Matterport or walkthrough embed URLs]
- * Leave empty to show the "Sample coming soon" placeholder.
+ * Sample walkthrough videos for the homepage "Step inside" section.
+ * CI → site in progress, RE → ready flat, IS → finished interior.
  */
-export const LIVE_WALKTHROUGH_EMBEDS = {
-  site: "",
-  flat: "",
-  interior: "",
+export const LIVE_WALKTHROUGH_VIDEOS = {
+  site: "/videos/site-in-progress.mp4",
+  flat: "/videos/ready-flat.mp4",
+  interior: "/videos/finished-interior.mp4",
 } as const;
 
 export const liveWalkthroughTabs = [

@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TrackedLink } from "@/components/analytics/tracked-link";
 import {
-  LIVE_WALKTHROUGH_EMBEDS,
+  LIVE_WALKTHROUGH_VIDEOS,
   liveWalkthroughTabs,
 } from "@/lib/marketing/home-content";
 import { cn } from "@/lib/utils";
@@ -14,8 +14,23 @@ type TabId = (typeof liveWalkthroughTabs)[number]["id"];
 
 export function HomeLiveWalkthrough() {
   const [active, setActive] = useState<TabId>("site");
+  const videoRef = useRef<HTMLVideoElement>(null);
   const tab = liveWalkthroughTabs.find((item) => item.id === active) ?? liveWalkthroughTabs[0];
-  const embedUrl = LIVE_WALKTHROUGH_EMBEDS[active];
+  const videoSrc = LIVE_WALKTHROUGH_VIDEOS[active];
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !videoSrc) return;
+
+    video.pause();
+    video.load();
+    const playPromise = video.play();
+    if (playPromise) {
+      playPromise.catch(() => {
+        // Autoplay may be blocked until the user interacts; controls remain available.
+      });
+    }
+  }, [active, videoSrc]);
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -55,23 +70,27 @@ export function HomeLiveWalkthrough() {
         className="mt-6 overflow-hidden rounded-3xl border border-slate-200 bg-slate-950 shadow-soft dark:border-slate-800"
       >
         <div className="relative aspect-video w-full bg-slate-900">
-          {embedUrl ? (
-            <iframe
-              title={`${tab.label} sample walkthrough`}
-              src={embedUrl}
-              className="absolute inset-0 h-full w-full border-0"
-              allow="fullscreen; xr-spatial-tracking"
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-            />
+          {videoSrc ? (
+            <video
+              key={active}
+              ref={videoRef}
+              className="absolute inset-0 h-full w-full object-cover"
+              controls
+              playsInline
+              muted
+              loop
+              preload="metadata"
+              aria-label={`${tab.label} sample walkthrough video`}
+            >
+              <source src={videoSrc} type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
           ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-linear-to-br from-slate-900 via-slate-950 to-black px-6 text-center">
               <p className="font-display text-xl font-semibold text-white md:text-2xl">
                 Sample coming soon
               </p>
-              <p className="max-w-md text-sm text-slate-400">
-                {tab.caption}
-              </p>
+              <p className="max-w-md text-sm text-slate-400">{tab.caption}</p>
               <Button variant="accent" size="lg" className="shadow-glow" asChild>
                 <TrackedLink
                   href="/contact?interest=demo"
