@@ -99,7 +99,9 @@ export default function HomePage() {
         <div className="site-container relative z-10 flex min-h-svh flex-col justify-center pb-24 pt-28 lg:pb-28 lg:pt-32">
           <div className="max-w-3xl">
             <h1 className="font-display text-4xl font-bold leading-[1.08] tracking-tight text-white motion-safe:animate-hero-rise md:text-5xl lg:text-6xl lg:leading-[1.05]">
-              Stop explaining, Start Showing
+              Stop explaining,
+              <br />
+              Start Showing
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-relaxed text-slate-100 motion-safe:animate-hero-rise md:text-xl [animation-delay:80ms]">
               BuildView turns construction sites, ready flats and finished interiors into 360°
