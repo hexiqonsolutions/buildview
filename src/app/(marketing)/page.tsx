@@ -135,8 +135,21 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* SECTION 2: Live sample walkthrough */}
-      <Section id="live-walkthrough" variant="muted">
+      {/* SECTION 2: Solution cards */}
+      <Section id="solutions" variant="muted">
+        <SectionHeader
+          eyebrow="Solutions"
+          title="Built for Construction, Real Estate & Interiors."
+        />
+        <div className="grid gap-6 lg:grid-cols-3">
+          {homeSolutionCards.map((solution, index) => (
+            <SolutionCard key={solution.slug} solution={solution} index={index} />
+          ))}
+        </div>
+      </Section>
+
+      {/* SECTION 3: Live sample walkthrough */}
+      <Section id="live-walkthrough">
         <SectionHeader
           title="Step inside."
           description="Pick a space and walk through it, just as your clients will."
@@ -144,8 +157,8 @@ export default function HomePage() {
         <HomeLiveWalkthrough />
       </Section>
 
-      {/* SECTION 3: Problem band */}
-      <Section>
+      {/* SECTION 4: Problem band */}
+      <Section variant="muted">
         <SectionHeader title="Sound familiar?" />
         <div className="grid gap-5 md:grid-cols-3">
           {problemCards.map((card) => (
@@ -165,19 +178,6 @@ export default function HomePage() {
         <p className="mx-auto mt-12 max-w-3xl text-center font-display text-2xl font-bold tracking-tight text-brand-primary dark:text-white md:text-3xl lg:text-4xl">
           BuildView replaces explaining with showing.
         </p>
-      </Section>
-
-      {/* SECTION 4: Solution cards */}
-      <Section id="solutions" variant="muted">
-        <SectionHeader
-          eyebrow="Solutions"
-          title="Built for Construction, Real Estate & Interiors."
-        />
-        <div className="grid gap-6 lg:grid-cols-3">
-          {homeSolutionCards.map((solution, index) => (
-            <SolutionCard key={solution.slug} solution={solution} index={index} />
-          ))}
-        </div>
       </Section>
 
       {/* SECTION 5: Progress tracking */}
