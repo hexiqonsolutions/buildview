@@ -4,6 +4,7 @@ import { ArrowRight, Check } from "lucide-react";
 import { FaqSection } from "@/components/marketing/faq-section";
 import { HeroCaptureVideo } from "@/components/marketing/hero-capture-video";
 import { HomeLiveWalkthrough } from "@/components/marketing/home-live-walkthrough";
+import { HowItWorksJourney } from "@/components/marketing/how-it-works-journey";
 import { ProcessTimeline } from "@/components/marketing/process-timeline";
 import { Section } from "@/components/marketing/section";
 import { SectionHeader } from "@/components/marketing/section-header";
@@ -192,10 +193,15 @@ export default function HomePage() {
         </p>
       </Section>
 
-      {/* SECTION 6: How it works */}
-      <Section variant="muted">
-        <SectionHeader title="From physical space to shareable walkthrough in four steps." />
-        <ProcessTimeline steps={howItWorksSteps} />
+      {/* SECTION 6: How it works — vertical journey (distinct from progress pipeline) */}
+      <Section variant="dark">
+        <SectionHeader
+          dark
+          eyebrow="How it works"
+          title="From physical space to shareable walkthrough in four steps."
+          description="We capture the real site, build the walkthrough, and hand you a link anyone can open."
+        />
+        <HowItWorksJourney steps={howItWorksSteps} />
       </Section>
 
       {/* SECTION 7: Why BuildView */}

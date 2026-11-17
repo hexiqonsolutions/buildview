@@ -108,24 +108,28 @@ export const progressSteps = [
   {
     step: "01",
     title: "Plan",
+    role: "Management",
     description:
       "Management sets the timeline and deadline for every process, from slab to finishing.",
   },
   {
     step: "02",
     title: "Update",
+    role: "Site engineer",
     description:
       "The site engineer taps Start when a step begins and End when it's done, with photos from their phone.",
   },
   {
     step: "03",
     title: "Verify",
+    role: "BuildView scan",
     description:
       "A monthly 360° scan confirms what was actually built, up to 4 times a month.",
   },
   {
     step: "04",
     title: "Report",
+    role: "Whole team",
     description:
       "Everyone in the organisation sees the same status and can download the report.",
   },

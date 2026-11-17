@@ -4,6 +4,7 @@ export type ProcessStep = {
   step: string;
   title: string;
   description: string;
+  role?: string;
 };
 
 export function ProcessTimeline({
@@ -32,7 +33,17 @@ export function ProcessTimeline({
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl accent-gradient font-display text-lg font-bold text-brand-primary shadow-soft">
             {item.step}
           </div>
-          <h3 className="mt-5 font-display text-lg font-semibold text-brand-primary dark:text-white">
+          {item.role ? (
+            <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-accent-dark dark:text-brand-accent">
+              {item.role}
+            </p>
+          ) : null}
+          <h3
+            className={cn(
+              "font-display text-lg font-semibold text-brand-primary dark:text-white",
+              item.role ? "mt-1.5" : "mt-5"
+            )}
+          >
             {item.title}
           </h3>
           <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
