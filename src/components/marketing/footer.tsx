@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { Button } from "@/components/ui/button";
-import { SocialLinks } from "@/components/marketing/social-links";
 import { InstagramFollow } from "@/components/marketing/instagram-follow";
 import { TrackedLink } from "@/components/analytics/tracked-link";
 import { getWhatsAppUrl, siteConfig } from "@/lib/site-config";
@@ -36,8 +35,7 @@ export function MarketingFooter() {
             <p className="max-w-sm text-sm leading-relaxed text-slate-400">
               {siteConfig.description}
             </p>
-            <SocialLinks className="mt-6" />
-            <div className="mt-4">
+            <div className="mt-6">
               <InstagramFollow tone="dark" />
             </div>
           </div>
@@ -86,23 +84,22 @@ export function MarketingFooter() {
                   {siteConfig.contact.email}
                 </a>
               </li>
-              <li className="flex items-center gap-3">
-                <Phone className="h-4 w-4 shrink-0 text-brand-accent" />
-                <a
-                  href={`tel:${siteConfig.contact.phone.replace(/\D/g, "")}`}
-                  className="transition-colors hover:text-brand-accent"
-                >
-                  {siteConfig.contact.phone}
-                </a>
-              </li>
-              <li className="flex items-center gap-3">
-                <Phone className="h-4 w-4 shrink-0 text-brand-accent" />
-                <a
-                  href={`tel:${siteConfig.contact.phoneAlt.replace(/\D/g, "")}`}
-                  className="transition-colors hover:text-brand-accent"
-                >
-                  {siteConfig.contact.phoneAlt}
-                </a>
+              <li className="flex items-start gap-3">
+                <Phone className="mt-0.5 h-4 w-4 shrink-0 text-brand-accent" aria-hidden />
+                <div className="flex flex-col gap-1.5">
+                  <a
+                    href={`tel:${siteConfig.contact.phone.replace(/\D/g, "")}`}
+                    className="transition-colors hover:text-brand-accent"
+                  >
+                    {siteConfig.contact.phone}
+                  </a>
+                  <a
+                    href={`tel:${siteConfig.contact.phoneAlt.replace(/\D/g, "")}`}
+                    className="transition-colors hover:text-brand-accent"
+                  >
+                    {siteConfig.contact.phoneAlt}
+                  </a>
+                </div>
               </li>
               <li className="flex items-center gap-3">
                 <MessageCircle className="h-4 w-4 shrink-0 text-brand-accent" />
