@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TrackedLink } from "@/components/analytics/tracked-link";
 import {
@@ -14,6 +14,7 @@ type TabId = (typeof liveWalkthroughTabs)[number]["id"];
 
 export function HomeLiveWalkthrough() {
   const [active, setActive] = useState<TabId>("site");
+  const [isPlaying, setIsPlaying] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const tab = liveWalkthroughTabs.find((item) => item.id === active) ?? liveWalkthroughTabs[0];
   const videoSrc = LIVE_WALKTHROUGH_VIDEOS[active];
@@ -24,13 +25,23 @@ export function HomeLiveWalkthrough() {
 
     video.pause();
     video.load();
+    setIsPlaying(true);
     const playPromise = video.play();
     if (playPromise) {
-      playPromise.catch(() => {
-        // Autoplay may be blocked until the user interacts; controls remain available.
-      });
+      playPromise.catch(() => setIsPlaying(false));
     }
   }, [active, videoSrc]);
+
+  function togglePlayback() {
+    const video = videoRef.current;
+    if (!video) return;
+    if (video.paused) {
+      void video.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+    } else {
+      video.pause();
+      setIsPlaying(false);
+    }
+  }
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -69,22 +80,41 @@ export function HomeLiveWalkthrough() {
         aria-labelledby={`walkthrough-tab-${tab.id}`}
         className="mt-6 overflow-hidden rounded-3xl border border-slate-200 bg-slate-950 shadow-soft dark:border-slate-800"
       >
-        <div className="relative aspect-video w-full bg-slate-900">
+        <div className="relative aspect-[16/9] w-full overflow-hidden bg-slate-900 sm:aspect-[2/1]">
           {videoSrc ? (
-            <video
-              key={active}
-              ref={videoRef}
-              className="absolute inset-0 h-full w-full object-cover"
-              controls
-              playsInline
-              muted
-              loop
-              preload="metadata"
-              aria-label={`${tab.label} sample walkthrough video`}
-            >
-              <source src={videoSrc} type="video/mp4" />
-              Your browser does not support the video tag.
-            </video>
+            <>
+              <video
+                key={active}
+                ref={videoRef}
+                className="pointer-events-none absolute inset-0 h-full w-full scale-[1.04] object-cover object-center select-none"
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="metadata"
+                controls={false}
+                controlsList="nodownload noplaybackrate noremoteplayback"
+                disablePictureInPicture
+                disableRemotePlayback
+                onContextMenu={(event) => event.preventDefault()}
+                aria-label={`${tab.label} sample walkthrough video`}
+              >
+                <source src={videoSrc} type="video/mp4" />
+              </video>
+
+              <button
+                type="button"
+                onClick={togglePlayback}
+                className="absolute inset-0 z-10 flex items-center justify-center bg-transparent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-accent"
+                aria-label={isPlaying ? "Pause video" : "Play video"}
+              >
+                {!isPlaying ? (
+                  <span className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm">
+                    <Play className="h-6 w-6 pl-0.5" aria-hidden />
+                  </span>
+                ) : null}
+              </button>
+            </>
           ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-linear-to-br from-slate-900 via-slate-950 to-black px-6 text-center">
               <p className="font-display text-xl font-semibold text-white md:text-2xl">
