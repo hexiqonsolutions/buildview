@@ -41,8 +41,8 @@ export const solutions = [
     ],
     ctaLabel: "Explore Construction Intelligence",
     demoCta: "Request a Construction Demo",
-    imageSrc: "/marketing/why-buildview/project-scans.jpg",
-    imageAlt: "360° construction site walkthrough in BuildView",
+    imageSrc: "/marketing/solutions/construction-intelligence.jpg",
+    imageAlt: "Construction site in progress captured as a 360° walkthrough",
     accentClass: "from-slate-900 via-slate-800 to-slate-900",
     seo: {
       title: "Construction Intelligence | 360° Site Monitoring",
@@ -70,8 +70,8 @@ export const solutions = [
     ],
     ctaLabel: "Explore Real Estate Showcase",
     demoCta: "Request a Property Showcase Demo",
-    imageSrc: "/marketing/services/dashboard.jpg",
-    imageAlt: "Premium property presentation visual for real estate tours",
+    imageSrc: "/marketing/solutions/real-estate-showcase.jpg",
+    imageAlt: "Ready flat interior ready for a virtual property walkthrough",
     accentClass: "from-zinc-950 via-zinc-900 to-zinc-950",
     seo: {
       title: "Real Estate Showcase | 360° Virtual Property Tours",
@@ -99,8 +99,8 @@ export const solutions = [
     ],
     ctaLabel: "Explore Interior Showcase",
     demoCta: "Showcase Your Interior Projects",
-    imageSrc: "/marketing/services/virtual-tours.jpg",
-    imageAlt: "Immersive interior space walkthrough placeholder visual",
+    imageSrc: "/marketing/solutions/interior-showcase.jpg",
+    imageAlt: "Finished interior living space showcased as a 360° walkthrough",
     accentClass: "from-stone-900 via-neutral-800 to-stone-900",
     seo: {
       title: "Interior Showcase | 360° Virtual Design Portfolio",

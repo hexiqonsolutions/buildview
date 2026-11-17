@@ -115,8 +115,8 @@ export default function RealEstateShowcasePage() {
         <div className="grid items-center gap-10 lg:grid-cols-2">
           <div className="relative order-2 aspect-[4/3] overflow-hidden rounded-3xl border border-slate-200 shadow-soft dark:border-slate-800 lg:order-1">
             <Image
-              src="/marketing/services/dashboard.jpg"
-              alt="Placeholder visual for real estate 360° property tour — replace with project photography"
+              src={solution.imageSrc}
+              alt={solution.imageAlt}
               fill
               className="object-cover"
               sizes="(max-width: 1024px) 100vw, 50vw"

@@ -126,8 +126,8 @@ export default function InteriorShowcasePage() {
           </div>
           <div className="relative aspect-[4/3] overflow-hidden rounded-3xl border border-slate-200 shadow-soft dark:border-slate-800">
             <Image
-              src="/marketing/services/virtual-tours.jpg"
-              alt="Placeholder visual for interior 360° showcase — replace with studio project photography"
+              src={solution.imageSrc}
+              alt={solution.imageAlt}
               fill
               className="object-cover"
               sizes="(max-width: 1024px) 100vw, 50vw"

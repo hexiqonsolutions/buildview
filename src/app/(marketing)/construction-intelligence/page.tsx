@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import Image from "next/image";
 import {
   Building2,
   Camera,
@@ -90,12 +91,26 @@ export default function ConstructionIntelligencePage() {
       </Section>
 
       <Section variant="muted">
-        <SectionHeader
-          eyebrow="Our solution"
-          title="Your Entire Construction Site. Digitally Connected."
-          description="BuildView combines immersive capture with the project workspace your stakeholders already use."
-        />
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid items-center gap-10 lg:grid-cols-2">
+          <div className="relative order-2 aspect-[4/3] overflow-hidden rounded-3xl border border-slate-200 shadow-soft dark:border-slate-800 lg:order-1">
+            <Image
+              src={solution.imageSrc}
+              alt={solution.imageAlt}
+              fill
+              className="object-cover"
+              sizes="(max-width: 1024px) 100vw, 50vw"
+            />
+          </div>
+          <div className="order-1 lg:order-2">
+            <SectionHeader
+              eyebrow="Our solution"
+              title="Your Entire Construction Site. Digitally Connected."
+              description="BuildView combines immersive capture with the project workspace your stakeholders already use."
+              align="left"
+            />
+          </div>
+        </div>
+        <div className="mt-10 grid gap-6 lg:grid-cols-2">
           <div className="rounded-3xl border border-slate-200 bg-white p-7 shadow-soft dark:border-slate-800 dark:bg-slate-950">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-accent/15">
               <Camera className="h-5 w-5 text-brand-accent-dark" />
