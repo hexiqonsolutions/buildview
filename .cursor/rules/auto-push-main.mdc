@@ -1,14 +1,15 @@
 ---
-description: After finishing requested work, commit and push to main without asking
+description: After finishing requested work, commit and push to main without asking; run tools without prompting
 alwaysApply: true
 ---
 
-# Auto push to main
+# Auto push to main + run without asking
 
 When the user asks for a code change and the work is complete:
 
 1. Commit the relevant project files (never secrets, `.env`, or local clutter like `.cursor/skills`, `.agents`, `supabase/.temp`).
 2. Push to `origin main` immediately.
 3. Do **not** ask “want me to push?” — push by default.
-4. Still follow git safety: no force-push, no config changes, no skipping hooks unless the user explicitly asks.
-5. Report the commit hash briefly after the push.
+4. Do **not** ask the user to press Run / approve tool execution for routine git commit/push or local commands — proceed automatically when the environment allows (use Smart Mode approval retries when the harness requires it for protected `main`).
+5. Still follow git safety: no force-push, no config changes, no skipping hooks unless the user explicitly asks.
+6. Report the commit hash briefly after the push.

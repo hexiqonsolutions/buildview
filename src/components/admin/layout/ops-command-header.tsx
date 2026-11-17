@@ -93,7 +93,7 @@ export function OpsCommandHeader({
             <BrandLogo href={homeHref} size="xl" className="min-w-0 max-w-44 shrink overflow-hidden" />
           </div>
 
-          <div className="ml-auto flex shrink-0 items-center gap-1 border-l border-slate-100 pl-2 dark:border-slate-800 sm:gap-1.5 sm:pl-3 lg:ml-0 lg:border-l-0 lg:pl-0">
+          <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-1.5">
             <Button
               variant="ghost"
               size="icon"
