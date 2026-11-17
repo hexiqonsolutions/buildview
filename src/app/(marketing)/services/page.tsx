@@ -11,9 +11,9 @@ import {
 import { FaqSection } from "@/components/marketing/faq-section";
 import { PageCta } from "@/components/marketing/page-cta";
 import { PageHero } from "@/components/marketing/page-hero";
+import { PlatformCapabilities } from "@/components/marketing/platform-capabilities";
 import { Section } from "@/components/marketing/section";
 import { SectionHeader } from "@/components/marketing/section-header";
-import { ServiceSection } from "@/components/marketing/service-section";
 import { SolutionCard } from "@/components/marketing/solution-card";
 import { TrustBar } from "@/components/marketing/trust-bar";
 import { ViewContentTracker } from "@/components/analytics/view-content-tracker";
@@ -35,8 +35,6 @@ const services = [
     description:
       "Immersive site captures for remote inspections and stakeholder reviews.",
     features: ["360° captures", "Remote walkthroughs", "Visit archive"],
-    imageSrc: "/marketing/services/virtual-tours.jpg",
-    imageAlt: "BuildView project scans with a live Matterport virtual tour",
   },
   {
     id: "compare-tours",
@@ -45,8 +43,6 @@ const services = [
     description:
       "Compare site visits side by side to see what changed between dates.",
     features: ["Date-to-date compare", "Change visibility", "Progress reviews"],
-    imageSrc: "/marketing/services/compare-progress.jpg",
-    imageAlt: "BuildView Compare Progress with side-by-side site visits",
   },
   {
     id: "reports",
@@ -55,8 +51,6 @@ const services = [
     description:
       "Consistent, executive-ready updates for developers, contractors, and clients.",
     features: ["Milestone summaries", "Downloadable history"],
-    imageSrc: "/marketing/services/reports.jpg",
-    imageAlt: "BuildView reports dashboard",
   },
   {
     id: "timeline",
@@ -65,8 +59,6 @@ const services = [
     description:
       "Milestones, photos, and tours in one shared project history.",
     features: ["Milestone tracking", "Event history"],
-    imageSrc: "/marketing/services/timeline.jpg",
-    imageAlt: "BuildView construction timeline dashboard",
   },
   {
     id: "documents",
@@ -75,8 +67,6 @@ const services = [
     description:
       "Drawings, BOQs, contracts, and approvals in one secure place.",
     features: ["Central repository", "Secure access"],
-    imageSrc: "/marketing/services/documents.jpg",
-    imageAlt: "BuildView documents dashboard",
   },
   {
     id: "issues",
@@ -85,8 +75,6 @@ const services = [
     description:
       "Capture observations, assign owners, and track resolution to closure.",
     features: ["Photo evidence", "Priority workflows"],
-    imageSrc: "/marketing/services/issues.jpg",
-    imageAlt: "BuildView issues dashboard",
   },
   {
     id: "dashboard",
@@ -95,8 +83,6 @@ const services = [
     description:
       "Role-based access to live project status, reports, and documents.",
     features: ["Role-based access", "Multi-project view"],
-    imageSrc: "/marketing/services/dashboard.jpg",
-    imageAlt: "BuildView client construction intelligence dashboard",
   },
 ];
 
@@ -158,24 +144,16 @@ export default function ServicesPage() {
         </div>
       </Section>
 
-      <Section variant="muted">
+      <Section id="platform-capabilities" variant="muted">
         <SectionHeader
           eyebrow="Platform capabilities"
-          title="Tools that power construction intelligence"
-          description="These capabilities are available in the BuildView product today—especially for construction monitoring programs."
+          title="Everything your team needs in one place."
+          description="Seven tools that turn 360° captures into daily construction intelligence for your whole team."
         />
-        <div className="mt-6 divide-y divide-slate-200/80 dark:divide-slate-800 lg:mt-10">
-          {services.map((service, index) => (
-            <ServiceSection
-              key={service.id}
-              {...service}
-              reversed={index % 2 === 1}
-            />
-          ))}
-        </div>
+        <PlatformCapabilities items={services} />
       </Section>
 
-      <Section variant="muted">
+      <Section>
         <SectionHeader
           eyebrow="FAQ"
           title="Service questions"

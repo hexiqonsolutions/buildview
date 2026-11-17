@@ -61,16 +61,6 @@ const benefits = [
   },
 ];
 
-const categories = [
-  "Luxury Residential Interiors",
-  "Modern Apartments",
-  "Living Room Designs",
-  "Modular Kitchens",
-  "Commercial Offices",
-  "Retail Interiors",
-  "Hotels and Hospitality",
-];
-
 const idealFor = [
   "Interior designers",
   "Interior design studios",
@@ -156,40 +146,6 @@ export default function InteriorShowcasePage() {
       </Section>
 
       <Section>
-        <SectionHeader
-          eyebrow="Categories"
-          title="Spaces We Capture."
-          description="Image-led gallery categories. Replace placeholders with your completed project photography."
-        />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {categories.map((label, i) => (
-            <div
-              key={label}
-              className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-900 dark:border-slate-800"
-            >
-              <div className="relative aspect-[4/3]">
-                <Image
-                  src={
-                    i % 2 === 0
-                      ? "/marketing/services/virtual-tours.jpg"
-                      : "/marketing/why-buildview/reports.jpg"
-                  }
-                  alt={`Placeholder for ${label}`}
-                  fill
-                  className="object-cover opacity-70"
-                  sizes="(max-width: 768px) 100vw, 25vw"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                <p className="absolute bottom-4 left-4 right-4 font-display text-base font-semibold text-white">
-                  {label}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </Section>
-
-      <Section variant="muted">
         <SectionHeader eyebrow="Process" title="How It Works" />
         <ProcessTimeline steps={workflow} />
       </Section>

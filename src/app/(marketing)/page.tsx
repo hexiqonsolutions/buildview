@@ -1,6 +1,16 @@
 import Link from "next/link";
 import { Metadata } from "next";
-import { ArrowRight, Check } from "lucide-react";
+import {
+  ArrowRight,
+  Camera,
+  Check,
+  Clock,
+  FileText,
+  FolderOpen,
+  GitCompareArrows,
+  LayoutDashboard,
+  AlertTriangle,
+} from "lucide-react";
 import { FaqSection } from "@/components/marketing/faq-section";
 import { HeroCaptureVideo } from "@/components/marketing/hero-capture-video";
 import { HomeLiveWalkthrough } from "@/components/marketing/home-live-walkthrough";
@@ -65,6 +75,16 @@ export const metadata: Metadata = {
 };
 
 const visibleFaqs = getVisibleHomeFaqs();
+
+const platformHighlights = [
+  { label: "360° Tours", href: "/services#virtual-tours", icon: Camera },
+  { label: "Compare Progress", href: "/services#compare-tours", icon: GitCompareArrows },
+  { label: "Reports", href: "/services#reports", icon: FileText },
+  { label: "Timeline", href: "/services#timeline", icon: Clock },
+  { label: "Documents", href: "/services#documents", icon: FolderOpen },
+  { label: "Issues", href: "/services#issues", icon: AlertTriangle },
+  { label: "Dashboard", href: "/services#dashboard", icon: LayoutDashboard },
+] as const;
 
 const faqJsonLd =
   visibleFaqs.length > 0
@@ -227,7 +247,45 @@ export default function HomePage() {
         </div>
       </Section>
 
-      {/* SECTION 8: Proof strip — hidden until SHOW_PROOF */}
+      {/* SECTION 8: Platform redirect */}
+      <Section variant="muted" id="platform">
+        <div className="grid items-end gap-10 lg:grid-cols-[1.1fr_0.9fr]">
+          <div>
+            <SectionHeader
+              align="left"
+              eyebrow="Platform"
+              title="Tours are only the start. The platform runs the rest."
+              description="Reports, timelines, documents, issues and a client dashboard sit beside every walkthrough—so the whole team works from one place."
+              className="mb-8"
+            />
+            <Button variant="accent" size="lg" className="shadow-glow" asChild>
+              <TrackedLink href="/services" eventLabel="home_platform_explore">
+                Explore the Platform <ArrowRight className="h-5 w-5" />
+              </TrackedLink>
+            </Button>
+          </div>
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {platformHighlights.map((item) => {
+              const Icon = item.icon;
+              return (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-brand-primary shadow-soft transition hover:border-brand-accent/40 hover:bg-brand-accent/5 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-brand-accent dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+                  >
+                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-brand-accent/15 text-brand-accent-dark">
+                      <Icon className="h-4 w-4" aria-hidden />
+                    </span>
+                    {item.label}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </Section>
+
+      {/* SECTION 9: Proof strip — hidden until SHOW_PROOF */}
       {SHOW_PROOF ? (
         <Section variant="muted">
           <SectionHeader title="Proof, not promises." />
@@ -282,9 +340,9 @@ export default function HomePage() {
         </Section>
       ) : null}
 
-      {/* SECTION 9: FAQ */}
+      {/* SECTION 10: FAQ */}
       {visibleFaqs.length > 0 ? (
-        <Section variant={SHOW_PROOF ? "default" : "muted"}>
+        <Section>
           <SectionHeader
             eyebrow="FAQ"
             title="Questions teams ask before they start."
@@ -293,7 +351,7 @@ export default function HomePage() {
         </Section>
       ) : null}
 
-      {/* SECTION 10: Final CTA */}
+      {/* SECTION 11: Final CTA */}
       <Section variant="accent" className="relative overflow-hidden">
         <div className="dot-pattern absolute inset-0 opacity-25" />
         <div
