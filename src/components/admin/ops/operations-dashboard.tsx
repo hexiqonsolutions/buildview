@@ -56,7 +56,7 @@ export function OperationsDashboard({
   avatarUrl,
 }: OperationsDashboardProps) {
   const router = useRouter();
-  const { hydrated, client, project, clients, clientProjects, setClientId } =
+  const { hydrated, client, project, clients, projects, clientProjects, setClientId } =
     useAdminWorkspace();
 
   function activateClient(clientId: string, openWorkspace = false) {
@@ -68,7 +68,7 @@ export function OperationsDashboard({
 
   const queueItems = [
     {
-      label: "Uploads waiting",
+      label: "Projects with no tours",
       value: stats.pendingUploads,
       href: "/admin/upload",
       tone: stats.pendingUploads > 0 ? "text-amber-600" : "text-slate-500",
@@ -80,10 +80,10 @@ export function OperationsDashboard({
       tone: stats.projectsRequiringUpdates > 0 ? "text-rose-600" : "text-slate-500",
     },
     {
-      label: "Tour processing",
+      label: "Tours missing Matterport URL",
       value: stats.matterportProcessing,
       href: "/admin/tours",
-      tone: "text-slate-500",
+      tone: stats.matterportProcessing > 0 ? "text-amber-600" : "text-slate-500",
     },
     {
       label: "Draft invoices",
@@ -122,7 +122,7 @@ export function OperationsDashboard({
           <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-500">
             {client
               ? `Working in ${client.company_name || client.name}${project ? ` · ${project.name}` : ""}. Open the full client workspace for users, invoices, and project detail.`
-              : "BuildView platform overview across all clients. Select a client above to activate a workspace."}
+              : "BuildView platform overview across all clients. Select a client in the sidebar to activate a workspace."}
           </p>
         </div>
       </div>
@@ -148,7 +148,7 @@ export function OperationsDashboard({
           ) : (
             <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
               {clients.map((c) => {
-                const projectCount = clientProjects.filter((p) => p.client_id === c.id).length;
+                const projectCount = projects.filter((p) => p.client_id === c.id).length;
                 return (
                   <button
                     key={c.id}
@@ -328,9 +328,19 @@ export function OperationsDashboard({
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 xl:grid-cols-4">
         <AdminMetricCard label="Clients" value={stats.totalClients} icon={Users} />
-        <AdminMetricCard label="Projects" value={stats.activeProjects} icon={FolderKanban} />
+        <AdminMetricCard
+          label="Projects"
+          value={stats.totalProjects}
+          icon={FolderKanban}
+          trend={`${stats.activeProjects} active`}
+          trendTone="neutral"
+        />
         <AdminMetricCard label="Virtual Tours" value={stats.totalTours} icon={Camera} />
-        <AdminMetricCard label="Pending Uploads" value={stats.pendingUploads} icon={Clock} />
+        <AdminMetricCard
+          label="Projects with no tours"
+          value={stats.pendingUploads}
+          icon={Clock}
+        />
         <AdminMetricCard
           label="Storage Used"
           value={formatStorage(stats.storageUsedBytes)}

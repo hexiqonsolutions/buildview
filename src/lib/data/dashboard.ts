@@ -25,7 +25,11 @@ import { getProgressionPercentByProjectIds } from "@/lib/data/progression";
 
 export type AdminDashboardStats = {
   totalClients: number;
+  /** All non-deleted projects (matches Client Manager / Project Manager). */
+  totalProjects: number;
+  /** Projects currently in planning or in_progress. */
   activeProjects: number;
+  /** Tours linked to live (non-deleted) projects only. */
   totalTours: number;
   openIssues: number;
   totalReports: number;
@@ -64,8 +68,11 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
     activityRes,
   ] = await Promise.all([
     supabase.from("clients").select("id", { count: "exact", head: true }).is("deleted_at", null),
-    supabase.from("projects").select("id, status, client_name").is("deleted_at", null),
-    supabase.from("project_tours").select("id", { count: "exact", head: true }).is("deleted_at", null),
+    supabase.from("projects").select("id, status, client_id, client_name").is("deleted_at", null),
+    supabase
+      .from("project_tours")
+      .select("id, project_id")
+      .is("deleted_at", null),
     supabase.from("issues").select("id, priority, status").is("deleted_at", null),
     supabase.from("reports").select("id, title, created_at, project:projects(name)").is("deleted_at", null).order("created_at", { ascending: false }),
     supabase.from("documents").select("id", { count: "exact", head: true }).is("deleted_at", null),
@@ -77,6 +84,8 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
   ]);
 
   const projects = projectsRes.data ?? [];
+  const liveProjectIds = new Set(projects.map((p) => p.id));
+  const liveTours = (toursRes.data ?? []).filter((t) => liveProjectIds.has(t.project_id));
   const issues = issuesRes.data ?? [];
   const invoices = invoicesRes.data ?? [];
   const allReports = reportsRes.data ?? [];
@@ -85,7 +94,8 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
   const clientCounts: Record<string, number> = {};
   projects.forEach((p) => {
     statusCounts[p.status] = (statusCounts[p.status] || 0) + 1;
-    clientCounts[p.client_name] = (clientCounts[p.client_name] || 0) + 1;
+    const clientKey = p.client_name?.trim() || p.client_id || "Unassigned";
+    clientCounts[clientKey] = (clientCounts[clientKey] || 0) + 1;
   });
 
   const priorityCounts: Record<string, number> = {};
@@ -142,8 +152,9 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
 
   return {
     totalClients: clientsRes.count ?? 0,
+    totalProjects: projects.length,
     activeProjects: projects.filter((p) => p.status === "in_progress" || p.status === "planning").length,
-    totalTours: toursRes.count ?? 0,
+    totalTours: liveTours.length,
     openIssues: issues.filter((i) => isOpenIssueStatus(i.status)).length,
     totalReports: allReports.length,
     totalDocuments: documentsRes.count ?? 0,
@@ -568,6 +579,7 @@ export async function getAdminOperationsStats(): Promise<AdminOperationsStats> {
     toursTodayRes,
     reportsTodayRes,
     recentToursRes,
+    allProjectsRes,
     storage,
   ] = await Promise.all([
     supabase
@@ -582,40 +594,54 @@ export async function getAdminOperationsStats(): Promise<AdminOperationsStats> {
       .gte("created_at", todayIso),
     supabase
       .from("project_tours")
-      .select("project_id, capture_date, created_at")
+      .select("project_id, capture_date, created_at, matterport_url")
       .is("deleted_at", null)
       .order("capture_date", { ascending: false }),
+    supabase
+      .from("projects")
+      .select("id, status")
+      .is("deleted_at", null),
     getStorageTotals(),
   ]);
 
+  const liveProjects = allProjectsRes.data ?? [];
+  const liveProjectIds = new Set(liveProjects.map((p) => p.id));
+  const liveTours = (recentToursRes.data ?? []).filter((t) =>
+    liveProjectIds.has(t.project_id)
+  );
+
   const latestTourByProject = new Map<string, string>();
-  recentToursRes.data?.forEach((t) => {
+  liveTours.forEach((t) => {
     if (!latestTourByProject.has(t.project_id)) {
-      latestTourByProject.set(
-        t.project_id,
-        t.capture_date ?? t.created_at
-      );
+      latestTourByProject.set(t.project_id, t.capture_date ?? t.created_at);
     }
   });
 
-  const { data: activeProjects } = await supabase
-    .from("projects")
-    .select("id, status")
-    .is("deleted_at", null)
-    .in("status", ["planning", "in_progress"]);
+  const projectsWithTours = new Set(latestTourByProject.keys());
 
-  const projectsRequiringUpdates =
-    activeProjects?.filter((p) => {
-      const last = latestTourByProject.get(p.id);
-      if (!last) return true;
-      return new Date(last) < fortyFiveDaysAgo;
-    }).length ?? 0;
+  // Projects that still need their first Matterport / walkthrough upload.
+  const pendingUploads = liveProjects.filter((p) => !projectsWithTours.has(p.id)).length;
+
+  // Active projects with no tour, or whose latest capture is older than 45 days.
+  const projectsRequiringUpdates = liveProjects.filter((p) => {
+    if (p.status !== "planning" && p.status !== "in_progress") return false;
+    const last = latestTourByProject.get(p.id);
+    if (!last) return true;
+    return new Date(last) < fortyFiveDaysAgo;
+  }).length;
+
+  // Tours on live projects missing a usable Matterport URL.
+  const matterportProcessing = liveTours.filter(
+    (t) => !t.matterport_url?.trim()
+  ).length;
 
   return {
     ...base,
-    pendingUploads: projectsRequiringUpdates,
+    // Keep tour total aligned with live projects even if base was computed separately.
+    totalTours: liveTours.length,
+    pendingUploads,
     projectsRequiringUpdates,
-    matterportProcessing: 0,
+    matterportProcessing,
     reportsPending: 0,
     storageUsedBytes: storage.totalBytes,
     storageLimitBytes: storage.quota.limitBytes,

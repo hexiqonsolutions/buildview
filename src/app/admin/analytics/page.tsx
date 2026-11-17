@@ -90,9 +90,11 @@ export default async function AdminAnalyticsPage() {
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 xl:grid-cols-6">
           <AdminMetricCard label="Clients" value={stats.totalClients} icon={Users} />
           <AdminMetricCard
-            label="Active Projects"
-            value={stats.activeProjects}
+            label="Projects"
+            value={stats.totalProjects}
             icon={FolderKanban}
+            trend={`${stats.activeProjects} active`}
+            trendTone="neutral"
           />
           <AdminMetricCard label="Virtual Tours" value={stats.totalTours} icon={Camera} />
           <AdminMetricCard label="Open Issues" value={stats.openIssues} icon={AlertTriangle} />
