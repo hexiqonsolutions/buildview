@@ -32,6 +32,7 @@ import type { PermissionResource } from "@/lib/auth/permissions";
 import type { UserRole } from "@/lib/types";
 import { MobileNavDrawer } from "@/components/layout/mobile-nav-drawer";
 import { SidebarBrandHeader } from "@/components/layout/sidebar-brand-header";
+import { WorkspaceScopeControls } from "@/components/admin/workspace/workspace-scope-controls";
 
 const navSections: Array<{
   label: string;
@@ -95,7 +96,7 @@ interface OpsSidebarProps {
 
 export function OpsSidebar({ userRole, mobileOpen, onMobileClose }: OpsSidebarProps) {
   const pathname = usePathname();
-  const { client, project, hydrated, resetScope } = useAdminWorkspace();
+  const { resetScope } = useAdminWorkspace();
   const workspaceQuery = useAdminWorkspaceQuery();
   const homeHref = "/admin";
 
@@ -105,15 +106,8 @@ export function OpsSidebar({ userRole, mobileOpen, onMobileClose }: OpsSidebarPr
         homeHref={homeHref}
         tagline="Control Center"
         onMobileClose={onMobileClose}
-        workspace={
-          hydrated && client
-            ? {
-                title: client.company_name || client.name,
-                subtitle: project?.name ?? "All projects",
-              }
-            : null
-        }
       />
+      <WorkspaceScopeControls />
 
       <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-4">
         {navSections.map((section) => {

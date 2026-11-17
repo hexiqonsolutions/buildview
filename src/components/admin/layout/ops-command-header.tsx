@@ -10,22 +10,11 @@ import {
   Sun,
   LogOut,
   User,
-  Upload,
-  Building2,
-  Layers,
-  SlidersHorizontal,
   LifeBuoy,
 } from "lucide-react";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,19 +23,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import { useAdminWorkspace } from "@/components/admin/workspace/admin-workspace-provider";
 import { useAdminWorkspaceHref } from "@/components/admin/workspace/use-admin-workspace-href";
 import { OpsCommandPalette } from "@/components/admin/layout/ops-command-palette";
 import { NotificationBell } from "@/components/admin/notifications/notification-bell";
 import { signOut } from "@/lib/actions/auth";
-import { cn, getInitials } from "@/lib/utils";
+import { getInitials } from "@/lib/utils";
 import type { User as UserType } from "@/lib/types";
 
 interface OpsCommandHeaderProps {
@@ -62,33 +43,12 @@ export function OpsCommandHeader({
   menuOpen = false,
   unreadNotifications = 0,
 }: OpsCommandHeaderProps) {
-  const {
-    hydrated,
-    client,
-    clients,
-    clientProjects,
-    buildings,
-    floors,
-    scope,
-    setClientId,
-    setProjectId,
-    setBuilding,
-    setFloor,
-  } = useAdminWorkspace();
-
   const [darkMode, setDarkMode] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [mobileScopeOpen, setMobileScopeOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const homeHref = useAdminWorkspaceHref("/admin");
-  const uploadHref = useAdminWorkspaceHref("/admin/upload");
   const displayName = user.full_name?.trim() || user.email?.split("@")[0] || "Admin";
   const initials = getInitials(displayName);
-
-  const clientLabel =
-    clients.find((c) => c.id === scope.clientId)?.company_name ||
-    clients.find((c) => c.id === scope.clientId)?.name ||
-    "Client";
 
   useEffect(() => {
     const stored = localStorage.getItem("theme");
@@ -115,28 +75,10 @@ export function OpsCommandHeader({
     localStorage.setItem("theme", next ? "dark" : "light");
   }
 
-  const scopeControls = (
-    <WorkspaceScopeControls
-      scope={scope}
-      clients={clients}
-      clientProjects={clientProjects}
-      buildings={buildings}
-      floors={floors}
-      clientLogoUrl={client?.logo_url}
-      setClientId={setClientId}
-      setProjectId={setProjectId}
-      setBuilding={setBuilding}
-      setFloor={setFloor}
-      stacked
-    />
-  );
-
   return (
     <>
       <header className="ops-command-header border-b border-slate-200/80 dark:border-slate-800">
-        {/* Primary bar */}
         <div className="flex h-14 items-center gap-2 px-3 lg:gap-3 lg:px-5">
-          {/* Mobile: menu + logo */}
           <div className="flex min-w-0 shrink-0 items-center gap-1 lg:hidden">
             <Button
               variant="ghost"
@@ -151,29 +93,7 @@ export function OpsCommandHeader({
             <BrandLogo href={homeHref} size="xl" className="min-w-0 max-w-44 shrink overflow-hidden" />
           </div>
 
-          {/* Desktop: client → project → building → floor → Upload */}
-          {hydrated ? (
-            <div className="hidden min-w-0 flex-1 items-center gap-2 lg:flex">
-              <WorkspaceScopeControls
-                scope={scope}
-                clients={clients}
-                clientProjects={clientProjects}
-                buildings={buildings}
-                floors={floors}
-                clientLogoUrl={client?.logo_url}
-                setClientId={setClientId}
-                setProjectId={setProjectId}
-                setBuilding={setBuilding}
-                setFloor={setFloor}
-                uploadHref={uploadHref}
-              />
-            </div>
-          ) : (
-            <div className="hidden h-9 max-w-md flex-1 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800 lg:block" />
-          )}
-
-          {/* Actions — never shrink into the scope bar */}
-          <div className="ml-auto flex shrink-0 items-center gap-1 border-l border-slate-100 pl-2 dark:border-slate-800 sm:gap-1.5 sm:pl-3">
+          <div className="ml-auto flex shrink-0 items-center gap-1 border-l border-slate-100 pl-2 dark:border-slate-800 sm:gap-1.5 sm:pl-3 lg:ml-0 lg:border-l-0 lg:pl-0">
             <Button
               variant="ghost"
               size="icon"
@@ -228,11 +148,6 @@ export function OpsCommandHeader({
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild className="lg:hidden">
-                  <Link href={uploadHref}>
-                    <Upload className="mr-2 h-4 w-4" /> Upload
-                  </Link>
-                </DropdownMenuItem>
                 <DropdownMenuItem
                   className="lg:hidden"
                   onClick={() => toggleDarkMode()}
@@ -266,334 +181,9 @@ export function OpsCommandHeader({
             </DropdownMenu>
           </div>
         </div>
-
-        {/* Mobile workspace row — keeps primary bar uncluttered */}
-        {hydrated && (
-          <div className="flex items-center gap-2 border-t border-slate-100 px-3 py-2 lg:hidden dark:border-slate-800">
-            <Sheet open={mobileScopeOpen} onOpenChange={setMobileScopeOpen}>
-              <SheetTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-9 min-w-0 flex-1 justify-start gap-2 border-slate-200 px-3 text-xs font-medium dark:border-slate-700"
-                >
-                  <SlidersHorizontal className="h-3.5 w-3.5 shrink-0 text-slate-500" />
-                  <span className="truncate">{clientLabel}</span>
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="bottom" className="max-h-[85vh] rounded-t-2xl">
-                <SheetHeader className="text-left">
-                  <SheetTitle>Workspace</SheetTitle>
-                </SheetHeader>
-                <div className="mt-4 space-y-3 pb-6">{scopeControls}</div>
-              </SheetContent>
-            </Sheet>
-            <Button size="sm" className="ops-btn-primary h-9 shrink-0 gap-1.5 px-3" asChild>
-              <Link href={uploadHref}>
-                <Upload className="h-4 w-4" />
-                Upload
-              </Link>
-            </Button>
-          </div>
-        )}
       </header>
 
       <OpsCommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
     </>
-  );
-}
-
-type ScopeOption = { value: string; label: string };
-
-function WorkspaceScopeControls({
-  scope,
-  clients,
-  clientProjects,
-  buildings,
-  floors,
-  clientLogoUrl,
-  setClientId,
-  setProjectId,
-  setBuilding,
-  setFloor,
-  stacked = false,
-  uploadHref,
-}: {
-  scope: {
-    clientId: string | null;
-    projectId: string | null;
-    building: string;
-    floor: string;
-  };
-  clients: Array<{ id: string; name: string; company_name?: string | null; logo_url?: string | null }>;
-  clientProjects: Array<{ id: string; name: string }>;
-  buildings: string[];
-  floors: string[];
-  clientLogoUrl?: string | null;
-  setClientId: (id: string | null) => void;
-  setProjectId: (id: string | null) => void;
-  setBuilding: (building: string) => void;
-  setFloor: (floor: string) => void;
-  stacked?: boolean;
-  uploadHref?: string;
-}) {
-  const clientOptions: ScopeOption[] = [
-    { value: "__all__", label: "All clients" },
-    ...clients.map((c) => ({
-      value: c.id,
-      label: c.company_name || c.name,
-    })),
-  ];
-  const projectOptions: ScopeOption[] = clientProjects.map((p) => ({
-    value: p.id,
-    label: p.name,
-  }));
-  const buildingOptions: ScopeOption[] = [
-    { value: "all", label: "All buildings" },
-    ...buildings.map((b) => ({ value: b, label: b })),
-  ];
-  const floorOptions: ScopeOption[] = [
-    { value: "all", label: "All floors" },
-    ...floors.map((f) => ({ value: f, label: f })),
-  ];
-
-  const clientValue = scope.clientId ?? "__all__";
-  const onClientChange = (v: string) => setClientId(v === "__all__" ? null : v);
-
-  if (stacked) {
-    return (
-      <div className="space-y-3">
-        {clients.length === 0 ? (
-          <div className="rounded-lg border border-border bg-background px-3 py-2.5 text-sm">
-            <p className="text-xs font-medium text-muted-foreground">Client</p>
-            <Link href="/admin/clients" className="mt-1 inline-block font-medium text-foreground underline-offset-2 hover:underline">
-              Add a client first
-            </Link>
-          </div>
-        ) : (
-          <StackedSelect
-            label="Client"
-            value={clientValue}
-            onChange={onClientChange}
-            options={clientOptions}
-            placeholder="All clients"
-          />
-        )}
-        <StackedSelect
-          label="Project"
-          value={scope.projectId ?? ""}
-          onChange={(v) => setProjectId(v || null)}
-          options={projectOptions}
-          placeholder={scope.clientId ? "No projects yet" : "Select client first"}
-          disabled={!scope.clientId || projectOptions.length === 0}
-        />
-        <StackedSelect
-          label="Building"
-          value={scope.building}
-          onChange={setBuilding}
-          options={buildingOptions}
-          placeholder={!scope.projectId ? "Select project first" : "All buildings"}
-          disabled={!scope.projectId}
-        />
-        <StackedSelect
-          label="Floor"
-          value={scope.floor}
-          onChange={setFloor}
-          options={floorOptions}
-          placeholder={!scope.projectId ? "Select project first" : "All floors"}
-          disabled={!scope.projectId}
-        />
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex min-w-0 max-w-full items-center gap-2">
-      <div className="ops-scope-cluster min-w-0" role="group" aria-label="Workspace filters">
-        {clients.length === 0 ? (
-          <Link
-            href="/admin/clients"
-            className="inline-flex h-9 min-w-36 shrink-0 items-center gap-1.5 px-2.5 text-xs font-medium text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
-          >
-            <Building2 className="h-3.5 w-3.5 text-slate-400" />
-            Add a client
-          </Link>
-        ) : (
-          <ScopeSelect
-            ariaLabel="Client"
-            value={clientValue}
-            onChange={onClientChange}
-            options={clientOptions}
-            placeholder="All clients"
-            className="w-29 shrink-0 xl:w-44"
-            leading={
-              clientLogoUrl && scope.clientId ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={clientLogoUrl} alt="" className="h-4 w-4 rounded object-cover" />
-              ) : (
-                <Building2 className="h-3.5 w-3.5 text-slate-400" />
-              )
-            }
-          />
-        )}
-        <ScopeDivider />
-        <ScopeSelect
-          ariaLabel="Project"
-          value={scope.projectId ?? ""}
-          onChange={(v) => setProjectId(v || null)}
-          options={projectOptions}
-          placeholder="Project"
-          disabled={!scope.clientId}
-          emptyHint={!scope.clientId ? "Select client" : "No projects"}
-          className="w-28 shrink-0 xl:w-40"
-        />
-        <ScopeDivider />
-        <ScopeSelect
-          ariaLabel="Building"
-          value={scope.building}
-          onChange={setBuilding}
-          options={buildingOptions}
-          placeholder="Building"
-          disabled={!scope.projectId}
-          emptyHint="Select project"
-          className="w-30 shrink-0 xl:w-33"
-          leading={<Layers className="h-3.5 w-3.5 text-slate-400" />}
-        />
-        <ScopeDivider />
-        <ScopeSelect
-          ariaLabel="Floor"
-          value={scope.floor}
-          onChange={setFloor}
-          options={floorOptions}
-          placeholder="Floor"
-          disabled={!scope.projectId}
-          emptyHint="Select project"
-          className="w-26 shrink-0 xl:w-29"
-        />
-      </div>
-      {uploadHref ? (
-        <Button size="sm" className="ops-btn-primary h-9 shrink-0 gap-1.5 px-3" asChild>
-          <Link href={uploadHref} aria-label="Upload">
-            <Upload className="h-4 w-4" />
-            <span>Upload</span>
-          </Link>
-        </Button>
-      ) : null}
-    </div>
-  );
-}
-
-function ScopeDivider({ className }: { className?: string }) {
-  return (
-    <div
-      className={cn("h-5 w-px shrink-0 bg-slate-200 dark:bg-slate-700", className)}
-      aria-hidden
-    />
-  );
-}
-
-function ScopeSelect({
-  ariaLabel,
-  value,
-  onChange,
-  options,
-  placeholder,
-  disabled,
-  leading,
-  className,
-  emptyHint,
-}: {
-  ariaLabel: string;
-  value: string;
-  onChange: (v: string) => void;
-  options: ScopeOption[];
-  placeholder: string;
-  disabled?: boolean;
-  leading?: React.ReactNode;
-  className?: string;
-  emptyHint?: string;
-}) {
-  const isEmpty = options.length === 0;
-  const isDisabled = Boolean(disabled) || isEmpty;
-
-  return (
-    <div className={cn("flex min-w-0 items-center", className)}>
-      {leading ? (
-        <span className="pointer-events-none shrink-0 pl-2.5">{leading}</span>
-      ) : null}
-      <Select
-        value={!isDisabled && value ? value : undefined}
-        onValueChange={onChange}
-        disabled={isDisabled}
-      >
-        <SelectTrigger
-          aria-label={ariaLabel}
-          className={cn(
-            "ops-scope-select h-9 min-w-0 flex-1 border-0 bg-transparent px-2 text-xs shadow-none focus:ring-0 focus:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-100",
-            leading && "pl-1.5",
-            isDisabled && "text-slate-400"
-          )}
-        >
-          <SelectValue
-            placeholder={
-              isDisabled
-                ? emptyHint || (isEmpty ? `No ${placeholder.toLowerCase()}s` : placeholder)
-                : placeholder
-            }
-          />
-        </SelectTrigger>
-        {!isEmpty && (
-          <SelectContent>
-            {options.map((o) => (
-              <SelectItem key={o.value} value={o.value} className="text-xs">
-                {o.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        )}
-      </Select>
-    </div>
-  );
-}
-
-function StackedSelect({
-  label,
-  value,
-  onChange,
-  options,
-  placeholder,
-  disabled,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  options: ScopeOption[];
-  placeholder?: string;
-  disabled?: boolean;
-}) {
-  return (
-    <div>
-      <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-        {label}
-      </label>
-      <Select
-        value={disabled || options.length === 0 ? undefined : value || undefined}
-        onValueChange={onChange}
-        disabled={disabled || options.length === 0}
-      >
-        <SelectTrigger className="h-10 border-slate-200 bg-white text-sm dark:border-slate-700 dark:bg-slate-900 disabled:opacity-100">
-          <SelectValue placeholder={placeholder ?? label} />
-        </SelectTrigger>
-        {options.length > 0 && (
-          <SelectContent>
-            {options.map((o) => (
-              <SelectItem key={o.value} value={o.value}>
-                {o.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        )}
-      </Select>
-    </div>
   );
 }
