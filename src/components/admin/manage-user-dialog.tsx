@@ -13,8 +13,6 @@ import type { Client, ClientDashboardType, Project, User, UserRole } from "@/lib
 import { USER_ROLE_LABELS, USER_ROLE_GROUP_LABELS } from "@/lib/types";
 import { isClientPortalRole } from "@/lib/auth/roles";
 import {
-  CLIENT_DASHBOARD_TYPE_DESCRIPTIONS,
-  CLIENT_DASHBOARD_TYPE_LABELS,
   resolveClientDashboardType,
 } from "@/lib/portal/dashboard-type";
 import { useOptionalAdminWorkspace } from "@/components/admin/workspace/admin-workspace-provider";
@@ -37,6 +35,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { getErrorMessage, isUnclassifiedServerError } from "@/lib/errors/public";
+import { DashboardTypePicker } from "@/components/admin/dashboard-type-picker";
 
 interface ManageUserDialogProps {
   user: User & {
@@ -329,26 +328,12 @@ export function ManageUserDialog({
           {isClientPortalRole(role) && (
             <div className="space-y-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
               <Label>Client Dashboard</Label>
-              <Select
+              <DashboardTypePicker
+                name={`user-dashboard-${user.id}`}
                 value={dashboardType}
-                onValueChange={(v) => setDashboardType(v as ClientDashboardType)}
+                onChange={setDashboardType}
                 disabled={!canAssignRoles || clientId === "none"}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="construction">
-                    {CLIENT_DASHBOARD_TYPE_LABELS.construction}
-                  </SelectItem>
-                  <SelectItem value="portfolio">
-                    {CLIENT_DASHBOARD_TYPE_LABELS.portfolio}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-slate-500">
-                {CLIENT_DASHBOARD_TYPE_DESCRIPTIONS[dashboardType]}
-              </p>
+              />
               <p className="text-xs text-slate-400">
                 {!canAssignRoles
                   ? "Only Super Admin can change the client dashboard."

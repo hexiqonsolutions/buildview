@@ -14,6 +14,7 @@ import type { ProjectTour } from "@/lib/types";
 import { getCurrentUser } from "@/lib/actions/auth";
 import { can } from "@/lib/auth/permissions";
 import { getPortalWorkspaceBootstrap } from "@/lib/data/workspace";
+import { isShowcaseDashboard } from "@/lib/portal/dashboard-type";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +34,7 @@ export default async function ProjectsPage({
     getPortalWorkspaceBootstrap(),
   ]);
 
-  const isPortfolio = bootstrap.dashboardType === "portfolio";
+  const isPortfolio = isShowcaseDashboard(bootstrap.dashboardType);
   const progressEvents = await getProjectProgressEvents(projects.map((p) => p.id));
   const progressByProject = resolveProjectProgressValues(projects, progressEvents);
 

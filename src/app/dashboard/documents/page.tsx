@@ -14,6 +14,7 @@ import { firstSearchParam } from "@/lib/portal/search-params";
 import { IntelPage } from "@/components/intel/pages/intel-page";
 import { EmptyState } from "@/components/patterns/page-states";
 import { FolderOpen } from "lucide-react";
+import { isShowcaseDashboard } from "@/lib/portal/dashboard-type";
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +37,7 @@ export default async function DocumentsPage({
   ]);
 
   const canUpload =
-    bootstrap.dashboardType === "portfolio" && !!user && isClientPortalRole(user.role);
+    isShowcaseDashboard(bootstrap.dashboardType) && !!user && isClientPortalRole(user.role);
 
   const projectDocuments = projects
     .map((project) => ({

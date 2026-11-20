@@ -9,6 +9,7 @@ import { formatDate } from "@/lib/utils";
 import { getMatterportThumbnailUrl } from "@/lib/matterport";
 import type { ProjectWithMeta } from "@/lib/data/projects";
 import { useOptionalPortalWorkspace } from "@/components/portal/workspace/portal-workspace-provider";
+import { isShowcaseDashboard } from "@/lib/portal/dashboard-type";
 
 export function PortalProjectCard({
   project,
@@ -20,7 +21,7 @@ export function PortalProjectCard({
   canUpdateStatus?: boolean;
 }) {
   const portal = useOptionalPortalWorkspace();
-  const isPortfolio = portal?.dashboardType === "portfolio";
+  const isPortfolio = isShowcaseDashboard(portal?.dashboardType);
   const openHref = `/dashboard/projects/${project.id}${workspaceQuery}`;
   const tour = project.latestTour;
 

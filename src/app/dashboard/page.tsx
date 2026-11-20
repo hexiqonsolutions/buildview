@@ -7,6 +7,9 @@ import { ExecutiveOverviewShell } from "@/components/intel/dashboard/executive-o
 import { PortfolioShowcaseShell } from "@/components/intel/dashboard/portfolio-showcase-shell";
 import { can } from "@/lib/auth/permissions";
 import { isBuildViewStaffRole } from "@/lib/auth/roles";
+import { isPropertyDashboard, isShowcaseDashboard } from "@/lib/portal/dashboard-type";
+import { getPropertyDashboardData } from "@/lib/portal/property-dashboard-data";
+import { PropertyShowcaseShell } from "@/components/intel/dashboard/property-showcase-shell";
 
 export const dynamic = "force-dynamic";
 
@@ -19,12 +22,24 @@ export default async function DashboardPage({
   const scope = await parsePortalWorkspaceScopeFromParams(params);
 
   const bootstrap = await getPortalWorkspaceBootstrap();
-  const isPortfolio = bootstrap.dashboardType === "portfolio";
+  const isPortfolio = isShowcaseDashboard(bootstrap.dashboardType);
+  const isProperty = isPropertyDashboard(bootstrap.dashboardType);
 
-  const [user, data, portfolioData] = await Promise.all([
+  const [user, data, portfolioData, propertyData] = await Promise.all([
     getCurrentUser(),
     isPortfolio ? Promise.resolve(null) : getPortalScopedDashboardData(scope),
-    isPortfolio ? getPortfolioDashboardData(scope) : Promise.resolve(null),
+    isPortfolio && !isProperty ? getPortfolioDashboardData(scope) : Promise.resolve(null),
+    isProperty
+      ? getPropertyDashboardData().catch((error) => {
+          console.error("[dashboard] property data failed:", error);
+          return {
+            clientName: bootstrap.clientName,
+            stats: { properties: 0, leadsThisWeek: 0, totalLeads: 0, activeLinks: 0 },
+            properties: [],
+            recentLeads: [],
+          };
+        })
+      : Promise.resolve(null),
   ]);
 
   const firstName =
@@ -36,6 +51,10 @@ export default async function DashboardPage({
   // session to the client user, so they correctly get Construction Intelligence.
   const overviewVariant =
     user && isBuildViewStaffRole(user.role) ? "original" : "construction";
+
+  if (isProperty && propertyData) {
+    return <PropertyShowcaseShell data={propertyData} firstName={firstName} />;
+  }
 
   if (isPortfolio && portfolioData) {
     return (

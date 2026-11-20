@@ -5,6 +5,7 @@ import { ProjectMatterportUploader } from "@/components/projects/project-matterp
 import { useOptionalPortalWorkspace } from "@/components/portal/workspace/portal-workspace-provider";
 import type { ProjectTour } from "@/lib/types";
 import { Camera } from "lucide-react";
+import { isShowcaseDashboard } from "@/lib/portal/dashboard-type";
 
 /**
  * Virtual tours live on the project itself (overview) — not a separate tours tab.
@@ -20,7 +21,7 @@ export function ProjectMatterportPanel({
   canUpload?: boolean;
 }) {
   const portal = useOptionalPortalWorkspace();
-  const isPortfolio = portal?.dashboardType === "portfolio";
+  const isPortfolio = isShowcaseDashboard(portal?.dashboardType);
 
   return (
     <div className="space-y-4">

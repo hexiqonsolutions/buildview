@@ -27,6 +27,7 @@ import type { ProjectTour } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { usePortalWorkspace } from "@/components/portal/workspace/portal-workspace-provider";
 import { getTourDisplayFields } from "@/lib/comparison/metadata";
+import { isShowcaseDashboard } from "@/lib/portal/dashboard-type";
 
 type TourGroup = {
   key: string;
@@ -73,7 +74,7 @@ export function ProjectToursSection({
   const viewerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const { dashboardType } = usePortalWorkspace();
-  const isPortfolio = dashboardType === "portfolio";
+  const isPortfolio = isShowcaseDashboard(dashboardType);
 
   const groups = useMemo(() => groupToursBySpatial(tours), [tours]);
   const hasSpatial = useMemo(() => hasSpatialData(tours), [tours]);

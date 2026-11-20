@@ -31,6 +31,7 @@ import { NotificationBell } from "@/components/admin/notifications/notification-
 import { IntelCommandPalette } from "@/components/intel/shell/intel-command-palette";
 import { usePortalWorkspaceHref } from "@/components/portal/workspace/use-portal-workspace-href";
 import { usePortalWorkspace } from "@/components/portal/workspace/portal-workspace-provider";
+import { PORTAL_HEADER_COPY } from "@/lib/portal/dashboard-type";
 
 interface IntelHeaderProps {
   user: UserType;
@@ -50,8 +51,7 @@ export function IntelHeader({
   const [isPending, startTransition] = useTransition();
   const homeHref = usePortalWorkspaceHref("/dashboard");
   const { dashboardType } = usePortalWorkspace();
-  const isPortfolio = dashboardType === "portfolio";
-
+  
   useEffect(() => {
     const stored = localStorage.getItem("theme");
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -98,12 +98,10 @@ export function IntelHeader({
 
         <div className="hidden min-w-0 flex-1 lg:block">
           <p className="font-display text-sm font-semibold text-slate-800 dark:text-slate-100">
-            {isPortfolio ? "Portfolio Showcase" : "Construction Intelligence"}
+            {PORTAL_HEADER_COPY[dashboardType].title}
           </p>
           <p className="text-xs text-slate-500">
-            {isPortfolio
-              ? "Curated walkthroughs and project highlights"
-              : "Monitor progress across your projects"}
+            {PORTAL_HEADER_COPY[dashboardType].subtitle}
           </p>
         </div>
 

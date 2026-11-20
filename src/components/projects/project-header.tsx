@@ -25,6 +25,7 @@ import type { Project, Client, ProjectTour } from "@/lib/types";
 import { PORTFOLIO_CATEGORY_LABELS } from "@/lib/types";
 import { useOptionalPortalWorkspace } from "@/components/portal/workspace/portal-workspace-provider";
 import { cn } from "@/lib/utils";
+import { isShowcaseDashboard } from "@/lib/portal/dashboard-type";
 
 interface ProjectHeaderProps {
   project: Project;
@@ -66,7 +67,7 @@ export function ProjectHeader({
   actions,
 }: ProjectHeaderProps) {
   const portal = useOptionalPortalWorkspace();
-  const isPortfolio = portal?.dashboardType === "portfolio";
+  const isPortfolio = isShowcaseDashboard(portal?.dashboardType);
   const cover = project.cover_image_url || latestTour?.thumbnail_url || null;
   const brand = client?.company_name || project.client_name;
   const clientLabel = (() => {

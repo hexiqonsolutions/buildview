@@ -896,7 +896,7 @@ export type Client = Timestamps &
     dashboard_type?: ClientDashboardType | null;
   };
 
-export type ClientDashboardType = "construction" | "portfolio";
+export type ClientDashboardType = "construction" | "portfolio" | "property";
 
 export type User = Timestamps &
   FullAuditFields & {

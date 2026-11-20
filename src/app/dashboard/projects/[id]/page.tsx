@@ -24,6 +24,7 @@ import {
 import { getProjectProgressPercent } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Upload } from "lucide-react";
+import { isPropertyDashboard, isShowcaseDashboard } from "@/lib/portal/dashboard-type";
 
 const EMPTY_DETAIL = {
   tours: [],
@@ -56,7 +57,7 @@ export default async function ProjectDetailPage({
   if (!projectData) notFound();
 
   const { project, client } = projectData;
-  const isPortfolioClient = client?.dashboard_type === "portfolio";
+  const isPortfolioClient = isShowcaseDashboard(client?.dashboard_type);
   const userEarly = await getCurrentUser().catch(() => null);
   const allowProgression =
     !isPortfolioClient && userEarly ? canViewProgression(userEarly.role) : false;
@@ -71,7 +72,7 @@ export default async function ProjectDetailPage({
       allowProgression
         ? getProjectProgression(id, floorSelections).catch(() => null)
         : Promise.resolve(null),
-      isPortfolioClient ? getProjectBuyerProperty(id) : Promise.resolve(null),
+      isPropertyDashboard(client?.dashboard_type) ? getProjectBuyerProperty(id) : Promise.resolve(null),
     ]);
   const property = propertyView && hasPropertyContent(propertyView) ? propertyView : null;
 

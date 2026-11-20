@@ -20,6 +20,7 @@ import { getIssueSummariesByProjectIds, getProjectIssues } from "@/lib/data/issu
 import { getProgressionPercentByProjectIds } from "@/lib/data/progression";
 import { getProjectReports } from "@/lib/data/reports";
 import { getProjectTours, getTourSummariesByProjectIds } from "@/lib/data/tours";
+import { isShowcaseDashboard } from "@/lib/portal/dashboard-type";
 
 export type AdminProjectRow = Project & {
   /** Progression Report % for construction clients; null for portfolio showcase. */
@@ -31,7 +32,7 @@ export type AdminProjectRow = Project & {
   projectCode: string;
   progressTrend: string | null;
   /** Client portal type — Progression only applies to construction. */
-  clientDashboardType: "construction" | "portfolio" | null;
+  clientDashboardType: ClientDashboardType | null;
 };
 
 export type AdminProjectsListData = {
@@ -65,7 +66,7 @@ export async function getAdminProjectsListData(): Promise<AdminProjectsListData>
   }
 
   const constructionProjectIds = projects
-    .filter((p) => dashboardTypeByClientId.get(p.client_id) !== "portfolio")
+    .filter((p) => !isShowcaseDashboard(dashboardTypeByClientId.get(p.client_id)))
     .map((p) => p.id);
 
   const [progressionByProject, tours, issues] = await Promise.all([
@@ -104,7 +105,7 @@ export async function getAdminProjectsListData(): Promise<AdminProjectsListData>
 
   const projectRows: AdminProjectRow[] = projects.map((p, index) => {
     const clientDashboardType = dashboardTypeByClientId.get(p.client_id) ?? null;
-    const isPortfolio = clientDashboardType === "portfolio";
+    const isPortfolio = isShowcaseDashboard(clientDashboardType);
     return {
       ...p,
       // Construction: Progression Report % only (0 when not started). Portfolio: no progress %.

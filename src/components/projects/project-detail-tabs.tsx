@@ -27,6 +27,7 @@ import type {
   Invoice,
   ProjectCommentWithUser,
 } from "@/lib/types";
+import { isShowcaseDashboard } from "@/lib/portal/dashboard-type";
 
 function TabLoading() {
   return (
@@ -201,7 +202,7 @@ export function ProjectDetailTabs({
   property = null,
 }: ProjectDetailTabsProps) {
   const portal = useOptionalPortalWorkspace();
-  const isPortfolioIntel = variant === "intel" && portal?.dashboardType === "portfolio";
+  const isPortfolioIntel = variant === "intel" && isShowcaseDashboard(portal?.dashboardType);
   const showConstructionTabs = variant === "ops" || !isPortfolioIntel;
   const showProgression = Boolean(showConstructionTabs && allowProgression && progression);
   const router = useRouter();

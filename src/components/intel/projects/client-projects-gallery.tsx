@@ -7,6 +7,7 @@ import { IntelPage } from "@/components/intel/pages/intel-page";
 import { scopeToPortalQueryString } from "@/lib/admin/scope";
 import type { ProjectWithMeta } from "@/lib/data/projects";
 import { usePortalWorkspace } from "@/components/portal/workspace/portal-workspace-provider";
+import { isShowcaseDashboard } from "@/lib/portal/dashboard-type";
 
 export function ClientProjectsGallery({
   projects,
@@ -17,7 +18,8 @@ export function ClientProjectsGallery({
 }) {
   const { hydrated, scope, dashboardType } = usePortalWorkspace();
   const workspaceQuery = hydrated ? scopeToPortalQueryString(scope) : "";
-  const isPortfolio = dashboardType === "portfolio";
+  const isPortfolio = isShowcaseDashboard(dashboardType);
+  const isProperty = dashboardType === "property";
 
   const active = projects.filter((p) => p.status !== "completed");
   const completed = projects.filter((p) => p.status === "completed");
@@ -32,14 +34,16 @@ export function ClientProjectsGallery({
 
   return (
     <IntelPage
-      title={isPortfolio ? "Project Portfolio" : "Your Projects"}
+      title={isProperty ? "Your properties" : isPortfolio ? "Project Portfolio" : "Your Projects"}
       description={
-        isPortfolio
-          ? "Browse curated work with immersive 360° walkthroughs — ideal for architecture, interior design, and real estate showcases."
+        isProperty
+          ? "Open a property to see it exactly as buyers do, or share its walkthrough."
+          : isPortfolio
+          ? "Browse curated work with immersive 360° walkthroughs."
           : "Executive view of every construction project — progress, latest scans, and quick access to virtual tours."
       }
       icon={isPortfolio ? Sparkles : FolderKanban}
-      eyebrow={isPortfolio ? "Showcase" : "Projects"}
+      eyebrow={isProperty ? "Real Estate" : isPortfolio ? "Showcase" : "Projects"}
     >
       <div className="space-y-6">
         {projects.length === 0 ? (
@@ -53,7 +57,7 @@ export function ClientProjectsGallery({
         ) : isPortfolio ? (
           <section className="space-y-4">
             <h2 className="font-display text-base font-semibold text-slate-900 dark:text-white">
-              All projects ({showcaseProjects.length})
+              {isProperty ? "All properties" : "All projects"} ({showcaseProjects.length})
             </h2>
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
               {showcaseProjects.map((project) => (

@@ -5,8 +5,6 @@ import { Loader2, Pencil } from "lucide-react";
 import { updateClientRecord, softDeleteClient } from "@/lib/actions/admin";
 import type { Client, ClientDashboardType, SubscriptionStatus } from "@/lib/types";
 import {
-  CLIENT_DASHBOARD_TYPE_DESCRIPTIONS,
-  CLIENT_DASHBOARD_TYPE_LABELS,
 } from "@/lib/portal/dashboard-type";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +24,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { getErrorMessage } from "@/lib/errors/public";
+import { DashboardTypePicker } from "@/components/admin/dashboard-type-picker";
 
 export function EditClientDialog({ client }: { client: Client }) {
   const [open, setOpen] = useState(false);
@@ -135,25 +134,11 @@ export function EditClientDialog({ client }: { client: Client }) {
           </div>
           <div className="space-y-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
             <Label>Default Client Dashboard</Label>
-            <Select
+            <DashboardTypePicker
+              name={`client-dashboard-${client.id}`}
               value={dashboardType}
-              onValueChange={(v) => setDashboardType(v as ClientDashboardType)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="construction">
-                  {CLIENT_DASHBOARD_TYPE_LABELS.construction}
-                </SelectItem>
-                <SelectItem value="portfolio">
-                  {CLIENT_DASHBOARD_TYPE_LABELS.portfolio}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-slate-500">
-              {CLIENT_DASHBOARD_TYPE_DESCRIPTIONS[dashboardType]}
-            </p>
+              onChange={setDashboardType}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">

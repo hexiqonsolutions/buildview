@@ -31,6 +31,7 @@ import { isBuildViewStaffRole } from "@/lib/auth/roles";
 import { useOptionalPortalWorkspace } from "@/components/portal/workspace/portal-workspace-provider";
 import { cn, formatRelativeTime, getInitials } from "@/lib/utils";
 import type { Document, ProjectCommentWithUser, Report, UserRole } from "@/lib/types";
+import { isShowcaseDashboard } from "@/lib/portal/dashboard-type";
 
 interface ProjectCommentsSectionProps {
   projectId: string;
@@ -108,7 +109,7 @@ function CommentAuthor({ comment }: { comment: ProjectCommentWithUser }) {
 /** Team discussion is a construction-intelligence feature; portfolio showcase portals omit it. */
 export function ProjectCommentsSection(props: ProjectCommentsSectionProps) {
   const portal = useOptionalPortalWorkspace();
-  if (portal?.dashboardType === "portfolio") return null;
+  if (isShowcaseDashboard(portal?.dashboardType)) return null;
   return <ProjectCommentsPanel {...props} />;
 }
 

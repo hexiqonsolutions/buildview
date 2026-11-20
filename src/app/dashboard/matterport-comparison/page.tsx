@@ -6,10 +6,11 @@ import { getCurrentUser } from "@/lib/actions/auth";
 import { getPortalWorkspaceBootstrap } from "@/lib/data/workspace";
 import { CompareProgressHub } from "@/components/compare/compare-progress-hub";
 import { IntelPage } from "@/components/intel/pages/intel-page";
+import { isShowcaseDashboard } from "@/lib/portal/dashboard-type";
 
 export default async function MatterportComparisonPage() {
   const bootstrap = await getPortalWorkspaceBootstrap();
-  if (bootstrap.dashboardType === "portfolio") {
+  if (isShowcaseDashboard(bootstrap.dashboardType)) {
     redirect("/dashboard");
   }
 

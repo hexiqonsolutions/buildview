@@ -7,6 +7,7 @@ import { useIntelProjectContext } from "@/components/intel/shell/intel-project-c
 import { usePortalWorkspaceHref } from "@/components/portal/workspace/use-portal-workspace-href";
 import { usePortalWorkspace } from "@/components/portal/workspace/portal-workspace-provider";
 import { formatDate } from "@/lib/utils";
+import { isShowcaseDashboard } from "@/lib/portal/dashboard-type";
 
 /** Shows project context when user is inside a project route. */
 export function IntelContextBar() {
@@ -14,7 +15,7 @@ export function IntelContextBar() {
   const { project } = useIntelProjectContext();
   const projectsHref = usePortalWorkspaceHref("/dashboard/projects");
   const { dashboardType } = usePortalWorkspace();
-  const isPortfolio = dashboardType === "portfolio";
+  const isPortfolio = isShowcaseDashboard(dashboardType);
   const onProjectRoute = /^\/dashboard\/projects\/[^/]+/.test(pathname ?? "");
 
   if (!onProjectRoute || !project) return null;

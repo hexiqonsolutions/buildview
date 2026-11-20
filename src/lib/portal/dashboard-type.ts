@@ -9,22 +9,52 @@ import {
   FolderOpen,
   AlertTriangle,
   ReceiptIndianRupee,
+  Building2,
+  UsersRound,
 } from "lucide-react";
 
-export const CLIENT_DASHBOARD_TYPES = ["construction", "portfolio"] as const;
+/**
+ * Client portal experiences. Keys are stored in the database and never renamed;
+ * labels are what clients and staff see.
+ *
+ *   construction → Construction Intelligence (live site monitoring)
+ *   portfolio    → Interior Showcase (finished design work)
+ *   property     → Real Estate Showcase (property pages + buyer leads)
+ */
+export const CLIENT_DASHBOARD_TYPES = ["construction", "portfolio", "property"] as const;
 export type ClientDashboardType = (typeof CLIENT_DASHBOARD_TYPES)[number];
 
 export const CLIENT_DASHBOARD_TYPE_LABELS: Record<ClientDashboardType, string> = {
-  construction: "Construction monitoring",
-  portfolio: "Portfolio showcase",
+  construction: "Construction Intelligence",
+  portfolio: "Interior Showcase",
+  property: "Real Estate Showcase",
 };
 
 export const CLIENT_DASHBOARD_TYPE_DESCRIPTIONS: Record<ClientDashboardType, string> = {
   construction:
-    "Progress KPIs, timeline, reports, issues, and site monitoring for active builds.",
+    "Progress, timeline, reports and issues for sites under construction.",
   portfolio:
-    "Showcase walkthroughs and completed work for architecture, interior design, and real estate.",
+    "Walkthroughs, photos and videos of finished interior and architecture work.",
+  property:
+    "Buyer-ready property pages, shareable walkthroughs and buyer leads for developers.",
 };
+
+export function isClientDashboardType(value: unknown): value is ClientDashboardType {
+  return typeof value === "string" && (CLIENT_DASHBOARD_TYPES as readonly string[]).includes(value);
+}
+
+/**
+ * Showcase portals (Interior + Real Estate) share the walkthrough-first layout
+ * and hide construction-only modules (progression, issues, timeline, reports…).
+ */
+export function isShowcaseDashboard(type: ClientDashboardType | null | undefined): boolean {
+  return type === "portfolio" || type === "property";
+}
+
+/** Real Estate Showcase only: property details, buyer leads. */
+export function isPropertyDashboard(type: ClientDashboardType | null | undefined): boolean {
+  return type === "property";
+}
 
 type PortalNavItem = {
   href: string;
@@ -50,11 +80,24 @@ const PORTFOLIO_NAV: PortalNavItem[] = [
   { href: "/dashboard/documents", label: "Documents", icon: FolderOpen },
 ];
 
+const PROPERTY_NAV: PortalNavItem[] = [
+  { href: "/dashboard", label: "Overview", icon: LayoutDashboard, exact: true },
+  { href: "/dashboard/projects", label: "Properties", icon: Building2 },
+  { href: "/dashboard/leads", label: "Buyer leads", icon: UsersRound },
+  { href: "/dashboard/documents", label: "Documents", icon: FolderOpen },
+];
+
+const NAV_BY_TYPE: Record<ClientDashboardType, PortalNavItem[]> = {
+  construction: CONSTRUCTION_NAV,
+  portfolio: PORTFOLIO_NAV,
+  property: PROPERTY_NAV,
+};
+
 export function getPortalNavItems(
   type: ClientDashboardType,
   options?: { includeInvoices?: boolean }
 ): PortalNavItem[] {
-  const items = type === "portfolio" ? PORTFOLIO_NAV : CONSTRUCTION_NAV;
+  const items = NAV_BY_TYPE[type] ?? CONSTRUCTION_NAV;
   // Invoices are Client Admin only — omit unless explicitly opted in.
   if (options?.includeInvoices !== true) {
     return items.filter((item) => item.href !== "/dashboard/invoices");
@@ -63,25 +106,34 @@ export function getPortalNavItems(
 }
 
 export function getPortalSidebarTagline(type: ClientDashboardType): string {
-  return type === "portfolio" ? "Portfolio" : "Intelligence";
+  return { construction: "Intelligence", portfolio: "Interiors", property: "Real Estate" }[type];
 }
 
 export function getPortalSidebarFooter(type: ClientDashboardType): string {
-  return type === "portfolio"
-    ? "Curated project showcase"
-    : "View-only project monitoring";
+  return {
+    construction: "View-only project monitoring",
+    portfolio: "Curated project showcase",
+    property: "Property showcase & buyer leads",
+  }[type];
 }
+
+/** Portal header title + subtitle per experience. */
+export const PORTAL_HEADER_COPY: Record<ClientDashboardType, { title: string; subtitle: string }> = {
+  construction: { title: "Construction Intelligence", subtitle: "Live site progress and reports" },
+  portfolio: { title: "Interior Showcase", subtitle: "Curated walkthroughs and project highlights" },
+  property: { title: "Real Estate Showcase", subtitle: "Your properties and buyer interest" },
+};
 
 export function resolveClientDashboardType(
   user: Pick<AuthUser, "dashboard_type"> | null | undefined,
   client: { dashboard_type?: ClientDashboardType | null } | null | undefined
 ): ClientDashboardType {
   const userType = user?.dashboard_type;
-  if (userType === "construction" || userType === "portfolio") {
+  if (isClientDashboardType(userType)) {
     return userType;
   }
   const clientType = client?.dashboard_type;
-  if (clientType === "construction" || clientType === "portfolio") {
+  if (isClientDashboardType(clientType)) {
     return clientType;
   }
   return "construction";

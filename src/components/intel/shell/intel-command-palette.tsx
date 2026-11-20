@@ -18,6 +18,7 @@ import { usePortalWorkspace } from "@/components/portal/workspace/portal-workspa
 import { globalSearch } from "@/lib/actions/search";
 import { canViewClientInvoices } from "@/lib/auth/permissions";
 import type { UserRole } from "@/lib/types";
+import { isShowcaseDashboard } from "@/lib/portal/dashboard-type";
 
 export function IntelCommandPalette({
   open,
@@ -102,7 +103,7 @@ export function IntelCommandPalette({
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder={dashboardType === "portfolio" ? "Search projects and documents…" : "Search projects, issues, documents…"}
+              placeholder={isShowcaseDashboard(dashboardType) ? "Search projects and documents…" : "Search projects, issues, documents…"}
               className="min-w-0 flex-1 border-0 shadow-none focus-visible:ring-0"
               autoFocus
             />

@@ -22,6 +22,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Building2, Pencil, Upload } from "lucide-react";
 import { formatDate } from "@/lib/utils";
+import { isPropertyDashboard, isShowcaseDashboard } from "@/lib/portal/dashboard-type";
+import { ProjectMediaManager } from "@/components/admin/projects/project-media-manager";
 
 export default async function AdminProjectDetailPage({
   params,
@@ -44,7 +46,8 @@ export default async function AdminProjectDetailPage({
   if (!projectData) notFound();
 
   const { project, client } = projectData;
-  const isPortfolioClient = client?.dashboard_type === "portfolio";
+  const isPortfolioClient = isShowcaseDashboard(client?.dashboard_type);
+  const isPropertyClient = isPropertyDashboard(client?.dashboard_type);
   const currentUser = await getCurrentUser().catch(() => null);
   const allowProgression =
     !isPortfolioClient && currentUser ? canViewProgression(currentUser.role) : false;
@@ -60,7 +63,7 @@ export default async function AdminProjectDetailPage({
       allowProgression
         ? getProjectProgression(id, floorSelections).catch(() => null)
         : Promise.resolve(null),
-      isPortfolioClient ? getPropertyEditorData(id).catch(() => null) : Promise.resolve(null),
+      isPropertyClient ? getPropertyEditorData(id).catch(() => null) : Promise.resolve(null),
     ]);
   const latestTour = detail.tours[0] ?? null;
 
@@ -138,6 +141,10 @@ export default async function AdminProjectDetailPage({
         </div>
       </div>
 
+      {isPortfolioClient && !isPropertyClient && projectMedia?.isPortfolio ? (
+        <ProjectMediaManager projectId={project.id} initialMedia={projectMedia.media} />
+      ) : null}
+
       <ProjectWorkspaceTabs
         projectId={project.id}
         projectName={project.name}
@@ -158,7 +165,7 @@ export default async function AdminProjectDetailPage({
         currentUserId={currentUser?.id}
         showComments={showComments}
         propertyTab={
-          isPortfolioClient && propertyData ? (
+          isPropertyClient && propertyData ? (
             <PropertyDetailsEditor
               key={propertyData.details?.updated_at ?? "new"}
               projectId={project.id}

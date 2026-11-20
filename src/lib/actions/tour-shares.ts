@@ -21,7 +21,10 @@ import {
   buildTourViewerNotifyCopy,
   shouldNotifyNewTourViewer,
 } from "@/lib/tour-shares/viewer-notify-policy";
-import { notifyTourViewerStaffIfEnabled } from "@/lib/notifications/server";
+import {
+  notifyPropertyClientOfBuyerView,
+  notifyTourViewerStaffIfEnabled,
+} from "@/lib/notifications/server";
 import type { ProjectTour, TourShare, UserRole } from "@/lib/types";
 
 const SHARE_TTL_MS = 10 * 24 * 60 * 60 * 1000;
@@ -661,6 +664,15 @@ export async function recordTourShareView(input: {
       } catch (notifyErr) {
         console.error("[tour-shares] staff notify failed:", notifyErr);
       }
+    }
+
+    // Real Estate Showcase clients get their own "new buyer lead" nudge.
+    if (viewRecorded) {
+      await notifyPropertyClientOfBuyerView({
+        projectId: loaded.share.project_id,
+        viewerName: name,
+        projectName: loaded.projectName,
+      });
     }
 
     const meta = toPublicMeta(

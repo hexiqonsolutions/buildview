@@ -656,3 +656,59 @@ export async function notifyTourViewerStaffIfEnabled(payload: NotifyPayload) {
     console.error("[notifyTourViewerStaffIfEnabled]", err);
   }
 }
+
+/**
+ * Real Estate Showcase: tell the developer's own portal users that a buyer
+ * opened one of their shared walkthroughs. In-app only (no email), so it
+ * nudges without spamming; the bell links straight to Buyer leads.
+ */
+export async function notifyPropertyClientOfBuyerView(params: {
+  projectId: string;
+  viewerName: string;
+  projectName: string;
+}) {
+  const parsedProject = validate(uuid("Project"), params.projectId);
+  if (!parsedProject.success) return;
+
+  try {
+    const admin = createServiceRoleClient();
+    const { data: project } = await admin
+      .from("projects")
+      .select("client_id, client:clients(dashboard_type)")
+      .eq("id", parsedProject.data)
+      .maybeSingle();
+    const clientId = (project as { client_id: string | null } | null)?.client_id;
+    if (!clientId) return;
+    const clientType =
+      (project as unknown as { client: { dashboard_type: string | null } | null }).client
+        ?.dashboard_type ?? null;
+
+    const { data: users, error } = await admin
+      .from("users")
+      .select("id, role, dashboard_type")
+      .eq("client_id", clientId)
+      .eq("is_active", true)
+      .is("deleted_at", null);
+    if (error) {
+      console.error("[notifyPropertyClientOfBuyerView] load users failed:", error.message);
+      return;
+    }
+
+    const recipientIds = (users ?? [])
+      .filter((u) => (u.dashboard_type ?? clientType) === "property")
+      .filter((u) => !["super_admin", "admin", "operations_manager"].includes(u.role as string))
+      .map((u) => u.id);
+    if (recipientIds.length === 0) return;
+
+    const viewer = params.viewerName.trim() || "A buyer";
+    await notifyUsers(recipientIds, {
+      title: "New buyer lead",
+      message: `${viewer} just opened the walkthrough for ${params.projectName.trim() || "your property"}.`,
+      type: "info",
+      link: "/dashboard/leads",
+      sendEmail: false,
+    });
+  } catch (err) {
+    console.error("[notifyPropertyClientOfBuyerView]", err);
+  }
+}

@@ -22,6 +22,7 @@ import {
 import { PublicError } from "@/lib/errors/public";
 import { internalError } from "@/lib/errors/server";
 import { UPLOAD_RULES, verifyStoredUpload } from "@/lib/uploads/verify";
+import { isShowcaseDashboard, type ClientDashboardType } from "@/lib/portal/dashboard-type";
 
 const BUCKET = STORAGE_BUCKETS.PROJECT_MEDIA;
 /** Long enough to watch a video after the page has been open for a while. */
@@ -119,7 +120,7 @@ export async function getProjectMediaAdmin(
     .maybeSingle();
 
   const client = (project as { client: { dashboard_type: string | null } | null } | null)?.client;
-  const isPortfolio = client?.dashboard_type === "portfolio";
+  const isPortfolio = isShowcaseDashboard(client?.dashboard_type as ClientDashboardType | null);
 
   return { isPortfolio, media: await getProjectMedia(projectId) };
 }

@@ -13,6 +13,7 @@ import { getCurrentUser } from "@/lib/actions/auth";
 import { requireStaffPermission } from "@/lib/auth/staff";
 import { getProjects } from "@/lib/data/projects";
 import { idsOrNone } from "@/lib/data/query";
+import { isShowcaseDashboard } from "@/lib/portal/dashboard-type";
 
 const ADMIN_PROJECT_BOOTSTRAP_SELECT =
   "id, name, client_id, client_name, location, description, status, start_date, completion_date, cover_image_url, area_sqft, portfolio_category, created_by, updated_by, deleted_by, created_at, updated_at, deleted_at";
@@ -199,9 +200,11 @@ export const getPortalWorkspaceBootstrap = cache(async (): Promise<PortalWorkspa
           .select("id, dashboard_type")
           .in("id", projectClientIds)
           .is("deleted_at", null);
-        const portfolioClient = projectClients?.find((c) => c.dashboard_type === "portfolio");
+        const portfolioClient = projectClients?.find((c) =>
+          isShowcaseDashboard(c.dashboard_type as ClientDashboardType | null)
+        );
         if (portfolioClient) {
-          clientDashboardType = "portfolio";
+          clientDashboardType = portfolioClient.dashboard_type as ClientDashboardType;
           if (!clientId) clientId = portfolioClient.id;
         }
       } catch {

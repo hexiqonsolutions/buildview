@@ -22,6 +22,7 @@ import {
   type ProjectStatus,
   type UserRole,
 } from "@/lib/types";
+import { isShowcaseDashboard } from "@/lib/portal/dashboard-type";
 
 type Result<T> = ({ ok: true } & T) | { ok: false; error: string };
 
@@ -78,7 +79,7 @@ async function authorizePortfolioUpload(
     { dashboard_type: profile.dashboard_type as ClientDashboardType | null },
     projectClient
   );
-  if (dashboardType !== "portfolio") {
+  if (!isShowcaseDashboard(dashboardType)) {
     return { ok: false, error: "Document upload is only available in Portfolio Showcase." };
   }
 

@@ -64,7 +64,7 @@ const portfolioCategories = [
   "construction_monitoring",
 ] as const satisfies readonly PortfolioCategory[];
 
-const dashboardTypes = ["construction", "portfolio"] as const satisfies readonly ClientDashboardType[];
+const dashboardTypes = ["construction", "portfolio", "property"] as const satisfies readonly ClientDashboardType[];
 
 const ADDRESS_MAX = 500;
 const AREA_SQFT_MAX = 100_000_000;
