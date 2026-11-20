@@ -3,10 +3,14 @@ import { solutions } from "@/lib/marketing/solutions";
 export const siteConfig = {
   name: "BuildView",
   brand: {
-    /** Logo for white / light backgrounds */
-    logo: "/wb-logo.png",
-    /** Logo for dark backgrounds */
-    logoOnDark: "/db-logo.png",
+    /** Wordmark for white / light backgrounds (dark text) */
+    logo: "/brand/logo-light.svg",
+    /** Wordmark for dark backgrounds (white text) */
+    logoOnDark: "/brand/logo-dark.svg",
+    /** Symbol only (square), for compact placements */
+    symbol: "/brand/symbol.svg",
+    /** Raster wordmark for crawlers / structured data that prefer PNG */
+    logoRaster: "/wb-logo.png",
     ogImage: "/opengraph-image",
   },
   tagline: "Stop explaining, Start Showing",

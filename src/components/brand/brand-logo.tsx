@@ -10,8 +10,8 @@ interface BrandLogoProps {
   size?: "sm" | "md" | "lg" | "xl" | "2xl";
   className?: string;
   /**
-   * - default: wb-logo for light / white backgrounds
-   * - onDark: db-logo for dark backgrounds
+   * - default: dark-text wordmark for light / white backgrounds
+   * - onDark: white-text wordmark for dark backgrounds
    * - auto: switches with dark mode (default)
    */
   tone?: BrandLogoTone;
@@ -46,6 +46,7 @@ function LogoImage({
       height={height}
       className={cn("shrink-0 object-contain object-left", className)}
       priority
+      unoptimized
     />
   );
 }

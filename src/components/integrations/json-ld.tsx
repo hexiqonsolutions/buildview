@@ -25,7 +25,7 @@ export function JsonLd() {
         url: siteConfig.url,
         ...contactSchema,
         description: siteConfig.description,
-        logo: `${siteConfig.url}${siteConfig.brand.logo}`,
+        logo: `${siteConfig.url}${siteConfig.brand.logoRaster}`,
         sameAs: [siteConfig.instagram.url, ...Object.values(siteConfig.social).filter(Boolean)].filter(
           (value, index, list) => list.indexOf(value) === index
         ),
