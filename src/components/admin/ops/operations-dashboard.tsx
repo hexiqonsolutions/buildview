@@ -122,7 +122,7 @@ export function OperationsDashboard({
           <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-500">
             {client
               ? `Working in ${client.company_name || client.name}${project ? ` · ${project.name}` : ""}. Open the full client workspace for users, invoices, and project detail.`
-              : "BuildView platform overview across all clients. Select a client in the sidebar to activate a workspace."}
+              : "BuildView platform overview across all clients. Open a client below to focus on their projects."}
           </p>
         </div>
       </div>

@@ -23,7 +23,6 @@ import {
 import {
   DEFAULT_WORKSPACE,
   WORKSPACE_STORAGE_KEY,
-  readStoredWorkspaceScope,
   type AdminWorkspaceBootstrap,
   type AdminWorkspaceClient,
   type WorkspaceScope,
@@ -116,12 +115,9 @@ export function AdminWorkspaceProvider({
         fromUrl.building !== "all" ||
         fromUrl.floor !== "all"
     );
-    // Dashboard home is always the unscoped BuildView overview unless URL has a client.
-    const preferred = hasUrlScope
-      ? fromUrl
-      : pathname === "/admin"
-        ? DEFAULT_WORKSPACE
-        : readStoredWorkspaceScope(WORKSPACE_STORAGE_KEY);
+    // Scope comes only from the URL (e.g. "Upload" from a project page). With no
+    // sidebar picker, a remembered scope would silently filter pages, so none is restored.
+    const preferred = hasUrlScope ? fromUrl : DEFAULT_WORKSPACE;
     const next = resolveScope(bootstrapRef.current, preferred);
     setScope((prev) => (workspaceScopesEqual(prev, next) ? prev : next));
     setHydrated(true);

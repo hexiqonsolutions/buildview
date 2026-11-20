@@ -22,17 +22,12 @@ import {
   ContactRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import {
-  useAdminWorkspaceQuery,
-} from "@/components/admin/workspace/use-admin-workspace-href";
-import { withAdminWorkspaceQuery } from "@/lib/admin/nav";
 import { useAdminWorkspace } from "@/components/admin/workspace/admin-workspace-provider";
 import { filterNavByRole } from "@/lib/auth/nav-permissions";
 import type { PermissionResource } from "@/lib/auth/permissions";
 import type { UserRole } from "@/lib/types";
 import { MobileNavDrawer } from "@/components/layout/mobile-nav-drawer";
 import { SidebarBrandHeader } from "@/components/layout/sidebar-brand-header";
-import { WorkspaceScopeControls } from "@/components/admin/workspace/workspace-scope-controls";
 
 const navSections: Array<{
   label: string;
@@ -97,7 +92,6 @@ interface OpsSidebarProps {
 export function OpsSidebar({ userRole, mobileOpen, onMobileClose }: OpsSidebarProps) {
   const pathname = usePathname();
   const { resetScope } = useAdminWorkspace();
-  const workspaceQuery = useAdminWorkspaceQuery();
   const homeHref = "/admin";
 
   const content = (
@@ -107,7 +101,6 @@ export function OpsSidebar({ userRole, mobileOpen, onMobileClose }: OpsSidebarPr
         tagline="Control Center"
         onMobileClose={onMobileClose}
       />
-      <WorkspaceScopeControls />
 
       <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-4">
         {navSections.map((section) => {
@@ -125,7 +118,8 @@ export function OpsSidebar({ userRole, mobileOpen, onMobileClose }: OpsSidebarPr
                   item.href,
                   "exact" in item ? item.exact : undefined
                 );
-                const href = withAdminWorkspaceQuery(item.href, workspaceQuery);
+                // Plain links: switching section clears any client/project filter.
+                const href = item.href;
                 const isDashboard = item.href === "/admin";
                 return (
                   <Link
