@@ -275,6 +275,26 @@ export function ProjectDetailTabs({
     [projectName, reports, issues, timeline]
   );
 
+  // Interior + Real Estate portals: a single showcase page, no tab bar.
+  // Walkthroughs live in the embedded panel; documents have their own nav page.
+  if (isPortfolioIntel) {
+    const tourPanel = projectId ? (
+      <ProjectMatterportPanel projectId={projectId} tours={tours} canUpload={canUploadMatterport} />
+    ) : null;
+    return (
+      <div className="mt-4 space-y-5 sm:mt-6 sm:space-y-8">
+        {property ? (
+          <PropertyPage view={property} tour={tourPanel ?? undefined} />
+        ) : (
+          <>
+            {tourPanel}
+            {media ? <ProjectMediaShowcase media={media} /> : null}
+          </>
+        )}
+      </div>
+    );
+  }
+
   return (
     <TabWorkspace variant={variant} defaultTab="overview" tabs={tabs}>
       <TabPanel value="overview" className="mt-4 space-y-5 sm:mt-6 sm:space-y-8">
