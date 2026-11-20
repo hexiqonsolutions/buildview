@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Building2, Calendar, Layers, Loader2, MapPin } from "lucide-react";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { MatterportViewer } from "@/components/projects/MatterportViewer";
+import { PropertyPage } from "@/components/property/property-page";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -191,6 +192,37 @@ export function TourShareViewer({ meta }: { meta: TourSharePublicMeta }) {
     );
   }
 
+  const tourViewer = (
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <MatterportViewer
+        url={tour.matterportUrl}
+        title={tour.tourName}
+        aspectRatio
+        showToolbar
+        className="rounded-none"
+      />
+    </div>
+  );
+
+  if (tour.property) {
+    return (
+      <div className="flex min-h-dvh flex-col bg-slate-50">
+        <header className="border-b border-slate-200/80 bg-white/90 backdrop-blur-sm">
+          <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+            <BrandLogo href="/" size="md" tone="default" />
+            <p className="hidden text-xs text-slate-500 sm:block">Property walkthrough</p>
+          </div>
+        </header>
+        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
+          <PropertyPage view={tour.property} tour={tourViewer} />
+        </main>
+        <footer className="py-6 text-center text-xs text-slate-500">
+          Link expires {formatDate(tour.expiresAt)}. Powered by {siteConfig.name}.
+        </footer>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-dvh flex-col bg-slate-50">
       <header className="border-b border-slate-200/80 bg-white/90 backdrop-blur-sm">
@@ -237,15 +269,7 @@ export function TourShareViewer({ meta }: { meta: TourSharePublicMeta }) {
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <MatterportViewer
-            url={tour.matterportUrl}
-            title={tour.tourName}
-            aspectRatio
-            showToolbar
-            className="rounded-none"
-          />
-        </div>
+        {tourViewer}
       </main>
 
       <footer className="border-t border-slate-200 bg-white">

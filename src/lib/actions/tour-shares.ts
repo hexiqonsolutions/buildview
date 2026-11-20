@@ -4,6 +4,8 @@ import { createHash, randomBytes } from "crypto";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
+import { loadBuyerProperty } from "@/lib/property/load";
+import { hasPropertyContent, type BuyerProperty } from "@/lib/property/buyer-view";
 import { isBuildViewStaffRole } from "@/lib/auth/roles";
 import { requireStaffPermission } from "@/lib/auth/staff";
 import { getErrorMessage, PublicError } from "@/lib/errors/public";
@@ -38,6 +40,8 @@ export type TourSharePublicMeta = {
 
 export type TourShareUnlocked = TourSharePublicMeta & {
   matterportUrl: string;
+  /** Buyer-facing property page (portfolio projects with property details). */
+  property: BuyerProperty | null;
 };
 
 export type TourShareSummary = {
@@ -667,12 +671,21 @@ export async function recordTourShareView(input: {
       loaded.share.expires_at
     );
 
+    // Hidden/empty fields are stripped server-side; never blocks the tour unlock.
+    const property = await loadBuyerProperty(createServiceRoleClient(), loaded.share.project_id)
+      .then((view) => (view && hasPropertyContent(view) ? view : null))
+      .catch((propertyErr) => {
+        console.error("[tour-shares] property load failed:", propertyErr);
+        return null;
+      });
+
     return {
       ok: true,
       viewRecorded,
       tour: {
         ...meta,
         matterportUrl: loaded.tour.matterport_url,
+        property,
       },
     };
   } catch (err) {

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { buildProjectReportSummary } from "@/lib/ai/build-project-report-summary
 import { isOpenIssueStatus } from "@/lib/issues/status";
 import { useOptionalPortalWorkspace } from "@/components/portal/workspace/portal-workspace-provider";
 import type { ProjectMediaGroups } from "@/lib/project-media";
+import type { BuyerProperty } from "@/lib/property/buyer-view";
 import type { SpatialHierarchy } from "@/lib/actions/buildings";
 import type { ProjectTeamMember } from "@/lib/data/projects";
 import type { ProjectProgressionBundle } from "@/lib/progression/types";
@@ -118,6 +119,10 @@ const CreateIssueDialog = dynamic(
     ),
   { ssr: false }
 );
+const PropertyPage = dynamic(
+  () => import("@/components/property/property-page").then((mod) => mod.PropertyPage)
+);
+
 const ProjectMediaShowcase = dynamic(
   () =>
     import("@/components/projects/project-media-showcase").then(
@@ -162,6 +167,10 @@ interface ProjectDetailTabsProps {
   comments?: ProjectCommentWithUser[];
   currentUserId?: string;
   showComments?: boolean;
+  /** Portfolio portal: buyer-facing property page (replaces the plain tour + media overview). */
+  property?: BuyerProperty | null;
+  /** Admin only: "Property details" editor for portfolio projects. */
+  propertyTab?: ReactNode;
 }
 
 export function ProjectDetailTabs({
@@ -188,6 +197,8 @@ export function ProjectDetailTabs({
   comments = [],
   currentUserId,
   showComments = false,
+  propertyTab,
+  property = null,
 }: ProjectDetailTabsProps) {
   const portal = useOptionalPortalWorkspace();
   const isPortfolioIntel = variant === "intel" && portal?.dashboardType === "portfolio";
@@ -214,6 +225,7 @@ export function ProjectDetailTabs({
 
   const tabs = [
     { id: "overview", label: "Overview" },
+    ...(propertyTab ? [{ id: "property", label: "Property details" }] : []),
     { id: "scans", label: isPortfolioIntel ? "Walkthroughs" : "Scans", badge: tours.length },
     ...(variant === "ops"
       ? [{ id: "spatial", label: "Buildings", badge: spatialHierarchy?.buildings.length }]
@@ -265,7 +277,22 @@ export function ProjectDetailTabs({
   return (
     <TabWorkspace variant={variant} defaultTab="overview" tabs={tabs}>
       <TabPanel value="overview" className="mt-4 space-y-5 sm:mt-6 sm:space-y-8">
-        {isPortfolioIntel && projectId ? (
+        {isPortfolioIntel && property ? (
+          <PropertyPage
+            view={property}
+            tour={
+              projectId ? (
+                <ProjectMatterportPanel
+                  projectId={projectId}
+                  tours={tours}
+                  canUpload={canUploadMatterport}
+                />
+              ) : undefined
+            }
+          />
+        ) : null}
+
+        {isPortfolioIntel && !property && projectId ? (
           <ProjectMatterportPanel
             projectId={projectId}
             tours={tours}
@@ -273,7 +300,7 @@ export function ProjectDetailTabs({
           />
         ) : null}
 
-        {isPortfolioIntel && media ? <ProjectMediaShowcase media={media} /> : null}
+        {isPortfolioIntel && !property && media ? <ProjectMediaShowcase media={media} /> : null}
 
         {showConstructionTabs && (
           <ProjectOverview
@@ -323,6 +350,12 @@ export function ProjectDetailTabs({
           />
         ) : null}
       </TabPanel>
+
+      {propertyTab ? (
+        <TabPanel value="property" className="mt-6">
+          {propertyTab}
+        </TabPanel>
+      ) : null}
 
       <TabPanel value="scans" className="mt-6">
         {projectId ? (

@@ -7,7 +7,8 @@ import { getProjectProgression } from "@/lib/data/progression";
 import { EditProjectDetailsDialog } from "@/components/admin/edit-project-details-dialog";
 import { getProjectSpatialHierarchy } from "@/lib/actions/buildings";
 import { getProjectMediaAdmin } from "@/lib/actions/project-media";
-import { ProjectMediaManager } from "@/components/admin/projects/project-media-manager";
+import { PropertyDetailsEditor } from "@/components/admin/projects/property-details-editor";
+import { getPropertyEditorData } from "@/lib/actions/property-details";
 
 /** Multi-photo portfolio uploads need more than the default serverless window. */
 export const maxDuration = 60;
@@ -48,7 +49,7 @@ export default async function AdminProjectDetailPage({
   const allowProgression =
     !isPortfolioClient && currentUser ? canViewProgression(currentUser.role) : false;
 
-  const [detail, invoices, spatialHierarchy, team, projectMedia, clients, progression] =
+  const [detail, invoices, spatialHierarchy, team, projectMedia, clients, progression, propertyData] =
     await Promise.all([
       getProjectDetail(id),
       getProjectInvoices(id),
@@ -59,7 +60,9 @@ export default async function AdminProjectDetailPage({
       allowProgression
         ? getProjectProgression(id, floorSelections).catch(() => null)
         : Promise.resolve(null),
+      isPortfolioClient ? getPropertyEditorData(id).catch(() => null) : Promise.resolve(null),
     ]);
+  const latestTour = detail.tours[0] ?? null;
 
   const allowMatterportUpload = currentUser ? canUploadMatterport(currentUser.role) : false;
   const showComments =
@@ -135,10 +138,6 @@ export default async function AdminProjectDetailPage({
         </div>
       </div>
 
-      {projectMedia?.isPortfolio && (
-        <ProjectMediaManager projectId={project.id} initialMedia={projectMedia.media} />
-      )}
-
       <ProjectWorkspaceTabs
         projectId={project.id}
         projectName={project.name}
@@ -158,6 +157,18 @@ export default async function AdminProjectDetailPage({
         comments={detail.comments}
         currentUserId={currentUser?.id}
         showComments={showComments}
+        propertyTab={
+          isPortfolioClient && propertyData ? (
+            <PropertyDetailsEditor
+              key={propertyData.details?.updated_at ?? "new"}
+              projectId={project.id}
+              initial={propertyData}
+              media={projectMedia?.media ?? { videos: [], photos: [] }}
+              tourUrl={latestTour?.matterport_url ?? null}
+              tourName={latestTour?.name ?? null}
+            />
+          ) : undefined
+        }
       />
     </div>
   );

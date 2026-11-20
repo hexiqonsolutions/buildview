@@ -5,6 +5,8 @@ import { getProjectDetail, getProjectTeam, getProjectWithClient } from "@/lib/da
 import { getProjectProgression } from "@/lib/data/progression";
 import { getProjectSpatialHierarchy } from "@/lib/actions/buildings";
 import { getProjectMedia } from "@/lib/actions/project-media";
+import { getProjectBuyerProperty } from "@/lib/actions/property-details";
+import { hasPropertyContent } from "@/lib/property/buyer-view";
 import { ProjectHeader } from "@/components/projects/project-header";
 import { ProjectHubTabs } from "@/components/intel/projects/project-hub-tabs";
 import { IntelProjectContextBridge } from "@/components/intel/shell/intel-project-context";
@@ -59,7 +61,7 @@ export default async function ProjectDetailPage({
   const allowProgression =
     !isPortfolioClient && userEarly ? canViewProgression(userEarly.role) : false;
 
-  const [detail, invoices, spatialHierarchy, team, media, progression] =
+  const [detail, invoices, spatialHierarchy, team, media, progression, propertyView] =
     await Promise.all([
       getProjectDetail(id).catch(() => EMPTY_DETAIL),
       getProjectInvoices(id).catch(() => []),
@@ -69,7 +71,9 @@ export default async function ProjectDetailPage({
       allowProgression
         ? getProjectProgression(id, floorSelections).catch(() => null)
         : Promise.resolve(null),
+      isPortfolioClient ? getProjectBuyerProperty(id) : Promise.resolve(null),
     ]);
+  const property = propertyView && hasPropertyContent(propertyView) ? propertyView : null;
 
   const user = userEarly;
   const latestTour = detail.tours[0];
@@ -143,6 +147,7 @@ export default async function ProjectDetailPage({
           comments={detail.comments}
           currentUserId={user?.id}
           showComments={showComments}
+          property={property}
         />
       </div>
     </div>
