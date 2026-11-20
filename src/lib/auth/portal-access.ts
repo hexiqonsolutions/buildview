@@ -69,6 +69,19 @@ export async function resolvePostAuthPath(
     return home;
   }
 
+  // BuildView staff always land in the admin portal after signing in; client
+  // portal links (/dashboard, /welcome) never pull them out of it. Admin deep
+  // links and non-portal targets such as /reset-password are kept.
+  if (canAccessAdmin(profile.role)) {
+    const isClientPortalPath =
+      requestedPath === "/dashboard" ||
+      requestedPath.startsWith("/dashboard/") ||
+      requestedPath.startsWith("/dashboard?") ||
+      requestedPath === "/welcome" ||
+      requestedPath.startsWith("/welcome/");
+    return isClientPortalPath ? "/admin" : requestedPath;
+  }
+
   if (requestedPath === "/welcome" || requestedPath.startsWith("/welcome/")) {
     return hasAccess ? "/dashboard" : "/welcome";
   }
