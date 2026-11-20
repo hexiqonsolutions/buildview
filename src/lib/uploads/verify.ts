@@ -45,6 +45,16 @@ export const UPLOAD_RULES = {
     maxBytes: PROJECT_MEDIA_MAX_BYTES.photo,
     mimeTypes: PROJECT_MEDIA_MIME_TYPES.photo,
   },
+  propertyFloorPlan: {
+    bucket: STORAGE_BUCKETS.PROJECT_MEDIA,
+    maxBytes: PROJECT_MEDIA_MAX_BYTES.photo,
+    mimeTypes: PROJECT_MEDIA_MIME_TYPES.photo,
+  },
+  propertyBrochure: {
+    bucket: STORAGE_BUCKETS.PROJECT_MEDIA,
+    maxBytes: 50 * 1024 * 1024,
+    mimeTypes: ["application/pdf"],
+  },
   projectCover: { bucket: STORAGE_BUCKETS.PROJECT_COVERS, maxBytes: MAX_PROJECT_COVER_SIZE, mimeTypes: PROJECT_COVER_MIME_TYPES },
   avatar: { bucket: STORAGE_BUCKETS.AVATARS, maxBytes: MAX_AVATAR_SIZE, mimeTypes: AVATAR_MIME_TYPES },
 } as const satisfies Record<string, UploadRule>;

@@ -523,6 +523,34 @@ export interface Database {
           },
         ];
       };
+      property_details: {
+        Row: PropertyDetails;
+        Insert: PropertyDetailsInsert;
+        Update: Partial<PropertyDetailsInsert>;
+        Relationships: [
+          {
+            foreignKeyName: "property_details_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: true;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      property_units: {
+        Row: PropertyUnit;
+        Insert: PropertyUnitInsert;
+        Update: Partial<PropertyUnitInsert>;
+        Relationships: [
+          {
+            foreignKeyName: "property_units_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       timeline_photos: {
         Row: TimelinePhoto;
         Insert: TimelinePhotoInsert;
@@ -1161,6 +1189,79 @@ export type ProjectMedia = Timestamps &
     file_size: number | null;
     sort_order: number;
   };
+
+export type PropertyType =
+  | "apartment"
+  | "villa"
+  | "row_house"
+  | "plot"
+  | "penthouse"
+  | "studio"
+  | "commercial"
+  | "office"
+  | "retail"
+  | "mixed_use";
+
+export type PropertyStatus = "new_launch" | "under_construction" | "ready_to_move" | "completed";
+
+export type PropertyPriceMode = "show" | "on_request" | "hide";
+
+export type PropertyNearbyPlace = { name: string; type: string | null; distance: string | null };
+
+export type PropertySpecification = { label: string; value: string };
+
+/** Buyer-facing facts for a portfolio project (migration 044). All content nullable. */
+export type PropertyDetails = Timestamps & {
+  id: string;
+  project_id: string;
+  property_type: PropertyType | null;
+  property_status: PropertyStatus | null;
+  possession_date: string | null;
+  rera_number: string | null;
+  towers: number | null;
+  floors: number | null;
+  total_units: number | null;
+  description: string | null;
+  price_min: number | null;
+  price_max: number | null;
+  price_per_sqft: number | null;
+  price_mode: PropertyPriceMode | null;
+  latitude: number | null;
+  longitude: number | null;
+  nearby_places: PropertyNearbyPlace[] | null;
+  amenities: string[] | null;
+  specifications: PropertySpecification[] | null;
+  video_url: string | null;
+  brochure_path: string | null;
+  brochure_file_name: string | null;
+  enquiry_phone: string | null;
+  whatsapp_number: string | null;
+  enquiry_email: string | null;
+  hidden_fields: string[] | null;
+  created_by: string | null;
+  updated_by: string | null;
+};
+
+export type PropertyUnit = Timestamps & {
+  id: string;
+  project_id: string;
+  configuration: string | null;
+  carpet_area_sqft: number | null;
+  built_up_area_sqft: number | null;
+  price: number | null;
+  units_available: number | null;
+  floor_plan_path: string | null;
+  sort_order: number;
+};
+
+export type PropertyDetailsInsert = Partial<Omit<PropertyDetails, "id" | "created_at" | "updated_at">> & {
+  project_id: string;
+};
+
+export type PropertyUnitInsert = Partial<Omit<PropertyUnit, "id" | "created_at" | "updated_at">> & {
+  project_id: string;
+  id?: string;
+};
 
 export type Invoice = Timestamps &
   FullAuditFields & {
