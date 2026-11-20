@@ -28,8 +28,11 @@ const AUTH_ROUTES = ["/login", "/register", "/forgot-password"] as const;
 /** Auth pages that require a valid Supabase session (e.g. password recovery). */
 const SESSION_AUTH_ROUTES = ["/reset-password"] as const;
 
-/** Client portal — requires authenticated, active user. */
+/** Client portal — requires authenticated, active user with an assigned workspace. */
 const CLIENT_ROUTE_PREFIX = "/dashboard";
+
+/** Waiting room for signed-in users who are not assigned a portal yet. */
+const WELCOME_ROUTE_PREFIX = "/welcome";
 
 /** Admin panel — requires authenticated BuildView staff. */
 const ADMIN_ROUTE_PREFIX = "/admin";
@@ -37,7 +40,7 @@ const ADMIN_ROUTE_PREFIX = "/admin";
 /** API/auth callback routes that must bypass protection checks. */
 const PUBLIC_API_PREFIXES = ["/auth/callback"] as const;
 
-type RouteAccess = "public" | "auth" | "session-auth" | "client" | "admin";
+type RouteAccess = "public" | "auth" | "session-auth" | "client" | "welcome" | "admin";
 
 function isPublicApiRoute(pathname: string): boolean {
   return PUBLIC_API_PREFIXES.some((prefix) => pathname.startsWith(prefix));
@@ -60,6 +63,13 @@ function isClientRoute(pathname: string): boolean {
   );
 }
 
+function isWelcomeRoute(pathname: string): boolean {
+  return (
+    pathname === WELCOME_ROUTE_PREFIX ||
+    pathname.startsWith(`${WELCOME_ROUTE_PREFIX}/`)
+  );
+}
+
 function isAdminRoute(pathname: string): boolean {
   return (
     pathname === ADMIN_ROUTE_PREFIX ||
@@ -68,7 +78,7 @@ function isAdminRoute(pathname: string): boolean {
 }
 
 export function isProtectedRoute(pathname: string): boolean {
-  return isClientRoute(pathname) || isAdminRoute(pathname);
+  return isClientRoute(pathname) || isWelcomeRoute(pathname) || isAdminRoute(pathname);
 }
 
 function isPublicMarketingRoute(pathname: string): boolean {
@@ -87,11 +97,20 @@ export function getRouteAccess(pathname: string): RouteAccess {
   if (isAuthRoute(pathname)) return "auth";
   if (isSessionAuthRoute(pathname)) return "session-auth";
   if (isAdminRoute(pathname)) return "admin";
+  if (isWelcomeRoute(pathname)) return "welcome";
   if (isClientRoute(pathname)) return "client";
   return "public";
 }
 
-/** Default landing page after sign-in based on role. */
-export function getDefaultRedirect(role: UserRole): string {
-  return canAccessAdmin(role) ? "/admin" : "/dashboard";
+/**
+ * Default landing page after sign-in.
+ * Unassigned client profiles go to /welcome until BuildView links a client or project.
+ */
+export function getDefaultRedirect(
+  role: UserRole,
+  options?: { hasPortalAccess?: boolean }
+): string {
+  if (canAccessAdmin(role)) return "/admin";
+  if (options?.hasPortalAccess === false) return "/welcome";
+  return "/dashboard";
 }

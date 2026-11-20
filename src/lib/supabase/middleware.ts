@@ -4,7 +4,10 @@ import type { Database } from "@/lib/types";
 import type { UserRole } from "@/lib/types";
 import { canAccessAdmin } from "@/lib/auth/permissions";
 import {
-  getDefaultRedirect,
+  hasAssignedPortalAccessWithClient,
+  resolvePostAuthPath,
+} from "@/lib/auth/portal-access";
+import {
   getRouteAccess,
   isAuthRoute,
   isProtectedRoute,
@@ -13,7 +16,9 @@ import {
 import { getSupabasePublicConfig } from "@/lib/supabase/env";
 
 interface UserProfile {
+  id: string;
   role: UserRole;
+  client_id: string | null;
   is_active: boolean;
   deleted_at: string | null;
 }
@@ -153,10 +158,7 @@ async function runSession(request: NextRequest): Promise<SessionResult | NextRes
     const target = safeRedirectPath(
       request.nextUrl.searchParams.get("redirect")
     );
-    redirectUrl.pathname = getDefaultRedirect(profile.role);
-    if (target !== "/dashboard") {
-      redirectUrl.pathname = target;
-    }
+    redirectUrl.pathname = await resolvePostAuthPath(supabase, profile, target);
     redirectUrl.search = "";
     return redirectWithSessionCookies(redirectUrl, supabaseResponse);
   }
@@ -177,9 +179,28 @@ async function runSession(request: NextRequest): Promise<SessionResult | NextRes
 
     if (routeAccess === "admin" && !canAccessAdmin(profile.role)) {
       const redirectUrl = request.nextUrl.clone();
-      redirectUrl.pathname = "/dashboard";
+      const hasAccess = await hasAssignedPortalAccessWithClient(supabase, profile);
+      redirectUrl.pathname = hasAccess ? "/dashboard" : "/welcome";
       redirectUrl.searchParams.set("error", "unauthorized");
       return redirectWithSessionCookies(redirectUrl, supabaseResponse);
+    }
+
+    if (routeAccess === "client" || routeAccess === "welcome") {
+      const hasAccess = await hasAssignedPortalAccessWithClient(supabase, profile);
+
+      if (routeAccess === "client" && !hasAccess) {
+        const redirectUrl = request.nextUrl.clone();
+        redirectUrl.pathname = "/welcome";
+        redirectUrl.search = "";
+        return redirectWithSessionCookies(redirectUrl, supabaseResponse);
+      }
+
+      if (routeAccess === "welcome" && hasAccess) {
+        const redirectUrl = request.nextUrl.clone();
+        redirectUrl.pathname = "/dashboard";
+        redirectUrl.search = "";
+        return redirectWithSessionCookies(redirectUrl, supabaseResponse);
+      }
     }
   }
 
@@ -192,7 +213,7 @@ async function fetchUserProfile(
 ): Promise<UserProfile | null> {
   const { data } = await supabase
     .from("users")
-    .select("role, is_active, deleted_at")
+    .select("id, role, client_id, is_active, deleted_at")
     .eq("id", userId)
     .single();
 

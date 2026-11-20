@@ -3,6 +3,7 @@
 import { cookies, headers } from "next/headers";
 import { ADMIN_RESTORE_COOKIE, IMPERSONATOR_COOKIE } from "@/lib/auth/impersonation";
 import { redirect } from "next/navigation";
+import { resolvePostAuthPath } from "@/lib/auth/portal-access";
 import { createClient, getUserProfile } from "@/lib/supabase/server";
 import { ensureUserProfile } from "@/lib/supabase/provision-user";
 import { authThrottle } from "@/lib/rate-limit/auth";
@@ -89,7 +90,14 @@ export async function signIn(
   cookieStore.delete(IMPERSONATOR_COOKIE);
   cookieStore.delete(ADMIN_RESTORE_COOKIE);
 
-  redirect(parsed.data.redirect ?? "/dashboard");
+  const profile = await getUserProfile();
+  if (!profile) {
+    redirect("/welcome");
+  }
+
+  redirect(
+    await resolvePostAuthPath(supabase, profile, parsed.data.redirect ?? "/dashboard")
+  );
 }
 
 export async function signUp(
@@ -117,7 +125,7 @@ export async function signUp(
     password: parsed.data.password,
     options: {
       data: { full_name: parsed.data.fullName },
-      emailRedirectTo: `${origin}/auth/callback?next=/dashboard`,
+      emailRedirectTo: `${origin}/auth/callback?next=/welcome`,
     },
   });
 
@@ -136,7 +144,12 @@ export async function signUp(
     await ensureUserProfile(data.user);
   }
 
-  redirect("/dashboard");
+  const profile = await getUserProfile();
+  if (!profile) {
+    redirect("/welcome");
+  }
+
+  redirect(await resolvePostAuthPath(supabase, profile, "/welcome"));
 }
 
 export async function forgotPassword(
@@ -218,7 +231,12 @@ export async function resetPassword(
     };
   }
 
-  redirect("/dashboard");
+  const profile = await getUserProfile();
+  if (!profile) {
+    redirect("/welcome");
+  }
+
+  redirect(await resolvePostAuthPath(supabase, profile, "/dashboard"));
 }
 
 export async function signInWithGoogle(formData: FormData): Promise<void> {

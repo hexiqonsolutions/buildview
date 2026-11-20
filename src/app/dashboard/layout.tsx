@@ -6,6 +6,7 @@ import { getPortalWorkspaceBootstrap } from "@/lib/data/workspace";
 import { PortalLayout } from "@/components/dashboard/portal-layout";
 import { AccountSuspended } from "@/components/portal/account-suspended";
 import { isClientAccountSuspended } from "@/lib/auth/client-suspension";
+import { hasAssignedPortalAccess } from "@/lib/auth/portal-access";
 import { privateMetadata } from "@/lib/seo";
 import type { User } from "@/lib/types";
 
@@ -48,6 +49,16 @@ export default async function DashboardLayout({
 
   if (!user.is_active || user.deleted_at) {
     redirect("/login?error=account_inactive");
+  }
+
+  const hasPortalAccess = await hasAssignedPortalAccess({
+    id: user.id,
+    role: user.role,
+    client_id: user.client_id,
+  });
+
+  if (!hasPortalAccess) {
+    redirect("/welcome");
   }
 
   if (await isClientAccountSuspended(user)) {
