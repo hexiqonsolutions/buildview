@@ -23,6 +23,16 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAdminWorkspace } from "@/components/admin/workspace/admin-workspace-provider";
+import {
+  PORTAL_ICONS,
+  useAdminPortalLens,
+} from "@/components/admin/workspace/admin-portal-lens";
+import {
+  CLIENT_DASHBOARD_TYPES,
+  CLIENT_DASHBOARD_TYPE_DESCRIPTIONS,
+  CLIENT_DASHBOARD_TYPE_LABELS,
+} from "@/lib/portal/dashboard-type";
+import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/currency";
 import { formatDate, formatFileSize, formatRelativeTime } from "@/lib/utils";
 
@@ -56,8 +66,22 @@ export function OperationsDashboard({
   avatarUrl,
 }: OperationsDashboardProps) {
   const router = useRouter();
-  const { hydrated, client, project, clients, projects, clientProjects, setClientId } =
-    useAdminWorkspace();
+  const {
+    hydrated,
+    client,
+    project,
+    clients: allClients,
+    projects,
+    clientProjects,
+    setClientId,
+  } = useAdminWorkspace();
+  const { lens, setLens, portalOfClient, counts } = useAdminPortalLens();
+  const showcaseLens = lens === "portfolio" || lens === "property";
+  // Client cards follow the portal switcher.
+  const clients = allClients.filter((c) => lens === "all" || portalOfClient(c.id) === lens);
+  const lensProjects = projects.filter((p) => lens === "all" || portalOfClient(p.client_id) === lens);
+  const clientCountByPortal = (portal: (typeof CLIENT_DASHBOARD_TYPES)[number]) =>
+    allClients.filter((c) => portalOfClient(c.id) === portal).length;
 
   function activateClient(clientId: string, openWorkspace = false) {
     setClientId(clientId);
@@ -126,6 +150,52 @@ export function OperationsDashboard({
           </p>
         </div>
       </div>
+
+      <section aria-label="Client portals" className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        {CLIENT_DASHBOARD_TYPES.map((portal) => {
+          const Icon = PORTAL_ICONS[portal];
+          const selected = lens === portal;
+          const clientCount = clientCountByPortal(portal);
+          return (
+            <button
+              key={portal}
+              type="button"
+              onClick={() => setLens(selected ? "all" : portal)}
+              aria-pressed={selected}
+              className={cn(
+                "ops-card flex cursor-pointer items-start gap-3 p-4 text-left transition-colors",
+                selected
+                  ? "ring-2 ring-brand-accent-dark"
+                  : "hover:border-slate-300 dark:hover:border-slate-700"
+              )}
+            >
+              <span
+                className={cn(
+                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+                  selected
+                    ? "bg-brand-accent text-slate-950"
+                    : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                )}
+                aria-hidden
+              >
+                <Icon className="h-5 w-5" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold text-slate-900 dark:text-white">
+                  {CLIENT_DASHBOARD_TYPE_LABELS[portal]}
+                </span>
+                <span className="mt-0.5 block text-xs text-slate-500">
+                  {clientCount} client{clientCount === 1 ? "" : "s"} · {counts[portal]} project
+                  {counts[portal] === 1 ? "" : "s"}
+                </span>
+                <span className="mt-1 block text-xs leading-relaxed text-slate-400">
+                  {CLIENT_DASHBOARD_TYPE_DESCRIPTIONS[portal]}
+                </span>
+              </span>
+            </button>
+          );
+        })}
+      </section>
 
       {hydrated && !client && (
         <div className="ops-card overflow-hidden">
@@ -312,6 +382,7 @@ export function OperationsDashboard({
         </div>
       )}
 
+      {!showcaseLens ? (
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {queueItems.map((item) => (
           <Link key={item.label} href={item.href} className="ops-queue-card group cursor-pointer">
@@ -325,22 +396,37 @@ export function OperationsDashboard({
           </Link>
         ))}
       </div>
+      ) : null}
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 xl:grid-cols-4">
-        <AdminMetricCard label="Clients" value={stats.totalClients} icon={Users} />
         <AdminMetricCard
-          label="Projects"
-          value={stats.totalProjects}
+          label={lens === "all" ? "Clients" : `${CLIENT_DASHBOARD_TYPE_LABELS[lens]} clients`}
+          value={lens === "all" ? stats.totalClients : clients.length}
+          icon={Users}
+        />
+        <AdminMetricCard
+          label={lens === "property" ? "Properties" : "Projects"}
+          value={lens === "all" ? stats.totalProjects : lensProjects.length}
           icon={FolderKanban}
-          trend={`${stats.activeProjects} active`}
+          trend={lens === "all" ? `${stats.activeProjects} active` : undefined}
           trendTone="neutral"
         />
-        <AdminMetricCard label="Virtual Tours" value={stats.totalTours} icon={Camera} />
-        <AdminMetricCard
-          label="Projects with no tours"
-          value={stats.pendingUploads}
-          icon={Clock}
-        />
+        {lens === "all" ? (
+          <>
+            <AdminMetricCard label="Virtual Tours" value={stats.totalTours} icon={Camera} />
+            <AdminMetricCard
+              label="Projects with no tours"
+              value={stats.pendingUploads}
+              icon={Clock}
+            />
+          </>
+        ) : showcaseLens ? (
+          <AdminMetricCard
+            label="Hidden from clients"
+            value={lensProjects.filter((p) => p.status === "archived" || p.status === "suspended").length}
+            icon={Clock}
+          />
+        ) : null}
         <AdminMetricCard
           label="Storage Used"
           value={formatStorage(stats.storageUsedBytes)}
@@ -352,13 +438,17 @@ export function OperationsDashboard({
           }
           trendTone="neutral"
         />
-        <AdminMetricCard label="Reports Uploaded" value={stats.totalReports} icon={FileText} />
-        <AdminMetricCard label="Open Issues" value={stats.openIssues} icon={AlertTriangle} />
-        <AdminMetricCard
-          label="Monthly Revenue"
-          value={formatCurrency(stats.monthlyRevenue)}
-          icon={IndianRupee}
-        />
+        {!showcaseLens ? (
+          <>
+            <AdminMetricCard label="Reports Uploaded" value={stats.totalReports} icon={FileText} />
+            <AdminMetricCard label="Open Issues" value={stats.openIssues} icon={AlertTriangle} />
+            <AdminMetricCard
+              label="Monthly Revenue"
+              value={formatCurrency(stats.monthlyRevenue)}
+              icon={IndianRupee}
+            />
+          </>
+        ) : null}
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
