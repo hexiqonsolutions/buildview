@@ -1675,3 +1675,76 @@ export async function sendInvoiceNotification(
   }
 }
 
+
+/** Load a live tour and check the caller may manage tours on its project. */
+async function getManageableTour(tourId: string) {
+  parseOrThrow(uuid("Tour"), tourId);
+  const admin = createServiceRoleClient();
+  const { data: tour, error } = await admin
+    .from("project_tours")
+    .select("id, project_id, name")
+    .eq("id", tourId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (error) throw internalError("getManageableTour", error);
+  if (!tour) throw new PublicError("Tour not found.");
+  await assertCanUploadToProject(tour.project_id, "matterport");
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return { admin, tour, userId: user?.id ?? null };
+}
+
+function revalidateTourPaths(projectId: string) {
+  revalidatePath("/admin/tours");
+  revalidatePath(`/admin/projects/${projectId}`);
+  revalidatePath("/dashboard/projects");
+  revalidatePath(`/dashboard/projects/${projectId}`);
+  revalidatePath("/dashboard");
+}
+
+/** Revoke a tour's active public share links so they stop working. */
+async function revokeTourShareLinks(
+  admin: ReturnType<typeof createServiceRoleClient>,
+  tourId: string
+) {
+  const { error } = await admin
+    .from("tour_shares")
+    .update({ revoked_at: new Date().toISOString() })
+    .eq("tour_id", tourId)
+    .is("revoked_at", null);
+  if (error) console.error("[tours] revoke share links failed:", error.message);
+}
+
+/**
+ * Archive (hide from clients and share links, keep for staff) or restore a tour.
+ * Needs migration 046 (project_tours.archived_at).
+ */
+export async function setTourArchived(tourId: string, archived: boolean) {
+  const { admin, tour, userId } = await getManageableTour(tourId);
+  const { error } = await admin
+    .from("project_tours")
+    .update({ archived_at: archived ? new Date().toISOString() : null, updated_by: userId })
+    .eq("id", tour.id);
+  if (error) {
+    if (/archived_at/.test(error.message)) {
+      throw new PublicError("Archiving needs database migration 046. Run it in Supabase first.");
+    }
+    throw internalError("setTourArchived", error);
+  }
+  if (archived) await revokeTourShareLinks(admin, tour.id);
+  revalidateTourPaths(tour.project_id);
+}
+
+/** Soft-delete a tour (recoverable from the database) and revoke its share links. */
+export async function deleteTour(tourId: string) {
+  const { admin, tour, userId } = await getManageableTour(tourId);
+  const { error } = await admin
+    .from("project_tours")
+    .update({ deleted_at: new Date().toISOString(), deleted_by: userId })
+    .eq("id", tour.id);
+  if (error) throw internalError("deleteTour", error);
+  await revokeTourShareLinks(admin, tour.id);
+  revalidateTourPaths(tour.project_id);
+}

@@ -986,6 +986,8 @@ export type ProjectTour = Timestamps &
     sort_order: number;
     building_id?: string | null;
     floor_id?: string | null;
+    /** Hidden from clients and share links when set (migration 046). */
+    archived_at?: string | null;
   };
 
 /** Public shareable tour link (no login). Expires after 10 days unless revoked. */
@@ -1722,7 +1724,8 @@ export type ClientUpdate = Partial<ClientInsert> & Partial<SoftDeleteFields>;
 export type UserUpdate = Partial<UserInsert> & Partial<SoftDeleteFields>;
 export type ProjectUpdate = Partial<ProjectInsert> & Partial<SoftDeleteFields>;
 export type ProjectAssignmentUpdate = Partial<ProjectAssignmentInsert> & Partial<SoftDeleteFields>;
-export type ProjectTourUpdate = Partial<ProjectTourInsert>;
+export type ProjectTourUpdate = Partial<ProjectTourInsert> &
+  Partial<SoftDeleteFields> & { archived_at?: string | null };
 export type ReportUpdate = Partial<ReportInsert>;
 export type DocumentFolderUpdate = Partial<DocumentFolderInsert>;
 export type DocumentUpdate = Partial<DocumentInsert>;

@@ -176,7 +176,8 @@ async function loadPublicShareByToken(token: string): Promise<{
     .is("deleted_at", null)
     .maybeSingle();
 
-  if (!tour) return null;
+  // Archived tours are hidden from buyers too (migration 046).
+  if (!tour || (tour as { archived_at?: string | null }).archived_at) return null;
 
   const { data: project } = await admin
     .from("projects")

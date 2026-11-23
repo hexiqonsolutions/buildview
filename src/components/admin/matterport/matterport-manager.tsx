@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   Camera,
   MoreHorizontal,
@@ -11,7 +12,21 @@ import {
   ImagePlus,
   Share2,
   Trash2,
+  ArchiveRestore,
+  Loader2,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { deleteTour, setTourArchived } from "@/lib/actions/admin";
+import { getErrorMessage } from "@/lib/errors/public";
 import { useAdminWorkspace } from "@/components/admin/workspace/admin-workspace-provider";
 import {
   PORTAL_ICONS,
@@ -47,6 +62,26 @@ export function MatterportManager({ tours }: { tours: TourRow[] }) {
   const { hydrated, scope, clientProjects, project, projects } = useAdminWorkspace();
   const { lens, portalOfProject } = useAdminPortalLens();
   const [thumbnailTour, setThumbnailTour] = useState<TourRow | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<TourRow | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
+  const router = useRouter();
+
+  function runTourAction(tourId: string, action: () => Promise<void>) {
+    setActionError(null);
+    setBusyId(tourId);
+    startTransition(async () => {
+      try {
+        await action();
+        router.refresh();
+      } catch (err) {
+        setActionError(getErrorMessage(err, "Could not update the tour."));
+      } finally {
+        setBusyId(null);
+      }
+    });
+  }
 
   const filtered = useMemo(() => {
     const ids = new Set(clientProjects.map((p) => p.id));
@@ -99,6 +134,12 @@ export function MatterportManager({ tours }: { tours: TourRow[] }) {
         {lens !== "all" ? ` · ${PORTAL_LENS_SHORT_LABELS[lens]}` : ""}
       </p>
 
+      {actionError ? (
+        <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40">
+          {actionError}
+        </p>
+      ) : null}
+
       {filtered.length === 0 ? (
         <div className="ops-card flex min-h-[240px] flex-col items-center justify-center p-10 text-center">
           <Camera className="mb-3 h-10 w-10 text-slate-300" />
@@ -147,8 +188,16 @@ export function MatterportManager({ tours }: { tours: TourRow[] }) {
             return (
               <article
                 key={tour.id}
-                className="ops-card group overflow-hidden transition-shadow hover:shadow-md"
+                className={
+                  "ops-card group relative overflow-hidden transition-shadow hover:shadow-md" +
+                  (tour.archived_at ? " opacity-70" : "")
+                }
               >
+                {busyId === tour.id ? (
+                  <span className="absolute inset-0 z-20 flex items-center justify-center bg-white/60 dark:bg-slate-950/60">
+                    <Loader2 className="h-5 w-5 animate-spin text-slate-600" aria-label="Working" />
+                  </span>
+                ) : null}
                 <div className="relative aspect-video bg-slate-100 dark:bg-slate-800">
                   {tour.thumbnail_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -215,10 +264,26 @@ export function MatterportManager({ tours }: { tours: TourRow[] }) {
                             }
                           />
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Archive className="mr-2 h-4 w-4" /> Archive
+                        <DropdownMenuItem
+                          onSelect={() =>
+                            runTourAction(tour.id, () => setTourArchived(tour.id, !tour.archived_at))
+                          }
+                        >
+                          {tour.archived_at ? (
+                            <>
+                              <ArchiveRestore className="mr-2 h-4 w-4" /> Restore for client
+                            </>
+                          ) : (
+                            <>
+                              <Archive className="mr-2 h-4 w-4" /> Archive
+                            </>
+                          )}
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-red-600">
+                        <DropdownMenuItem
+                          className="text-red-600"
+                          // Let the menu close before the dialog opens (Radix focus lock).
+                          onSelect={() => window.setTimeout(() => setDeleteTarget(tour), 0)}
+                        >
                           <Trash2 className="mr-2 h-4 w-4" /> Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -234,6 +299,11 @@ export function MatterportManager({ tours }: { tours: TourRow[] }) {
                       </h3>
                       <p className="mt-0.5 text-xs text-slate-500">
                         {formatDate(tour.capture_date ?? tour.created_at)}
+                        {tour.archived_at ? (
+                          <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                            Archived · hidden from client
+                          </span>
+                        ) : null}
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-0.5">
@@ -283,6 +353,31 @@ export function MatterportManager({ tours }: { tours: TourRow[] }) {
           })}
         </div>
       )}
+
+      <AlertDialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete “{deleteTarget?.name}”?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The tour disappears from the admin, the client portal and every share link for it.
+              To keep it for staff but hide it from the client, use Archive instead.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 text-white hover:bg-red-700"
+              onClick={() => {
+                const target = deleteTarget;
+                setDeleteTarget(null);
+                if (target) runTourAction(target.id, () => deleteTour(target.id));
+              }}
+            >
+              Delete tour
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <TourThumbnailDialog
         tour={thumbnailTour}
