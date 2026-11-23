@@ -18,6 +18,8 @@ import {
   ChevronRight,
   ChevronLeft,
   Sparkles,
+  Home,
+  ArrowRight,
 } from "lucide-react";
 import { useAdminWorkspace, useOptionalAdminWorkspace } from "@/components/admin/workspace/admin-workspace-provider";
 import { useOptionalPortalWorkspace } from "@/components/portal/workspace/portal-workspace-provider";
@@ -679,16 +681,21 @@ export function UploadWizard({
           <div className="space-y-3">
             <CategoryStep category={category} onSelect={setCategory} categories={categories} />
             {mode === "admin" && portal === "property" && projectId ? (
-              <p className="text-sm text-slate-500">
-                Brochure, floor plans, prices and amenities live in{" "}
-                <Link
-                  href={`/admin/projects/${projectId}?tab=property`}
-                  className="font-medium text-slate-900 underline underline-offset-2 dark:text-white"
-                >
-                  Property details
-                </Link>
-                .
-              </p>
+              <Link
+                href={`/admin/projects/${projectId}?tab=property`}
+                className="flex items-center gap-3 rounded-xl border border-brand-accent-dark/40 bg-brand-accent/10 px-4 py-3 text-left transition-colors hover:bg-brand-accent/20"
+              >
+                <Home className="h-5 w-5 shrink-0 text-brand-accent-dark" aria-hidden />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold text-slate-900 dark:text-white">
+                    Property details
+                  </span>
+                  <span className="block text-xs text-slate-500">
+                    Prices, unit types and floor plans, amenities, location, brochure
+                  </span>
+                </span>
+                <ArrowRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+              </Link>
             ) : null}
           </div>
         )}

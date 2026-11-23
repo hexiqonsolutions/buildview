@@ -19,6 +19,7 @@ import {
   MapPin,
   MoreHorizontal,
   ExternalLink,
+  Home,
   ArchiveRestore,
   Trash2,
   Loader2,
@@ -565,6 +566,14 @@ function ProjectActionsMenu({
               Open Project
             </Link>
           </DropdownMenuItem>
+          {isAdmin && project.clientDashboardType === "property" ? (
+            <DropdownMenuItem asChild>
+              <Link href={`/admin/projects/${project.id}?tab=property`}>
+                <Home className="mr-2 h-4 w-4" />
+                Property details
+              </Link>
+            </DropdownMenuItem>
+          ) : null}
           {isAdmin && (
             <DropdownMenuItem
               onSelect={() => {

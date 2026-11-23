@@ -20,7 +20,7 @@ import { ClientWorkspaceSync } from "@/components/admin/workspace/client-workspa
 import { OpsWorkspaceBanner } from "@/components/admin/ops/ops-workspace-banner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Building2, Pencil, Upload } from "lucide-react";
+import { ArrowLeft, Building2, Home, Pencil, Upload } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import {
   CLIENT_DASHBOARD_TYPE_LABELS,
@@ -119,6 +119,14 @@ export default async function AdminProjectDetailPage({
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
+            {isPropertyClient ? (
+              <Button asChild size="sm" className="ops-btn-primary h-9">
+                <Link href={`/admin/projects/${project.id}?tab=property`}>
+                  <Home className="mr-1.5 h-4 w-4" />
+                  Property details
+                </Link>
+              </Button>
+            ) : null}
             <EditProjectDetailsDialog
               project={project}
               clients={clients}
