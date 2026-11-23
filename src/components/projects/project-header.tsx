@@ -127,18 +127,7 @@ export function ProjectHeader({
 
           <div className="relative flex min-h-[220px] flex-col justify-end p-5 md:min-h-[280px] md:p-6">
             <div className="mb-2 flex flex-wrap items-center gap-1.5">
-              {canUpdateStatus ? (
-                <UpdateProjectStatusSelect
-                  projectId={project.id}
-                  currentStatus={project.status}
-                  allowStaffStatuses={allowStaffStatuses}
-                  triggerClassName="h-7 w-31 border-white/20 bg-white/95 text-[11px] shadow-xs"
-                />
-              ) : (
-                <span className="rounded-full bg-white/95 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-slate-900">
-                  {formatStatus(project.status)}
-                </span>
-              )}
+              {/* Showcase portals have no construction stages, so no status here. */}
               {category && (
                 <span className="rounded-full bg-white/15 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white backdrop-blur-sm">
                   {category}

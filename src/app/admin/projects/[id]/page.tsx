@@ -22,7 +22,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Building2, Pencil, Upload } from "lucide-react";
 import { formatDate } from "@/lib/utils";
-import { isPropertyDashboard, isShowcaseDashboard } from "@/lib/portal/dashboard-type";
+import {
+  CLIENT_DASHBOARD_TYPE_LABELS,
+  isPropertyDashboard,
+  isShowcaseDashboard,
+} from "@/lib/portal/dashboard-type";
 import { ProjectMediaManager } from "@/components/admin/projects/project-media-manager";
 
 export default async function AdminProjectDetailPage({
@@ -101,8 +105,14 @@ export default async function AdminProjectDetailPage({
                 {client?.company_name || client?.name} · {project.location || "No location"}
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
-                <Badge className="capitalize">{project.status.replace(/_/g, " ")}</Badge>
-                {project.start_date && (
+                {isPortfolioClient ? (
+                  <Badge variant="outline">
+                    {CLIENT_DASHBOARD_TYPE_LABELS[client?.dashboard_type ?? "portfolio"]}
+                  </Badge>
+                ) : (
+                  <Badge className="capitalize">{project.status.replace(/_/g, " ")}</Badge>
+                )}
+                {!isPortfolioClient && project.start_date && (
                   <Badge variant="outline">Started {formatDate(project.start_date)}</Badge>
                 )}
               </div>
