@@ -724,7 +724,7 @@ function ProjectTableRow({
             <p className="truncate font-medium text-slate-900 group-hover:text-brand-accent-dark dark:text-white">
               {project.name}
             </p>
-            <p className="truncate text-xs text-slate-500">{project.stage}</p>
+            {showcase ? null : <p className="truncate text-xs text-slate-500">{project.stage}</p>}
             <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
               {project.projectCode}
             </p>
@@ -770,12 +770,26 @@ function ProjectTableRow({
             className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-700 hover:text-slate-900 dark:text-slate-300"
           >
             <Camera className="h-3.5 w-3.5 text-brand-accent-dark" />
-            {project.tourCount} {project.tourCount === 1 ? "Tour" : "Tours"}
+            {project.tourCount}{" "}
+            {showcase
+              ? project.tourCount === 1
+                ? "walkthrough"
+                : "walkthroughs"
+              : project.tourCount === 1
+                ? "Tour"
+                : "Tours"}
           </Link>
         ) : (
           <span className="inline-flex items-center gap-1.5 text-sm text-slate-600">
             <Camera className="h-3.5 w-3.5 text-brand-accent-dark" />
-            {project.tourCount} {project.tourCount === 1 ? "Tour" : "Tours"}
+            {project.tourCount}{" "}
+            {showcase
+              ? project.tourCount === 1
+                ? "walkthrough"
+                : "walkthroughs"
+              : project.tourCount === 1
+                ? "Tour"
+                : "Tours"}
           </span>
         )}
       </TableCell>
@@ -805,12 +819,22 @@ function ProjectTableRow({
         )}
       </TableCell>
       <TableCell className="text-right">
+        <div className="flex items-center justify-end gap-2">
+        {isAdmin && rowPortal(project) === "property" ? (
+          <Button asChild size="sm" variant="outline" className="h-8 whitespace-nowrap">
+            <Link href={`/admin/projects/${project.id}?tab=property`}>
+              <Home className="mr-1.5 h-3.5 w-3.5" />
+              Property details
+            </Link>
+          </Button>
+        ) : null}
         <ProjectActionsMenu
           project={project}
           projectBase={projectBase}
           isAdmin={isAdmin}
           clients={clients}
         />
+        </div>
       </TableCell>
     </TableRow>
   );
@@ -866,7 +890,10 @@ function ProjectGridCard({
             >
               {project.name}
             </Link>
-            <p className="text-xs text-slate-500">{project.projectCode} · {project.stage}</p>
+            <p className="text-xs text-slate-500">
+              {project.projectCode}
+              {isAdmin && isShowcaseDashboard(rowPortal(project)) ? "" : ` · ${project.stage}`}
+            </p>
           </div>
           <ProjectActionsMenu
             project={project}
