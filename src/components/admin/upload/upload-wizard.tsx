@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -72,6 +72,23 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { getErrorMessage, isUnclassifiedServerError, PublicError } from "@/lib/errors/public";
+import { useOptionalAdminPortalLens } from "@/components/admin/workspace/admin-portal-lens";
+import { isShowcaseDashboard, type ClientDashboardType } from "@/lib/portal/dashboard-type";
+import { addProjectMediaBatch } from "@/lib/actions/project-media";
+import {
+  PROJECT_MEDIA_ACCEPT,
+  PROJECT_MEDIA_MIME_TYPES,
+  resolveProjectMediaMime,
+  titleFromFileName,
+  validateProjectMediaFile,
+} from "@/lib/project-media";
+import { buildStoragePath, uploadFileToStorage } from "@/lib/supabase/storage";
+import { STORAGE_BUCKETS } from "@/lib/types";
+
+/** Videos (incl. GIF) go to the video strip; everything else is a photo. */
+function mediaTypeOf(file: File): "photo" | "video" {
+  return PROJECT_MEDIA_MIME_TYPES.video.includes(resolveProjectMediaMime(file)) ? "video" : "photo";
+}
 
 const ADMIN_CATEGORIES: {
   id: UploadCategory;
@@ -91,6 +108,17 @@ const ADMIN_CATEGORIES: {
   { id: "timeline_update", label: "Timeline Update", icon: Calendar, description: "Milestone note" },
   { id: "issue", label: "Issue", icon: AlertTriangle, description: "Report a site issue" },
   { id: "other", label: "Other", icon: FolderOpen, description: "General document" },
+  { id: "project_media", label: "Photos & videos", icon: ImageIcon, description: "Showcase gallery" },
+];
+
+/**
+ * Interior and Real Estate portals only use walkthroughs, gallery media and
+ * documents, so their upload types are cut to those three.
+ */
+const SHOWCASE_CATEGORIES: typeof ADMIN_CATEGORIES = [
+  { id: "matterport", label: "Virtual Tour", icon: Camera, description: "360° walkthrough link" },
+  { id: "project_media", label: "Photos & videos", icon: ImageIcon, description: "Gallery on the client page" },
+  { id: "other", label: "Document", icon: FolderOpen, description: "PDF or file for the client" },
 ];
 
 /** Rethrows a server-side rejection client-side so its message reaches the error banner. */
@@ -100,7 +128,7 @@ function unwrapUploadResult(result: UploadResult): UploadResult {
 }
 
 const PORTAL_CATEGORIES = ADMIN_CATEGORIES.filter(
-  (c) => c.id !== "invoices_doc" && c.id !== "matterport"
+  (c) => c.id !== "invoices_doc" && c.id !== "matterport" && c.id !== "project_media"
 );
 
 type UploadWizardProps = {
@@ -147,7 +175,22 @@ export function UploadWizard({
         : null),
     [resolvedProject, lockedProjectId, lockedProjectName]
   );
-  const clients = adminWs?.clients ?? [];
+  const lensCtx = useOptionalAdminPortalLens();
+  const lens = lensCtx?.lens ?? "all";
+  // In a portal lens, only that portal's clients are offered.
+  const clients = (adminWs?.clients ?? []).filter(
+    (c) => lens === "all" || (c.dashboard_type ?? "construction") === lens
+  );
+  // Portal of the upload target decides which upload types make sense.
+  const portal: ClientDashboardType | null =
+    mode === "portal"
+      ? (portalWs?.dashboardType ?? null)
+      : client
+        ? ((client.dashboard_type as ClientDashboardType | null | undefined) ?? "construction")
+        : lens === "all"
+          ? null
+          : lens;
+  const showcase = isShowcaseDashboard(portal);
   const clientProjects = adminWs?.clientProjects ?? portalWs?.projects ?? [];
   const buildings = adminWs?.buildings ?? portalWs?.buildings ?? [];
   const floors = adminWs?.floors ?? portalWs?.floors ?? [];
@@ -168,10 +211,17 @@ export function UploadWizard({
   const hydrated = adminWs?.hydrated ?? portalWs?.hydrated ?? true;
 
   const categories = useMemo(() => {
-    const base = mode === "portal" ? PORTAL_CATEGORIES : ADMIN_CATEGORIES;
-    if (canUploadMatterport) return base;
-    return base.filter((c) => c.id !== "matterport");
-  }, [mode, canUploadMatterport]);
+    let base =
+      mode === "portal"
+        ? showcase
+          ? PORTAL_CATEGORIES.filter((c) => c.id === "other").map((c) => ({ ...c, label: "Document" }))
+          : PORTAL_CATEGORIES
+        : showcase
+          ? SHOWCASE_CATEGORIES
+          : ADMIN_CATEGORIES.filter((c) => c.id !== "project_media");
+    if (!canUploadMatterport) base = base.filter((c) => c.id !== "matterport");
+    return base;
+  }, [mode, canUploadMatterport, showcase]);
 
   const isLocked = Boolean(lockedProjectId);
 
@@ -205,6 +255,13 @@ export function UploadWizard({
   const [invoiceAmount, setInvoiceAmount] = useState("");
 
   const projectId = lockedProjectId ?? scope.projectId ?? "";
+
+  // Switching to a client in another portal drops a type that portal doesn't offer.
+  useEffect(() => {
+    if (categories.length > 0 && !categories.some((c) => c.id === category)) {
+      setCategory(categories[0].id);
+    }
+  }, [categories, category]);
   const building = scope.building !== "all" ? scope.building : "";
   const floor = scope.floor !== "all" ? scope.floor : "";
   const automation = useMemo(() => getAutomationPreview(category), [category]);
@@ -263,6 +320,11 @@ export function UploadWizard({
       } else if (categoryIsIssue(category)) {
         const err = validateIssueImageFiles(files);
         if (err) return err;
+      } else if (category === "project_media") {
+        for (const file of files) {
+          const err = validateProjectMediaFile(file, mediaTypeOf(file));
+          if (err) return err;
+        }
       }
     }
     return null;
@@ -426,6 +488,39 @@ export function UploadWizard({
       }));
     }
 
+    if (category === "project_media") {
+      const uploaded: Parameters<typeof addProjectMediaBatch>[0]["items"] = [];
+      for (const file of files) {
+        const mime = resolveProjectMediaMime(file);
+        const upload = await uploadFileToStorage(
+          STORAGE_BUCKETS.PROJECT_MEDIA,
+          buildStoragePath(projectId, file.name),
+          file,
+          { contentType: mime, timeoutMs: 120_000 }
+        );
+        uploaded.push({
+          project_id: projectId,
+          media_type: mediaTypeOf(file),
+          title: titleFromFileName(file.name),
+          storage_path: upload.path,
+          file_name: upload.fileName,
+          mime_type: upload.mimeType,
+          file_size: upload.fileSize,
+        });
+      }
+      // The batch action expects one media type per call.
+      const errors: string[] = [];
+      for (const type of ["photo", "video"] as const) {
+        const items = uploaded.filter((u) => u.media_type === type);
+        for (let i = 0; i < items.length; i += 5) {
+          const res = await addProjectMediaBatch({ items: items.slice(i, i + 5) });
+          errors.push(...res.errors);
+        }
+      }
+      if (errors.length > 0) throw new PublicError(errors.join(" "));
+      return {};
+    }
+
     if (category in DOC_CATEGORY_MAP) {
       const file = files[0];
       const docCat = (DOC_CATEGORY_MAP[category] ?? "other") as DocumentCategory;
@@ -453,9 +548,10 @@ export function UploadWizard({
       return;
     }
 
-    const next = category === "site_photos" || categoryIsIssue(category)
-      ? [...files, ...Array.from(selected)]
-      : [selected[0]];
+    const next =
+      category === "site_photos" || categoryIsIssue(category) || category === "project_media"
+        ? [...files, ...Array.from(selected)]
+        : [selected[0]];
 
     if (REPORT_TYPE_CATEGORIES.has(category)) {
       const err = validateReportFile(next[0]);
@@ -474,6 +570,14 @@ export function UploadWizard({
       if (err) {
         setError(err);
         return;
+      }
+    } else if (category === "project_media") {
+      for (const file of next) {
+        const err = validateProjectMediaFile(file, mediaTypeOf(file));
+        if (err) {
+          setError(err);
+          return;
+        }
       }
     }
 
@@ -572,7 +676,21 @@ export function UploadWizard({
         )}
 
         {step === "category" && (
-          <CategoryStep category={category} onSelect={setCategory} categories={categories} />
+          <div className="space-y-3">
+            <CategoryStep category={category} onSelect={setCategory} categories={categories} />
+            {mode === "admin" && portal === "property" && projectId ? (
+              <p className="text-sm text-slate-500">
+                Brochure, floor plans, prices and amenities live in{" "}
+                <Link
+                  href={`/admin/projects/${projectId}?tab=property`}
+                  className="font-medium text-slate-900 underline underline-offset-2 dark:text-white"
+                >
+                  Property details
+                </Link>
+                .
+              </p>
+            ) : null}
+          </div>
         )}
 
         {step === "details" && (
@@ -1118,7 +1236,8 @@ function FileDropZone({
   fileRef: React.RefObject<HTMLInputElement | null>;
   onFilePick: (files: FileList | null) => void;
 }) {
-  const multi = category === "site_photos" || categoryIsIssue(category);
+  const multi =
+    category === "site_photos" || categoryIsIssue(category) || category === "project_media";
 
   return (
     <div
@@ -1143,7 +1262,13 @@ function FileDropZone({
         type="file"
         className="hidden"
         multiple={multi}
-        accept={REPORT_TYPE_CATEGORIES.has(category) ? "application/pdf" : undefined}
+        accept={
+          REPORT_TYPE_CATEGORIES.has(category)
+            ? "application/pdf"
+            : category === "project_media"
+              ? `${PROJECT_MEDIA_ACCEPT.photo},${PROJECT_MEDIA_ACCEPT.video}`
+              : undefined
+        }
         onChange={(e) => onFilePick(e.target.files)}
       />
       <Upload className="mb-2 h-8 w-8 text-slate-300" />

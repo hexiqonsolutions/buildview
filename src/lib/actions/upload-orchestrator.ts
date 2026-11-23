@@ -56,7 +56,9 @@ export type UploadCategory =
   | "site_photos"
   | "timeline_update"
   | "issue"
-  | "other";
+  | "other"
+  /** Interior / Real Estate showcase photos & videos (project-media bucket). */
+  | "project_media";
 
 export type UploadResult = {
   /** Set when the input was rejected; thrown errors are masked in production, returned ones are not. */

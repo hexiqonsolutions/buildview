@@ -29,6 +29,9 @@ export function resolveUploadCategoryFromParam(type: string | null): UploadCateg
     case "timeline":
     case "timeline_update":
       return "timeline_update";
+    case "media":
+    case "project_media":
+      return "project_media";
     default:
       return "matterport";
   }
@@ -97,6 +100,14 @@ export function getAutomationPreview(category: UploadCategory): AutomationPrevie
         clientNotify: false,
         adminNotify: false,
       };
+    case "project_media":
+      return {
+        label: "Photos & videos",
+        timeline: false,
+        activity: true,
+        clientNotify: false,
+        adminNotify: false,
+      };
     case "issue":
       return {
         label: "Issue",
@@ -140,7 +151,8 @@ export function categoryNeedsFile(category: UploadCategory): boolean {
     category in DOC_CATEGORY_MAP ||
     categoryIsInvoice(category) ||
     category === "site_photos" ||
-    category === "issue"
+    category === "issue" ||
+    category === "project_media"
   );
 }
 
