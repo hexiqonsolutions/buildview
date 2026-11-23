@@ -31,6 +31,8 @@ import {
 import type { Client, PortfolioCategory } from "@/lib/types";
 import { PORTFOLIO_CATEGORY_LABELS } from "@/lib/types";
 import { getErrorMessage } from "@/lib/errors/public";
+import { useOptionalAdminPortalLens } from "@/components/admin/workspace/admin-portal-lens";
+import { CLIENT_DASHBOARD_TYPE_LABELS, isShowcaseDashboard } from "@/lib/portal/dashboard-type";
 
 function parseFloorNames(raw: string): string[] {
   return raw
@@ -58,6 +60,16 @@ export function CreateProjectForm({
   const [floorNames, setFloorNames] = useState("");
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+  const lensCtx = useOptionalAdminPortalLens();
+  const lens = lensCtx?.lens ?? "all";
+  // In a portal lens, only that portal's clients can own the new project.
+  const lensClients = clients.filter(
+    (c) => lens === "all" || (c.dashboard_type ?? "construction") === lens
+  );
+  const selectedClient = clients.find((c) => c.id === clientId) ?? null;
+  const portal = selectedClient?.dashboard_type ?? (lens === "all" ? null : lens);
+  // Stages, dates and site structure only mean something for construction sites.
+  const isShowcase = isShowcaseDashboard(portal);
 
   useEffect(() => {
     if (!thumbnailFile) {
@@ -121,9 +133,10 @@ export function CreateProjectForm({
         client_id: clientId,
         client_name: client?.company_name || client?.name || "",
         location: form.get("location") as string,
-        start_date: form.get("start_date") as string,
-        completion_date: form.get("completion_date") as string,
-        status,
+        start_date: (form.get("start_date") as string | null) ?? "",
+        completion_date: (form.get("completion_date") as string | null) ?? "",
+        // Showcase projects are finished work; their stage is never shown.
+        status: isShowcase ? "completed" : status,
         description: form.get("description") as string,
         area_sqft: areaSqft && Number.isFinite(areaSqft) ? areaSqft : null,
         portfolio_category: (portfolioCategory || null) as PortfolioCategory | null,
@@ -246,19 +259,26 @@ export function CreateProjectForm({
                 <SelectValue placeholder="Select client" />
               </SelectTrigger>
               <SelectContent>
-                {clients.map((c) => (
+                {lensClients.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.company_name || c.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {portal ? (
+              <p className="text-xs text-slate-500">
+                {CLIENT_DASHBOARD_TYPE_LABELS[portal]} client
+                {isShowcase ? ": no stages or site structure needed." : "."}
+              </p>
+            ) : null}
           </div>
           <div className="space-y-2">
             <Label>Location</Label>
             <Input name="location" required placeholder="Navi Mumbai, India" />
           </div>
 
+          {!isShowcase ? (
           <div className="space-y-3 rounded-xl border border-slate-200/80 bg-slate-50/60 p-3 dark:border-slate-800 dark:bg-slate-900/40">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
@@ -316,6 +336,7 @@ export function CreateProjectForm({
               </div>
             </div>
           </div>
+          ) : null}
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -343,6 +364,8 @@ export function CreateProjectForm({
               </Select>
             </div>
           </div>
+          {!isShowcase ? (
+          <>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Start Date</Label>
@@ -367,6 +390,8 @@ export function CreateProjectForm({
               </SelectContent>
             </Select>
           </div>
+          </>
+          ) : null}
           <div className="space-y-2">
             <Label>Description</Label>
             <Textarea name="description" rows={3} />

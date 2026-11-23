@@ -68,6 +68,12 @@ import {
 import { formatDate, formatRelativeTime, formatStatus } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { UpdateProjectStatusSelect } from "@/components/shared/update-project-status-select";
+import {
+  PORTAL_ICONS,
+  PORTAL_LENS_SHORT_LABELS,
+  useOptionalAdminPortalLens,
+} from "@/components/admin/workspace/admin-portal-lens";
+import { isShowcaseDashboard, type ClientDashboardType } from "@/lib/portal/dashboard-type";
 import { getErrorMessage } from "@/lib/errors/public";
 
 type ViewMode = "list" | "grid";
@@ -124,8 +130,50 @@ function exportProjectsCsv(projects: AdminProjectRow[]) {
   URL.revokeObjectURL(url);
 }
 
+function rowPortal(project: AdminProjectRow): ClientDashboardType {
+  return project.clientDashboardType ?? "construction";
+}
+
+/** Archived / suspended projects are hidden from the client portal. */
+function isHiddenFromClient(project: AdminProjectRow): boolean {
+  return project.status === "archived" || project.status === "suspended";
+}
+
+/** Showcase projects have no construction stages, only whether the client can see them. */
+function VisibilityPill({ project }: { project: AdminProjectRow }) {
+  const hidden = isHiddenFromClient(project);
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium",
+        hidden
+          ? "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+          : "bg-brand-accent/15 text-brand-accent-dark"
+      )}
+      title={hidden ? "Hidden from the client portal" : "Visible in the client portal"}
+    >
+      {hidden ? "Hidden" : "Live"}
+    </span>
+  );
+}
+
+function PortalBadge({ portal }: { portal: ClientDashboardType }) {
+  const Icon = PORTAL_ICONS[portal];
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-300">
+      <Icon className="h-3.5 w-3.5 text-slate-400" aria-hidden />
+      {PORTAL_LENS_SHORT_LABELS[portal]}
+    </span>
+  );
+}
+
 export function AdminProjectsView({ data, clients, mode = "admin" }: AdminProjectsViewProps) {
   const isAdmin = mode === "admin";
+  const lensCtx = useOptionalAdminPortalLens();
+  const lens = isAdmin && lensCtx ? lensCtx.lens : "all";
+  const showcaseLens = lens === "portfolio" || lens === "property";
+  const showConstructionColumns = !showcaseLens;
+  const showPortalColumn = isAdmin && lens === "all";
   const projectBase = isAdmin ? "/admin/projects" : "/dashboard/projects";
   const [clientFilter, setClientFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | "all">("all");
@@ -138,12 +186,13 @@ export function AdminProjectsView({ data, clients, mode = "admin" }: AdminProjec
 
   const filtered = useMemo(() => {
     return data.projects.filter((p) => {
+      if (lens !== "all" && rowPortal(p) !== lens) return false;
       if (clientFilter !== "all" && p.client_id !== clientFilter) return false;
-      if (statusFilter !== "all" && p.status !== statusFilter) return false;
+      if (showConstructionColumns && statusFilter !== "all" && p.status !== statusFilter) return false;
       if (locationFilter !== "all" && p.location !== locationFilter) return false;
       return true;
     });
-  }, [data.projects, clientFilter, statusFilter, locationFilter]);
+  }, [data.projects, clientFilter, statusFilter, locationFilter, lens, showConstructionColumns]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
   const currentPage = Math.min(page, totalPages);
@@ -163,7 +212,13 @@ export function AdminProjectsView({ data, clients, mode = "admin" }: AdminProjec
           </h1>
           <p className="mt-1 text-sm text-slate-500">
             {isAdmin
-              ? "Manage and monitor all construction projects."
+              ? lens === "construction"
+                ? "Construction Intelligence sites: stages, progress and issues."
+                : lens === "portfolio"
+                  ? "Interior Showcase projects: walkthroughs, photos and videos."
+                  : lens === "property"
+                    ? "Real Estate Showcase properties: walkthroughs and property pages."
+                    : "Every client project, across all three portals."
               : "Monitor construction progress across your portfolio."}
           </p>
         </div>
@@ -176,45 +231,7 @@ export function AdminProjectsView({ data, clients, mode = "admin" }: AdminProjec
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-6">
-        <AdminMetricCard
-          label="Total Projects"
-          value={stats.totalProjects}
-          icon={FolderKanban}
-          trend="↑ 12% vs last month"
-        />
-        <AdminMetricCard
-          label="Active Projects"
-          value={stats.activeProjects}
-          icon={PlayCircle}
-          trend="↑ 8% vs last month"
-        />
-        <AdminMetricCard
-          label="On Hold Projects"
-          value={stats.onHoldProjects}
-          icon={PauseCircle}
-          trend="↓ 2% vs last month"
-          trendTone="down"
-        />
-        <AdminMetricCard
-          label="Completed Projects"
-          value={stats.completedProjects}
-          icon={CheckCircle2}
-          trend="↑ 5% vs last month"
-        />
-        <AdminMetricCard
-          label="Total Virtual Tours"
-          value={stats.totalTours}
-          icon={Camera}
-          trend="↑ 15% vs last month"
-        />
-        <AdminMetricCard
-          label="Open Issues"
-          value={stats.openIssues}
-          icon={AlertTriangle}
-          trend="↑ 10% vs last month"
-        />
-      </div>
+      <ProjectStats projects={filtered} lens={lens} isAdmin={isAdmin} fallback={stats} />
 
       <div className="admin-card overflow-hidden">
         <div className="flex flex-col gap-3 border-b border-slate-100 p-4 dark:border-slate-800 lg:flex-row lg:items-center lg:justify-between">
@@ -238,6 +255,7 @@ export function AdminProjectsView({ data, clients, mode = "admin" }: AdminProjec
                 ))}
               </SelectContent>
             </Select>
+            {showConstructionColumns ? (
             <Select
               value={statusFilter}
               onValueChange={(v) => {
@@ -256,6 +274,7 @@ export function AdminProjectsView({ data, clients, mode = "admin" }: AdminProjec
                 ))}
               </SelectContent>
             </Select>
+            ) : null}
             <Select
               value={locationFilter}
               onValueChange={(v) => {
@@ -337,11 +356,14 @@ export function AdminProjectsView({ data, clients, mode = "admin" }: AdminProjec
                   <TableHead className="admin-table-head min-w-[240px]">Project</TableHead>
                   <TableHead className="admin-table-head">Client</TableHead>
                   <TableHead className="admin-table-head">Location</TableHead>
-                  <TableHead className="admin-table-head">Status</TableHead>
-                  <TableHead className="admin-table-head min-w-[140px]">Progress</TableHead>
-                  <TableHead className="admin-table-head">Virtual Tours</TableHead>
-                  <TableHead className="admin-table-head">Open Issues</TableHead>
-                  <TableHead className="admin-table-head">Last Scan</TableHead>
+                  {showPortalColumn ? <TableHead className="admin-table-head">Portal</TableHead> : null}
+                  <TableHead className="admin-table-head">{showcaseLens ? "Visibility" : "Status"}</TableHead>
+                  {showConstructionColumns ? (
+                    <TableHead className="admin-table-head min-w-[140px]">Progress</TableHead>
+                  ) : null}
+                  <TableHead className="admin-table-head">{showcaseLens ? "Walkthroughs" : "Virtual Tours"}</TableHead>
+                  {showConstructionColumns ? <TableHead className="admin-table-head">Open Issues</TableHead> : null}
+                  <TableHead className="admin-table-head">{showcaseLens ? "Last Walkthrough" : "Last Scan"}</TableHead>
                   <TableHead className="admin-table-head text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -353,6 +375,8 @@ export function AdminProjectsView({ data, clients, mode = "admin" }: AdminProjec
                     projectBase={projectBase}
                     isAdmin={isAdmin}
                     clients={clients}
+                    showPortalColumn={showPortalColumn}
+                    showConstructionColumns={showConstructionColumns}
                   />
                 ))}
               </TableBody>
@@ -671,12 +695,17 @@ function ProjectTableRow({
   projectBase,
   isAdmin,
   clients,
+  showPortalColumn = false,
+  showConstructionColumns = true,
 }: {
   project: AdminProjectRow;
   projectBase: string;
   isAdmin: boolean;
   clients: Client[];
+  showPortalColumn?: boolean;
+  showConstructionColumns?: boolean;
 }) {
+  const showcase = isAdmin && isShowcaseDashboard(rowPortal(project));
   return (
     <TableRow>
       <TableCell>
@@ -700,16 +729,31 @@ function ProjectTableRow({
         </div>
       </TableCell>
       <TableCell className="text-sm text-slate-600">{project.location}</TableCell>
+      {showPortalColumn ? (
+        <TableCell>
+          <PortalBadge portal={rowPortal(project)} />
+        </TableCell>
+      ) : null}
       <TableCell>
-        <UpdateProjectStatusSelect
-          projectId={project.id}
-          currentStatus={project.status}
-          allowStaffStatuses={isAdmin}
-        />
+        {showcase ? (
+          <VisibilityPill project={project} />
+        ) : (
+          <UpdateProjectStatusSelect
+            projectId={project.id}
+            currentStatus={project.status}
+            allowStaffStatuses={isAdmin}
+          />
+        )}
       </TableCell>
-      <TableCell>
-        <ProjectProgressCell progress={project.progress} progressTrend={project.progressTrend} />
-      </TableCell>
+      {showConstructionColumns ? (
+        <TableCell>
+          {showcase ? (
+            <span className="sr-only">Not tracked for showcase projects</span>
+          ) : (
+            <ProjectProgressCell progress={project.progress} progressTrend={project.progressTrend} />
+          )}
+        </TableCell>
+      ) : null}
       <TableCell>
         {isAdmin ? (
           <Link
@@ -726,11 +770,17 @@ function ProjectTableRow({
           </span>
         )}
       </TableCell>
-      <TableCell>
-        <Badge className={cn("font-semibold", issueCountClass(project.openIssueCount))}>
-          {project.openIssueCount}
-        </Badge>
-      </TableCell>
+      {showConstructionColumns ? (
+        <TableCell>
+          {showcase ? (
+            <span className="sr-only">Not tracked for showcase projects</span>
+          ) : (
+            <Badge className={cn("font-semibold", issueCountClass(project.openIssueCount))}>
+              {project.openIssueCount}
+            </Badge>
+          )}
+        </TableCell>
+      ) : null}
       <TableCell>
         {project.lastScanDate ? (
           <div>
@@ -786,12 +836,16 @@ function ProjectGridCard({
           </div>
         )}
         <div className="absolute right-3 top-3 z-10">
-          <UpdateProjectStatusSelect
-            projectId={project.id}
-            currentStatus={project.status}
-            allowStaffStatuses={isAdmin}
-            triggerClassName="h-7 w-31 text-[11px]"
-          />
+          {isAdmin && isShowcaseDashboard(rowPortal(project)) ? (
+            <VisibilityPill project={project} />
+          ) : (
+            <UpdateProjectStatusSelect
+              projectId={project.id}
+              currentStatus={project.status}
+              allowStaffStatuses={isAdmin}
+              triggerClassName="h-7 w-31 text-[11px]"
+            />
+          )}
         </div>
       </div>
       <div className="p-4">
@@ -817,16 +871,23 @@ function ProjectGridCard({
           <MapPin className="h-3.5 w-3.5" />
           {project.location}
         </p>
-        <div className="mt-3">
-          <ProjectProgressCell progress={project.progress} progressTrend={project.progressTrend} />
-        </div>
+        {isAdmin && isShowcaseDashboard(rowPortal(project)) ? null : (
+          <div className="mt-3">
+            <ProjectProgressCell progress={project.progress} progressTrend={project.progressTrend} />
+          </div>
+        )}
         <div className="mt-4 flex items-center justify-between text-xs text-slate-500">
           <span className="inline-flex items-center gap-1">
-            <Camera className="h-3.5 w-3.5" /> {project.tourCount} tours
+            <Camera className="h-3.5 w-3.5" /> {project.tourCount}{" "}
+            {isAdmin && isShowcaseDashboard(rowPortal(project)) ? "walkthroughs" : "tours"}
           </span>
-          <Badge className={cn("text-[10px]", issueCountClass(project.openIssueCount))}>
-            {project.openIssueCount} issues
-          </Badge>
+          {isAdmin && isShowcaseDashboard(rowPortal(project)) ? (
+            <PortalBadge portal={rowPortal(project)} />
+          ) : (
+            <Badge className={cn("text-[10px]", issueCountClass(project.openIssueCount))}>
+              {project.openIssueCount} issues
+            </Badge>
+          )}
         </div>
         <Button
           variant="default"
@@ -837,6 +898,71 @@ function ProjectGridCard({
           <Link href={`${projectBase}/${project.id}`}>Open Project</Link>
         </Button>
       </div>
+    </div>
+  );
+}
+
+
+/** Lens-aware summary cards. Counts come from the visible rows; no invented trends. */
+function ProjectStats({
+  projects,
+  lens,
+  isAdmin,
+  fallback,
+}: {
+  projects: AdminProjectRow[];
+  lens: "all" | ClientDashboardType;
+  isAdmin: boolean;
+  fallback: AdminProjectsListData["stats"];
+}) {
+  const tours = projects.reduce((sum, p) => sum + p.tourCount, 0);
+  const openIssues = projects.reduce((sum, p) => sum + p.openIssueCount, 0);
+  const count = (fn: (p: AdminProjectRow) => boolean) => projects.filter(fn).length;
+
+  if (!isAdmin) {
+    return (
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-6">
+        <AdminMetricCard label="Total Projects" value={fallback.totalProjects} icon={FolderKanban} />
+        <AdminMetricCard label="Active Projects" value={fallback.activeProjects} icon={PlayCircle} />
+        <AdminMetricCard label="On Hold Projects" value={fallback.onHoldProjects} icon={PauseCircle} />
+        <AdminMetricCard label="Completed Projects" value={fallback.completedProjects} icon={CheckCircle2} />
+        <AdminMetricCard label="Total Virtual Tours" value={fallback.totalTours} icon={Camera} />
+        <AdminMetricCard label="Open Issues" value={fallback.openIssues} icon={AlertTriangle} />
+      </div>
+    );
+  }
+
+  if (lens === "portfolio" || lens === "property") {
+    return (
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+        <AdminMetricCard label={lens === "property" ? "Properties" : "Projects"} value={projects.length} icon={FolderKanban} />
+        <AdminMetricCard label="Walkthroughs" value={tours} icon={Camera} />
+        <AdminMetricCard label="Live for clients" value={count((p) => !isHiddenFromClient(p))} icon={PlayCircle} />
+        <AdminMetricCard label="Hidden from clients" value={count(isHiddenFromClient)} icon={PauseCircle} />
+      </div>
+    );
+  }
+
+  if (lens === "construction") {
+    return (
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-6">
+        <AdminMetricCard label="Total Projects" value={projects.length} icon={FolderKanban} />
+        <AdminMetricCard label="Active Projects" value={count((p) => p.status === "in_progress")} icon={PlayCircle} />
+        <AdminMetricCard label="On Hold Projects" value={count((p) => p.status === "on_hold")} icon={PauseCircle} />
+        <AdminMetricCard label="Completed Projects" value={count((p) => p.status === "completed")} icon={CheckCircle2} />
+        <AdminMetricCard label="Virtual Tours" value={tours} icon={Camera} />
+        <AdminMetricCard label="Open Issues" value={openIssues} icon={AlertTriangle} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-2 gap-4 xl:grid-cols-5">
+      <AdminMetricCard label="All Projects" value={projects.length} icon={FolderKanban} />
+      <AdminMetricCard label="Construction" value={count((p) => rowPortal(p) === "construction")} icon={PORTAL_ICONS.construction} />
+      <AdminMetricCard label="Interior" value={count((p) => rowPortal(p) === "portfolio")} icon={PORTAL_ICONS.portfolio} />
+      <AdminMetricCard label="Real Estate" value={count((p) => rowPortal(p) === "property")} icon={PORTAL_ICONS.property} />
+      <AdminMetricCard label="Virtual Tours" value={tours} icon={Camera} />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { useOptionalAdminPortalLens } from "@/components/admin/workspace/admin-portal-lens";
 import Link from "next/link";
 import {
   Building2,
@@ -180,11 +181,15 @@ export function ClientManagerTable({
   canLoginAsClient?: boolean;
 }) {
   const [query, setQuery] = useState("");
+  const lens = useOptionalAdminPortalLens()?.lens ?? "all";
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return clients;
-    return clients.filter((c) => {
+    const inLens = clients.filter(
+      (c) => lens === "all" || (c.dashboard_type ?? "construction") === lens
+    );
+    if (!q) return inLens;
+    return inLens.filter((c) => {
       const haystack = [
         c.company_name,
         c.name,
@@ -197,7 +202,7 @@ export function ClientManagerTable({
         .toLowerCase();
       return haystack.includes(q);
     });
-  }, [clients, query]);
+  }, [clients, query, lens]);
 
   if (clients.length === 0) {
     return (
