@@ -28,6 +28,11 @@ import type { PermissionResource } from "@/lib/auth/permissions";
 import type { UserRole } from "@/lib/types";
 import { MobileNavDrawer } from "@/components/layout/mobile-nav-drawer";
 import { SidebarBrandHeader } from "@/components/layout/sidebar-brand-header";
+import {
+  PortalLensSwitcher,
+  useAdminPortalLens,
+} from "@/components/admin/workspace/admin-portal-lens";
+import type { ClientDashboardType } from "@/lib/portal/dashboard-type";
 
 const navSections: Array<{
   label: string;
@@ -37,6 +42,10 @@ const navSections: Array<{
     icon: typeof LayoutDashboard;
     exact?: boolean;
     resource: PermissionResource;
+    /** Portals this page applies to; omitted = every portal. */
+    portals?: ClientDashboardType[];
+    /** Per-portal label, e.g. Tour Viewers → Buyer leads for Real Estate. */
+    lensLabel?: Partial<Record<ClientDashboardType, string>>;
   }>;
 }> = [
   {
@@ -52,12 +61,12 @@ const navSections: Array<{
     label: "Content",
     items: [
       { href: "/admin/tours", label: "Tour Manager", icon: Camera, resource: "matterport" },
-      { href: "/admin/timeline", label: "Timeline Manager", icon: Calendar, resource: "reports" },
-      { href: "/admin/reports", label: "Reports Manager", icon: FileText, resource: "reports" },
+      { href: "/admin/timeline", label: "Timeline Manager", icon: Calendar, resource: "reports", portals: ["construction"] },
+      { href: "/admin/reports", label: "Reports Manager", icon: FileText, resource: "reports", portals: ["construction"] },
       { href: "/admin/documents", label: "Documents", icon: FolderOpen, resource: "documents" },
-      { href: "/admin/photos", label: "Site Photos", icon: ImageIcon, resource: "documents" },
-      { href: "/admin/issues", label: "Issues", icon: AlertTriangle, resource: "issues" },
-      { href: "/admin/invoices", label: "Invoices", icon: ReceiptIndianRupee, resource: "invoices" },
+      { href: "/admin/photos", label: "Site Photos", icon: ImageIcon, resource: "documents", portals: ["construction"] },
+      { href: "/admin/issues", label: "Issues", icon: AlertTriangle, resource: "issues", portals: ["construction"] },
+      { href: "/admin/invoices", label: "Invoices", icon: ReceiptIndianRupee, resource: "invoices", portals: ["construction"] },
     ],
   },
   {
@@ -69,6 +78,7 @@ const navSections: Array<{
         label: "Tour Viewers",
         icon: ContactRound,
         resource: "tour_viewers",
+        lensLabel: { property: "Buyer leads" },
       },
       { href: "/admin/analytics", label: "Analytics", icon: BarChart3, resource: "analytics" },
       { href: "/admin/storage", label: "Storage Manager", icon: HardDrive, resource: "storage" },
@@ -92,6 +102,7 @@ interface OpsSidebarProps {
 export function OpsSidebar({ userRole, mobileOpen, onMobileClose }: OpsSidebarProps) {
   const pathname = usePathname();
   const { resetScope } = useAdminWorkspace();
+  const { lens } = useAdminPortalLens();
   const homeHref = "/admin";
 
   const content = (
@@ -101,10 +112,13 @@ export function OpsSidebar({ userRole, mobileOpen, onMobileClose }: OpsSidebarPr
         tagline="Control Center"
         onMobileClose={onMobileClose}
       />
+      <PortalLensSwitcher />
 
       <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-4">
         {navSections.map((section) => {
-          const items = filterNavByRole(section.items, userRole);
+          const items = filterNavByRole(section.items, userRole).filter(
+            (item) => lens === "all" || !item.portals || item.portals.includes(lens)
+          );
           if (items.length === 0) return null;
           return (
           <div key={section.label}>
@@ -132,7 +146,7 @@ export function OpsSidebar({ userRole, mobileOpen, onMobileClose }: OpsSidebarPr
                     className={cn("ops-nav-item", active && "ops-nav-item-active")}
                   >
                     <item.icon className="h-[17px] w-[17px] shrink-0" strokeWidth={1.75} />
-                    {item.label}
+                    {(lens !== "all" && item.lensLabel?.[lens]) || item.label}
                   </Link>
                 );
               })}

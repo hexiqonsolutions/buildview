@@ -6,6 +6,7 @@ import { OpsSidebar } from "@/components/admin/layout/ops-sidebar";
 import { OpsCommandHeader } from "@/components/admin/layout/ops-command-header";
 
 import { AdminWorkspaceProvider } from "@/components/admin/workspace/admin-workspace-provider";
+import { AdminPortalLensProvider } from "@/components/admin/workspace/admin-portal-lens";
 import { PortalErrorBoundary } from "@/components/dashboard/portal-error-boundary";
 import { PortalTheme } from "@/components/integrations/portal-theme";
 import { PresenceTracker } from "@/components/presence/presence-tracker";
@@ -31,6 +32,7 @@ export function AdminShell({ user, workspaceBootstrap, unreadNotifications = 0, 
     <PortalErrorBoundary>
       <PresenceTracker area="admin" />
       <AdminWorkspaceProvider bootstrap={workspaceBootstrap}>
+      <AdminPortalLensProvider bootstrap={workspaceBootstrap}>
         <div className="ops-shell">
           <PortalTheme />
           <OpsSidebar userRole={user.role} mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} />
@@ -46,6 +48,7 @@ export function AdminShell({ user, workspaceBootstrap, unreadNotifications = 0, 
             <main className="ops-content">{children}</main>
           </div>
         </div>
+      </AdminPortalLensProvider>
       </AdminWorkspaceProvider>
     </PortalErrorBoundary>
   );

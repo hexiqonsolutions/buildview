@@ -26,7 +26,7 @@ export const getAdminWorkspaceBootstrap = cache(async (): Promise<AdminWorkspace
     await Promise.all([
     supabase
       .from("clients")
-      .select("id, name, company_name, logo_url, email, phone, is_active")
+      .select("id, name, company_name, logo_url, email, phone, is_active, dashboard_type")
       .is("deleted_at", null)
       .order("name"),
     supabase
