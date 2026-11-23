@@ -15,7 +15,7 @@ export default async function AdminToursPage({
   return (
     <OpsWorkspacePage
       title="Tour Manager"
-      description="All virtual tours across the active workspace. Upload, preview, compare, and manage scan versions."
+      description="Virtual tours grouped by project, newest first. Follows the portal switcher in the sidebar."
       icon={Camera}
     >
       <MatterportManager tours={tours} />
