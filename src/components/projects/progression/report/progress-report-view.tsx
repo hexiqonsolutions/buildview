@@ -67,9 +67,9 @@ export function ProgressReportView({ report }: { report: ProgressReport }) {
   const pendingInPeriod = report.changes.filter((c) => c.status === "pending").length;
 
   return (
-    <article className="report-paper mx-auto max-w-[210mm] bg-white px-[14mm] py-[12mm] text-slate-900">
+    <article className="report-paper mx-auto max-w-[210mm] bg-white px-4 py-6 text-slate-900 sm:px-[14mm] sm:py-[12mm]">
       {/* Cover */}
-      <header className="flex items-start justify-between gap-6 border-b-2 border-slate-900 pb-4">
+      <header className="report-cover flex flex-col items-start justify-between gap-3 border-b-2 border-slate-900 pb-4 sm:flex-row sm:gap-6">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Progress report</p>
           <h1 className="mt-1 font-display text-2xl font-bold leading-tight">{report.project.name}</h1>
@@ -77,7 +77,7 @@ export function ProgressReportView({ report }: { report: ProgressReport }) {
             {[report.project.clientName, report.project.location].filter(Boolean).join(" · ") || "—"}
           </p>
         </div>
-        <dl className="shrink-0 text-right text-xs text-slate-600">
+        <dl className="shrink-0 text-xs text-slate-600 sm:text-right">
           <div>
             <dt className="inline">Period: </dt>
             <dd className="inline font-semibold text-slate-900">
@@ -93,7 +93,7 @@ export function ProgressReportView({ report }: { report: ProgressReport }) {
       </header>
 
       {/* Headline */}
-      <section aria-label="Completion" className="report-section mt-6 grid grid-cols-4 gap-3">
+      <section aria-label="Completion" className="report-section report-stats mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat label="Actual" value={formatPercent(summary.actual)} strong />
         <Stat label="Planned" value={formatPercent(summary.planned)} />
         <Stat label="Variance" value={pts(summary.variance)} />
@@ -107,9 +107,11 @@ export function ProgressReportView({ report }: { report: ProgressReport }) {
       <p className="mt-2 text-xs text-slate-600">
         Across {report.floorCount} {report.floorCount === 1 ? "floor" : "floors"}
         {report.unstartedFloorCount > 0 ? ` · ${report.unstartedFloorCount} not started (counted as 0%)` : ""}
-        {report.scheduledFloorCount < report.floorCount
-          ? ` · planned % and variance use the ${report.scheduledFloorCount} scheduled ${report.scheduledFloorCount === 1 ? "floor" : "floors"}`
-          : ""}
+        {report.scheduledFloorCount === 0
+          ? ". No floor has a planned schedule yet, so planned %, variance and status aren't shown"
+          : report.scheduledFloorCount < report.floorCount
+            ? ` · planned %, variance and status use the ${report.scheduledFloorCount} scheduled ${report.scheduledFloorCount === 1 ? "floor" : "floors"}`
+            : ""}
         .{" "}
         {report.verifiedOnly
           ? "Only verified work is counted."
@@ -127,13 +129,17 @@ export function ProgressReportView({ report }: { report: ProgressReport }) {
         {report.history.length >= 2 ? (
           <SCurve report={report} />
         ) : (
-          <p className="text-sm text-slate-500">Not enough dated progress or schedule yet to draw a curve.</p>
+          <p className="text-sm text-slate-500">
+            The curve needs counted progress on at least two different dates, or a planned schedule. It will
+            appear as work is recorded over time.
+          </p>
         )}
       </Section>
 
       {/* Floors */}
       <Section title="Floors" id="r-floors">
-        <table className="w-full border-collapse text-[12px]">
+        <div className="report-scroll overflow-x-auto">
+        <table className="w-full min-w-[560px] border-collapse text-[12px]">
           <thead>
             <tr className="border-b border-slate-300 text-left text-[11px] uppercase tracking-wide text-slate-500">
               <th scope="col" className="py-1.5 pr-2 font-semibold">Floor</th>
@@ -171,12 +177,13 @@ export function ProgressReportView({ report }: { report: ProgressReport }) {
             ))}
           </tbody>
         </table>
+        </div>
       </Section>
 
       {/* Trades */}
       {zones && zonedFloors.length > 0 ? (
         <Section title="Trade summary · zoned floors" id="r-trades">
-          <ul className="grid grid-cols-2 gap-x-8 gap-y-2.5">
+          <ul className="report-two grid gap-x-8 gap-y-2.5 sm:grid-cols-2">
             {zones.activities.map((a) => {
               const v = zones.projectTrades[a.key];
               return (
@@ -241,7 +248,9 @@ export function ProgressReportView({ report }: { report: ProgressReport }) {
                     })}
                   </div>
                 ) : null}
-                <ZoneMatrix floor={floor} zones={zones} />
+                <div className="report-scroll overflow-x-auto">
+                  <ZoneMatrix floor={floor} zones={zones} />
+                </div>
               </div>
             ))}
           </div>
@@ -254,7 +263,9 @@ export function ProgressReportView({ report }: { report: ProgressReport }) {
           <p className="text-sm text-slate-500">No checklist steps ended and no zone updates in this period.</p>
         ) : (
           <>
-            <ChangesTable changes={report.changes} />
+            <div className="report-scroll overflow-x-auto">
+              <ChangesTable changes={report.changes} />
+            </div>
             {report.changesTruncated ? (
               <p className="mt-2 text-xs text-slate-500">Showing the latest 300 changes. Use the Excel export for the full list.</p>
             ) : null}
@@ -293,7 +304,7 @@ export function ProgressReportView({ report }: { report: ProgressReport }) {
           </p>
         </div>
         {zones ? (
-          <div className="report-row mt-4 grid grid-cols-2 gap-6 text-[12px]">
+          <div className="report-row report-two mt-4 grid gap-6 text-[12px] sm:grid-cols-2">
             <div>
               <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                 Trades and weights{zones.templateSource === "project" ? " (project template)" : ""}
@@ -376,7 +387,7 @@ type Zones = NonNullable<ProgressReport["zones"]>;
 function ZoneMatrix({ floor, zones }: { floor: Zones["floors"][number]; zones: Zones }) {
   const stageName = new Map(zones.stages.map((s) => [s.key, s.name]));
   return (
-    <table className="w-full border-collapse text-[11px]">
+    <table className="w-full min-w-[560px] border-collapse text-[11px]">
       <thead>
         <tr className="border-b border-slate-300 text-left text-[10px] uppercase tracking-wide text-slate-500">
           <th scope="col" className="py-1 pr-2 font-semibold">Zone</th>
@@ -436,7 +447,7 @@ const CHANGE_STATUS: Record<ReportChange["status"], { label: string; cls: string
 
 function ChangesTable({ changes }: { changes: ReportChange[] }) {
   return (
-    <table className="w-full border-collapse text-[11px]">
+    <table className="w-full min-w-[560px] border-collapse text-[11px]">
       <thead>
         <tr className="border-b border-slate-300 text-left text-[10px] uppercase tracking-wide text-slate-500">
           <th scope="col" className="py-1 pr-2 font-semibold">Date</th>

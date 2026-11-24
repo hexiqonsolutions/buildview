@@ -82,11 +82,17 @@ export default async function ProgressReportPage({
           .report-section h2 { break-after: avoid; }
           .report-row, .report-plan, figure { break-inside: avoid; }
           .report-paper-shadow { box-shadow: none !important; }
+          .report-cover { flex-direction: row !important; }
+          .report-cover dl { text-align: right !important; }
+          .report-stats { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+          .report-two { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+          .report-scroll { overflow: visible !important; }
+          .report-scroll table { min-width: 0 !important; }
           * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
       `}</style>
       <ReportPrintToolbar backHref={`${base}/${projectId}?tab=progression`} />
-      <div className="mt-6 px-2 sm:px-4">
+      <div className="mt-4 px-0 sm:mt-6 sm:px-4">
         <div className="report-paper-shadow mx-auto max-w-[210mm] shadow-sm">
           <ProgressReportView report={result.report} />
         </div>
