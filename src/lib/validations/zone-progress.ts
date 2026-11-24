@@ -56,3 +56,23 @@ export const verifyObservationSchema = z
 export const rollupBasisSchema = z
   .object({ projectId, basis: z.enum(["area", "equal", "custom"]) })
   .strict();
+
+const point = z.tuple([z.number().min(0).max(1), z.number().min(0).max(1)]);
+
+/** Zone outline on the floor plan (normalised points), or null to clear it. */
+export const setZonePolygonSchema = z
+  .object({
+    projectId,
+    zoneId: uuid("Zone ID"),
+    polygon: z.array(point).min(3, "Draw at least 3 points").max(80, "At most 80 points").nullable(),
+  })
+  .strict();
+
+/** Floor-plan image already uploaded to project-media, or null to remove it. */
+export const setFloorPlanSchema = z
+  .object({
+    projectId,
+    floorId: uuid("Floor ID"),
+    path: z.string().max(1024).nullable(),
+  })
+  .strict();

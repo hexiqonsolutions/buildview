@@ -28,6 +28,8 @@ export type ZoneRecord = {
   customWeight: number | null;
   /** Activity keys marked not applicable for this zone. */
   naKeys: string[];
+  /** Outline on the floor plan as normalised [x, y] points (0–1). */
+  polygon?: [number, number][] | null;
 };
 
 export type ObservationRecord = {
@@ -60,6 +62,7 @@ export type ZoneResult = {
   area: number | null;
   percent: number | null;
   cells: Record<string, ZoneCell>;
+  polygon: [number, number][] | null;
 };
 
 export type FloorZoneResult = {
@@ -171,6 +174,7 @@ export function computeZoneFloors(input: {
         area: zone.area,
         percent: zonePercent(activities),
         cells,
+        polygon: zone.polygon ?? null,
       });
     }
 

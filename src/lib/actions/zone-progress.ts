@@ -21,17 +21,33 @@ import {
   deleteZoneSchema,
   recordObservationSchema,
   rollupBasisSchema,
+  setFloorPlanSchema,
   setZoneNaSchema,
+  setZonePolygonSchema,
   updateZoneSchema,
   verifyObservationSchema,
 } from "@/lib/validations/zone-progress";
 import { getErrorMessage, PublicError } from "@/lib/errors/public";
 import { logServerError } from "@/lib/errors/server";
-import type { UserRole } from "@/lib/types";
+import { STORAGE_BUCKETS, type UserRole } from "@/lib/types";
+import { UPLOAD_RULES, verifyStoredUpload } from "@/lib/uploads/verify";
+
+export type ZoneScanView = {
+  id: string;
+  name: string;
+  date: string;
+  matterportUrl: string;
+  /** True when the scan is linked to this floor (else a project-wide scan). */
+  onFloor: boolean;
+};
 
 export type ZoneFloorView = {
   floorId: string;
   label: string;
+  /** Signed URL of the floor-plan image (migration 049), null when none. */
+  planUrl: string | null;
+  /** Scans for this floor first (newest first), then project-wide scans. */
+  scans: ZoneScanView[];
   /** Null when the floor has no zones (it uses the checklist). */
   percent: number | null;
   zones: ZoneResult[];
@@ -104,10 +120,44 @@ export async function getZoneProgress(projectId: string): Promise<ZoneProgressVi
     const { data: floors } = buildingList.length
       ? await admin
           .from("floors")
-          .select("id, name, building_id, sort_order")
+          .select("*")
           .in("building_id", buildingList.map((b) => b.id))
           .is("deleted_at", null)
       : { data: [] as { id: string; name: string; building_id: string; sort_order: number }[] };
+
+    // Floor-plan images (signed) and the project's scans, for the plan view.
+    const planPaths = ((floors ?? []) as Array<{ plan_image_path?: string | null }>)
+      .map((f) => f.plan_image_path)
+      .filter((p): p is string => Boolean(p));
+    const signed = planPaths.length
+      ? (await admin.storage.from(STORAGE_BUCKETS.PROJECT_MEDIA).createSignedUrls(planPaths, 60 * 60 * 6)).data ?? []
+      : [];
+    const planUrlByPath = new Map(
+      signed.filter((e) => !e.error && e.path).map((e) => [e.path as string, e.signedUrl as string])
+    );
+    const { data: tourRows } = await admin
+      .from("project_tours")
+      .select("*")
+      .eq("project_id", projectId)
+      .is("deleted_at", null);
+    const tours = ((tourRows ?? []) as Array<{
+      id: string;
+      name: string;
+      capture_date: string | null;
+      created_at: string;
+      matterport_url: string;
+      floor_id?: string | null;
+      archived_at?: string | null;
+    }>)
+      .filter((t) => !t.archived_at)
+      .map((t) => ({
+        id: t.id,
+        name: t.name,
+        date: (t.capture_date ?? t.created_at).slice(0, 10),
+        matterportUrl: t.matterport_url,
+        floorId: t.floor_id ?? null,
+      }))
+      .sort((a, b) => b.date.localeCompare(a.date));
 
     const data = (await loadZoneData([projectId])).get(projectId);
     if (!data) return { available: false, reason: MIGRATION_MESSAGE };
@@ -123,9 +173,15 @@ export async function getZoneProgress(projectId: string): Promise<ZoneProgressVi
       )
       .map((floor) => {
         const r = results.get(floor.id as string);
+        const planPath = (floor as { plan_image_path?: string | null }).plan_image_path ?? null;
         return {
           floorId: floor.id as string,
           label: `${buildingName.get(floor.building_id as string) ?? "Building"} · ${floor.name}`,
+          planUrl: planPath ? (planUrlByPath.get(planPath) ?? null) : null,
+          scans: [
+            ...tours.filter((t) => t.floorId === floor.id).map((t) => ({ ...t, onFloor: true })),
+            ...tours.filter((t) => t.floorId !== floor.id).map((t) => ({ ...t, onFloor: false })),
+          ].map(({ floorId: _floorId, ...rest }) => rest),
           percent: r ? r.percent : null,
           zones: r?.zones ?? [],
           trades: r?.trades ?? {},
@@ -365,5 +421,71 @@ export async function setRollupBasis(input: unknown): Promise<Result> {
     return finish(projectId);
   } catch (err) {
     return fail("zones:basis", err, "Could not change the roll-up.");
+  }
+}
+
+/** Save (or clear) a zone's outline on the floor plan (staff). */
+export async function setZonePolygon(input: unknown): Promise<Result> {
+  const parsed = validate(setZonePolygonSchema, input);
+  if (!parsed.success) return { ok: false, error: parsed.error };
+  const { projectId, zoneId, polygon } = parsed.data;
+  try {
+    await staffOnly(projectId);
+    const rounded = polygon?.map(([x, y]) => [Math.round(x * 10000) / 10000, Math.round(y * 10000) / 10000]);
+    const { error } = await createServiceRoleClient()
+      .from("progress_zones" as never)
+      .update({ polygon: rounded ?? null } as never)
+      .eq("id", zoneId)
+      .eq("project_id", projectId);
+    if (error) throw error;
+    return finish(projectId);
+  } catch (err) {
+    return fail("zones:polygon", err, "Could not save the outline.");
+  }
+}
+
+/**
+ * Attach a floor-plan image (already uploaded to project-media under the
+ * project folder) to a floor, or remove it with path null (staff).
+ */
+export async function setFloorPlan(input: unknown): Promise<Result> {
+  const parsed = validate(setFloorPlanSchema, input);
+  if (!parsed.success) return { ok: false, error: parsed.error };
+  const { projectId, floorId, path } = parsed.data;
+  try {
+    await staffOnly(projectId);
+    const admin = createServiceRoleClient();
+    const { data: floor } = await admin
+      .from("floors")
+      .select("*, building:buildings!inner(project_id)")
+      .eq("id", floorId)
+      .maybeSingle();
+    const row = floor as { plan_image_path?: string | null; building?: { project_id: string } } | null;
+    if (row?.building?.project_id !== projectId) {
+      return { ok: false, error: "That floor isn't part of this project." };
+    }
+    if (path) {
+      if (!path.startsWith(`${projectId}/`)) {
+        return { ok: false, error: "The image is outside the project folder." };
+      }
+      await verifyStoredUpload(UPLOAD_RULES.propertyFloorPlan, path, "setFloorPlan", { skipMagicBytes: true });
+    }
+    const { error } = await admin
+      .from("floors")
+      .update({ plan_image_path: path } as never)
+      .eq("id", floorId);
+    if (error) {
+      if (isMissingTable(error)) {
+        return { ok: false, error: "Floor plans need database migration 049. Run it in Supabase first." };
+      }
+      throw error;
+    }
+    const previous = row?.plan_image_path;
+    if (previous && previous !== path) {
+      await admin.storage.from(STORAGE_BUCKETS.PROJECT_MEDIA).remove([previous]).catch(() => undefined);
+    }
+    return finish(projectId);
+  } catch (err) {
+    return fail("zones:floorPlan", err, "Could not save the floor plan.");
   }
 }

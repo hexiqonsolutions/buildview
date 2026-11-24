@@ -38,6 +38,19 @@ function pickRows<T extends { project_id: string | null; sort_order: number }>(
   );
 }
 
+/** Stored outline → [[x, y], …] in 0–1, or null when missing / malformed. */
+function parsePolygon(value: unknown): [number, number][] | null {
+  if (!Array.isArray(value) || value.length < 3) return null;
+  const points: [number, number][] = [];
+  for (const p of value) {
+    if (!Array.isArray(p) || p.length !== 2) return null;
+    const [x, y] = p.map(Number);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+    points.push([Math.min(1, Math.max(0, x)), Math.min(1, Math.max(0, y))]);
+  }
+  return points;
+}
+
 export async function loadZoneData(projectIds: string[]): Promise<Map<string, ProjectZoneData>> {
   const result = new Map<string, ProjectZoneData>();
   if (projectIds.length === 0) return result;
@@ -58,6 +71,7 @@ export async function loadZoneData(projectIds: string[]): Promise<Map<string, Pr
     area_sqft: number | null;
     custom_weight: number | null;
     sort_order: number;
+    polygon: unknown;
   }>;
 
   const zoneIds = zones.map((z) => z.id);
@@ -122,6 +136,7 @@ export async function loadZoneData(projectIds: string[]): Promise<Map<string, Pr
           area: z.area_sqft != null ? Number(z.area_sqft) : null,
           customWeight: z.custom_weight != null ? Number(z.custom_weight) : null,
           naKeys: naByZone.get(z.id) ?? [],
+          polygon: parsePolygon(z.polygon),
         })),
       observations: obsRows
         .filter((o) => o.project_id === projectId)

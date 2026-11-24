@@ -10,13 +10,16 @@ import {
   deleteZone,
   getZoneProgress,
   recordObservation,
+  setFloorPlan,
   setRollupBasis,
   setZoneNa,
+  setZonePolygon,
   verifyObservation,
   type ZoneFloorView,
   type ZoneProgressView,
 } from "@/lib/actions/zone-progress";
 import { formatPercent } from "@/lib/progression/completion";
+import { FloorPlanHeatmap } from "@/components/projects/progression/floor-plan-heatmap";
 import type { ZoneCell } from "@/lib/progression/zone-completion";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -167,6 +170,13 @@ export function ZoneProgressSection({
               onVerify={(observationId, decision) =>
                 run(`obs:${observationId}`, () => verifyObservation({ projectId, observationId, decision }))
               }
+              projectId={projectId}
+              onSetPlan={(path) =>
+                run(`plan:${floor.floorId}`, () => setFloorPlan({ projectId, floorId: floor.floorId, path }))
+              }
+              onSavePolygon={(zoneId, polygon) =>
+                run(`plan:${floor.floorId}`, () => setZonePolygon({ projectId, zoneId, polygon }))
+              }
             />
           ))}
         </div>
@@ -251,16 +261,23 @@ function FloorMatrix({
   onNa,
   onDelete,
   onVerify,
+  projectId,
+  onSetPlan,
+  onSavePolygon,
 }: {
   floor: ZoneFloorView;
   view: Ready;
   busyKey: string | null;
+  projectId: string;
+  onSetPlan: (path: string | null) => void;
+  onSavePolygon: (zoneId: string, polygon: [number, number][] | null) => void;
   onStage: (zoneId: string, activityKey: string, stageKey: string) => void;
   onNa: (zoneId: string, activityKey: string, na: boolean) => void;
   onDelete: (zoneId: string) => void;
   onVerify: (observationId: string, decision: "verified" | "rejected") => void;
 }) {
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [mode, setMode] = useState<"table" | "plan">(floor.planUrl ? "plan" : "table");
   const stageName = new Map(view.stages.map((s) => [s.key, s.name]));
   const totalWeight = view.activities.reduce((sum, a) => sum + a.weight, 0) || 1;
   const pending = floor.zones.flatMap((zone) =>
@@ -278,16 +295,48 @@ function FloorMatrix({
             {formatPercent(floor.percent)}
           </span>
         </h4>
-        {view.canVerify && pending.length > 0 ? (
-          <button
-            type="button"
-            onClick={() => setReviewOpen(true)}
-            className="min-h-11 text-sm font-medium text-amber-700 hover:text-amber-900 dark:text-amber-300"
-          >
-            Review {pending.length} update{pending.length === 1 ? "" : "s"}
-          </button>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-3">
+          {view.canVerify && pending.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => setReviewOpen(true)}
+              className="min-h-11 text-sm font-medium text-amber-700 hover:text-amber-900 dark:text-amber-300"
+            >
+              Review {pending.length} update{pending.length === 1 ? "" : "s"}
+            </button>
+          ) : null}
+          <div role="radiogroup" aria-label={`View for ${floor.label}`} className="inline-flex rounded-lg border border-slate-200 p-0.5 dark:border-slate-700">
+            {(["table", "plan"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                role="radio"
+                aria-checked={mode === m}
+                onClick={() => setMode(m)}
+                className={cn(
+                  "min-h-9 rounded-md px-3 text-xs font-semibold",
+                  mode === m
+                    ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
+                    : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                )}
+              >
+                {m === "table" ? "Table" : "Plan"}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
+
+      {mode === "plan" ? (
+        <FloorPlanHeatmap
+          projectId={projectId}
+          floor={floor}
+          view={view}
+          busy={busyKey === `plan:${floor.floorId}`}
+          onSetPlan={onSetPlan}
+          onSavePolygon={onSavePolygon}
+        />
+      ) : (
 
       <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
         <table className="w-full min-w-[640px] border-collapse text-sm">
@@ -369,6 +418,7 @@ function FloorMatrix({
           </tbody>
         </table>
       </div>
+      )}
 
       <Dialog open={reviewOpen} onOpenChange={setReviewOpen}>
         <DialogContent className="max-w-lg">
