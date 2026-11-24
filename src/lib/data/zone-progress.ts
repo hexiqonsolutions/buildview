@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createServiceRoleClient } from "@/lib/supabase/admin";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import type { RollupBasis, StageDefinition } from "@/lib/progression/completion";
 import { plannedFromActivityPlans, type ActivityPlan } from "@/lib/progression/template";
 import {
@@ -88,7 +89,14 @@ export async function loadZoneData(projectIds: string[]): Promise<Map<string, Pr
     zoneIds.length
       ? admin.from("progress_zone_na" as never).select("*").in("zone_id", zoneIds)
       : Promise.resolve({ data: [], error: null }),
-    admin.from("progress_observations" as never).select("*").in("project_id", projectIds),
+    fetchAllRows((a, b) =>
+      admin
+        .from("progress_observations" as never)
+        .select("*")
+        .in("project_id", projectIds)
+        .order("id")
+        .range(a, b)
+    ),
     admin.from("projects").select("*").in("id", projectIds),
     admin.from("completion_na_rules" as never).select("*"),
     admin.from("completion_activity_plans" as never).select("*").in("project_id", projectIds),

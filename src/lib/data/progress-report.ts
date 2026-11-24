@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createServiceRoleClient } from "@/lib/supabase/admin";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { canViewProgression } from "@/lib/auth/roles";
 import { canViewProject, getActiveActor } from "@/lib/auth/project-access";
 import {
@@ -57,6 +58,8 @@ export type ProgressReport = {
   floors: ReportFloorRow[];
   history: SCurvePoint[];
   zones: Extract<ZoneProgressView, { available: true }> | null;
+  /** Totals over every change in the period (the list below may be cut). */
+  changeCounts: { steps: number; zoneUpdates: number; notVerified: number };
   changes: ReportChange[];
   changesTruncated: boolean;
 };
@@ -140,14 +143,18 @@ export async function getProgressReport(projectId: string, from: string, to: str
     template_step: { title: string; phase_name: string } | null;
     progression: { floor_id: string; track: string } | null;
   };
-  const { data: stepRows } = await admin
-    .from("project_progression_steps")
-    .select(
-      "*, template_step:progression_template_steps(title, phase_name), progression:project_progressions!inner(project_id, floor_id, track)"
-    )
-    .eq("progression.project_id", projectId)
-    .eq("status", "completed")
-    .limit(5000);
+  const { data: stepRows } = await fetchAllRows((a, b) =>
+    admin
+      .from("project_progression_steps")
+      .select(
+        "*, template_step:progression_template_steps(title, phase_name), progression:project_progressions!inner(project_id, floor_id, track, deleted_at)"
+      )
+      .eq("progression.project_id", projectId)
+      .is("progression.deleted_at", null)
+      .eq("status", "completed")
+      .order("id")
+      .range(a, b)
+  );
   for (const s of (stepRows ?? []) as unknown as StepRow[]) {
     const date = day(s.work_date) ?? day(s.ended_at) ?? day(s.completed_at);
     if (!date || date < from || date > to || !s.progression) continue;
@@ -167,13 +174,16 @@ export async function getProgressReport(projectId: string, from: string, to: str
     for (const f of zones.floors) for (const z of f.zones) zoneInfo.set(z.id, { name: z.name, floorId: f.floorId });
     const activityName = new Map(zones.activities.map((a) => [a.key, a.name]));
     const stageName = new Map(zones.stages.map((st) => [st.key, st.name]));
-    const { data: obsRows } = await admin
-      .from("progress_observations" as never)
-      .select("*")
-      .eq("project_id", projectId)
-      .gte("observed_on", from)
-      .lte("observed_on", to)
-      .limit(3000);
+    const { data: obsRows } = await fetchAllRows((a, b) =>
+      admin
+        .from("progress_observations" as never)
+        .select("*")
+        .eq("project_id", projectId)
+        .gte("observed_on", from)
+        .lte("observed_on", to)
+        .order("id")
+        .range(a, b)
+    );
     for (const o of (obsRows ?? []) as unknown as Array<{
       zone_id: string;
       activity_key: string;
@@ -217,6 +227,11 @@ export async function getProgressReport(projectId: string, from: string, to: str
       floors,
       history: history?.points ?? [],
       zones,
+      changeCounts: {
+        steps: changes.filter((c) => c.kind === "step").length,
+        zoneUpdates: changes.filter((c) => c.kind === "zone").length,
+        notVerified: changes.filter((c) => c.status === "pending").length,
+      },
       changes: changes.slice(0, MAX_CHANGES),
       changesTruncated: changes.length > MAX_CHANGES,
     },

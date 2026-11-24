@@ -62,9 +62,7 @@ function Section({ title, children, id }: { title: string; children: React.React
 export function ProgressReportView({ report }: { report: ProgressReport }) {
   const { summary, zones } = report;
   const zonedFloors = zones?.floors.filter((f) => f.zones.length > 0) ?? [];
-  const steps = report.changes.filter((c) => c.kind === "step").length;
-  const zoneUpdates = report.changes.length - steps;
-  const pendingInPeriod = report.changes.filter((c) => c.status === "pending").length;
+  const { steps, zoneUpdates, notVerified: pendingInPeriod } = report.changeCounts;
 
   return (
     <article className="report-paper mx-auto max-w-[210mm] bg-white px-4 py-6 text-slate-900 sm:px-[14mm] sm:py-[12mm]">

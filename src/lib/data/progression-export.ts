@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createServiceRoleClient } from "@/lib/supabase/admin";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { canViewProgression } from "@/lib/auth/roles";
 import { canViewProject, getActiveActor } from "@/lib/auth/project-access";
 import {
@@ -155,26 +156,34 @@ export async function getProgressionExportPayload(
 
   const stepsByProgression = new Map<string, StepRow[]>();
   if (progressionIds.length > 0) {
-    const withActors = await admin
-      .from("project_progression_steps")
-      .select(
-        "id, progression_id, step_number, status, started_at, ended_at, completed_at, work_date, note, template_step:progression_template_steps(phase_number, phase_name, title), started_by_user:users!project_progression_steps_started_by_fkey(full_name), ended_by_user:users!project_progression_steps_ended_by_fkey(full_name), completed_by_user:users!project_progression_steps_completed_by_fkey(full_name)"
-      )
-      .in("progression_id", progressionIds)
-      .order("step_number", { ascending: true });
+    const withActors = await fetchAllRows((a, b) =>
+      admin
+        .from("project_progression_steps")
+        .select(
+          "id, progression_id, step_number, status, started_at, ended_at, completed_at, work_date, note, template_step:progression_template_steps(phase_number, phase_name, title), started_by_user:users!project_progression_steps_started_by_fkey(full_name), ended_by_user:users!project_progression_steps_ended_by_fkey(full_name), completed_by_user:users!project_progression_steps_completed_by_fkey(full_name)"
+        )
+        .in("progression_id", progressionIds)
+        .order("step_number", { ascending: true })
+        .order("id")
+        .range(a, b)
+    );
 
     const stepsRes = withActors.error
-      ? await admin
-          .from("project_progression_steps")
-          .select(
-            "id, progression_id, step_number, status, started_at, ended_at, completed_at, work_date, note, template_step:progression_template_steps(phase_number, phase_name, title)"
-          )
-          .in("progression_id", progressionIds)
-          .order("step_number", { ascending: true })
+      ? await fetchAllRows((a, b) =>
+          admin
+            .from("project_progression_steps")
+            .select(
+              "id, progression_id, step_number, status, started_at, ended_at, completed_at, work_date, note, template_step:progression_template_steps(phase_number, phase_name, title)"
+            )
+            .in("progression_id", progressionIds)
+            .order("step_number", { ascending: true })
+            .order("id")
+            .range(a, b)
+        )
       : withActors;
 
     if (withActors.error) {
-      console.warn("[progression-export] actor join failed:", withActors.error.message);
+      console.warn("[progression-export] actor join failed:", withActors.error);
     }
 
     for (const step of (stepsRes.data ?? []) as unknown as StepRow[]) {
@@ -193,14 +202,19 @@ export async function getProgressionExportPayload(
 
   const logsByProgression = new Map<string, LogRow[]>();
   if (progressionIds.length > 0) {
-    const { data: logs } = await admin
-      .from("project_progression_logs")
-      .select("progression_id, action, work_date, step_id")
-      .in("progression_id", progressionIds)
-      .gte("work_date", from)
-      .lte("work_date", to)
-      .order("work_date", { ascending: false })
-      .limit(2000);
+    const { data: logs } = await fetchAllRows(
+      (a, b) =>
+        admin
+          .from("project_progression_logs")
+          .select("progression_id, action, work_date, step_id")
+          .in("progression_id", progressionIds)
+          .gte("work_date", from)
+          .lte("work_date", to)
+          .order("work_date", { ascending: false })
+          .order("id")
+          .range(a, b),
+      { maxRows: 20_000 }
+    );
 
     for (const log of (logs ?? []) as LogRow[]) {
       const list = logsByProgression.get(log.progression_id) ?? [];

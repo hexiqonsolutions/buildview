@@ -12,6 +12,7 @@ import {
 
 import { cache } from "react";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
+import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { canEditProgression, canVerifyProgression, canViewProgression } from "@/lib/auth/roles";
 import { canViewProject, getActiveActor } from "@/lib/auth/project-access";
 import {
@@ -462,10 +463,14 @@ async function loadFloorSummaries(
 
   if (progressionIds.length > 0) {
     // "*" so this works before and after migration 047 (verification_status).
-    const { data: steps } = await admin
-      .from("project_progression_steps")
-      .select("*")
-      .in("progression_id", progressionIds);
+    const { data: steps } = await fetchAllRows((a, b) =>
+      admin
+        .from("project_progression_steps")
+        .select("*")
+        .in("progression_id", progressionIds)
+        .order("id")
+        .range(a, b)
+    );
 
     for (const step of (steps ?? []) as Array<{
       progression_id: string;
@@ -910,7 +915,14 @@ export async function getProgressionPercentByProjectIds(
 
     const progressionIds = progressions.map((p) => p.id);
     const [{ data: steps, error: stepsError }, { data: projectRows }] = await Promise.all([
-      admin.from("project_progression_steps").select("*").in("progression_id", progressionIds),
+      fetchAllRows((a, b) =>
+        admin
+          .from("project_progression_steps")
+          .select("*")
+          .in("progression_id", progressionIds)
+          .order("id")
+          .range(a, b)
+      ),
       admin.from("projects").select("*").in("id", ids),
     ]);
     const verifiedOnlyProjects = new Set(
@@ -1051,10 +1063,15 @@ export const getChecklistStepRecords = cache(
 
     const steps: ChecklistStepRecord[] = [];
     if (progressionMeta.size > 0) {
-      const { data: rows } = await admin
-        .from("project_progression_steps")
-        .select("*, template_step:progression_template_steps(title)")
-        .in("progression_id", [...progressionMeta.keys()]);
+      const progressionIdList = [...progressionMeta.keys()];
+      const { data: rows } = await fetchAllRows((a, b) =>
+        admin
+          .from("project_progression_steps")
+          .select("*, template_step:progression_template_steps(title)")
+          .in("progression_id", progressionIdList)
+          .order("id")
+          .range(a, b)
+      );
       for (const row of rows ?? []) {
         const meta = progressionMeta.get(row.progression_id as string);
         if (!meta) continue;
