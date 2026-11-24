@@ -59,6 +59,7 @@ import {
   VerifyFromScanDialog,
   type ReviewDecision,
 } from "@/components/projects/progression/progression-review";
+import { ZoneProgressSection } from "@/components/projects/progression/zone-progress-section";
 
 /* ---------------------------------------------------------------- helpers */
 
@@ -288,6 +289,7 @@ function recomputeBundle(
   const completion = projectCompletion(
     combinedFloors.map((combined) => ({
       floorId: combined.floorId,
+      zoneActual: bundle.zoneFloorPercents?.[combined.floorId] ?? null,
       tracks: floors
         .filter((f) => f.floorId === combined.floorId)
         .map((f) => ({
@@ -1456,21 +1458,29 @@ export function ProgressionPanel({
         return;
       }
       // Reload the bundle so every count uses the new rule.
-      const floorId =
-        data.selectedByTrack.post_slab?.floorId ?? data.selectedByTrack.pre_slab?.floorId;
-      const track: ProgressionTrack = data.selectedByTrack.post_slab ? "post_slab" : "pre_slab";
-      if (!floorId) {
-        setData((prev) => ({ ...prev, verifiedOnly: next }));
-        return;
-      }
-      const reloaded = await selectProgressionSection({
-        projectId: data.projectId,
-        track,
-        floorId,
-        ...selectionsFor(track, floorId),
-      });
-      if (reloaded.ok) setData(reloaded.progression);
-      else setData((prev) => ({ ...prev, verifiedOnly: next }));
+      setData((prev) => ({ ...prev, verifiedOnly: next }));
+      await reloadBundleNow();
+    });
+  }
+
+  /** Re-fetch the bundle for the current floors (e.g. after zone updates). */
+  async function reloadBundleNow() {
+    const floorId =
+      data.selectedByTrack.post_slab?.floorId ?? data.selectedByTrack.pre_slab?.floorId;
+    const track: ProgressionTrack = data.selectedByTrack.post_slab ? "post_slab" : "pre_slab";
+    if (!floorId) return;
+    const reloaded = await selectProgressionSection({
+      projectId: data.projectId,
+      track,
+      floorId,
+      ...selectionsFor(track, floorId),
+    });
+    if (reloaded.ok) setData(reloaded.progression);
+  }
+
+  function reloadBundle() {
+    startTransition(async () => {
+      await reloadBundleNow();
     });
   }
 
@@ -2170,12 +2180,14 @@ export function ProgressionPanel({
               onTransition={onTransition}
               onSaveDates={onSaveDates}
               onSaveSchedule={onSaveSchedule}
-                onEvidence={onEvidence}
-                onReview={onReview}
+              onEvidence={onEvidence}
+              onReview={onReview}
             />
           ))}
         </div>
       )}
+
+      <ZoneProgressSection projectId={data.projectId} onChanged={reloadBundle} />
 
       <p className="flex items-center gap-1.5 text-xs text-slate-400">
         <Building2 className="h-3.5 w-3.5" aria-hidden />

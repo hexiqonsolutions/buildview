@@ -27,6 +27,11 @@ export type ChecklistTrackInput = {
 export type ChecklistFloorInput = {
   floorId: string;
   tracks: ChecklistTrackInput[];
+  /**
+   * Floor % from its zones (Milestone 4). When set, it replaces the checklist
+   * % for this floor; the schedule still comes from the tracks.
+   */
+  zoneActual?: number | null;
 };
 
 /** Steps per track when a track has not been seeded yet. */
@@ -53,12 +58,14 @@ export type ProjectCompletion = {
 
 export function floorCompletion(floor: ChecklistFloorInput, today: string): FloorCompletion {
   const actual =
-    weightedRollup(
-      floor.tracks.map((t) => ({
-        percent: t.total > 0 ? (t.completed / t.total) * 100 : null,
-        weight: t.total,
-      }))
-    ) ?? 0;
+    floor.zoneActual != null
+      ? floor.zoneActual
+      : (weightedRollup(
+          floor.tracks.map((t) => ({
+            percent: t.total > 0 ? (t.completed / t.total) * 100 : null,
+            weight: t.total,
+          }))
+        ) ?? 0);
   const planned = weightedRollup(
     floor.tracks.map((t) => ({
       percent: plannedPercent(today, t.plannedStart, t.plannedEnd),

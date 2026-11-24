@@ -157,6 +157,16 @@ export function CompletionHero({
               </p>
             </div>
             <div>
+              <h3 className="font-semibold text-slate-900 dark:text-white">Floors with zones</h3>
+              <p>
+                When a floor has zones (flats, units or rooms), its % comes from them instead of the
+                checklist. Each trade earns its stage credit (Not started 0%, Started 25%, Half done
+                50%, Done 100%), trades are weighted (e.g. Paint 25%), activities marked N/A are left
+                out, and zones are weighted by their area. See Zones &amp; trades on the checklist
+                page for the breakdown.
+              </p>
+            </div>
+            <div>
               <h3 className="font-semibold text-slate-900 dark:text-white">2. The project</h3>
               <p>
                 Project % is the average of all {floorCount} floors, each weighted equally.

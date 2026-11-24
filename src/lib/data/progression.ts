@@ -1,4 +1,5 @@
 import "server-only";
+import { loadZoneData, zoneFloorResults } from "@/lib/data/zone-progress";
 import {
   percentOnDate,
   projectCompletion,
@@ -301,10 +302,17 @@ function mapSteps(
 }
 
 /** Checklist rows for one physical floor, shaped for the completion formula. */
-function checklistFloors(floors: FloorProgressionSummary[]): ChecklistFloorInput[] {
+function checklistFloors(
+  floors: FloorProgressionSummary[],
+  zoneFloorPercents: Record<string, number> = {}
+): ChecklistFloorInput[] {
   const byFloor = new Map<string, ChecklistFloorInput>();
   for (const row of floors) {
-    const entry = byFloor.get(row.floorId) ?? { floorId: row.floorId, tracks: [] };
+    const entry = byFloor.get(row.floorId) ?? {
+      floorId: row.floorId,
+      tracks: [],
+      zoneActual: zoneFloorPercents[row.floorId] ?? null,
+    };
     entry.tracks.push({
       completed: row.completedCount,
       total: row.totalCount,
@@ -322,13 +330,14 @@ function checklistFloors(floors: FloorProgressionSummary[]): ChecklistFloorInput
  */
 function aggregateProjectPercent(
   floors: FloorProgressionSummary[],
-  combinedFloors: CombinedFloorSummary[]
+  combinedFloors: CombinedFloorSummary[],
+  zoneFloorPercents: Record<string, number> = {}
 ): {
   overallPercent: number;
   activatedFloorCount: number;
   completion: ProjectCompletion;
 } {
-  const completion = projectCompletion(checklistFloors(floors), todayInIndia());
+  const completion = projectCompletion(checklistFloors(floors, zoneFloorPercents), todayInIndia());
   return {
     overallPercent: Math.round(completion.actual),
     activatedFloorCount: combinedFloors.filter((f) => f.activated).length,
@@ -761,9 +770,17 @@ async function loadProjectProgressionBundle(
       matterportUrl: t.matterport_url,
     }))
     .sort((a, b) => (b.captureDate ?? b.createdAt).localeCompare(a.captureDate ?? a.createdAt));
+  const zoneResults = zoneFloorResults(
+    (await loadZoneData([projectId]).catch(() => new Map())).get(projectId),
+    todayInIndia(),
+    verifiedOnly
+  );
+  const zoneFloorPercents: Record<string, number> = {};
+  for (const [floorId, r] of zoneResults) zoneFloorPercents[floorId] = r.percent;
   const { overallPercent: overall, activatedFloorCount, completion } = aggregateProjectPercent(
     refreshed.floors,
-    refreshed.combinedFloors
+    refreshed.combinedFloors,
+    zoneFloorPercents
   );
 
   return {
@@ -776,6 +793,7 @@ async function loadProjectProgressionBundle(
     canVerify: canVerifyProgression(actor.role),
     pendingReviewCount: refreshed.pendingReviewCount ?? 0,
     scans,
+    zoneFloorPercents,
     floors: refreshed.floors,
     combinedFloors: refreshed.combinedFloors,
     tracks: summarizeTracks(refreshed.floors, refreshed.combinedFloors),
@@ -953,8 +971,18 @@ export async function getProgressionPercentByProjectIds(
     }
 
     const today = todayInIndia();
+    const zoneData = await loadZoneData([...floorsByProject.keys()]).catch(() => new Map());
     for (const [projectId, floorInputs] of floorsByProject) {
-      result.set(projectId, Math.round(projectCompletion(floorInputs, today).actual));
+      const zoneFloors = zoneFloorResults(
+        zoneData.get(projectId),
+        today,
+        verifiedOnlyProjects.has(projectId)
+      );
+      const withZones = floorInputs.map((f) => ({
+        ...f,
+        zoneActual: zoneFloors.get(f.floorId)?.percent ?? null,
+      }));
+      result.set(projectId, Math.round(projectCompletion(withZones, today).actual));
     }
   } catch (err) {
     console.warn("[getProgressionPercentByProjectIds] failed:", err);

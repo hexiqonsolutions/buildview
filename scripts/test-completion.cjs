@@ -189,3 +189,88 @@ test("progress on a date: only steps ended on/before the scan count", () => {
   const between = adapter.stepsEndedBetween(steps, ["F1"], "2026-10-10", "2026-10-25");
   assert.deepEqual(between.map((s) => s.stepNumber), [2]);
 });
+
+const zones = jiti(path.join(root, "src/lib/progression/zone-completion.ts"));
+const ACTS = [
+  { key: "blockwork", name: "Blockwork", weight: 20 },
+  { key: "services", name: "Services", weight: 15 },
+  { key: "plaster", name: "Plaster", weight: 20 },
+  { key: "flooring", name: "Flooring", weight: 20 },
+  { key: "paint", name: "Paint", weight: 25 },
+];
+const STAGES = [
+  { key: "not_started", name: "Not started", credit: 0 },
+  { key: "started", name: "Started", credit: 25 },
+  { key: "half", name: "Half", credit: 50 },
+  { key: "done", name: "Done", credit: 100 },
+];
+let obsSeq = 0;
+const ob = (zoneId, activityKey, stageKey, observedOn, verificationStatus = "verified", createdAt) => ({
+  id: `o${++obsSeq}`, zoneId, activityKey, stageKey, observedOn,
+  createdAt: createdAt ?? `${observedOn}T10:00:${String(obsSeq).padStart(2, "0")}Z`, verificationStatus,
+});
+const zoneRec = (id, area, naKeys = []) => ({ id, floorId: "F", name: id, zoneType: "flat", area, customWeight: null, naKeys });
+
+test("zones: spec reference case from observations (65 / 27.5 / floor 50)", () => {
+  const obs = [
+    ob("301", "blockwork", "done", "2026-11-01"), ob("301", "services", "done", "2026-11-02"),
+    ob("301", "plaster", "done", "2026-11-03"), ob("301", "flooring", "half", "2026-11-04"),
+    ob("302", "blockwork", "done", "2026-11-01"), ob("302", "services", "half", "2026-11-02"),
+  ];
+  const floor = zones.computeZoneFloors({
+    zones: [zoneRec("301", 1200), zoneRec("302", 800)], activities: ACTS, stages: STAGES,
+    observations: obs, date: "2026-11-24", verifiedOnly: true, basis: "area",
+  }).get("F");
+  close(floor.zones[0].percent, 65, "301");
+  close(floor.zones[1].percent, 27.5, "302");
+  close(floor.percent, 50, "floor");
+  close(floor.trades.flooring, 30, "flooring trade");
+});
+
+test("zones: rejected never counts; unverified counts only when allowed", () => {
+  const obs = [
+    ob("Z", "blockwork", "done", "2026-11-01", "rejected"),
+    ob("Z", "paint", "half", "2026-11-02", null),
+  ];
+  const run = (verifiedOnly) => zones.computeZoneFloors({
+    zones: [zoneRec("Z", 100)], activities: ACTS, stages: STAGES, observations: obs,
+    date: "2026-11-24", verifiedOnly, basis: "area",
+  }).get("F").zones[0];
+  close(run(true).percent, 0, "verified only");
+  close(run(false).percent, 12.5, "unverified paint half = 25*0.5");
+  assert.equal(run(true).cells.paint.latestStatus, "pending");
+});
+
+test("zones: a same-day correction wins over an earlier higher stage", () => {
+  const obs = [
+    ob("Z", "plaster", "done", "2026-11-05", "verified", "2026-11-05T09:00:00Z"),
+    ob("Z", "plaster", "half", "2026-11-05", "verified", "2026-11-05T17:00:00Z"),
+  ];
+  const z = zones.computeZoneFloors({
+    zones: [zoneRec("Z", 100)], activities: ACTS, stages: STAGES, observations: obs,
+    date: "2026-11-24", verifiedOnly: true, basis: "area",
+  }).get("F").zones[0];
+  assert.equal(z.cells.plaster.countedStageKey, "half");
+});
+
+test("zones: N/A excluded; area basis falls back to equal without areas", () => {
+  const obs = [ob("A", "blockwork", "done", "2026-11-01"), ob("B", "blockwork", "done", "2026-11-01")];
+  const floor = zones.computeZoneFloors({
+    zones: [zoneRec("A", null, ["services", "plaster", "flooring", "paint"]), zoneRec("B", null)],
+    activities: ACTS, stages: STAGES, observations: obs, date: "2026-11-24", verifiedOnly: true, basis: "area",
+  }).get("F");
+  close(floor.zones[0].percent, 100, "A only blockwork applies");
+  close(floor.zones[1].percent, 20, "B");
+  close(floor.percent, 60, "equal fallback");
+});
+
+test("checklist adapter: zoneActual replaces the checklist % for that floor", () => {
+  const p = adapter.projectCompletion(
+    [
+      { floorId: "F1", zoneActual: 50, tracks: [{ completed: 0, total: 56, plannedStart: null, plannedEnd: null }] },
+      { floorId: "F2", tracks: [{ completed: 56, total: 56, plannedStart: null, plannedEnd: null }] },
+    ],
+    "2026-11-24"
+  );
+  close(p.actual, 75, "project");
+});
