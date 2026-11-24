@@ -123,6 +123,8 @@ export async function getProgressReport(projectId: string, from: string, to: str
       latestScan: scanEvidence(latest),
     };
   });
+  const byName = new Intl.Collator("en", { numeric: true, sensitivity: "base" });
+  floors.sort((a, b) => byName.compare(a.building, b.building) || byName.compare(a.floor, b.floor));
   const floorLabel = new Map(floors.map((f) => [f.floorId, `${f.building} · ${f.floor}`]));
 
   // ---- changes in the period: checklist steps ended + zone updates
