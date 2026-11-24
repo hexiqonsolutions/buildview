@@ -274,3 +274,33 @@ test("checklist adapter: zoneActual replaces the checklist % for that floor", ()
   );
   close(p.actual, 75, "project");
 });
+
+const scurve = jiti(path.join(root, "src/lib/progression/s-curve.ts"));
+
+test("S-curve: actual rises with ended steps, planned follows the schedule, future has no actual", () => {
+  const steps = [
+    step("F1", "post", 1, "completed", "2026-01-08"),
+    step("F1", "post", 2, "completed", "2026-01-22"),
+    step("F1", "post", 3, "pending", null),
+    step("F1", "post", 4, "pending", null),
+  ];
+  const points = scurve.buildSCurve({
+    floors: [{ floorId: "F1", tracks: [{ track: "post", total: 4, plannedStart: "2026-01-01", plannedEnd: "2026-03-01" }] }],
+    steps,
+    today: "2026-02-01",
+  });
+  assert.equal(points[0].date, "2026-01-01");
+  assert.equal(points.at(-1).date, "2026-03-01");
+  const at = (d) => points.find((p) => p.date === d);
+  close(at("2026-01-01").actual, 0, "start actual");
+  close(at("2026-02-01").actual, 50, "today actual (2 of 4)");
+  close(at("2026-03-01").planned, 100, "planned at end");
+  assert.equal(at("2026-03-01").actual, null);
+  // monotonic actual up to today
+  const past = points.filter((p) => p.actual != null).map((p) => p.actual);
+  assert.deepEqual([...past].sort((a, b) => a - b), past);
+});
+
+test("S-curve: no history → empty", () => {
+  assert.deepEqual(scurve.buildSCurve({ floors: [], steps: [], today: "2026-02-01" }), []);
+});

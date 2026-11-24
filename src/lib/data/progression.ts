@@ -1,5 +1,6 @@
 import "server-only";
 import { loadZoneData, zoneFloorResults } from "@/lib/data/zone-progress";
+import { buildSCurve, type SCurveFloor, type SCurvePoint } from "@/lib/progression/s-curve";
 import {
   percentOnDate,
   projectCompletion,
@@ -782,6 +783,7 @@ async function loadProjectProgressionBundle(
     refreshed.combinedFloors,
     zoneFloorPercents
   );
+  await writeCompletionSnapshot(projectId, completion, verifiedOnly);
 
   return {
     projectId,
@@ -1113,4 +1115,111 @@ export async function getChecklistPercentByTour(
     };
   }
   return result;
+}
+
+export type CompletionHistory = {
+  points: SCurvePoint[];
+  /** Stored daily snapshots (migration 051), oldest first. */
+  snapshots: { date: string; actual: number; planned: number | null }[];
+};
+
+/**
+ * Planned vs actual over time for the S-curve, rebuilt from checklist step
+ * dates, zone observations and floor schedules. Null when the viewer can't
+ * see Progression.
+ */
+export async function getCompletionHistory(projectId: string): Promise<CompletionHistory | null> {
+  const records = await getChecklistStepRecords(projectId);
+  if (!records) return null;
+  const admin = createServiceRoleClient();
+  const verifiedOnly = await getVerifiedOnly(projectId);
+
+  const [{ data: progressions }, zoneMap, { data: snapshotRows }] = await Promise.all([
+    admin
+      .from("project_progressions")
+      .select("floor_id, track, planned_start_date, planned_end_date")
+      .eq("project_id", projectId)
+      .is("deleted_at", null),
+    loadZoneData([projectId]).catch(() => new Map()),
+    admin
+      .from("completion_snapshots" as never)
+      .select("*")
+      .eq("project_id", projectId)
+      .order("snapshot_date", { ascending: true })
+      .limit(400),
+  ]);
+
+  const totals = new Map<string, number>();
+  for (const step of records.steps) {
+    const key = `${step.floorId}:${step.track}`;
+    totals.set(key, (totals.get(key) ?? 0) + 1);
+  }
+  const floors: SCurveFloor[] = records.floorIds.map((floorId) => ({
+    floorId,
+    tracks: PROGRESSION_TRACKS.map((track) => {
+      const p = (progressions ?? []).find((row) => row.floor_id === floorId && row.track === track);
+      return {
+        track,
+        total: totals.get(`${floorId}:${track}`) ?? 0,
+        plannedStart: (p?.planned_start_date as string | null) ?? null,
+        plannedEnd: (p?.planned_end_date as string | null) ?? null,
+      };
+    }),
+  }));
+
+  const zoneData = zoneMap.get(projectId);
+  const earliestZoneDate =
+    zoneData?.observations.map((o: { observedOn: string }) => o.observedOn).sort()[0] ?? null;
+
+  const points = buildSCurve({
+    floors,
+    steps: records.steps,
+    today: todayInIndia(),
+    earliestZoneDate,
+    zonePercentsOnDate: zoneData?.zones.length
+      ? (date) => {
+          const out = new Map<string, number>();
+          for (const [floorId, r] of zoneFloorResults(zoneData, date, verifiedOnly)) out.set(floorId, r.percent);
+          return out;
+        }
+      : undefined,
+  });
+
+  const snapshots = ((snapshotRows ?? []) as unknown as Array<{
+    snapshot_date: string;
+    actual: number;
+    planned: number | null;
+  }>).map((s) => ({
+    date: s.snapshot_date,
+    actual: Number(s.actual),
+    planned: s.planned != null ? Number(s.planned) : null,
+  }));
+
+  return { points, snapshots };
+}
+
+/** Record today's completion for the audit trail (migration 051; no-op before). */
+async function writeCompletionSnapshot(
+  projectId: string,
+  completion: ProjectCompletion,
+  verifiedOnly: boolean
+): Promise<void> {
+  try {
+    await createServiceRoleClient()
+      .from("completion_snapshots" as never)
+      .upsert(
+        {
+          project_id: projectId,
+          snapshot_date: todayInIndia(),
+          actual: Math.round(completion.actual * 100) / 100,
+          planned: completion.planned != null ? Math.round(completion.planned * 100) / 100 : null,
+          status: completion.summary.status,
+          verified_only: verifiedOnly,
+          updated_at: new Date().toISOString(),
+        } as never,
+        { onConflict: "project_id,snapshot_date" }
+      );
+  } catch {
+    // Snapshots are best-effort.
+  }
 }

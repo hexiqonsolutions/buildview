@@ -12,8 +12,17 @@ import {
 import { isConstructionProjectForProgression } from "@/lib/data/progression";
 import { loadZoneData, zoneFloorResults } from "@/lib/data/zone-progress";
 import { todayInIndia } from "@/lib/progression/checklist-completion";
-import type { RollupBasis, StageDefinition } from "@/lib/progression/completion";
-import type { CompletionActivity, ZoneResult } from "@/lib/progression/zone-completion";
+import {
+  tradePercent,
+  type RollupBasis,
+  type StageDefinition,
+  type ZoneInput,
+} from "@/lib/progression/completion";
+import {
+  effectiveBasis,
+  type CompletionActivity,
+  type ZoneResult,
+} from "@/lib/progression/zone-completion";
 import { validate } from "@/lib/validations/parse";
 import { projectIdSchema } from "@/lib/validations/data";
 import {
@@ -68,6 +77,8 @@ export type ZoneProgressView =
       activities: CompletionActivity[];
       stages: StageDefinition[];
       floors: ZoneFloorView[];
+      /** Each trade's % across every zone in the project (building trade summary). */
+      projectTrades: Record<string, number | null>;
     };
 
 const MIGRATION_MESSAGE =
@@ -189,8 +200,31 @@ export async function getZoneProgress(projectId: string): Promise<ZoneProgressVi
         };
       });
 
+    // Building-wide trade summary: every zone, same zone weights as the floors.
+    const allZones: ZoneInput[] = [...results.values()].flatMap((floorResult) =>
+      floorResult.zones.map((zone) => {
+        const rec = data.zones.find((z) => z.id === zone.id);
+        return {
+          id: zone.id,
+          name: zone.name,
+          area: rec?.area ?? null,
+          customWeight: rec?.customWeight ?? null,
+          activities: data.activities.map((a) => ({
+            key: a.key,
+            name: a.name,
+            weight: a.weight,
+            percent: zone.cells[a.key]?.percent ?? null,
+          })),
+        };
+      })
+    );
+    const basisForTrades = effectiveBasis(data.zones, data.basis);
+    const projectTrades: Record<string, number | null> = {};
+    for (const a of data.activities) projectTrades[a.key] = tradePercent(allZones, a.key, basisForTrades);
+
     return {
       available: true,
+      projectTrades,
       projectId,
       canRecord: canEditProgression(actor.role),
       canManage: canEditProgression(actor.role),

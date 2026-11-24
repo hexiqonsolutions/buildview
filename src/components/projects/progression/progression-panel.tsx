@@ -60,6 +60,7 @@ import {
   type ReviewDecision,
 } from "@/components/projects/progression/progression-review";
 import { ZoneProgressSection } from "@/components/projects/progression/zone-progress-section";
+import { CompletionSCurve } from "@/components/projects/progression/completion-s-curve";
 
 /* ---------------------------------------------------------------- helpers */
 
@@ -1712,6 +1713,12 @@ export function ProgressionPanel({
             onToggleVerifiedOnly={onToggleVerifiedOnly}
           />
         ) : null}
+        {data.completion ? (
+          <CompletionSCurve
+            projectId={data.projectId}
+            refreshKey={Math.round(data.completion.actual * 10)}
+          />
+        ) : null}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
@@ -2105,6 +2112,12 @@ export function ProgressionPanel({
             canVerify={data.canVerify}
             pendingReviewCount={data.pendingReviewCount}
             onToggleVerifiedOnly={onToggleVerifiedOnly}
+          />
+        ) : null}
+        {data.completion ? (
+          <CompletionSCurve
+            projectId={data.projectId}
+            refreshKey={Math.round(data.completion.actual * 10)}
           />
         ) : null}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

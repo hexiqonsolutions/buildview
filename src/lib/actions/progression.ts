@@ -14,6 +14,8 @@ import { canViewProject, getActiveActor } from "@/lib/auth/project-access";
 import {
   ensureFloorProgression,
   getChecklistPercentByTour,
+  getCompletionHistory,
+  type CompletionHistory,
   getProjectProgressionFresh,
   isConstructionProjectForProgression,
   type ScanChecklistPercent,
@@ -839,4 +841,13 @@ export async function setProgressionVerifiedOnly(input: unknown) {
     logServerError("progression:verifiedOnly", err);
     return { ok: false as const, error: getErrorMessage(err, "Could not change the setting.") };
   }
+}
+
+/** S-curve data (planned vs actual over time) for the Progression report. */
+export async function getCompletionHistoryAction(projectId: string): Promise<CompletionHistory | null> {
+  if (!validate(projectIdSchema, projectId).success) return null;
+  return getCompletionHistory(projectId).catch((err) => {
+    logServerError("progression:history", err);
+    return null;
+  });
 }

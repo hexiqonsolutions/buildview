@@ -151,6 +151,8 @@ export function ZoneProgressSection({
         </p>
       ) : null}
 
+      {zonedFloors.length > 0 ? <TradeSummary view={view} /> : null}
+
       {zonedFloors.length === 0 ? (
         <EmptyZones view={view} />
       ) : (
@@ -598,6 +600,36 @@ function EmptyZones({ view }: { view: Ready }) {
           </ul>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Building-wide trade %: every zone, weighted like the floors. One hue (magnitude). */
+function TradeSummary({ view }: { view: Ready }) {
+  return (
+    <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-950/60">
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Trade summary · whole project</p>
+      <ul className="mt-2 grid gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
+        {view.activities.map((a) => {
+          const value = view.projectTrades[a.key];
+          return (
+            <li key={a.key} className="space-y-1">
+              <div className="flex justify-between gap-2 text-sm">
+                <span className="text-slate-700 dark:text-slate-300">{a.name}</span>
+                <span className="font-semibold tabular-nums text-slate-900 dark:text-white">
+                  {value == null ? "N/A" : formatPercent(value)}
+                </span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+                <div
+                  className="h-full rounded-full bg-[#4d7c0f] dark:bg-[#6b9a1a]"
+                  style={{ width: `${Math.max(0, Math.min(100, value ?? 0))}%` }}
+                />
+              </div>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }
