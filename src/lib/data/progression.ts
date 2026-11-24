@@ -1,8 +1,10 @@
 import "server-only";
 import {
+  percentOnDate,
   projectCompletion,
   todayInIndia,
   type ChecklistFloorInput,
+  type ChecklistStepRecord,
   type ProjectCompletion,
 } from "@/lib/progression/checklist-completion";
 
@@ -830,5 +832,115 @@ export async function getProgressionPercentByProjectIds(
     console.warn("[getProgressionPercentByProjectIds] failed:", err);
   }
 
+  return result;
+}
+
+/**
+ * Every checklist step on the project with the day it was ended, for
+ * "progress at this scan". Null when the viewer can't see Progression or the
+ * project isn't a Construction Intelligence project. Floors without checklist
+ * rows are returned in `floorIds` so they count as 0%.
+ */
+export const getChecklistStepRecords = cache(
+  async (
+    projectId: string
+  ): Promise<{ floorIds: string[]; steps: ChecklistStepRecord[] } | null> => {
+    if (!validate(projectIdSchema, projectId).success) return null;
+    const actor = await getProgressionActor();
+    if (!actor || !(await assertProgressionReadable(projectId, actor))) return null;
+    if (!(await isConstructionProjectForProgression(projectId))) return null;
+
+    const admin = createServiceRoleClient();
+    const { data: buildings } = await admin
+      .from("buildings")
+      .select("id, name")
+      .eq("project_id", projectId)
+      .is("deleted_at", null);
+    if (!buildings?.length) return { floorIds: [], steps: [] };
+    const buildingName = new Map(buildings.map((b) => [b.id as string, b.name as string]));
+
+    const { data: floors } = await admin
+      .from("floors")
+      .select("id, name, building_id")
+      .in("building_id", [...buildingName.keys()])
+      .is("deleted_at", null);
+    const floorMeta = new Map(
+      (floors ?? []).map((f) => [
+        f.id as string,
+        { name: f.name as string, building: buildingName.get(f.building_id as string) ?? "Building" },
+      ])
+    );
+
+    const { data: progressions } = await admin
+      .from("project_progressions")
+      .select("id, floor_id, track")
+      .eq("project_id", projectId)
+      .is("deleted_at", null);
+    const progressionMeta = new Map(
+      (progressions ?? []).map((p) => [p.id as string, { floorId: p.floor_id as string, track: p.track as string }])
+    );
+
+    const steps: ChecklistStepRecord[] = [];
+    if (progressionMeta.size > 0) {
+      const { data: rows } = await admin
+        .from("project_progression_steps")
+        .select(
+          "progression_id, step_number, status, work_date, ended_at, completed_at, template_step:progression_template_steps(title)"
+        )
+        .in("progression_id", [...progressionMeta.keys()]);
+      for (const row of rows ?? []) {
+        const meta = progressionMeta.get(row.progression_id as string);
+        if (!meta) continue;
+        const floor = floorMeta.get(meta.floorId);
+        if (!floor) continue;
+        const ended =
+          (row.work_date as string | null) ??
+          ((row.ended_at as string | null) ?? (row.completed_at as string | null))?.slice(0, 10) ??
+          null;
+        steps.push({
+          floorId: meta.floorId,
+          floorName: floor.name,
+          buildingName: floor.building,
+          track: meta.track,
+          stepNumber: row.step_number as number,
+          title:
+            (row.template_step as unknown as { title: string } | null)?.title ?? `Step ${row.step_number}`,
+          status: row.status as ChecklistStepRecord["status"],
+          doneDate: row.status === "completed" ? ended : null,
+        });
+      }
+    }
+
+    return { floorIds: [...floorMeta.keys()], steps };
+  }
+);
+
+export type ScanChecklistPercent = { percent: number; scope: "floor" | "project" };
+
+/**
+ * Checklist % on each tour's capture date: the tour's floor when it has one
+ * with a checklist, otherwise the whole project. Tours the viewer can't see
+ * Progression for are omitted.
+ */
+export async function getChecklistPercentByTour(
+  tours: { id: string; project_id: string; floor_id?: string | null; capture_date: string | null; created_at: string }[]
+): Promise<Record<string, ScanChecklistPercent>> {
+  const result: Record<string, ScanChecklistPercent> = {};
+  const projectIds = [...new Set(tours.map((t) => t.project_id))];
+  const recordsByProject = new Map(
+    await Promise.all(
+      projectIds.map(async (id) => [id, await getChecklistStepRecords(id).catch(() => null)] as const)
+    )
+  );
+  for (const tour of tours) {
+    const records = recordsByProject.get(tour.project_id);
+    if (!records || records.steps.length === 0) continue;
+    const date = (tour.capture_date ?? tour.created_at).slice(0, 10);
+    const onFloor = tour.floor_id && records.floorIds.includes(tour.floor_id);
+    result[tour.id] = {
+      percent: percentOnDate(records.steps, onFloor ? [tour.floor_id as string] : records.floorIds, date),
+      scope: onFloor ? "floor" : "project",
+    };
+  }
   return result;
 }

@@ -165,3 +165,27 @@ test("checklist adapter: plan compares scheduled floors only", () => {
   assert.equal(p.summary.status, "ahead"); // scheduled floor F1: 50% actual vs 50% planned
   assert.equal(p.scheduledFloorCount, 1);
 });
+
+const step = (floorId, track, n, status, doneDate) => ({
+  floorId, floorName: floorId, buildingName: "T", track, stepNumber: n, title: `Step ${n}`, status, doneDate,
+});
+
+test("progress on a date: only steps ended on/before the scan count", () => {
+  const steps = [
+    step("F1", "pre", 1, "completed", "2026-10-01"),
+    step("F1", "pre", 2, "completed", "2026-10-20"),
+    step("F1", "pre", 3, "in_progress", null),
+    step("F1", "pre", 4, "pending", null),
+    step("F2", "pre", 1, "pending", null),
+    step("F2", "pre", 2, "pending", null),
+    step("F2", "pre", 3, "pending", null),
+    step("F2", "pre", 4, "pending", null),
+  ];
+  // Floor only: 1/4 on 10 Oct, 2/4 on 25 Oct.
+  close(adapter.percentOnDate(steps, ["F1"], "2026-10-10"), 25, "F1 at scan A");
+  close(adapter.percentOnDate(steps, ["F1"], "2026-10-25"), 50, "F1 at scan B");
+  // Project (both floors, F2 unstarted = 0%): (50 + 0) / 2 = 25.
+  close(adapter.percentOnDate(steps, ["F1", "F2"], "2026-10-25"), 25, "project");
+  const between = adapter.stepsEndedBetween(steps, ["F1"], "2026-10-10", "2026-10-25");
+  assert.deepEqual(between.map((s) => s.stepNumber), [2]);
+});

@@ -7,10 +7,13 @@ import { assertClientNotSuspended } from "@/lib/auth/client-suspension";
 import { canViewProject, getActiveActor } from "@/lib/auth/project-access";
 import {
   ensureFloorProgression,
+  getChecklistPercentByTour,
   getProjectProgressionFresh,
   isConstructionProjectForProgression,
+  type ScanChecklistPercent,
 } from "@/lib/data/progression";
 import { validate } from "@/lib/validations/parse";
+import { projectIdSchema } from "@/lib/validations/data";
 import {
   progressionScheduleSchema,
   progressionStepActionSchema,
@@ -655,4 +658,22 @@ export async function setProgressionStep(input: unknown) {
       error: getErrorMessage(err, "Failed to update progression step."),
     };
   }
+}
+
+/**
+ * Checklist % on each tour's capture date for one project (portal tour list).
+ * Empty when the viewer can't see Progression or the project doesn't use it.
+ */
+export async function getTourScanPercents(
+  projectId: string
+): Promise<Record<string, ScanChecklistPercent>> {
+  if (!validate(projectIdSchema, projectId).success) return {};
+  const supabase = await createClient();
+  const { data: tours } = await supabase
+    .from("project_tours")
+    .select("id, project_id, floor_id, capture_date, created_at")
+    .eq("project_id", projectId)
+    .is("deleted_at", null);
+  if (!tours?.length) return {};
+  return getChecklistPercentByTour(tours).catch(() => ({}));
 }

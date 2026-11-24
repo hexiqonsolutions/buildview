@@ -86,8 +86,30 @@ export type SavedComparison = {
   createdAt: string;
 };
 
+/** Checklist (Progression) completion at each scan date. */
+export type ChecklistScanProgress = {
+  /** "floor" when both scans are on the same floor, else the whole project. */
+  scope: "floor" | "project";
+  scopeLabel: string;
+  scanA: { date: string; percent: number };
+  scanB: { date: string; percent: number };
+  /** scanB − scanA in percentage points. */
+  delta: number;
+  stepsBetween: {
+    floorLabel: string;
+    track: string;
+    stepNumber: number;
+    title: string;
+    date: string;
+  }[];
+  /** Total steps ended in the window (stepsBetween is capped for display). */
+  stepsBetweenCount: number;
+};
+
 export type ComparisonSnapshot = {
   project: Project;
+  /** Null when Progression isn't used or the viewer can't see it. */
+  checklistProgress: ChecklistScanProgress | null;
   scanA: EnrichedTour;
   scanB: EnrichedTour;
   dateWindowLabel: string;

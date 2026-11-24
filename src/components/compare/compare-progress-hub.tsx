@@ -28,6 +28,7 @@ import { isValidMatterportUrl } from "@/lib/matterport";
 import type { ComparisonProjectsData, ComparisonSnapshot, EnrichedTour, SavedComparison } from "@/lib/comparison/types";
 import { buildShellComparisonSnapshot, buildBlankComparisonSnapshot, isBlankComparisonSnapshot } from "@/lib/comparison/analytics";
 import { SyncedViewerPair } from "@/components/compare/synced-viewer-pair";
+import { ChecklistScanProgressCard } from "@/components/compare/checklist-scan-progress";
 import { CompareDetailedReportDialog } from "@/components/compare/compare-detailed-report";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1083,6 +1084,10 @@ export function CompareProgressHub({
               immersive
             />
           </div>
+
+          {!isBlankUi && displaySnapshot.checklistProgress ? (
+            <ChecklistScanProgressCard progress={displaySnapshot.checklistProgress} />
+          ) : null}
         </div>
 
       <CompareDetailedReportDialog

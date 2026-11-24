@@ -50,6 +50,8 @@ import {
   parseTourWorkspaceMeta,
 } from "@/lib/admin/tour-metadata";
 import { formatDate } from "@/lib/utils";
+import { formatPercent } from "@/lib/progression/completion";
+import type { ScanChecklistPercent } from "@/lib/data/progression";
 import type { ProjectTour } from "@/lib/types";
 
 type TourRow = ProjectTour & { project?: { id: string; name: string } | null };
@@ -58,7 +60,14 @@ function tourTime(tour: TourRow): number {
   return new Date(tour.capture_date ?? tour.created_at).getTime();
 }
 
-export function MatterportManager({ tours }: { tours: TourRow[] }) {
+export function MatterportManager({
+  tours,
+  scanPercents = {},
+}: {
+  tours: TourRow[];
+  /** Checklist % on each tour's capture date (construction projects only). */
+  scanPercents?: Record<string, ScanChecklistPercent>;
+}) {
   const { hydrated, scope, clientProjects, project, projects } = useAdminWorkspace();
   const { lens, portalOfProject } = useAdminPortalLens();
   const [thumbnailTour, setThumbnailTour] = useState<TourRow | null>(null);
@@ -299,6 +308,18 @@ export function MatterportManager({ tours }: { tours: TourRow[] }) {
                       </h3>
                       <p className="mt-0.5 text-xs text-slate-500">
                         {formatDate(tour.capture_date ?? tour.created_at)}
+                        {scanPercents[tour.id] ? (
+                          <span
+                            className="ml-2 rounded-full bg-brand-accent/15 px-2 py-0.5 text-[10px] font-semibold text-[#3f5d12] dark:text-brand-accent"
+                            title={
+                              scanPercents[tour.id].scope === "floor"
+                                ? "Checklist completion of this floor on the scan date"
+                                : "Checklist completion of the project on the scan date"
+                            }
+                          >
+                            {formatPercent(scanPercents[tour.id].percent)} at scan
+                          </span>
+                        ) : null}
                         {tour.archived_at ? (
                           <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                             Archived · hidden from client

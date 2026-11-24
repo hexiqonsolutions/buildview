@@ -312,6 +312,7 @@ export function buildShellComparisonSnapshot(
 
   return {
     project,
+    checklistProgress: null,
     scanA: orderedA,
     scanB: orderedB,
     dateWindowLabel: `${new Date(orderedA.capture_date ?? orderedA.created_at).toLocaleDateString()} → ${new Date(orderedB.capture_date ?? orderedB.created_at).toLocaleDateString()}`,
@@ -405,6 +406,7 @@ export function buildBlankComparisonSnapshot(
 
   return {
     project: fallbackProject,
+    checklistProgress: null,
     scanA,
     scanB,
     dateWindowLabel: "— → —",

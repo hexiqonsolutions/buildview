@@ -95,3 +95,91 @@ export function todayInIndia(): string {
     day: "2-digit",
   }).format(new Date());
 }
+
+// ---------------------------------------------------------------------------
+// Progress on a date (360 scan comparison)
+// ---------------------------------------------------------------------------
+
+/** One checklist step as stored today, with the day it was ended (if it was). */
+export type ChecklistStepRecord = {
+  floorId: string;
+  floorName: string;
+  buildingName: string;
+  track: string;
+  stepNumber: number;
+  title: string;
+  status: "pending" | "in_progress" | "completed";
+  /** YYYY-MM-DD the step was ended (work date, else end/complete time); null if not ended. */
+  doneDate: string | null;
+};
+
+function doneOnOrBefore(step: ChecklistStepRecord, date: string): boolean {
+  return step.status === "completed" && step.doneDate != null && step.doneDate <= date.slice(0, 10);
+}
+
+/**
+ * Rebuild each floor's checklist as it stood on `date`: a step counts if it is
+ * ended today and its end date is on or before `date`. Steps that were ended
+ * and later reset are not counted (current state is the source of truth).
+ */
+export function floorsOnDate(
+  steps: ChecklistStepRecord[],
+  floorIds: string[],
+  date: string
+): ChecklistFloorInput[] {
+  return floorIds.map((floorId) => {
+    const byTrack = new Map<string, { completed: number; total: number }>();
+    for (const step of steps) {
+      if (step.floorId !== floorId) continue;
+      const row = byTrack.get(step.track) ?? { completed: 0, total: 0 };
+      row.total += 1;
+      if (doneOnOrBefore(step, date)) row.completed += 1;
+      byTrack.set(step.track, row);
+    }
+    return {
+      floorId,
+      tracks: [...byTrack.values()].map((t) => ({
+        completed: t.completed,
+        total: t.total,
+        plannedStart: null,
+        plannedEnd: null,
+      })),
+    };
+  });
+}
+
+/** Completion % on a date for the given floors (unstarted floors count as 0%). */
+export function percentOnDate(
+  steps: ChecklistStepRecord[],
+  floorIds: string[],
+  date: string
+): number {
+  return projectCompletion(floorsOnDate(steps, floorIds, date), date).actual;
+}
+
+/** Steps ended after `from` and on or before `to`, oldest first. */
+export function stepsEndedBetween(
+  steps: ChecklistStepRecord[],
+  floorIds: string[],
+  from: string,
+  to: string
+): ChecklistStepRecord[] {
+  const start = from.slice(0, 10);
+  const end = to.slice(0, 10);
+  const floors = new Set(floorIds);
+  return steps
+    .filter(
+      (s) =>
+        floors.has(s.floorId) &&
+        s.status === "completed" &&
+        s.doneDate != null &&
+        s.doneDate > start &&
+        s.doneDate <= end
+    )
+    .sort(
+      (a, b) =>
+        (a.doneDate ?? "").localeCompare(b.doneDate ?? "") ||
+        a.floorName.localeCompare(b.floorName) ||
+        a.stepNumber - b.stepNumber
+    );
+}

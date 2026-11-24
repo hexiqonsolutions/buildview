@@ -33,6 +33,9 @@ import type {
   SavedComparison,
 } from "@/lib/comparison/types";
 import type { Project, ProjectTour } from "@/lib/types";
+import type { ChecklistScanProgress } from "@/lib/comparison/types";
+import { getChecklistStepRecords } from "@/lib/data/progression";
+import { percentOnDate, stepsEndedBetween } from "@/lib/progression/checklist-completion";
 import { createClient } from "@/lib/supabase/server";
 import { logServerError, toPublicMessage } from "@/lib/errors/server";
 import { validate } from "@/lib/validations/parse";
@@ -117,6 +120,47 @@ function tourLinkedPhotos(
     );
 }
 
+const STEPS_BETWEEN_LIMIT = 40;
+
+/** Checklist % at each scan's capture date, plus the steps ended in between. */
+async function buildChecklistScanProgress(
+  projectId: string,
+  scanA: ProjectTour,
+  scanB: ProjectTour
+): Promise<ChecklistScanProgress | null> {
+  const records = await getChecklistStepRecords(projectId).catch(() => null);
+  if (!records || records.floorIds.length === 0 || records.steps.length === 0) return null;
+
+  const sameFloor =
+    scanA.floor_id && scanA.floor_id === scanB.floor_id && records.floorIds.includes(scanA.floor_id);
+  const floorIds = sameFloor ? [scanA.floor_id as string] : records.floorIds;
+  const floorStep = sameFloor ? records.steps.find((s) => s.floorId === scanA.floor_id) : null;
+
+  const dateA = (scanA.capture_date ?? scanA.created_at).slice(0, 10);
+  const dateB = (scanB.capture_date ?? scanB.created_at).slice(0, 10);
+  const percentA = percentOnDate(records.steps, floorIds, dateA);
+  const percentB = percentOnDate(records.steps, floorIds, dateB);
+  const between = stepsEndedBetween(records.steps, floorIds, dateA, dateB);
+
+  return {
+    scope: sameFloor ? "floor" : "project",
+    scopeLabel: sameFloor
+      ? `${floorStep?.buildingName ?? "Building"} · ${floorStep?.floorName ?? "Floor"}`
+      : `Whole project (${records.floorIds.length} floor${records.floorIds.length === 1 ? "" : "s"})`,
+    scanA: { date: dateA, percent: percentA },
+    scanB: { date: dateB, percent: percentB },
+    delta: percentB - percentA,
+    stepsBetween: between.slice(0, STEPS_BETWEEN_LIMIT).map((s) => ({
+      floorLabel: `${s.buildingName} · ${s.floorName}`,
+      track: s.track,
+      stepNumber: s.stepNumber,
+      title: s.title,
+      date: s.doneDate ?? dateB,
+    })),
+    stepsBetweenCount: between.length,
+  };
+}
+
 export async function fetchComparisonSnapshot(
   tourAId: string,
   tourBId: string
@@ -169,7 +213,17 @@ export async function fetchComparisonSnapshot(
 
   const progressA = getScanProgress(scanA, scopedTimeline);
   const progressB = getScanProgress(scanB, scopedTimeline);
-  const kpis = buildKpis(progressA, progressB, issuesBetween);
+  const checklistProgress = await buildChecklistScanProgress(project.id, scanA, scanB);
+  const timelineKpis = buildKpis(progressA, progressB, issuesBetween);
+  // The checklist (one completion formula) wins over typed timeline % when available.
+  const kpis = checklistProgress
+    ? {
+        ...timelineKpis,
+        previousProgress: Math.round(checklistProgress.scanA.percent),
+        currentProgress: Math.round(checklistProgress.scanB.percent),
+        difference: Math.round(checklistProgress.delta),
+      }
+    : timelineKpis;
   const tradeProgress = buildTradeProgress(progressA, progressB);
   const visualChanges = buildVisualChanges(documentsBetween, issuesBetween, reportsBetween);
   const activities = buildActivityLog(
@@ -183,6 +237,7 @@ export async function fetchComparisonSnapshot(
 
   return {
     project,
+    checklistProgress,
     scanA,
     scanB,
     dateWindowLabel: formatWindowLabel(window),

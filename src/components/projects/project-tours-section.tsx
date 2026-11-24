@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -28,6 +28,9 @@ import { cn } from "@/lib/utils";
 import { usePortalWorkspace } from "@/components/portal/workspace/portal-workspace-provider";
 import { getTourDisplayFields } from "@/lib/comparison/metadata";
 import { isShowcaseDashboard } from "@/lib/portal/dashboard-type";
+import { getTourScanPercents } from "@/lib/actions/progression";
+import { formatPercent } from "@/lib/progression/completion";
+import type { ScanChecklistPercent } from "@/lib/data/progression";
 
 type TourGroup = {
   key: string;
@@ -68,12 +71,27 @@ export function ProjectToursSection({
   tours: ProjectTour[];
   projectId?: string;
 }) {
+  const { dashboardType } = usePortalWorkspace();
   const [comparing, setComparing] = useState(false);
   const [selectedId, setSelectedId] = useState(tours[0]?.id ?? "");
   const [filterGroup, setFilterGroup] = useState<string | null>(null);
+  const [scanPercents, setScanPercents] = useState<Record<string, ScanChecklistPercent>>({});
+
+  // Checklist % on each scan date (construction projects, Progression roles only).
+  useEffect(() => {
+    if (!projectId || isShowcaseDashboard(dashboardType)) return;
+    let cancelled = false;
+    getTourScanPercents(projectId)
+      .then((map) => {
+        if (!cancelled) setScanPercents(map);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId, dashboardType]);
   const viewerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
-  const { dashboardType } = usePortalWorkspace();
   const isPortfolio = isShowcaseDashboard(dashboardType);
 
   const groups = useMemo(() => groupToursBySpatial(tours), [tours]);
@@ -300,6 +318,18 @@ export function ProjectToursSection({
                     Captured {formatDate(selectedTour.capture_date)}
                   </span>
                 )}
+                {scanPercents[selectedTour.id] ? (
+                  <span
+                    className="rounded-full bg-brand-accent/15 px-2 py-0.5 text-xs font-semibold text-[#3f5d12] dark:text-brand-accent"
+                    title={
+                      scanPercents[selectedTour.id].scope === "floor"
+                        ? "Checklist completion of this floor on the scan date"
+                        : "Checklist completion of the project on the scan date"
+                    }
+                  >
+                    {formatPercent(scanPercents[selectedTour.id].percent)} complete at this scan
+                  </span>
+                ) : null}
                 {selectedFields.building && (
                   <span className="flex items-center gap-1.5">
                     <Building2 className="h-3.5 w-3.5 text-slate-500" />
