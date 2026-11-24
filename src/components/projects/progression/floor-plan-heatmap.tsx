@@ -8,7 +8,8 @@ import type { ZoneFloorView, ZoneProgressView } from "@/lib/actions/zone-progres
 import { formatPercent } from "@/lib/progression/completion";
 import type { ProgressionScan } from "@/lib/progression/types";
 import type { ZoneResult } from "@/lib/progression/zone-completion";
-import { buildStoragePath, uploadFileToStorage } from "@/lib/supabase/storage";
+import { createClient as createBrowserClient } from "@/lib/supabase/client";
+import { createFloorPlanUploadUrl } from "@/lib/actions/zone-progress";
 import { STORAGE_BUCKETS } from "@/lib/types";
 import { getErrorMessage } from "@/lib/errors/public";
 import { cn, formatDate } from "@/lib/utils";
@@ -81,13 +82,14 @@ export function FloorPlanHeatmap({
     if (file.size > PLAN_MAX_BYTES) return setError("Floor plans must be 20 MB or smaller.");
     setUploading(true);
     try {
-      const upload = await uploadFileToStorage(
-        STORAGE_BUCKETS.PROJECT_MEDIA,
-        buildStoragePath(projectId, file.name),
-        file,
-        { contentType: type, timeoutMs: 120_000 }
-      );
-      onSetPlan(upload.path);
+      // Server-issued one-off link: client roles can't write to project-media directly.
+      const ticket = await createFloorPlanUploadUrl({ projectId, fileName: file.name });
+      if (!ticket.ok) throw new Error(ticket.error);
+      const { error: uploadError } = await createBrowserClient()
+        .storage.from(STORAGE_BUCKETS.PROJECT_MEDIA)
+        .uploadToSignedUrl(ticket.path, ticket.token, file, { contentType: type });
+      if (uploadError) throw uploadError;
+      onSetPlan(ticket.path);
     } catch (err) {
       setError(getErrorMessage(err, "Upload failed."));
     } finally {

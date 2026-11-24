@@ -144,6 +144,13 @@ export function ZoneProgressSection({
 
       {view.canManage ? <AddZoneForm view={view} busy={busyKey === "add"} onAdd={(fields) => run("add", () => createZone({ projectId, ...fields }))} /> : null}
 
+      {zonedFloors.length > 0 ? (
+        <p className="text-xs text-slate-500">
+          Pick each trade&apos;s stage per zone: Not started 0%, Started 25%, Half done 50%, Done 100%.
+          A zone&apos;s % adds up each stage × the trade&apos;s weight; the floor % weights zones by area.
+        </p>
+      ) : null}
+
       {zonedFloors.length === 0 ? (
         <EmptyZones view={view} />
       ) : (
@@ -198,7 +205,7 @@ function AddZoneForm({
   if (view.floors.length === 0) {
     return (
       <p className="text-sm text-slate-500">
-        Add buildings and floors to the project first (Admin → project → Buildings).
+        This project has no buildings or floors yet. BuildView adds them; zones go on a floor.
       </p>
     );
   }
@@ -342,8 +349,11 @@ function FloorMatrix({
               {view.activities.map((a) => (
                 <th key={a.key} scope="col" className="px-2 py-2">
                   {a.name}
-                  <span className="ml-1 font-normal text-slate-400">
-                    {Math.round((a.weight / totalWeight) * 100)}%
+                  <span
+                    className="block text-[11px] font-normal text-slate-400"
+                    title="How much this trade counts toward a zone's %"
+                  >
+                    weight {Math.round((a.weight / totalWeight) * 100)}%
                   </span>
                 </th>
               ))}
@@ -559,14 +569,14 @@ function EmptyZones({ view }: { view: Ready }) {
         <p className="mt-0.5 text-sm text-slate-500">
           {view.canManage
             ? view.floors.length === 0
-              ? "Add buildings and floors first (Admin → project → Buildings), then add zones here."
+              ? "This project has no buildings or floors yet. BuildView adds them; then you can add zones here."
               : "Use the form above to add the flats or rooms on a floor. Each zone then gets a row with these trades."
-            : "BuildView sets up the flats and rooms for each floor. Until then, floors use the checklist above."}
+            : "Your Client Admin, site team or BuildView sets up the flats and rooms. Until then, floors use the checklist above."}
         </p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Trades tracked per zone</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Trades and their weight</p>
           <ul className="mt-2 space-y-1 text-sm text-slate-700 dark:text-slate-300">
             {view.activities.map((a) => (
               <li key={a.key} className="flex justify-between gap-3">

@@ -76,3 +76,7 @@ export const setFloorPlanSchema = z
     path: z.string().max(1024).nullable(),
   })
   .strict();
+
+export const floorPlanUploadSchema = z
+  .object({ projectId, fileName: text("File name", { max: 255 }) })
+  .strict();

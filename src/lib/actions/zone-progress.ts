@@ -24,6 +24,7 @@ import {
   setFloorPlanSchema,
   setZoneNaSchema,
   setZonePolygonSchema,
+  floorPlanUploadSchema,
   updateZoneSchema,
   verifyObservationSchema,
 } from "@/lib/validations/zone-progress";
@@ -192,7 +193,7 @@ export async function getZoneProgress(projectId: string): Promise<ZoneProgressVi
       available: true,
       projectId,
       canRecord: canEditProgression(actor.role),
-      canManage: isBuildViewStaffRole(actor.role),
+      canManage: canEditProgression(actor.role),
       canVerify: canVerifyProgression(actor.role),
       verifiedOnly,
       basis: data.basis,
@@ -207,10 +208,15 @@ export async function getZoneProgress(projectId: string): Promise<ZoneProgressVi
 
 type Result = { ok: true; view: ZoneProgressView } | { ok: false; error: string };
 
-async function staffOnly(projectId: string) {
+/**
+ * Zone setup (zones, N/A, floor plans, outlines, roll-up): BuildView staff and
+ * the client's progression editors (Client Admin, Site Supervisor, Site
+ * Engineer) with access to the project.
+ */
+async function zoneEditor(projectId: string) {
   const actor = await requireZoneAccess(projectId);
-  if (!isBuildViewStaffRole(actor.role)) {
-    throw new PublicError("Only BuildView staff can set up zones.");
+  if (!canEditProgression(actor.role)) {
+    throw new PublicError("You can view zones but not change them.");
   }
   return actor;
 }
@@ -231,7 +237,7 @@ export async function createZone(input: unknown): Promise<Result> {
   if (!parsed.success) return { ok: false, error: parsed.error };
   const { projectId, floorId, name, zoneType, area } = parsed.data;
   try {
-    const actor = await staffOnly(projectId);
+    const actor = await zoneEditor(projectId);
     const admin = createServiceRoleClient();
     const { data: floor } = await admin
       .from("floors")
@@ -264,7 +270,7 @@ export async function updateZone(input: unknown): Promise<Result> {
   if (!parsed.success) return { ok: false, error: parsed.error };
   const { projectId, zoneId, name, area } = parsed.data;
   try {
-    await staffOnly(projectId);
+    await zoneEditor(projectId);
     const { error } = await createServiceRoleClient()
       .from("progress_zones" as never)
       .update({ name, area_sqft: area } as never)
@@ -282,7 +288,7 @@ export async function deleteZone(input: unknown): Promise<Result> {
   if (!parsed.success) return { ok: false, error: parsed.error };
   const { projectId, zoneId } = parsed.data;
   try {
-    await staffOnly(projectId);
+    await zoneEditor(projectId);
     const { error } = await createServiceRoleClient()
       .from("progress_zones" as never)
       .update({ deleted_at: new Date().toISOString() } as never)
@@ -301,7 +307,7 @@ export async function setZoneNa(input: unknown): Promise<Result> {
   if (!parsed.success) return { ok: false, error: parsed.error };
   const { projectId, zoneId, activityKey, na } = parsed.data;
   try {
-    await staffOnly(projectId);
+    await zoneEditor(projectId);
     const admin = createServiceRoleClient();
     const { data: zone } = await admin
       .from("progress_zones" as never)
@@ -412,7 +418,7 @@ export async function setRollupBasis(input: unknown): Promise<Result> {
   if (!parsed.success) return { ok: false, error: parsed.error };
   const { projectId, basis } = parsed.data;
   try {
-    await staffOnly(projectId);
+    await zoneEditor(projectId);
     const { error } = await createServiceRoleClient()
       .from("projects")
       .update({ completion_rollup_basis: basis } as never)
@@ -430,7 +436,7 @@ export async function setZonePolygon(input: unknown): Promise<Result> {
   if (!parsed.success) return { ok: false, error: parsed.error };
   const { projectId, zoneId, polygon } = parsed.data;
   try {
-    await staffOnly(projectId);
+    await zoneEditor(projectId);
     const rounded = polygon?.map(([x, y]) => [Math.round(x * 10000) / 10000, Math.round(y * 10000) / 10000]);
     const { error } = await createServiceRoleClient()
       .from("progress_zones" as never)
@@ -453,7 +459,7 @@ export async function setFloorPlan(input: unknown): Promise<Result> {
   if (!parsed.success) return { ok: false, error: parsed.error };
   const { projectId, floorId, path } = parsed.data;
   try {
-    await staffOnly(projectId);
+    await zoneEditor(projectId);
     const admin = createServiceRoleClient();
     const { data: floor } = await admin
       .from("floors")
@@ -487,5 +493,31 @@ export async function setFloorPlan(input: unknown): Promise<Result> {
     return finish(projectId);
   } catch (err) {
     return fail("zones:floorPlan", err, "Could not save the floor plan.");
+  }
+}
+
+/**
+ * Short-lived upload link for a floor-plan image. Client roles can't write to
+ * the project-media bucket directly, so the server issues a one-off signed
+ * upload URL inside the project folder; setFloorPlan then verifies the file.
+ */
+export async function createFloorPlanUploadUrl(input: unknown): Promise<
+  { ok: true; path: string; token: string } | { ok: false; error: string }
+> {
+  const parsed = validate(floorPlanUploadSchema, input);
+  if (!parsed.success) return { ok: false, error: parsed.error };
+  const { projectId, fileName } = parsed.data;
+  try {
+    await zoneEditor(projectId);
+    const safeName = fileName.replace(/[^A-Za-z0-9._-]+/g, "-").slice(-80) || "floor-plan";
+    const path = `${projectId}/floor-plan-${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeName}`;
+    const { data, error } = await createServiceRoleClient()
+      .storage.from(STORAGE_BUCKETS.PROJECT_MEDIA)
+      .createSignedUploadUrl(path);
+    if (error || !data) throw error ?? new Error("No upload URL");
+    return { ok: true, path: data.path, token: data.token };
+  } catch (err) {
+    logServerError("zones:floorPlanUpload", err);
+    return { ok: false, error: getErrorMessage(err, "Could not start the upload.") };
   }
 }
