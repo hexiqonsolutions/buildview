@@ -1,4 +1,5 @@
 import type { ProgressionTrack } from "@/lib/progression/catalog";
+import type { ProjectCompletion } from "@/lib/progression/checklist-completion";
 
 export type { ProgressionTrack };
 
@@ -128,6 +129,8 @@ export type ProjectProgressionBundle = {
   overallPercent: number;
   floorCount: number;
   activatedFloorCount: number;
+  /** Definable Completion result: actual, planned, variance, status, per-floor. */
+  completion: ProjectCompletion;
   /** Per-track floor summaries (two rows per physical floor). */
   floors: FloorProgressionSummary[];
   /** Physical floors pooled across tracks. */

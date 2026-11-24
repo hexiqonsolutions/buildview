@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test:completion": "node --test scripts/test-completion.cjs",
     "db:check": "node scripts/check-migrations.mjs",
     "db:apply": "node scripts/apply-pending-migrations.mjs",
     "db:bundle": "node scripts/generate-pending-apply.mjs",

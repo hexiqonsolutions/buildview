@@ -1,4 +1,10 @@
 import "server-only";
+import {
+  projectCompletion,
+  todayInIndia,
+  type ChecklistFloorInput,
+  type ProjectCompletion,
+} from "@/lib/progression/checklist-completion";
 
 import { cache } from "react";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
@@ -275,22 +281,39 @@ function mapSteps(
     .sort((a, b) => a.stepNumber - b.stepNumber);
 }
 
-function aggregateProjectPercent(combinedFloors: CombinedFloorSummary[]): {
+/** Checklist rows for one physical floor, shaped for the completion formula. */
+function checklistFloors(floors: FloorProgressionSummary[]): ChecklistFloorInput[] {
+  const byFloor = new Map<string, ChecklistFloorInput>();
+  for (const row of floors) {
+    const entry = byFloor.get(row.floorId) ?? { floorId: row.floorId, tracks: [] };
+    entry.tracks.push({
+      completed: row.completedCount,
+      total: row.totalCount,
+      plannedStart: row.plannedStartDate,
+      plannedEnd: row.plannedEndDate,
+    });
+    byFloor.set(row.floorId, entry);
+  }
+  return [...byFloor.values()];
+}
+
+/**
+ * Project % via the Definable Completion formula: every floor counts, floors
+ * that have not started count as 0% (decision 24 Nov 2026).
+ */
+function aggregateProjectPercent(
+  floors: FloorProgressionSummary[],
+  combinedFloors: CombinedFloorSummary[]
+): {
   overallPercent: number;
   activatedFloorCount: number;
+  completion: ProjectCompletion;
 } {
-  const activated = combinedFloors.filter((f) => f.activated);
-  if (activated.length === 0) return { overallPercent: 0, activatedFloorCount: 0 };
-
-  let completed = 0;
-  let total = 0;
-  for (const floor of activated) {
-    completed += floor.completedCount;
-    total += floor.totalCount;
-  }
+  const completion = projectCompletion(checklistFloors(floors), todayInIndia());
   return {
-    overallPercent: overallPercent(completed, total),
-    activatedFloorCount: activated.length,
+    overallPercent: Math.round(completion.actual),
+    activatedFloorCount: combinedFloors.filter((f) => f.activated).length,
+    completion,
   };
 }
 
@@ -298,15 +321,14 @@ function summarizeTracks(
   floors: FloorProgressionSummary[],
   combinedFloors: CombinedFloorSummary[]
 ): TrackProgressionSummary[] {
-  const activatedIds = new Set(
-    combinedFloors.filter((f) => f.activated).map((f) => f.floorId)
-  );
+  // Every floor counts (unstarted floors contribute 0 completed steps).
+  void combinedFloors;
   return PROGRESSION_TRACKS.map((track) => {
     let completed = 0;
     let inProgress = 0;
     let total = 0;
     for (const floor of floors) {
-      if (floor.track !== track || !activatedIds.has(floor.floorId)) continue;
+      if (floor.track !== track) continue;
       completed += floor.completedCount;
       inProgress += floor.inProgressCount;
       total += floor.totalCount;
@@ -624,7 +646,8 @@ async function loadProjectProgressionBundle(
 
   // Details may have seeded a missing track — refresh summaries for accurate totals.
   const refreshed = await loadFloorSummaries(projectId);
-  const { overallPercent: overall, activatedFloorCount } = aggregateProjectPercent(
+  const { overallPercent: overall, activatedFloorCount, completion } = aggregateProjectPercent(
+    refreshed.floors,
     refreshed.combinedFloors
   );
 
@@ -633,6 +656,7 @@ async function loadProjectProgressionBundle(
     overallPercent: overall,
     floorCount: refreshed.combinedFloors.length,
     activatedFloorCount,
+    completion,
     floors: refreshed.floors,
     combinedFloors: refreshed.combinedFloors,
     tracks: summarizeTracks(refreshed.floors, refreshed.combinedFloors),
@@ -698,8 +722,8 @@ export async function getProjectProgressionFresh(
 }
 
 /**
- * Project health % for many projects — activated floors only, equal step weight.
- * Floors with zero ticks are excluded (decision 6B).
+ * Project % for many projects via the completion formula: every floor of the
+ * project counts, floors that have not started (or have no checklist yet) = 0%.
  */
 export async function getProgressionPercentByProjectIds(
   projectIds: string[]
@@ -717,6 +741,23 @@ export async function getProgressionPercentByProjectIds(
       .is("deleted_at", null);
 
     if (error || !progressions?.length) return result;
+
+    // Every physical floor of these projects, so floors without ticks count as 0%.
+    const { data: buildingRows } = await admin
+      .from("buildings")
+      .select("id, project_id")
+      .in("project_id", ids)
+      .is("deleted_at", null);
+    const projectByBuilding = new Map(
+      (buildingRows ?? []).map((b) => [b.id as string, b.project_id as string])
+    );
+    const { data: floorRows } = projectByBuilding.size
+      ? await admin
+          .from("floors")
+          .select("id, building_id")
+          .in("building_id", [...projectByBuilding.keys()])
+          .is("deleted_at", null)
+      : { data: [] as { id: string; building_id: string }[] };
 
     const progressionIds = progressions.map((p) => p.id);
     const { data: steps, error: stepsError } = await admin
@@ -759,17 +800,31 @@ export async function getProgressionPercentByProjectIds(
       byFloor.set(key, agg);
     }
 
-    const byProject = new Map<string, { completed: number; total: number }>();
-    for (const floor of byFloor.values()) {
-      if (floor.started === 0) continue;
-      const agg = byProject.get(floor.projectId) ?? { completed: 0, total: 0 };
-      agg.completed += floor.completed;
-      agg.total += floor.total;
-      byProject.set(floor.projectId, agg);
+    // Only projects that use Progression get a %; others keep their fallback.
+    const trackedProjects = new Set(progressions.map((p) => p.project_id as string));
+    const floorsByProject = new Map<string, ChecklistFloorInput[]>();
+    for (const floor of floorRows ?? []) {
+      const projectId = projectByBuilding.get(floor.building_id as string);
+      if (!projectId || !trackedProjects.has(projectId)) continue;
+      const counts = byFloor.get(`${projectId}:${floor.id as string}`);
+      const list = floorsByProject.get(projectId) ?? [];
+      list.push({
+        floorId: floor.id as string,
+        tracks: [
+          {
+            completed: counts?.completed ?? 0,
+            total: counts?.total ?? 0,
+            plannedStart: null,
+            plannedEnd: null,
+          },
+        ],
+      });
+      floorsByProject.set(projectId, list);
     }
 
-    for (const [projectId, counts] of byProject) {
-      result.set(projectId, overallPercent(counts.completed, counts.total));
+    const today = todayInIndia();
+    for (const [projectId, floorInputs] of floorsByProject) {
+      result.set(projectId, Math.round(projectCompletion(floorInputs, today).actual));
     }
   } catch (err) {
     console.warn("[getProgressionPercentByProjectIds] failed:", err);

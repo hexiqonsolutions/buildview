@@ -46,6 +46,8 @@ import {
   ProgressionWeeklyChart,
 } from "@/components/projects/progression/progression-charts";
 import { ProgressionExportControls } from "@/components/projects/progression/progression-export-controls";
+import { CompletionHero } from "@/components/projects/progression/completion-hero";
+import { projectCompletion, todayInIndia } from "@/lib/progression/checklist-completion";
 
 /* ---------------------------------------------------------------- helpers */
 
@@ -251,15 +253,13 @@ function recomputeBundle(
     };
   });
 
-  const activatedIds = new Set(
-    combinedFloors.filter((f) => f.activated).map((f) => f.floorId)
-  );
+  // Same formula as the server: every floor counts, unstarted floors = 0%.
   const tracks = PROGRESSION_TRACKS.map((t) => {
     let completed = 0;
     let inProgress = 0;
     let total = 0;
     for (const floor of floors) {
-      if (floor.track !== t || !activatedIds.has(floor.floorId)) continue;
+      if (floor.track !== t) continue;
       completed += floor.completedCount;
       inProgress += floor.inProgressCount;
       total += floor.totalCount;
@@ -274,8 +274,20 @@ function recomputeBundle(
   });
 
   const activatedFloors = combinedFloors.filter((f) => f.activated);
-  const pooledCompleted = activatedFloors.reduce((s, f) => s + f.completedCount, 0);
-  const pooledTotal = activatedFloors.reduce((s, f) => s + f.totalCount, 0);
+  const completion = projectCompletion(
+    combinedFloors.map((combined) => ({
+      floorId: combined.floorId,
+      tracks: floors
+        .filter((f) => f.floorId === combined.floorId)
+        .map((f) => ({
+          completed: f.completedCount,
+          total: f.totalCount,
+          plannedStart: f.plannedStartDate,
+          plannedEnd: f.plannedEndDate,
+        })),
+    })),
+    todayInIndia()
+  );
 
   const selectedByTrack = { ...bundle.selectedByTrack, [track]: nextSelected };
   return {
@@ -286,8 +298,8 @@ function recomputeBundle(
     selectedByTrack,
     selected: selectedByTrack.post_slab,
     activatedFloorCount: activatedFloors.length,
-    overallPercent:
-      pooledTotal > 0 ? Math.round((pooledCompleted / pooledTotal) * 100) : 0,
+    completion,
+    overallPercent: Math.round(completion.actual),
   };
 }
 
@@ -1341,8 +1353,9 @@ export function ProgressionPanel({
 
   if (summaryOnly) {
     const activatedFloors = data.combinedFloors.filter((f) => f.activated);
-    const projectCompleted = activatedFloors.reduce((s, f) => s + f.completedCount, 0);
-    const projectTotal = activatedFloors.reduce((s, f) => s + f.totalCount, 0);
+    // Counts cover every floor, matching the completion formula (unstarted = 0%).
+    const projectCompleted = data.combinedFloors.reduce((s, f) => s + f.completedCount, 0);
+    const projectTotal = data.combinedFloors.reduce((s, f) => s + f.totalCount, 0);
     const projectInProgress = data.tracks.reduce((s, t) => s + t.inProgressCount, 0);
     const projectPending = Math.max(0, projectTotal - projectCompleted - projectInProgress);
     const share = (n: number) =>
@@ -1463,6 +1476,7 @@ export function ProgressionPanel({
 
     return (
       <div className="w-full min-w-0 max-w-full space-y-4 overflow-x-clip sm:space-y-5">
+        {data.completion ? <CompletionHero completion={data.completion} /> : null}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
@@ -1849,6 +1863,7 @@ export function ProgressionPanel({
   void checklistOnly;
   return (
     <div className="space-y-5">
+      {data.completion ? <CompletionHero completion={data.completion} /> : null}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h3 className="font-display text-base font-semibold text-slate-900 dark:text-white">
