@@ -33,9 +33,19 @@ function signedPoints(value: number): string {
 export function CompletionHero({
   completion,
   className,
+  verifiedOnly = false,
+  canVerify = false,
+  pendingReviewCount = 0,
+  onToggleVerifiedOnly,
 }: {
   completion: ProjectCompletion;
   className?: string;
+  /** Only verified steps count (project setting). */
+  verifiedOnly?: boolean;
+  canVerify?: boolean;
+  /** Ended steps not yet verified across the project. */
+  pendingReviewCount?: number;
+  onToggleVerifiedOnly?: (next: boolean) => void;
 }) {
   const [open, setOpen] = useState(false);
   const { actual, planned, summary, floorCount, scheduledFloorCount } = completion;
@@ -96,14 +106,38 @@ export function CompletionHero({
         />
       </div>
 
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="mt-3 inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
-      >
-        <Info className="h-4 w-4" aria-hidden />
-        How is this calculated?
-      </button>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
+        >
+          <Info className="h-4 w-4" aria-hidden />
+          How is this calculated?
+        </button>
+        <div className="flex flex-wrap items-center gap-3 text-sm">
+          {pendingReviewCount > 0 ? (
+            <span className="text-amber-700 dark:text-amber-300">
+              {pendingReviewCount} step{pendingReviewCount === 1 ? "" : "s"} awaiting review
+              {verifiedOnly ? " (not counted yet)" : ""}
+            </span>
+          ) : null}
+          {canVerify && onToggleVerifiedOnly ? (
+            <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-slate-700 dark:text-slate-300">
+              <input
+                type="checkbox"
+                role="switch"
+                checked={verifiedOnly}
+                onChange={(e) => onToggleVerifiedOnly(e.target.checked)}
+                className="h-4 w-4 accent-[#76b82d]"
+              />
+              Count only verified steps
+            </label>
+          ) : verifiedOnly ? (
+            <span className="text-slate-500">Counting verified steps only</span>
+          ) : null}
+        </div>
+      </div>
 
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-md" aria-describedby={undefined}>
@@ -138,6 +172,16 @@ export function CompletionHero({
                 {planned != null
                   ? ` Today that gives ${formatPercent(planned)} across the ${scheduledFloorCount} scheduled floor${scheduledFloorCount === 1 ? "" : "s"}.`
                   : " No floor has dates yet."}
+              </p>
+            </div>
+            <div>
+              <h3 className="font-semibold text-slate-900 dark:text-white">Verification</h3>
+              <p>
+                Ended steps can be linked to the 360 scan that shows them and verified by BuildView
+                or your Client Admin.{" "}
+                {verifiedOnly
+                  ? "This project counts only verified steps; ended steps awaiting review show as pending until checked."
+                  : "This project currently counts every ended step, verified or not."}
               </p>
             </div>
             <div>

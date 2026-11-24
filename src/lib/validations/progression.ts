@@ -88,3 +88,37 @@ export const setProgressionStepSchema = z
   .strict();
 
 export type SetProgressionStepInput = z.infer<typeof setProgressionStepSchema>;
+
+const stepRef = {
+  projectId: uuid("Project ID"),
+  floorId: uuid("Floor ID"),
+  track: progressionTrackSchema,
+  stepId: uuid("Step ID"),
+};
+
+/** Link (or clear, with tourId null) the 360 scan that proves a step. */
+export const progressionStepEvidenceSchema = z
+  .object({
+    ...stepRef,
+    tourId: uuid("Tour ID").nullable(),
+    note: optionalText("Evidence note", { max: 500 }),
+  })
+  .strict();
+
+/** Verifier decision on an ended step. */
+export const progressionStepVerifySchema = z
+  .object({
+    ...stepRef,
+    decision: z.enum(["verified", "rejected"]),
+    note: optionalText("Verification note", { max: 500 }),
+    /** Optionally link the scan the verifier looked at as evidence. */
+    tourId: uuid("Tour ID").nullable().optional(),
+  })
+  .strict();
+
+export const progressionVerifiedOnlySchema = z
+  .object({
+    projectId: uuid("Project ID"),
+    verifiedOnly: z.boolean(),
+  })
+  .strict();

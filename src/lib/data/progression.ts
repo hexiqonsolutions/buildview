@@ -10,7 +10,7 @@ import {
 
 import { cache } from "react";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
-import { canEditProgression, canViewProgression } from "@/lib/auth/roles";
+import { canEditProgression, canVerifyProgression, canViewProgression } from "@/lib/auth/roles";
 import { canViewProject, getActiveActor } from "@/lib/auth/project-access";
 import {
   PROGRESSION_TEMPLATE_KEYS,
@@ -26,6 +26,7 @@ import {
 import type {
   CombinedFloorSummary,
   FloorProgressionSummary,
+  ProgressionScan,
   ProgressionStepView,
   ProjectProgressionBundle,
   ProjectProgressionView,
@@ -235,6 +236,12 @@ function mapSteps(
     completed_by: string | null;
     work_date: string | null;
     note: string | null;
+    evidence_tour_id?: string | null;
+    evidence_note?: string | null;
+    verification_status?: string | null;
+    verified_at?: string | null;
+    verification_note?: string | null;
+    source?: string | null;
     template_step: {
       phase_number: number;
       phase_name: string;
@@ -277,6 +284,16 @@ function mapSteps(
         completedByName: row.completed_by_user?.full_name ?? null,
         workDate: row.work_date,
         note: row.note,
+        evidenceTourId: row.evidence_tour_id ?? null,
+        evidenceNote: row.evidence_note ?? null,
+        verificationStatus:
+          row.verification_status === "verified" || row.verification_status === "rejected"
+            ? (row.verification_status as "verified" | "rejected")
+            : null,
+        verifiedAt: row.verified_at ?? null,
+        verifiedByName: null as string | null,
+        verificationNote: row.verification_note ?? null,
+        source: row.source === "ai" ? ("ai" as const) : ("manual" as const),
       };
     })
     .filter((s): s is ProgressionStepView => s != null)
@@ -348,9 +365,32 @@ function summarizeTracks(
 type FloorSummariesResult = {
   floors: FloorProgressionSummary[];
   combinedFloors: CombinedFloorSummary[];
+  pendingReviewCount?: number;
 };
 
-async function loadFloorSummaries(projectId: string): Promise<FloorSummariesResult> {
+/** Project switch: only verified steps count (migration 047). False before 047. */
+async function getVerifiedOnly(projectId: string): Promise<boolean> {
+  const { data } = await createServiceRoleClient()
+    .from("projects")
+    .select("*")
+    .eq("id", projectId)
+    .maybeSingle();
+  return (data as { progress_verified_only?: boolean } | null)?.progress_verified_only === true;
+}
+
+/** A step counts toward % when ended, and (if required) verified. */
+function stepCounts(
+  status: string,
+  verification: string | null | undefined,
+  verifiedOnly: boolean
+): boolean {
+  return status === "completed" && (!verifiedOnly || verification === "verified");
+}
+
+async function loadFloorSummaries(
+  projectId: string,
+  verifiedOnly = false
+): Promise<FloorSummariesResult> {
   const admin = createServiceRoleClient();
 
   const { data: buildings } = await admin
@@ -361,7 +401,7 @@ async function loadFloorSummaries(projectId: string): Promise<FloorSummariesResu
     .order("sort_order")
     .order("name");
 
-  if (!buildings?.length) return { floors: [], combinedFloors: [] };
+  if (!buildings?.length) return { floors: [], combinedFloors: [], pendingReviewCount: 0 };
 
   const buildingIds = buildings.map((b) => b.id);
   const buildingNameById = new Map(buildings.map((b) => [b.id, b.name]));
@@ -374,7 +414,7 @@ async function loadFloorSummaries(projectId: string): Promise<FloorSummariesResu
     .order("sort_order")
     .order("name");
 
-  if (!floors?.length) return { floors: [], combinedFloors: [] };
+  if (!floors?.length) return { floors: [], combinedFloors: [], pendingReviewCount: 0 };
 
   const { data: progressions } = await admin
     .from("project_progressions")
@@ -400,24 +440,34 @@ async function loadFloorSummaries(projectId: string): Promise<FloorSummariesResu
   const progressionIds = (progressions ?? []).map((p) => p.id);
   const countsByProgression = new Map<
     string,
-    { completed: number; inProgress: number; total: number }
+    { completed: number; inProgress: number; total: number; awaitingReview: number }
   >();
 
   if (progressionIds.length > 0) {
+    // "*" so this works before and after migration 047 (verification_status).
     const { data: steps } = await admin
       .from("project_progression_steps")
-      .select("progression_id, status")
+      .select("*")
       .in("progression_id", progressionIds);
 
-    for (const step of steps ?? []) {
+    for (const step of (steps ?? []) as Array<{
+      progression_id: string;
+      status: string;
+      verification_status?: string | null;
+    }>) {
       const row = countsByProgression.get(step.progression_id) ?? {
         completed: 0,
         inProgress: 0,
         total: 0,
+        awaitingReview: 0,
       };
       row.total += 1;
-      if (step.status === "completed") row.completed += 1;
+      if (stepCounts(step.status, step.verification_status, verifiedOnly)) row.completed += 1;
+      else if (step.status === "completed") row.inProgress += 1;
       if (step.status === "in_progress") row.inProgress += 1;
+      if (step.status === "completed" && step.verification_status !== "verified") {
+        row.awaitingReview += 1;
+      }
       countsByProgression.set(step.progression_id, row);
     }
   }
@@ -436,6 +486,7 @@ async function loadFloorSummaries(projectId: string): Promise<FloorSummariesResu
 
   const trackSummaries: FloorProgressionSummary[] = [];
   const combinedFloors: CombinedFloorSummary[] = [];
+  let pendingReviewCount = 0;
 
   for (const floor of floors) {
     const activated = activatedByFloor.get(floor.id) ?? false;
@@ -445,8 +496,10 @@ async function loadFloorSummaries(projectId: string): Promise<FloorSummariesResu
     for (const track of PROGRESSION_TRACKS) {
       const progressionId = progressionByFloorTrack.get(`${floor.id}:${track}`);
       const counts = progressionId
-        ? countsByProgression.get(progressionId) ?? { completed: 0, inProgress: 0, total: 0 }
-        : { completed: 0, inProgress: 0, total: 0 };
+        ? countsByProgression.get(progressionId) ??
+          { completed: 0, inProgress: 0, total: 0, awaitingReview: 0 }
+        : { completed: 0, inProgress: 0, total: 0, awaitingReview: 0 };
+      pendingReviewCount += counts.awaitingReview;
       pooledCompleted += counts.completed;
       pooledInProgress += counts.inProgress;
       pooledTotal += counts.total;
@@ -479,7 +532,7 @@ async function loadFloorSummaries(projectId: string): Promise<FloorSummariesResu
     });
   }
 
-  return { floors: trackSummaries, combinedFloors };
+  return { floors: trackSummaries, combinedFloors, pendingReviewCount };
 }
 
 async function loadFloorDetail(
@@ -487,7 +540,8 @@ async function loadFloorDetail(
   floorId: string,
   track: ProgressionTrack,
   actor: Actor,
-  meta: { buildingId: string; buildingName: string; floorName: string }
+  meta: { buildingId: string; buildingName: string; floorName: string },
+  verifiedOnly = false
 ): Promise<ProjectProgressionView | null> {
   const progressionId = await ensureFloorProgression(
     projectId,
@@ -503,7 +557,7 @@ async function loadFloorDetail(
     admin
       .from("project_progression_steps")
       .select(
-        "id, template_step_id, step_number, status, started_at, started_by, ended_at, ended_by, completed_at, completed_by, work_date, note, template_step:progression_template_steps(phase_number, phase_name, phase_stage, title), started_by_user:users!project_progression_steps_started_by_fkey(full_name), ended_by_user:users!project_progression_steps_ended_by_fkey(full_name), completed_by_user:users!project_progression_steps_completed_by_fkey(full_name)"
+        "*, template_step:progression_template_steps(phase_number, phase_name, phase_stage, title), started_by_user:users!project_progression_steps_started_by_fkey(full_name), ended_by_user:users!project_progression_steps_ended_by_fkey(full_name), completed_by_user:users!project_progression_steps_completed_by_fkey(full_name)"
       )
       .eq("progression_id", progressionId)
       .order("step_number", { ascending: true }),
@@ -525,7 +579,7 @@ async function loadFloorDetail(
     const plain = await admin
       .from("project_progression_steps")
       .select(
-        "id, template_step_id, step_number, status, started_at, started_by, ended_at, ended_by, completed_at, completed_by, work_date, note, template_step:progression_template_steps(phase_number, phase_name, phase_stage, title)"
+        "*, template_step:progression_template_steps(phase_number, phase_name, phase_stage, title)"
       )
       .eq("progression_id", progressionId)
       .order("step_number", { ascending: true });
@@ -545,8 +599,35 @@ async function loadFloorDetail(
     steps = mapSteps((stepsRes.data ?? []) as unknown as Parameters<typeof mapSteps>[0]);
   }
 
-  const completedCount = steps.filter((s) => s.status === "completed").length;
-  const inProgressCount = steps.filter((s) => s.status === "in_progress").length;
+  // Verifier names (looked up separately so this works before migration 047).
+  const verifierIds = [
+    ...new Set(
+      ((stepsRes.data ?? []) as Array<{ verified_by?: string | null }>)
+        .map((r) => r.verified_by)
+        .filter((id): id is string => Boolean(id))
+    ),
+  ];
+  if (verifierIds.length > 0) {
+    const { data: users } = await admin.from("users").select("id, full_name").in("id", verifierIds);
+    const nameById = new Map((users ?? []).map((u) => [u.id as string, u.full_name as string | null]));
+    const verifiedByStep = new Map(
+      ((stepsRes.data ?? []) as Array<{ id: string; verified_by?: string | null }>).map((r) => [
+        r.id,
+        r.verified_by ?? null,
+      ])
+    );
+    steps = steps.map((s) => {
+      const by = verifiedByStep.get(s.id);
+      return by ? { ...s, verifiedByName: nameById.get(by) ?? null } : s;
+    });
+  }
+
+  const completedCount = steps.filter((s) =>
+    stepCounts(s.status, s.verificationStatus, verifiedOnly)
+  ).length;
+  const inProgressCount = steps.filter(
+    (s) => s.status === "in_progress" || (s.status === "completed" && !stepCounts(s.status, s.verificationStatus, verifiedOnly))
+  ).length;
   const totalCount = steps.length;
   const logs = (logsRes.data ?? []) as Array<{ action: string; work_date: string }>;
   const templateKey =
@@ -623,7 +704,8 @@ async function loadProjectProgressionBundle(
     }
   }
 
-  const { combinedFloors } = await loadFloorSummaries(projectId);
+  const verifiedOnly = await getVerifiedOnly(projectId);
+  const { combinedFloors } = await loadFloorSummaries(projectId, verifiedOnly);
   const canEdit = canEditProgression(actor.role);
   const wanted = normalizeSelections(selections);
 
@@ -634,11 +716,18 @@ async function loadProjectProgressionBundle(
   const loadFor = (track: ProgressionTrack, floorId: string | null) => {
     if (!floorId) return Promise.resolve(null);
     const meta = combinedFloors.find((f) => f.floorId === floorId)!;
-    return loadFloorDetail(projectId, floorId, track, actor, {
-      buildingId: meta.buildingId,
-      buildingName: meta.buildingName,
-      floorName: meta.floorName,
-    });
+    return loadFloorDetail(
+      projectId,
+      floorId,
+      track,
+      actor,
+      {
+        buildingId: meta.buildingId,
+        buildingName: meta.buildingName,
+        floorName: meta.floorName,
+      },
+      verifiedOnly
+    );
   };
 
   const [preSelected, postSelected] = await Promise.all([
@@ -647,7 +736,31 @@ async function loadProjectProgressionBundle(
   ]);
 
   // Details may have seeded a missing track — refresh summaries for accurate totals.
-  const refreshed = await loadFloorSummaries(projectId);
+  const refreshed = await loadFloorSummaries(projectId, verifiedOnly);
+  const { data: tourRows } = await createServiceRoleClient()
+    .from("project_tours")
+    .select("*")
+    .eq("project_id", projectId)
+    .is("deleted_at", null);
+  const scans: ProgressionScan[] = ((tourRows ?? []) as Array<{
+    id: string;
+    name: string;
+    capture_date: string | null;
+    created_at: string;
+    floor_id?: string | null;
+    matterport_url: string;
+    archived_at?: string | null;
+  }>)
+    .filter((t) => !t.archived_at)
+    .map((t) => ({
+      id: t.id,
+      name: t.name,
+      captureDate: t.capture_date,
+      createdAt: t.created_at,
+      floorId: t.floor_id ?? null,
+      matterportUrl: t.matterport_url,
+    }))
+    .sort((a, b) => (b.captureDate ?? b.createdAt).localeCompare(a.captureDate ?? a.createdAt));
   const { overallPercent: overall, activatedFloorCount, completion } = aggregateProjectPercent(
     refreshed.floors,
     refreshed.combinedFloors
@@ -659,6 +772,10 @@ async function loadProjectProgressionBundle(
     floorCount: refreshed.combinedFloors.length,
     activatedFloorCount,
     completion,
+    verifiedOnly,
+    canVerify: canVerifyProgression(actor.role),
+    pendingReviewCount: refreshed.pendingReviewCount ?? 0,
+    scans,
     floors: refreshed.floors,
     combinedFloors: refreshed.combinedFloors,
     tracks: summarizeTracks(refreshed.floors, refreshed.combinedFloors),
@@ -762,10 +879,18 @@ export async function getProgressionPercentByProjectIds(
       : { data: [] as { id: string; building_id: string }[] };
 
     const progressionIds = progressions.map((p) => p.id);
-    const { data: steps, error: stepsError } = await admin
-      .from("project_progression_steps")
-      .select("progression_id, status")
-      .in("progression_id", progressionIds);
+    const [{ data: steps, error: stepsError }, { data: projectRows }] = await Promise.all([
+      admin.from("project_progression_steps").select("*").in("progression_id", progressionIds),
+      admin.from("projects").select("*").in("id", ids),
+    ]);
+    const verifiedOnlyProjects = new Set(
+      ((projectRows ?? []) as Array<{ id: string; progress_verified_only?: boolean }>)
+        .filter((p) => p.progress_verified_only === true)
+        .map((p) => p.id)
+    );
+    const projectByProgression = new Map(
+      progressions.map((p) => [p.id as string, p.project_id as string])
+    );
 
     if (stepsError || !steps) return result;
 
@@ -776,7 +901,10 @@ export async function getProgressionPercentByProjectIds(
     for (const step of steps) {
       const row = totals.get(step.progression_id) ?? { completed: 0, started: 0, total: 0 };
       row.total += 1;
-      if (step.status === "completed") row.completed += 1;
+      const verifiedOnly = verifiedOnlyProjects.has(projectByProgression.get(step.progression_id) ?? "");
+      if (stepCounts(step.status, (step as { verification_status?: string | null }).verification_status, verifiedOnly)) {
+        row.completed += 1;
+      }
       if (step.status === "completed" || step.status === "in_progress") row.started += 1;
       totals.set(step.progression_id, row);
     }
@@ -871,6 +999,7 @@ export const getChecklistStepRecords = cache(
       ])
     );
 
+    const verifiedOnly = await getVerifiedOnly(projectId);
     const { data: progressions } = await admin
       .from("project_progressions")
       .select("id, floor_id, track")
@@ -884,9 +1013,7 @@ export const getChecklistStepRecords = cache(
     if (progressionMeta.size > 0) {
       const { data: rows } = await admin
         .from("project_progression_steps")
-        .select(
-          "progression_id, step_number, status, work_date, ended_at, completed_at, template_step:progression_template_steps(title)"
-        )
+        .select("*, template_step:progression_template_steps(title)")
         .in("progression_id", [...progressionMeta.keys()]);
       for (const row of rows ?? []) {
         const meta = progressionMeta.get(row.progression_id as string);
@@ -905,8 +1032,23 @@ export const getChecklistStepRecords = cache(
           stepNumber: row.step_number as number,
           title:
             (row.template_step as unknown as { title: string } | null)?.title ?? `Step ${row.step_number}`,
-          status: row.status as ChecklistStepRecord["status"],
-          doneDate: row.status === "completed" ? ended : null,
+          // With "only verified" on, an unverified ended step doesn't count yet.
+          status: stepCounts(
+            row.status as string,
+            (row as { verification_status?: string | null }).verification_status,
+            verifiedOnly
+          )
+            ? "completed"
+            : row.status === "pending"
+              ? "pending"
+              : "in_progress",
+          doneDate: stepCounts(
+            row.status as string,
+            (row as { verification_status?: string | null }).verification_status,
+            verifiedOnly
+          )
+            ? ended
+            : null,
         });
       }
     }

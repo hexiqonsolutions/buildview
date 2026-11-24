@@ -1372,7 +1372,17 @@ export type ProjectProgressionLog = {
   id: string;
   progression_id: string;
   step_id: string;
-  action: "completed" | "reopened" | "started" | "ended" | "reset" | "date_corrected";
+  action:
+    | "completed"
+    | "reopened"
+    | "started"
+    | "ended"
+    | "reset"
+    | "date_corrected"
+    | "verified"
+    | "rejected"
+    | "evidence_linked"
+    | "evidence_cleared";
   work_date: string;
   actor_id: string | null;
   note: string | null;
@@ -1430,6 +1440,14 @@ export type ProjectProgressionStepInsert = {
   completed_by?: string | null;
   work_date?: string | null;
   note?: string | null;
+  /** Migration 047 */
+  evidence_tour_id?: string | null;
+  evidence_note?: string | null;
+  verification_status?: "verified" | "rejected" | null;
+  verified_by?: string | null;
+  verified_at?: string | null;
+  verification_note?: string | null;
+  source?: "manual" | "ai";
 };
 
 export type ProjectProgressionStepUpdate = Partial<
@@ -1440,7 +1458,17 @@ export type ProjectProgressionLogInsert = {
   id?: string;
   progression_id: string;
   step_id: string;
-  action: "completed" | "reopened" | "started" | "ended" | "reset" | "date_corrected";
+  action:
+    | "completed"
+    | "reopened"
+    | "started"
+    | "ended"
+    | "reset"
+    | "date_corrected"
+    | "verified"
+    | "rejected"
+    | "evidence_linked"
+    | "evidence_cleared";
   work_date: string;
   actor_id?: string | null;
   note?: string | null;

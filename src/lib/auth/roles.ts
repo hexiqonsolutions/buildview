@@ -80,6 +80,12 @@ const CLIENT_PROGRESSION_EDIT_ROLES = [
   "site_engineer",
 ] as const satisfies readonly UserRole[];
 
+/**
+ * Client roles that may verify / reject ticked Progression steps (staff always
+ * can). Mirrors public.can_verify_progression in migration 047.
+ */
+const CLIENT_PROGRESSION_VERIFY_ROLES = ["client_admin"] as const satisfies readonly UserRole[];
+
 /** Only Client Admin sees invoices in the client portal (billing is org-admin scoped). */
 const CLIENT_INVOICE_VIEW_ROLES = ["client_admin"] as const satisfies readonly UserRole[];
 
@@ -139,6 +145,11 @@ export function canViewClientInvoices(role: UserRole): boolean {
 export function canEditProgression(role: UserRole): boolean {
   if (isBuildViewStaffRole(role)) return true;
   return (CLIENT_PROGRESSION_EDIT_ROLES as readonly string[]).includes(role);
+}
+
+export function canVerifyProgression(role: UserRole): boolean {
+  if (isBuildViewStaffRole(role)) return true;
+  return (CLIENT_PROGRESSION_VERIFY_ROLES as readonly string[]).includes(role);
 }
 
 /** Same roles as canEditProgression — Progression UI is edit-role only. */

@@ -1,8 +1,14 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
-import { canEditProgression, canViewProgression, isBuildViewStaffRole } from "@/lib/auth/roles";
+import {
+  canEditProgression,
+  canVerifyProgression,
+  canViewProgression,
+  isBuildViewStaffRole,
+} from "@/lib/auth/roles";
 import { assertClientNotSuspended } from "@/lib/auth/client-suspension";
 import { canViewProject, getActiveActor } from "@/lib/auth/project-access";
 import {
@@ -17,6 +23,9 @@ import { projectIdSchema } from "@/lib/validations/data";
 import {
   progressionScheduleSchema,
   progressionStepActionSchema,
+  progressionStepEvidenceSchema,
+  progressionStepVerifySchema,
+  progressionVerifiedOnlySchema,
   selectProgressionSectionSchema,
   setProgressionStepSchema,
   updateProgressionStepDatesSchema,
@@ -676,4 +685,158 @@ export async function getTourScanPercents(
     .is("deleted_at", null);
   if (!tours?.length) return {};
   return getChecklistPercentByTour(tours).catch(() => ({}));
+}
+
+function isMissingColumn(error: { message?: string } | null | undefined): boolean {
+  return Boolean(error?.message && /column|schema cache/i.test(error.message));
+}
+
+const MIGRATION_047_MESSAGE =
+  "Evidence and verification need database migration 047. Run it in Supabase first.";
+
+/** Link (or clear) the 360 scan that proves an ended step. Editors only. */
+export async function setProgressionStepEvidence(input: unknown) {
+  const parsed = validate(progressionStepEvidenceSchema, input);
+  if (!parsed.success) return { ok: false as const, error: parsed.error };
+  const { projectId, floorId, track, stepId, tourId, note } = parsed.data;
+
+  try {
+    const actor = await requireProgressionEditor(projectId);
+    const admin = createServiceRoleClient();
+    const ctx = await loadStepContext(admin, stepId, projectId, floorId, track);
+    if (!ctx) return { ok: false as const, error: "Step does not belong to this floor." };
+
+    if (tourId) {
+      const { data: tour } = await admin
+        .from("project_tours")
+        .select("id")
+        .eq("id", tourId)
+        .eq("project_id", projectId)
+        .is("deleted_at", null)
+        .maybeSingle();
+      if (!tour) return { ok: false as const, error: "That scan isn't part of this project." };
+    }
+
+    const { error } = await admin
+      .from("project_progression_steps")
+      .update({ evidence_tour_id: tourId, evidence_note: tourId ? (note ?? null) : null })
+      .eq("id", stepId);
+    if (error) {
+      if (isMissingColumn(error)) return { ok: false as const, error: MIGRATION_047_MESSAGE };
+      throw error;
+    }
+
+    await admin.from("project_progression_logs").insert({
+      progression_id: ctx.progressionId,
+      step_id: stepId,
+      action: tourId ? "evidence_linked" : "evidence_cleared",
+      work_date: todayInKolkata(),
+      actor_id: actor.userId,
+      note: note ?? null,
+    });
+
+    return { ok: true as const, evidenceTourId: tourId, evidenceNote: tourId ? (note ?? null) : null };
+  } catch (err) {
+    logServerError("progressionStep:evidence", err);
+    return { ok: false as const, error: getErrorMessage(err, "Could not link the evidence.") };
+  }
+}
+
+/** Verify or reject an ended step. BuildView staff and Client Admin only. */
+export async function verifyProgressionStep(input: unknown) {
+  const parsed = validate(progressionStepVerifySchema, input);
+  if (!parsed.success) return { ok: false as const, error: parsed.error };
+  const { projectId, floorId, track, stepId, decision, note, tourId } = parsed.data;
+
+  try {
+    const actor = await requireProgressionEditor(projectId);
+    if (!canVerifyProgression(actor.role)) {
+      return { ok: false as const, error: "Only BuildView staff or the Client Admin can verify progress." };
+    }
+    const admin = createServiceRoleClient();
+    const ctx = await loadStepContext(admin, stepId, projectId, floorId, track);
+    if (!ctx) return { ok: false as const, error: "Step does not belong to this floor." };
+    if (ctx.status !== "completed") {
+      return { ok: false as const, error: "Only ended steps can be verified." };
+    }
+
+    const now = new Date().toISOString();
+    const update: {
+      verification_status: "verified" | "rejected";
+      verified_by: string;
+      verified_at: string;
+      verification_note: string | null;
+      evidence_tour_id?: string;
+    } = {
+      verification_status: decision,
+      verified_by: actor.userId,
+      verified_at: now,
+      verification_note: note ?? null,
+    };
+    if (tourId) {
+      const { data: tour } = await admin
+        .from("project_tours")
+        .select("id")
+        .eq("id", tourId)
+        .eq("project_id", projectId)
+        .is("deleted_at", null)
+        .maybeSingle();
+      if (tour) update.evidence_tour_id = tourId;
+    }
+
+    const { error } = await admin.from("project_progression_steps").update(update).eq("id", stepId);
+    if (error) {
+      if (isMissingColumn(error)) return { ok: false as const, error: MIGRATION_047_MESSAGE };
+      throw error;
+    }
+
+    await admin.from("project_progression_logs").insert({
+      progression_id: ctx.progressionId,
+      step_id: stepId,
+      action: decision,
+      work_date: todayInKolkata(),
+      actor_id: actor.userId,
+      note: note ?? null,
+    });
+
+    return {
+      ok: true as const,
+      verificationStatus: decision,
+      verifiedAt: now,
+      verifiedByName: actor.fullName,
+      verificationNote: note ?? null,
+      evidenceTourId: update.evidence_tour_id,
+    };
+  } catch (err) {
+    logServerError("progressionStep:verify", err);
+    return { ok: false as const, error: getErrorMessage(err, "Could not save the verification.") };
+  }
+}
+
+/** Turn "count only verified steps" on or off for a project. Verifiers only. */
+export async function setProgressionVerifiedOnly(input: unknown) {
+  const parsed = validate(progressionVerifiedOnlySchema, input);
+  if (!parsed.success) return { ok: false as const, error: parsed.error };
+  const { projectId, verifiedOnly } = parsed.data;
+
+  try {
+    const actor = await requireProgressionEditor(projectId);
+    if (!canVerifyProgression(actor.role)) {
+      return { ok: false as const, error: "Only BuildView staff or the Client Admin can change this." };
+    }
+    const { error } = await createServiceRoleClient()
+      .from("projects")
+      .update({ progress_verified_only: verifiedOnly } as never)
+      .eq("id", projectId);
+    if (error) {
+      if (isMissingColumn(error)) return { ok: false as const, error: MIGRATION_047_MESSAGE };
+      throw error;
+    }
+    revalidatePath(`/dashboard/projects/${projectId}`);
+    revalidatePath(`/admin/projects/${projectId}`);
+    return { ok: true as const };
+  } catch (err) {
+    logServerError("progression:verifiedOnly", err);
+    return { ok: false as const, error: getErrorMessage(err, "Could not change the setting.") };
+  }
 }

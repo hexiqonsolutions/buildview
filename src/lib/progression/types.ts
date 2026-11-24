@@ -27,6 +27,25 @@ export type ProgressionStepView = {
   completedByName: string | null;
   workDate: string | null;
   note: string | null;
+  /** 360 scan linked as evidence (migration 047). */
+  evidenceTourId: string | null;
+  evidenceNote: string | null;
+  /** Verifier decision; null = not reviewed yet. */
+  verificationStatus: "verified" | "rejected" | null;
+  verifiedAt: string | null;
+  verifiedByName: string | null;
+  verificationNote: string | null;
+  source: "manual" | "ai";
+};
+
+/** A project 360 scan that can be linked as evidence. */
+export type ProgressionScan = {
+  id: string;
+  name: string;
+  captureDate: string | null;
+  createdAt: string;
+  floorId: string | null;
+  matterportUrl: string;
 };
 
 export type ProgressionPhaseView = {
@@ -131,6 +150,14 @@ export type ProjectProgressionBundle = {
   activatedFloorCount: number;
   /** Definable Completion result: actual, planned, variance, status, per-floor. */
   completion: ProjectCompletion;
+  /** Only verified steps count toward % (project setting, migration 047). */
+  verifiedOnly: boolean;
+  /** Viewer may verify / reject steps and change verifiedOnly. */
+  canVerify: boolean;
+  /** Ended steps not yet verified, across the project. */
+  pendingReviewCount: number;
+  /** Project scans for evidence pickers, newest first. */
+  scans: ProgressionScan[];
   /** Per-track floor summaries (two rows per physical floor). */
   floors: FloorProgressionSummary[];
   /** Physical floors pooled across tracks. */

@@ -17,6 +17,7 @@ import {
   Pencil,
   Play,
   RotateCcw,
+  ScanEye,
   Sparkles,
   X,
 } from "lucide-react";
@@ -25,8 +26,11 @@ import {
   resetProgressionStep,
   selectProgressionSection,
   setProgressionSchedule,
+  setProgressionStepEvidence,
+  setProgressionVerifiedOnly,
   startProgressionStep,
   updateProgressionStepDates,
+  verifyProgressionStep,
   type ProgressionStepPatch,
 } from "@/lib/actions/progression";
 import {
@@ -38,6 +42,7 @@ import type {
   FloorProgressionSummary,
   ProjectProgressionBundle,
   ProjectProgressionView,
+  ProgressionScan,
   ProgressionStepView,
 } from "@/lib/progression/types";
 import { formatDate, cn } from "@/lib/utils";
@@ -48,6 +53,12 @@ import {
 import { ProgressionExportControls } from "@/components/projects/progression/progression-export-controls";
 import { CompletionHero } from "@/components/projects/progression/completion-hero";
 import { projectCompletion, todayInIndia } from "@/lib/progression/checklist-completion";
+import {
+  FreshnessNote,
+  StepReviewStrip,
+  VerifyFromScanDialog,
+  type ReviewDecision,
+} from "@/components/projects/progression/progression-review";
 
 /* ---------------------------------------------------------------- helpers */
 
@@ -335,8 +346,13 @@ function patchStep(
     };
   });
 
-  const completedCount = phases.reduce((s, p) => s + p.completed, 0);
-  const inProgressCount = phases.reduce((s, p) => s + p.inProgress, 0);
+  const allSteps = phases.flatMap((p) => p.steps);
+  const counts = (s: ProgressionStepView) =>
+    s.status === "completed" && (!bundle.verifiedOnly || s.verificationStatus === "verified");
+  const completedCount = allSteps.filter(counts).length;
+  const inProgressCount = allSteps.filter(
+    (s) => s.status === "in_progress" || (s.status === "completed" && !counts(s))
+  ).length;
   const nextSelected: ProjectProgressionView = {
     ...selected,
     phases,
@@ -414,11 +430,26 @@ function StepRow({
   busy,
   onTransition,
   onSaveDates,
+  floorId,
+  scans,
+  canVerify,
+  onEvidence,
+  onReview,
 }: {
   step: ProgressionStepView;
   track: ProgressionTrack;
   canEdit: boolean;
   busy: boolean;
+  floorId: string;
+  scans: ProgressionScan[];
+  canVerify: boolean;
+  onEvidence: (step: ProgressionStepView, tourId: string | null, note: string | null) => void;
+  onReview: (
+    step: ProgressionStepView,
+    decision: ReviewDecision,
+    note: string | null,
+    tourId?: string | null
+  ) => void;
   onTransition: (step: ProgressionStepView, transition: StepTransition) => void;
   onSaveDates: (
     step: ProgressionStepView,
@@ -485,6 +516,18 @@ function StepRow({
           ) : (
             <p className="mt-1 text-xs text-slate-400">Not started</p>
           )}
+          {step.status === "completed" ? (
+            <StepReviewStrip
+              step={step}
+              floorId={floorId}
+              scans={scans}
+              canEdit={canEdit}
+              canVerify={canVerify}
+              busy={busy}
+              onEvidence={(tourId, note) => onEvidence(step, tourId, note)}
+              onReview={(decision, note, tourId) => onReview(step, decision, note, tourId)}
+            />
+          ) : null}
         </div>
 
         {canEdit ? (
@@ -739,9 +782,24 @@ function TrackSection({
   onTransition,
   onSaveDates,
   onSaveSchedule,
+  onEvidence,
+  onReview,
 }: {
   track: ProgressionTrack;
   data: ProjectProgressionBundle;
+  onEvidence: (
+    track: ProgressionTrack,
+    step: ProgressionStepView,
+    tourId: string | null,
+    note: string | null
+  ) => void;
+  onReview: (
+    track: ProgressionTrack,
+    step: ProgressionStepView,
+    decision: ReviewDecision,
+    note: string | null,
+    tourId?: string | null
+  ) => void;
   switching: boolean;
   pendingKeys: Set<string>;
   onSelectFloor: (track: ProgressionTrack, floorId: string) => void;
@@ -775,6 +833,14 @@ function TrackSection({
   const label = PROGRESSION_TRACK_LABELS[track];
 
   const [openPhases, setOpenPhases] = useState<Set<number>>(new Set());
+  const [verifyOpen, setVerifyOpen] = useState(false);
+  const selectedSteps = useMemo(
+    () => selected?.phases.flatMap((p) => p.steps) ?? [],
+    [selected?.phases]
+  );
+  const awaitingReview = selectedSteps.filter(
+    (s) => s.status === "completed" && s.verificationStatus !== "verified"
+  ).length;
   const phasesRef = useRef(selected?.phases);
   phasesRef.current = selected?.phases;
   const selectedId = selected?.id;
@@ -904,6 +970,36 @@ function TrackSection({
       ) : null}
 
       {selected ? (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <FreshnessNote steps={selectedSteps} scans={data.scans} floorId={selected.floorId} />
+          {data.canVerify && awaitingReview > 0 ? (
+            <button
+              type="button"
+              onClick={() => setVerifyOpen(true)}
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800 hover:border-slate-400 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+            >
+              <ScanEye className="h-4 w-4" aria-hidden />
+              Verify from scan ({awaitingReview})
+            </button>
+          ) : null}
+          <VerifyFromScanDialog
+            open={verifyOpen}
+            onOpenChange={setVerifyOpen}
+            floorLabel={`${selected.buildingName} · ${selected.floorName} · ${label}`}
+            floorId={selected.floorId}
+            scans={data.scans}
+            steps={selectedSteps}
+            busyIds={
+              new Set(
+                selectedSteps.filter((st) => pendingKeys.has(`${track}:${st.id}`)).map((st) => st.id)
+              )
+            }
+            onReview={(step, decision, note, tourId) => onReview(track, step, decision, note, tourId)}
+          />
+        </div>
+      ) : null}
+
+      {selected ? (
         <div
           className="h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"
           role="progressbar"
@@ -1006,6 +1102,13 @@ function TrackSection({
                         busy={pendingKeys.has(`${track}:${step.id}`)}
                         onTransition={(s, t) => onTransition(track, s, t)}
                         onSaveDates={(s, a, b) => onSaveDates(track, s, a, b)}
+                        floorId={selected.floorId}
+                        scans={data.scans}
+                        canVerify={data.canVerify}
+                        onEvidence={(s, tourId, note) => onEvidence(track, s, tourId, note)}
+                        onReview={(s, decision, note, tourId) =>
+                          onReview(track, s, decision, note, tourId)
+                        }
                       />
                     ))}
                   </ul>
@@ -1137,6 +1240,11 @@ export function ProgressionPanel({
     setData((prev) =>
       patchStep(prev, track, serverStep.id, (s) => ({
         ...s,
+        // Restarting, ending, resetting or re-dating clears verification (migration 047 trigger).
+        verificationStatus: null,
+        verifiedAt: null,
+        verifiedByName: null,
+        verificationNote: null,
         status: serverStep.status,
         ...(serverStep.startedAt !== undefined ? { startedAt: serverStep.startedAt } : {}),
         ...(serverStep.startedByName !== undefined
@@ -1254,6 +1362,115 @@ export function ProgressionPanel({
         return;
       }
       if (result.step) reconcileStep(track, result.step);
+    });
+  }
+
+  function onEvidence(
+    track: ProgressionTrack,
+    step: ProgressionStepView,
+    tourId: string | null,
+    note: string | null
+  ) {
+    const selected = data.selectedByTrack[track];
+    const key = `${track}:${step.id}`;
+    if (!data.canEdit || !selected || pendingKeys.has(key)) return;
+    setError(null);
+    const snapshot = data;
+    applyOptimistic(track, step, (s) => ({ ...s, evidenceTourId: tourId, evidenceNote: note }));
+    markPending(key, true);
+    startTransition(async () => {
+      const result = await setProgressionStepEvidence({
+        projectId: data.projectId,
+        floorId: selected.floorId,
+        track,
+        stepId: step.id,
+        tourId,
+        note,
+      });
+      markPending(key, false);
+      if (!result.ok) {
+        setData(snapshot);
+        setError(result.error);
+      }
+    });
+  }
+
+  function onReview(
+    track: ProgressionTrack,
+    step: ProgressionStepView,
+    decision: ReviewDecision,
+    note: string | null,
+    tourId?: string | null
+  ) {
+    const selected = data.selectedByTrack[track];
+    const key = `${track}:${step.id}`;
+    if (!data.canVerify || !selected || pendingKeys.has(key)) return;
+    setError(null);
+    const snapshot = data;
+    applyOptimistic(track, step, (s) => ({
+      ...s,
+      verificationStatus: decision,
+      verificationNote: note,
+      verifiedAt: new Date().toISOString(),
+      evidenceTourId: tourId ?? s.evidenceTourId,
+    }));
+    markPending(key, true);
+    startTransition(async () => {
+      const result = await verifyProgressionStep({
+        projectId: data.projectId,
+        floorId: selected.floorId,
+        track,
+        stepId: step.id,
+        decision,
+        note,
+        tourId: tourId ?? null,
+      });
+      markPending(key, false);
+      if (!result.ok) {
+        setData(snapshot);
+        setError(result.error);
+        return;
+      }
+      applyOptimistic(track, step, (s) => ({
+        ...s,
+        verificationStatus: result.verificationStatus,
+        verifiedAt: result.verifiedAt,
+        verifiedByName: result.verifiedByName,
+        verificationNote: result.verificationNote,
+        evidenceTourId: result.evidenceTourId ?? s.evidenceTourId,
+      }));
+      setData((prev) => ({
+        ...prev,
+        pendingReviewCount: Math.max(0, prev.pendingReviewCount - (decision === "verified" ? 1 : 0)),
+      }));
+    });
+  }
+
+  function onToggleVerifiedOnly(next: boolean) {
+    if (!data.canVerify) return;
+    setError(null);
+    startTransition(async () => {
+      const result = await setProgressionVerifiedOnly({ projectId: data.projectId, verifiedOnly: next });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      // Reload the bundle so every count uses the new rule.
+      const floorId =
+        data.selectedByTrack.post_slab?.floorId ?? data.selectedByTrack.pre_slab?.floorId;
+      const track: ProgressionTrack = data.selectedByTrack.post_slab ? "post_slab" : "pre_slab";
+      if (!floorId) {
+        setData((prev) => ({ ...prev, verifiedOnly: next }));
+        return;
+      }
+      const reloaded = await selectProgressionSection({
+        projectId: data.projectId,
+        track,
+        floorId,
+        ...selectionsFor(track, floorId),
+      });
+      if (reloaded.ok) setData(reloaded.progression);
+      else setData((prev) => ({ ...prev, verifiedOnly: next }));
     });
   }
 
@@ -1476,7 +1693,15 @@ export function ProgressionPanel({
 
     return (
       <div className="w-full min-w-0 max-w-full space-y-4 overflow-x-clip sm:space-y-5">
-        {data.completion ? <CompletionHero completion={data.completion} /> : null}
+        {data.completion ? (
+          <CompletionHero
+            completion={data.completion}
+            verifiedOnly={data.verifiedOnly}
+            canVerify={data.canVerify}
+            pendingReviewCount={data.pendingReviewCount}
+            onToggleVerifiedOnly={onToggleVerifiedOnly}
+          />
+        ) : null}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
@@ -1863,7 +2088,15 @@ export function ProgressionPanel({
   void checklistOnly;
   return (
     <div className="space-y-5">
-      {data.completion ? <CompletionHero completion={data.completion} /> : null}
+      {data.completion ? (
+          <CompletionHero
+            completion={data.completion}
+            verifiedOnly={data.verifiedOnly}
+            canVerify={data.canVerify}
+            pendingReviewCount={data.pendingReviewCount}
+            onToggleVerifiedOnly={onToggleVerifiedOnly}
+          />
+        ) : null}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h3 className="font-display text-base font-semibold text-slate-900 dark:text-white">
@@ -1937,6 +2170,8 @@ export function ProgressionPanel({
               onTransition={onTransition}
               onSaveDates={onSaveDates}
               onSaveSchedule={onSaveSchedule}
+                onEvidence={onEvidence}
+                onReview={onReview}
             />
           ))}
         </div>
