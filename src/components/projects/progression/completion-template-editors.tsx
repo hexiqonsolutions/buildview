@@ -638,9 +638,12 @@ export function PlanEditorDialog({
           <div className="space-y-5">
             {floors.map((floor) => (
               <section key={floor.floorId} aria-label={floor.label} className="rounded-lg border border-slate-200 dark:border-slate-800">
-                <h4 className="border-b border-slate-100 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-900 dark:border-slate-800 dark:bg-slate-950/60 dark:text-white">
-                  {floor.label}
-                </h4>
+                <div className="grid items-center gap-2 border-b border-slate-100 bg-slate-50 px-3 py-2 sm:grid-cols-[1fr_10rem_10rem_auto] dark:border-slate-800 dark:bg-slate-950/60">
+                  <h4 className="text-sm font-semibold text-slate-900 dark:text-white">{floor.label}</h4>
+                  <span aria-hidden className="hidden text-xs font-medium text-slate-500 sm:block">Planned start</span>
+                  <span aria-hidden className="hidden text-xs font-medium text-slate-500 sm:block">Planned end</span>
+                  <span aria-hidden className="hidden w-12 sm:block" />
+                </div>
                 <div className="divide-y divide-slate-100 dark:divide-slate-800">
                   {view.activities.map((a) => {
                     const key = `${floor.floorId}:${a.key}`;
