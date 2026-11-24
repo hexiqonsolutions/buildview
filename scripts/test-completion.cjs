@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- CommonJS test runner script */
 /**
  * Unit tests for src/lib/progression/completion.ts (Definable Completion formula).
  * Run: npm run test:completion
