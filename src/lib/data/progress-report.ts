@@ -1,5 +1,7 @@
 import "server-only";
 
+import { cache } from "react";
+
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { canViewProgression } from "@/lib/auth/roles";
@@ -76,7 +78,10 @@ export type ReportResult =
   | { ok: true; report: ProgressReport }
   | { ok: false; reason: "signin" | "forbidden" | "unavailable" | "invalid" };
 
-export async function getProgressReport(projectId: string, from: string, to: string): Promise<ReportResult> {
+/** Cached per request: the page title and body share one load. */
+export const getProgressReport = cache(loadProgressReport);
+
+async function loadProgressReport(projectId: string, from: string, to: string): Promise<ReportResult> {
   if (!validate(projectIdSchema, projectId).success) return { ok: false, reason: "invalid" };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || from > to) {
     return { ok: false, reason: "invalid" };
