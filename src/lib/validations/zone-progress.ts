@@ -80,3 +80,63 @@ export const setFloorPlanSchema = z
 export const floorPlanUploadSchema = z
   .object({ projectId, fileName: text("File name", { max: 255 }) })
   .strict();
+
+const zoneTypeEnum = z.enum(["flat", "unit", "room", "common", "other"]);
+
+/** Trades, stages and N/A rules. projectId null = BuildView defaults. */
+export const saveTemplateSchema = z
+  .object({
+    projectId: uuid("Project ID").nullable(),
+    activities: z
+      .array(
+        z
+          .object({
+            key: z.string().max(60).nullable().optional(),
+            name: text("Trade", { max: 60 }),
+            weight: z.number().min(0).max(100),
+          })
+          .strict()
+      )
+      .min(1)
+      .max(20),
+    stages: z
+      .array(
+        z
+          .object({
+            key: z.string().max(60).nullable().optional(),
+            name: text("Stage", { max: 40 }),
+            credit: z.number().min(0).max(100),
+          })
+          .strict()
+      )
+      .min(2)
+      .max(8),
+    naRules: z
+      .array(z.object({ zoneType: zoneTypeEnum, activityName: text("Trade", { max: 60 }) }).strict())
+      .max(200),
+  })
+  .strict();
+
+export const resetTemplateSchema = z.object({ projectId }).strict();
+
+const isoDay = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD");
+
+/** Full plan for a project: rows replace what's stored. */
+export const savePlansSchema = z
+  .object({
+    projectId,
+    plans: z
+      .array(
+        z
+          .object({
+            floorId: uuid("Floor ID"),
+            activityKey: text("Trade", { max: 60 }),
+            start: isoDay,
+            end: isoDay,
+          })
+          .strict()
+          .refine((p) => p.end >= p.start, { message: "Planned end must be on or after the start" })
+      )
+      .max(5000),
+  })
+  .strict();

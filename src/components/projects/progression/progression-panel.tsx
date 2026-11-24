@@ -291,6 +291,7 @@ function recomputeBundle(
     combinedFloors.map((combined) => ({
       floorId: combined.floorId,
       zoneActual: bundle.zoneFloorPercents?.[combined.floorId] ?? null,
+      zonePlanned: bundle.zoneFloorPlannedPercents?.[combined.floorId] ?? null,
       tracks: floors
         .filter((f) => f.floorId === combined.floorId)
         .map((f) => ({

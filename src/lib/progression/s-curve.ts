@@ -46,6 +46,10 @@ export function buildSCurve(input: {
   earliestZoneDate?: string | null;
   /** Zone floor % on a date (floor id → %); omit when there are no zones. */
   zonePercentsOnDate?: (date: string) => Map<string, number>;
+  /** Planned % from trade plans on a date (floor id → %), for zoned floors. */
+  zonePlannedOnDate?: (date: string) => Map<string, number>;
+  /** Trade plan dates, so the curve spans them too. */
+  extraPlanDates?: string[];
   maxPoints?: number;
 }): SCurvePoint[] {
   const today = input.today.slice(0, 10);
@@ -59,6 +63,10 @@ export function buildSCurve(input: {
     }
   }
   if (input.earliestZoneDate) starts.push(input.earliestZoneDate.slice(0, 10));
+  for (const d of input.extraPlanDates ?? []) {
+    starts.push(d.slice(0, 10));
+    ends.push(d.slice(0, 10));
+  }
   if (starts.length === 0) return [];
 
   const startMs = toMs(starts.sort()[0]);
@@ -85,9 +93,11 @@ export function buildSCurve(input: {
 
   return dates.map((date) => {
     const zones = date <= today ? input.zonePercentsOnDate?.(date) : undefined;
+    const zonePlanned = input.zonePlannedOnDate?.(date);
     const floors: ChecklistFloorInput[] = input.floors.map((floor) => ({
       floorId: floor.floorId,
       zoneActual: zones?.get(floor.floorId) ?? null,
+      zonePlanned: zonePlanned?.get(floor.floorId) ?? null,
       tracks: floor.tracks.map((t) => ({
         completed: (doneByFloorTrack.get(`${floor.floorId}:${t.track}`) ?? []).filter((d) => d <= date).length,
         total: t.total,

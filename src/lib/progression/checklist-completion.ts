@@ -32,6 +32,8 @@ export type ChecklistFloorInput = {
    * % for this floor; the schedule still comes from the tracks.
    */
   zoneActual?: number | null;
+  /** Planned % from the floor's trade plans (Milestone 6); replaces track dates when set. */
+  zonePlanned?: number | null;
 };
 
 /** Steps per track when a track has not been seeded yet. */
@@ -66,12 +68,15 @@ export function floorCompletion(floor: ChecklistFloorInput, today: string): Floo
             weight: t.total,
           }))
         ) ?? 0);
-  const planned = weightedRollup(
-    floor.tracks.map((t) => ({
-      percent: plannedPercent(today, t.plannedStart, t.plannedEnd),
-      weight: t.total > 0 ? t.total : DEFAULT_TRACK_STEPS,
-    }))
-  );
+  const planned =
+    floor.zonePlanned != null
+      ? floor.zonePlanned
+      : weightedRollup(
+          floor.tracks.map((t) => ({
+            percent: plannedPercent(today, t.plannedStart, t.plannedEnd),
+            weight: t.total > 0 ? t.total : DEFAULT_TRACK_STEPS,
+          }))
+        );
   return { floorId: floor.floorId, actual, planned, summary: summarize(actual, planned) };
 }
 

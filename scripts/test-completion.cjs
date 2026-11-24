@@ -304,3 +304,54 @@ test("S-curve: actual rises with ended steps, planned follows the schedule, futu
 test("S-curve: no history → empty", () => {
   assert.deepEqual(scurve.buildSCurve({ floors: [], steps: [], today: "2026-02-01" }), []);
 });
+
+const tpl = jiti(path.join(root, "src/lib/progression/template.ts"));
+
+test("template: weights must total 100 and stages rise from 0 to 100", () => {
+  const good = tpl.validateTemplate({
+    activities: [{ name: "Blockwork", weight: 40 }, { name: "Paint", weight: 60 }],
+    stages: [{ name: "Not started", credit: 0 }, { name: "Half", credit: 50 }, { name: "Done", credit: 100 }],
+  });
+  assert.equal(good.ok, true);
+  assert.deepEqual(good.template.activities.map((a) => a.key), ["blockwork", "paint"]);
+  const bad = tpl.validateTemplate({
+    activities: [{ name: "A", weight: 30 }, { name: "a", weight: 30 }],
+    stages: [{ name: "Start", credit: 10 }, { name: "Done", credit: 90 }],
+  });
+  assert.equal(bad.ok, false);
+  assert.ok(bad.errors.some((e) => e.includes("add up to 100")));
+  assert.ok(bad.errors.some((e) => e.includes("different")));
+  assert.ok(bad.errors.some((e) => e.includes("first stage")));
+  assert.ok(bad.errors.some((e) => e.includes("last stage")));
+});
+
+test("template: existing keys are kept when a trade is renamed", () => {
+  const r = tpl.validateTemplate({
+    activities: [{ key: "blockwork", name: "Masonry", weight: 100 }],
+    stages: [{ name: "No", credit: 0 }, { name: "Yes", credit: 100 }],
+  });
+  assert.equal(r.template.activities[0].key, "blockwork");
+});
+
+test("plans: CSV round-trip and validation", () => {
+  const floors = [{ floorId: "F1", label: "Tower A · Floor 1" }];
+  const acts = [{ key: "paint", name: "Paint", weight: 100 }];
+  const csv = tpl.plansToCsv(floors, acts, [{ floorId: "F1", activityKey: "paint", start: "2026-01-01", end: "2026-02-01" }]);
+  const parsed = tpl.parsePlanCsv(csv, floors, acts);
+  assert.deepEqual(parsed.errors, []);
+  assert.deepEqual(parsed.plans, [{ floorId: "F1", activityKey: "paint", start: "2026-01-01", end: "2026-02-01" }]);
+  const bad = tpl.parsePlanCsv("Floor,Trade,Planned start,Planned end\nTower B · Floor 9,Paint,01/01/2026,31/01/2026\nTower A · Floor 1,Paint,31/02/2026,01/03/2026", floors, acts);
+  assert.equal(bad.plans.length, 0);
+  assert.equal(bad.errors.length, 2);
+  assert.equal(tpl.parsePlanDate("15/03/2026"), "2026-03-15");
+});
+
+test("plans: floor planned % is weighted by trade", () => {
+  const acts = [{ key: "a", weight: 25 }, { key: "b", weight: 75 }];
+  const plans = [
+    { floorId: "F", activityKey: "a", start: "2026-01-01", end: "2026-01-11" },
+    { floorId: "F", activityKey: "b", start: "2026-02-01", end: "2026-03-01" },
+  ];
+  close(tpl.plannedFromActivityPlans(plans, acts, "F", "2026-01-06"), 12.5, "a half done, b not started");
+  assert.equal(tpl.plannedFromActivityPlans(plans, acts, "G", "2026-01-06"), null);
+});

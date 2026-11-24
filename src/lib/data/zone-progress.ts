@@ -2,6 +2,7 @@ import "server-only";
 
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import type { RollupBasis, StageDefinition } from "@/lib/progression/completion";
+import { plannedFromActivityPlans, type ActivityPlan } from "@/lib/progression/template";
 import {
   computeZoneFloors,
   type CompletionActivity,
@@ -22,6 +23,12 @@ export type ProjectZoneData = {
   basis: RollupBasis;
   zones: ZoneRecord[];
   observations: ObservationRecord[];
+  /** "project" when this project overrides the BuildView default template. */
+  templateSource: "project" | "default";
+  /** Trades N/A by default per zone type (project override, else defaults). */
+  naRules: { zoneType: string; activityKey: string }[];
+  /** Planned start / end per trade per floor (migration 052). */
+  plans: ActivityPlan[];
 };
 
 type ActivityRow = { project_id: string | null; key: string; name: string; weight: number; sort_order: number };
@@ -75,7 +82,7 @@ export async function loadZoneData(projectIds: string[]): Promise<Map<string, Pr
   }>;
 
   const zoneIds = zones.map((z) => z.id);
-  const [activitiesRes, stagesRes, naRes, obsRes, projectRes] = await Promise.all([
+  const [activitiesRes, stagesRes, naRes, obsRes, projectRes, rulesRes, plansRes] = await Promise.all([
     admin.from("completion_activities" as never).select("*"),
     admin.from("completion_stages" as never).select("*"),
     zoneIds.length
@@ -83,7 +90,21 @@ export async function loadZoneData(projectIds: string[]): Promise<Map<string, Pr
       : Promise.resolve({ data: [], error: null }),
     admin.from("progress_observations" as never).select("*").in("project_id", projectIds),
     admin.from("projects").select("*").in("id", projectIds),
+    admin.from("completion_na_rules" as never).select("*"),
+    admin.from("completion_activity_plans" as never).select("*").in("project_id", projectIds),
   ]);
+  const ruleRows = (rulesRes.error ? [] : (rulesRes.data ?? [])) as unknown as Array<{
+    project_id: string | null;
+    zone_type: string;
+    activity_key: string;
+  }>;
+  const planRows = (plansRes.error ? [] : (plansRes.data ?? [])) as unknown as Array<{
+    project_id: string;
+    floor_id: string;
+    activity_key: string;
+    planned_start: string;
+    planned_end: string;
+  }>;
 
   const activityRows = (activitiesRes.data ?? []) as unknown as ActivityRow[];
   const stageRows = (stagesRes.data ?? []) as unknown as StageRow[];
@@ -113,7 +134,19 @@ export async function loadZoneData(projectIds: string[]): Promise<Map<string, Pr
   }
 
   for (const projectId of projectIds) {
+    const ownRules = ruleRows.filter((r) => r.project_id === projectId);
+    const rules = ownRules.length > 0 ? ownRules : ruleRows.filter((r) => r.project_id === null);
     result.set(projectId, {
+      templateSource: activityRows.some((a) => a.project_id === projectId) ? "project" : "default",
+      naRules: rules.map((r) => ({ zoneType: r.zone_type, activityKey: r.activity_key })),
+      plans: planRows
+        .filter((p) => p.project_id === projectId)
+        .map((p) => ({
+          floorId: p.floor_id,
+          activityKey: p.activity_key,
+          start: p.planned_start,
+          end: p.planned_end,
+        })),
       activities: pickRows(activityRows, projectId).map((a) => ({
         key: a.key,
         name: a.name,
@@ -170,4 +203,19 @@ export function zoneFloorResults(
     verifiedOnly,
     basis: data.basis,
   });
+}
+
+/** Planned % per zoned floor on a date, from its trade plans (floor id → %). */
+export function zoneFloorPlanned(
+  data: ProjectZoneData | undefined,
+  date: string
+): Map<string, number> {
+  const out = new Map<string, number>();
+  if (!data || data.plans.length === 0) return out;
+  const zonedFloors = new Set(data.zones.map((z) => z.floorId));
+  for (const floorId of zonedFloors) {
+    const planned = plannedFromActivityPlans(data.plans, data.activities, floorId, date);
+    if (planned != null) out.set(floorId, planned);
+  }
+  return out;
 }

@@ -1,5 +1,5 @@
 import "server-only";
-import { loadZoneData, zoneFloorResults } from "@/lib/data/zone-progress";
+import { loadZoneData, zoneFloorPlanned, zoneFloorResults } from "@/lib/data/zone-progress";
 import { buildSCurve, type SCurveFloor, type SCurvePoint } from "@/lib/progression/s-curve";
 import {
   percentOnDate,
@@ -332,13 +332,20 @@ function checklistFloors(
 function aggregateProjectPercent(
   floors: FloorProgressionSummary[],
   combinedFloors: CombinedFloorSummary[],
-  zoneFloorPercents: Record<string, number> = {}
+  zoneFloorPercents: Record<string, number> = {},
+  zoneFloorPlannedPercents: Record<string, number> = {}
 ): {
   overallPercent: number;
   activatedFloorCount: number;
   completion: ProjectCompletion;
 } {
-  const completion = projectCompletion(checklistFloors(floors, zoneFloorPercents), todayInIndia());
+  const completion = projectCompletion(
+    checklistFloors(floors, zoneFloorPercents).map((f) => ({
+      ...f,
+      zonePlanned: zoneFloorPlannedPercents[f.floorId] ?? null,
+    })),
+    todayInIndia()
+  );
   return {
     overallPercent: Math.round(completion.actual),
     activatedFloorCount: combinedFloors.filter((f) => f.activated).length,
@@ -771,17 +778,19 @@ async function loadProjectProgressionBundle(
       matterportUrl: t.matterport_url,
     }))
     .sort((a, b) => (b.captureDate ?? b.createdAt).localeCompare(a.captureDate ?? a.createdAt));
-  const zoneResults = zoneFloorResults(
-    (await loadZoneData([projectId]).catch(() => new Map())).get(projectId),
-    todayInIndia(),
-    verifiedOnly
-  );
+  const zoneDataForProject = (await loadZoneData([projectId]).catch(() => new Map())).get(projectId);
+  const zoneResults = zoneFloorResults(zoneDataForProject, todayInIndia(), verifiedOnly);
   const zoneFloorPercents: Record<string, number> = {};
   for (const [floorId, r] of zoneResults) zoneFloorPercents[floorId] = r.percent;
+  const zoneFloorPlannedPercents: Record<string, number> = {};
+  for (const [floorId, p] of zoneFloorPlanned(zoneDataForProject, todayInIndia())) {
+    zoneFloorPlannedPercents[floorId] = p;
+  }
   const { overallPercent: overall, activatedFloorCount, completion } = aggregateProjectPercent(
     refreshed.floors,
     refreshed.combinedFloors,
-    zoneFloorPercents
+    zoneFloorPercents,
+    zoneFloorPlannedPercents
   );
   await writeCompletionSnapshot(projectId, completion, verifiedOnly);
 
@@ -796,6 +805,7 @@ async function loadProjectProgressionBundle(
     pendingReviewCount: refreshed.pendingReviewCount ?? 0,
     scans,
     zoneFloorPercents,
+    zoneFloorPlannedPercents,
     floors: refreshed.floors,
     combinedFloors: refreshed.combinedFloors,
     tracks: summarizeTracks(refreshed.floors, refreshed.combinedFloors),
@@ -1176,6 +1186,8 @@ export async function getCompletionHistory(projectId: string): Promise<Completio
     steps: records.steps,
     today: todayInIndia(),
     earliestZoneDate,
+    zonePlannedOnDate: zoneData?.plans.length ? (date) => zoneFloorPlanned(zoneData, date) : undefined,
+    extraPlanDates: zoneData?.plans.flatMap((p: { start: string; end: string }) => [p.start, p.end]) ?? [],
     zonePercentsOnDate: zoneData?.zones.length
       ? (date) => {
           const out = new Map<string, number>();

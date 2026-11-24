@@ -20,6 +20,7 @@ import {
 } from "@/lib/actions/zone-progress";
 import { formatPercent } from "@/lib/progression/completion";
 import { FloorPlanHeatmap } from "@/components/projects/progression/floor-plan-heatmap";
+import { TemplateToolbar } from "@/components/projects/progression/completion-template-editors";
 import type { ZoneCell } from "@/lib/progression/zone-completion";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -116,6 +117,14 @@ export function ZoneProgressSection({
             zones use the checklist.
           </p>
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+        <TemplateToolbar
+          view={view}
+          onSaved={(next) => {
+            setView(next);
+            onChanged?.();
+          }}
+        />
         {view.canManage ? (
           <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
             Roll up by
@@ -134,6 +143,7 @@ export function ZoneProgressSection({
             </select>
           </label>
         ) : null}
+        </div>
       </div>
 
       {error ? (
@@ -146,8 +156,10 @@ export function ZoneProgressSection({
 
       {zonedFloors.length > 0 ? (
         <p className="text-xs text-slate-500">
-          Pick each trade&apos;s stage per zone: Not started 0%, Started 25%, Half done 50%, Done 100%.
+          Pick each trade&apos;s stage per zone:{" "}
+          {view.stages.map((st) => `${st.name} ${Math.round(st.credit)}%`).join(", ")}.
           A zone&apos;s % adds up each stage × the trade&apos;s weight; the floor % weights zones by area.
+          {view.templateSource === "project" ? " This project uses its own trades and stages." : ""}
         </p>
       ) : null}
 

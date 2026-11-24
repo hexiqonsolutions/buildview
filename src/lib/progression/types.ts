@@ -160,6 +160,8 @@ export type ProjectProgressionBundle = {
   scans: ProgressionScan[];
   /** Floor % from zones (floor id → %) for floors that have zones (M4). */
   zoneFloorPercents: Record<string, number>;
+  /** Planned % from trade plans per zoned floor (M6). */
+  zoneFloorPlannedPercents: Record<string, number>;
   /** Per-track floor summaries (two rows per physical floor). */
   floors: FloorProgressionSummary[];
   /** Physical floors pooled across tracks. */

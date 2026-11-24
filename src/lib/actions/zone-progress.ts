@@ -36,8 +36,13 @@ import {
   floorPlanUploadSchema,
   updateZoneSchema,
   verifyObservationSchema,
+  resetTemplateSchema,
+  savePlansSchema,
+  saveTemplateSchema,
 } from "@/lib/validations/zone-progress";
 import { getErrorMessage, PublicError } from "@/lib/errors/public";
+import { validateTemplate, type ActivityPlan } from "@/lib/progression/template";
+import { logAuditEvent } from "@/lib/activity/audit";
 import { logServerError } from "@/lib/errors/server";
 import { STORAGE_BUCKETS, type UserRole } from "@/lib/types";
 import { UPLOAD_RULES, verifyStoredUpload } from "@/lib/uploads/verify";
@@ -79,6 +84,14 @@ export type ZoneProgressView =
       floors: ZoneFloorView[];
       /** Each trade's % across every zone in the project (building trade summary). */
       projectTrades: Record<string, number | null>;
+      /** Template in use: this project's override or BuildView defaults. */
+      templateSource: "project" | "default";
+      /** Trades N/A by default per zone type. */
+      naRules: { zoneType: string; activityKey: string }[];
+      /** Planned start / end per trade per zoned floor. */
+      plans: ActivityPlan[];
+      /** Trades, weights and stages: BuildView staff only (spec B5). */
+      canEditTemplate: boolean;
     };
 
 const MIGRATION_MESSAGE =
@@ -225,6 +238,10 @@ export async function getZoneProgress(projectId: string): Promise<ZoneProgressVi
     return {
       available: true,
       projectTrades,
+      templateSource: data.templateSource,
+      naRules: data.naRules,
+      plans: data.plans,
+      canEditTemplate: isBuildViewStaffRole(actor.role),
       projectId,
       canRecord: canEditProgression(actor.role),
       canManage: canEditProgression(actor.role),
@@ -281,17 +298,32 @@ export async function createZone(input: unknown): Promise<Result> {
     if ((floor as { building?: { project_id: string } } | null)?.building?.project_id !== projectId) {
       return { ok: false, error: "That floor isn't part of this project." };
     }
-    const { error } = await admin.from("progress_zones" as never).insert({
-      project_id: projectId,
-      floor_id: floorId,
-      name,
-      zone_type: zoneType,
-      area_sqft: area,
-      created_by: actor.userId,
-    } as never);
+    const { data: created, error } = await admin
+      .from("progress_zones" as never)
+      .insert({
+        project_id: projectId,
+        floor_id: floorId,
+        name,
+        zone_type: zoneType,
+        area_sqft: area,
+        created_by: actor.userId,
+      } as never)
+      .select("id")
+      .single();
     if (error) {
       if (isMissingTable(error)) return { ok: false, error: MIGRATION_MESSAGE };
       throw error;
+    }
+    // Default N/A trades for this zone type (template rules, migration 052).
+    const zoneData = (await loadZoneData([projectId])).get(projectId);
+    const naKeys = (zoneData?.naRules ?? [])
+      .filter((r) => r.zoneType === zoneType)
+      .map((r) => r.activityKey);
+    const zoneId = (created as { id: string } | null)?.id;
+    if (zoneId && naKeys.length > 0) {
+      await admin
+        .from("progress_zone_na" as never)
+        .upsert(naKeys.map((key) => ({ zone_id: zoneId, activity_key: key })) as never);
     }
     return finish(projectId);
   } catch (err) {
@@ -553,5 +585,197 @@ export async function createFloorPlanUploadUrl(input: unknown): Promise<
   } catch (err) {
     logServerError("zones:floorPlanUpload", err);
     return { ok: false, error: getErrorMessage(err, "Could not start the upload.") };
+  }
+}
+
+async function templateStaff(projectId: string | null) {
+  const actor = await getActiveActor();
+  if (!actor) throw new PublicError("You must be signed in.");
+  if (!isBuildViewStaffRole(actor.role as UserRole)) {
+    throw new PublicError("Only BuildView staff can change trades, weights and stages.");
+  }
+  if (projectId && !(await isConstructionProjectForProgression(projectId))) {
+    throw new PublicError("Progression is not available for this project.");
+  }
+  return actor;
+}
+
+/** BuildView default trades / stages / N/A rules (for the editor). */
+export async function getDefaultTemplate(): Promise<{
+  activities: { key: string; name: string; weight: number }[];
+  stages: { key: string; name: string; credit: number }[];
+  naRules: { zoneType: string; activityKey: string }[];
+} | null> {
+  try {
+    await templateStaff(null);
+    const admin = createServiceRoleClient();
+    const [a, st, r] = await Promise.all([
+      admin.from("completion_activities" as never).select("*").is("project_id", null).order("sort_order"),
+      admin.from("completion_stages" as never).select("*").is("project_id", null).order("sort_order"),
+      admin.from("completion_na_rules" as never).select("*").is("project_id", null),
+    ]);
+    return {
+      activities: ((a.data ?? []) as unknown as Array<{ key: string; name: string; weight: number }>).map((x) => ({
+        key: x.key,
+        name: x.name,
+        weight: Number(x.weight),
+      })),
+      stages: ((st.data ?? []) as unknown as Array<{ key: string; name: string; credit: number }>).map((x) => ({
+        key: x.key,
+        name: x.name,
+        credit: Number(x.credit),
+      })),
+      naRules: (r.error ? [] : ((r.data ?? []) as unknown as Array<{ zone_type: string; activity_key: string }>)).map(
+        (x) => ({ zoneType: x.zone_type, activityKey: x.activity_key })
+      ),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Save trades, weights, stages and N/A rules — for one project (override) or,
+ * with projectId null, as the BuildView defaults. Staff only. Keys are kept on
+ * rename so existing zone updates still match.
+ */
+export async function saveCompletionTemplate(input: unknown): Promise<Result> {
+  const parsed = validate(saveTemplateSchema, input);
+  if (!parsed.success) return { ok: false, error: parsed.error };
+  const { projectId, activities, stages, naRules } = parsed.data;
+  try {
+    await templateStaff(projectId);
+    const checked = validateTemplate({ activities, stages });
+    if (!checked.ok) return { ok: false, error: checked.errors.join(" ") };
+    const { template } = checked;
+    const admin = createServiceRoleClient();
+    const keyByName = new Map(template.activities.map((a) => [a.name.toLowerCase(), a.key]));
+    const ruleRows = naRules.flatMap((r) => {
+      const key = keyByName.get(r.activityName.toLowerCase());
+      return key ? [{ zone_type: r.zoneType, activity_key: key }] : [];
+    });
+
+    for (const table of ["completion_activities", "completion_stages", "completion_na_rules"]) {
+      const del = admin.from(table as never).delete();
+      const { error } = projectId
+        ? await del.eq("project_id", projectId)
+        : await del.is("project_id", null);
+      if (error && !(table === "completion_na_rules" && isMissingTable(error))) throw error;
+    }
+    const { error: aErr } = await admin.from("completion_activities" as never).insert(
+      template.activities.map((a) => ({
+        project_id: projectId,
+        key: a.key,
+        name: a.name,
+        weight: a.weight,
+        sort_order: a.sortOrder,
+      })) as never
+    );
+    if (aErr) throw aErr;
+    const { error: sErr } = await admin.from("completion_stages" as never).insert(
+      template.stages.map((st) => ({
+        project_id: projectId,
+        key: st.key,
+        name: st.name,
+        credit: st.credit,
+        sort_order: st.sortOrder,
+      })) as never
+    );
+    if (sErr) throw sErr;
+    if (ruleRows.length > 0) {
+      const { error: rErr } = await admin
+        .from("completion_na_rules" as never)
+        .insert(ruleRows.map((r) => ({ ...r, project_id: projectId })) as never);
+      if (rErr && !isMissingTable(rErr)) throw rErr;
+    }
+
+    await logAuditEvent({
+      action: projectId ? "completion_template.project_saved" : "completion_template.defaults_saved",
+      entityType: "completion_template",
+      projectId,
+      metadata: {
+        trades: template.activities.map((a) => `${a.name} ${a.weight}%`).join(", "),
+        stages: template.stages.map((st) => `${st.name} ${st.credit}%`).join(", "),
+      },
+    }).catch(() => undefined);
+
+    if (projectId) return finish(projectId);
+    return { ok: true, view: { available: false, reason: "Defaults saved." } };
+  } catch (err) {
+    return fail("zones:template", err, "Could not save the trades and stages.");
+  }
+}
+
+/** Drop a project's override so it uses the BuildView defaults again (staff). */
+export async function resetCompletionTemplate(input: unknown): Promise<Result> {
+  const parsed = validate(resetTemplateSchema, input);
+  if (!parsed.success) return { ok: false, error: parsed.error };
+  const { projectId } = parsed.data;
+  try {
+    await templateStaff(projectId);
+    const admin = createServiceRoleClient();
+    for (const table of ["completion_activities", "completion_stages", "completion_na_rules"]) {
+      const { error } = await admin.from(table as never).delete().eq("project_id", projectId);
+      if (error && !(table === "completion_na_rules" && isMissingTable(error))) throw error;
+    }
+    await logAuditEvent({
+      action: "completion_template.project_reset",
+      entityType: "completion_template",
+      projectId,
+    }).catch(() => undefined);
+    return finish(projectId);
+  } catch (err) {
+    return fail("zones:templateReset", err, "Could not reset to the defaults.");
+  }
+}
+
+/** Replace the project's trade plans (planned start / end per trade per floor). */
+export async function saveActivityPlans(input: unknown): Promise<Result> {
+  const parsed = validate(savePlansSchema, input);
+  if (!parsed.success) return { ok: false, error: parsed.error };
+  const { projectId, plans } = parsed.data;
+  try {
+    const actor = await zoneEditor(projectId);
+    const admin = createServiceRoleClient();
+    const { data: floorRows } = await admin
+      .from("floors")
+      .select("id, building:buildings!inner(project_id)")
+      .eq("building.project_id", projectId);
+    const projectFloors = new Set((floorRows ?? []).map((f) => f.id as string));
+    if (plans.some((p) => !projectFloors.has(p.floorId))) {
+      return { ok: false, error: "A plan row points at a floor outside this project." };
+    }
+    const { error: delErr } = await admin
+      .from("completion_activity_plans" as never)
+      .delete()
+      .eq("project_id", projectId);
+    if (delErr) {
+      if (isMissingTable(delErr)) {
+        return { ok: false, error: "Plans need database migration 052. Run it in Supabase first." };
+      }
+      throw delErr;
+    }
+    if (plans.length > 0) {
+      const { error } = await admin.from("completion_activity_plans" as never).insert(
+        plans.map((p) => ({
+          project_id: projectId,
+          floor_id: p.floorId,
+          activity_key: p.activityKey,
+          planned_start: p.start,
+          planned_end: p.end,
+          updated_by: actor.userId,
+        })) as never
+      );
+      if (error) throw error;
+    }
+    await logAuditEvent({
+      action: "completion_plan.saved",
+      entityType: "completion_plan",
+      projectId,
+      metadata: { rows: plans.length },
+    }).catch(() => undefined);
+    return finish(projectId);
+  } catch (err) {
+    return fail("zones:plans", err, "Could not save the plan.");
   }
 }
