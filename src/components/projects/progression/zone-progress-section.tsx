@@ -145,11 +145,7 @@ export function ZoneProgressSection({
       {view.canManage ? <AddZoneForm view={view} busy={busyKey === "add"} onAdd={(fields) => run("add", () => createZone({ projectId, ...fields }))} /> : null}
 
       {zonedFloors.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-500 dark:border-slate-700">
-          {view.canManage
-            ? "No zones yet. Add the flats or rooms on a floor to track them by trade."
-            : "No zones have been set up for this project yet."}
-        </p>
+        <EmptyZones view={view} />
       ) : (
         <div className="space-y-6">
           {zonedFloors.map((floor) => (
@@ -549,6 +545,49 @@ function StageCell({
         ) : null}
       </select>
       {busy ? <Loader2 className="absolute right-1 top-2.5 h-3.5 w-3.5 animate-spin text-slate-500" /> : null}
+    </div>
+  );
+}
+
+/** Empty state: what will be tracked, and the next step for this viewer. */
+function EmptyZones({ view }: { view: Ready }) {
+  const totalWeight = view.activities.reduce((sum, a) => sum + a.weight, 0) || 1;
+  return (
+    <div className="space-y-4 rounded-xl border border-dashed border-slate-300 p-4 dark:border-slate-700">
+      <div>
+        <p className="text-sm font-semibold text-slate-900 dark:text-white">No zones on this project yet</p>
+        <p className="mt-0.5 text-sm text-slate-500">
+          {view.canManage
+            ? view.floors.length === 0
+              ? "Add buildings and floors first (Admin → project → Buildings), then add zones here."
+              : "Use the form above to add the flats or rooms on a floor. Each zone then gets a row with these trades."
+            : "BuildView sets up the flats and rooms for each floor. Until then, floors use the checklist above."}
+        </p>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Trades tracked per zone</p>
+          <ul className="mt-2 space-y-1 text-sm text-slate-700 dark:text-slate-300">
+            {view.activities.map((a) => (
+              <li key={a.key} className="flex justify-between gap-3">
+                <span>{a.name}</span>
+                <span className="tabular-nums text-slate-500">{Math.round((a.weight / totalWeight) * 100)}%</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Stages and credit</p>
+          <ul className="mt-2 space-y-1 text-sm text-slate-700 dark:text-slate-300">
+            {view.stages.map((st) => (
+              <li key={st.key} className="flex justify-between gap-3">
+                <span>{st.name}</span>
+                <span className="tabular-nums text-slate-500">{Math.round(st.credit)}%</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
     </div>
   );
 }
