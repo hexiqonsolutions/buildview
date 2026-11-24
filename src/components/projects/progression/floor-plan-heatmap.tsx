@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ScanViewerDialog } from "@/components/projects/progression/progression-review";
 import type { ZoneFloorView, ZoneProgressView } from "@/lib/actions/zone-progress";
 import { formatPercent } from "@/lib/progression/completion";
+import { heatFill, polygonCentroid } from "@/lib/progression/heat";
 import type { ProgressionScan } from "@/lib/progression/types";
 import type { ZoneResult } from "@/lib/progression/zone-completion";
 import { createClient as createBrowserClient } from "@/lib/supabase/client";
@@ -20,20 +21,7 @@ type Point = [number, number];
 const PLAN_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const PLAN_MAX_BYTES = 20 * 1024 * 1024;
 
-/** Heat colour by %, matching the matrix chips (grey → amber → sky → green). */
-function heatFill(percent: number | null): { fill: string; label: string } {
-  if (percent == null) return { fill: "rgba(148,163,184,0.35)", label: "No applicable trades" };
-  if (percent >= 100) return { fill: "rgba(16,185,129,0.55)", label: "Complete" };
-  if (percent >= 50) return { fill: "rgba(14,165,233,0.5)", label: "50–99%" };
-  if (percent > 0) return { fill: "rgba(245,158,11,0.5)", label: "1–49%" };
-  return { fill: "rgba(148,163,184,0.45)", label: "Not started" };
-}
-
-function centroid(points: Point[]): Point {
-  const x = points.reduce((s, p) => s + p[0], 0) / points.length;
-  const y = points.reduce((s, p) => s + p[1], 0) / points.length;
-  return [x, y];
-}
+const centroid = polygonCentroid;
 
 const toSvg = (points: Point[]) => points.map(([x, y]) => `${x * 1000},${y * 1000}`).join(" ");
 

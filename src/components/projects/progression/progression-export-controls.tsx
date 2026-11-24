@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { Download, Loader2 } from "lucide-react";
+import { Download, FileSpreadsheet, FileText, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -58,10 +59,22 @@ export function ProgressionExportControls({
   const [from, setFrom] = useState(defaults.from);
   const [to, setTo] = useState(defaults.to);
   const [error, setError] = useState<string | null>(null);
+  const [format, setFormat] = useState<"pdf" | "excel">("pdf");
   const [pending, startTransition] = useTransition();
 
   function handleExport() {
     setError(null);
+    if (format === "pdf") {
+      if (from > to) {
+        setError("From date must be on or before the to date.");
+        return;
+      }
+      const url = `/report/progress/${projectId}?from=${from}&to=${to}`;
+      const win = window.open(url, "_blank");
+      if (!win) window.location.href = url;
+      setOpen(false);
+      return;
+    }
     startTransition(async () => {
       try {
         const result = await getProgressionExportData({ projectId, from, to });
@@ -105,7 +118,7 @@ export function ProgressionExportControls({
         <DialogHeader>
           <DialogTitle>Export progression</DialogTitle>
           <DialogDescription>
-            Choose the date range, then download an Excel file with building and floor detail.
+            Choose the period, then open a PDF report for clients or download Excel for your team.
           </DialogDescription>
         </DialogHeader>
 
@@ -133,9 +146,43 @@ export function ProgressionExportControls({
           </div>
         </div>
 
-        <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm dark:border-slate-700 dark:bg-slate-900/50">
-          <p className="font-medium text-slate-900 dark:text-white">Export type</p>
-          <p className="mt-0.5 text-xs text-slate-500">Excel (.xls) — Overview, Floors, Steps, Period activity</p>
+        <div role="radiogroup" aria-label="Export type" className="grid gap-2">
+          {(
+            [
+              {
+                value: "pdf",
+                icon: FileText,
+                title: "PDF progress report",
+                body: "Completion, S-curve, floors, zones on the floor plan, changes with 360 evidence, and how the % is calculated.",
+              },
+              {
+                value: "excel",
+                icon: FileSpreadsheet,
+                title: "Excel (.xls)",
+                body: "Overview, floors, every checklist step and period activity.",
+              },
+            ] as const
+          ).map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              role="radio"
+              aria-checked={format === opt.value}
+              onClick={() => setFormat(opt.value)}
+              className={cn(
+                "flex items-start gap-3 rounded-lg border px-3 py-2.5 text-left text-sm transition-colors",
+                format === opt.value
+                  ? "border-slate-900 bg-slate-50 dark:border-white dark:bg-slate-900"
+                  : "border-slate-200 hover:border-slate-300 dark:border-slate-700"
+              )}
+            >
+              <opt.icon className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" aria-hidden />
+              <span>
+                <span className="block font-medium text-slate-900 dark:text-white">{opt.title}</span>
+                <span className="mt-0.5 block text-xs text-slate-500">{opt.body}</span>
+              </span>
+            </button>
+          ))}
         </div>
 
         {error ? (
@@ -161,8 +208,8 @@ export function ProgressionExportControls({
               </>
             ) : (
               <>
-                <Download className="mr-1.5 h-4 w-4" />
-                Download Excel
+                {format === "pdf" ? <FileText className="mr-1.5 h-4 w-4" /> : <Download className="mr-1.5 h-4 w-4" />}
+                {format === "pdf" ? "Open PDF report" : "Download Excel"}
               </>
             )}
           </Button>

@@ -1,0 +1,222 @@
+import "server-only";
+
+import { createServiceRoleClient } from "@/lib/supabase/admin";
+import { canViewProgression } from "@/lib/auth/roles";
+import { canViewProject, getActiveActor } from "@/lib/auth/project-access";
+import {
+  getCompletionHistory,
+  getProjectProgressionFresh,
+  isConstructionProjectForProgression,
+} from "@/lib/data/progression";
+import { getZoneProgress, type ZoneProgressView } from "@/lib/actions/zone-progress";
+import { PROGRESSION_TRACK_LABELS, type ProgressionTrack } from "@/lib/progression/catalog";
+import { todayInIndia } from "@/lib/progression/checklist-completion";
+import type { CompletionSummary } from "@/lib/progression/completion";
+import type { SCurvePoint } from "@/lib/progression/s-curve";
+import type { ProgressionScan } from "@/lib/progression/types";
+import { validate } from "@/lib/validations/parse";
+import { projectIdSchema } from "@/lib/validations/data";
+
+/**
+ * PDF progress report (Milestone 7): everything the printable report shows,
+ * read through the same formula and loaders as the Progression tab so the
+ * numbers match the screen.
+ */
+
+export type ReportEvidence = { name: string; date: string | null; url: string };
+
+export type ReportFloorRow = {
+  floorId: string;
+  building: string;
+  floor: string;
+  summary: CompletionSummary;
+  basis: "zones" | "checklist";
+  latestScan: ReportEvidence | null;
+};
+
+export type ReportChange = {
+  date: string;
+  kind: "step" | "zone";
+  where: string;
+  what: string;
+  status: "verified" | "rejected" | "pending";
+  evidence: ReportEvidence | null;
+};
+
+export type ProgressReport = {
+  project: { id: string; name: string; location: string | null; clientName: string | null };
+  from: string;
+  to: string;
+  generatedOn: string;
+  summary: CompletionSummary;
+  floorCount: number;
+  scheduledFloorCount: number;
+  unstartedFloorCount: number;
+  verifiedOnly: boolean;
+  pendingReviewCount: number;
+  floors: ReportFloorRow[];
+  history: SCurvePoint[];
+  zones: Extract<ZoneProgressView, { available: true }> | null;
+  changes: ReportChange[];
+  changesTruncated: boolean;
+};
+
+const MAX_CHANGES = 300;
+const day = (v: string | null | undefined) => (v ? v.slice(0, 10) : null);
+
+function scanEvidence(scan: ProgressionScan | undefined): ReportEvidence | null {
+  if (!scan) return null;
+  return { name: scan.name, date: day(scan.captureDate) ?? day(scan.createdAt), url: scan.matterportUrl };
+}
+
+export type ReportResult =
+  | { ok: true; report: ProgressReport }
+  | { ok: false; reason: "signin" | "forbidden" | "unavailable" | "invalid" };
+
+export async function getProgressReport(projectId: string, from: string, to: string): Promise<ReportResult> {
+  if (!validate(projectIdSchema, projectId).success) return { ok: false, reason: "invalid" };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || from > to) {
+    return { ok: false, reason: "invalid" };
+  }
+
+  const actor = await getActiveActor();
+  if (!actor) return { ok: false, reason: "signin" };
+  if (!canViewProgression(actor.role)) return { ok: false, reason: "forbidden" };
+  if (!(await canViewProject({ userId: actor.userId, role: actor.role, clientId: actor.clientId }, projectId))) {
+    return { ok: false, reason: "forbidden" };
+  }
+  if (!(await isConstructionProjectForProgression(projectId))) return { ok: false, reason: "unavailable" };
+
+  const admin = createServiceRoleClient();
+  const [bundle, history, zoneView, projectRes] = await Promise.all([
+    getProjectProgressionFresh(projectId),
+    getCompletionHistory(projectId).catch(() => null),
+    getZoneProgress(projectId).catch(() => null),
+    admin.from("projects").select("id, name, location, client_name").eq("id", projectId).maybeSingle(),
+  ]);
+  const project = projectRes.data;
+  if (!bundle || !project) return { ok: false, reason: "unavailable" };
+
+  const zones = zoneView && zoneView.available ? zoneView : null;
+  const scanById = new Map(bundle.scans.map((s) => [s.id, s]));
+  const scanDate = (s: ProgressionScan) => day(s.captureDate) ?? day(s.createdAt) ?? "";
+
+  // ---- floors: same per-floor results as the Completion card
+  const resultByFloor = new Map(bundle.completion.floors.map((f) => [f.floorId, f]));
+  const floors: ReportFloorRow[] = bundle.combinedFloors.map((f) => {
+    const result = resultByFloor.get(f.floorId);
+    const latest = bundle.scans
+      .filter((s) => s.floorId === f.floorId)
+      .sort((a, b) => scanDate(b).localeCompare(scanDate(a)))[0];
+    return {
+      floorId: f.floorId,
+      building: f.buildingName,
+      floor: f.floorName,
+      summary: result?.summary ?? {
+        actual: 0,
+        planned: null,
+        variance: null,
+        behind: null,
+        status: "no_schedule",
+      },
+      basis: bundle.zoneFloorPercents[f.floorId] != null ? "zones" : "checklist",
+      latestScan: scanEvidence(latest),
+    };
+  });
+  const floorLabel = new Map(floors.map((f) => [f.floorId, `${f.building} · ${f.floor}`]));
+
+  // ---- changes in the period: checklist steps ended + zone updates
+  const changes: ReportChange[] = [];
+
+  type StepRow = {
+    status: string;
+    ended_at: string | null;
+    completed_at: string | null;
+    work_date: string | null;
+    evidence_tour_id?: string | null;
+    verification_status?: string | null;
+    template_step: { title: string; phase_name: string } | null;
+    progression: { floor_id: string; track: string } | null;
+  };
+  const { data: stepRows } = await admin
+    .from("project_progression_steps")
+    .select(
+      "*, template_step:progression_template_steps(title, phase_name), progression:project_progressions!inner(project_id, floor_id, track)"
+    )
+    .eq("progression.project_id", projectId)
+    .eq("status", "completed")
+    .limit(5000);
+  for (const s of (stepRows ?? []) as unknown as StepRow[]) {
+    const date = day(s.work_date) ?? day(s.ended_at) ?? day(s.completed_at);
+    if (!date || date < from || date > to || !s.progression) continue;
+    const track = PROGRESSION_TRACK_LABELS[s.progression.track as ProgressionTrack] ?? s.progression.track;
+    changes.push({
+      date,
+      kind: "step",
+      where: floorLabel.get(s.progression.floor_id) ?? "Floor",
+      what: `${track}: ${s.template_step?.title ?? "Step"} ended`,
+      status: s.verification_status === "verified" ? "verified" : s.verification_status === "rejected" ? "rejected" : "pending",
+      evidence: s.evidence_tour_id ? scanEvidence(scanById.get(s.evidence_tour_id)) : null,
+    });
+  }
+
+  if (zones) {
+    const zoneInfo = new Map<string, { name: string; floorId: string }>();
+    for (const f of zones.floors) for (const z of f.zones) zoneInfo.set(z.id, { name: z.name, floorId: f.floorId });
+    const activityName = new Map(zones.activities.map((a) => [a.key, a.name]));
+    const stageName = new Map(zones.stages.map((st) => [st.key, st.name]));
+    const { data: obsRows } = await admin
+      .from("progress_observations" as never)
+      .select("*")
+      .eq("project_id", projectId)
+      .gte("observed_on", from)
+      .lte("observed_on", to)
+      .limit(3000);
+    for (const o of (obsRows ?? []) as unknown as Array<{
+      zone_id: string;
+      activity_key: string;
+      stage_key: string;
+      observed_on: string;
+      evidence_tour_id: string | null;
+      verification_status: string | null;
+    }>) {
+      const zone = zoneInfo.get(o.zone_id);
+      if (!zone) continue;
+      changes.push({
+        date: o.observed_on,
+        kind: "zone",
+        where: `${floorLabel.get(zone.floorId) ?? "Floor"} · ${zone.name}`,
+        what: `${activityName.get(o.activity_key) ?? o.activity_key} → ${stageName.get(o.stage_key) ?? o.stage_key}`,
+        status: o.verification_status === "verified" ? "verified" : o.verification_status === "rejected" ? "rejected" : "pending",
+        evidence: o.evidence_tour_id ? scanEvidence(scanById.get(o.evidence_tour_id)) : null,
+      });
+    }
+  }
+  changes.sort((a, b) => b.date.localeCompare(a.date) || a.where.localeCompare(b.where));
+
+  return {
+    ok: true,
+    report: {
+      project: {
+        id: project.id,
+        name: project.name,
+        location: project.location ?? null,
+        clientName: project.client_name ?? null,
+      },
+      from,
+      to,
+      generatedOn: todayInIndia(),
+      summary: bundle.completion.summary,
+      floorCount: bundle.completion.floorCount,
+      scheduledFloorCount: bundle.completion.scheduledFloorCount,
+      unstartedFloorCount: bundle.completion.floors.filter((f) => f.actual <= 0).length,
+      verifiedOnly: bundle.verifiedOnly,
+      pendingReviewCount: bundle.pendingReviewCount,
+      floors,
+      history: history?.points ?? [],
+      zones,
+      changes: changes.slice(0, MAX_CHANGES),
+      changesTruncated: changes.length > MAX_CHANGES,
+    },
+  };
+}
