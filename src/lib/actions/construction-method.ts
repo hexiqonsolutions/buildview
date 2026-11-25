@@ -5,15 +5,11 @@ import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { canViewProject, getActiveActor } from "@/lib/auth/project-access";
 import { canVerifyProgression, canViewProgression } from "@/lib/auth/roles";
-import {
-  getProjectMethods,
-  isConstructionProjectForProgression,
-  switchFloorChecklist,
-} from "@/lib/data/progression";
+import { getProjectMethods, isConstructionProjectForProgression } from "@/lib/data/progression";
 import { logAuditEvent } from "@/lib/activity/audit";
 import { getErrorMessage, PublicError } from "@/lib/errors/public";
 import { logServerError } from "@/lib/errors/server";
-import { methodOfTemplateKey, type ConstructionMethod } from "@/lib/progression/methods";
+import { type ConstructionMethod } from "@/lib/progression/methods";
 import { validate } from "@/lib/validations/parse";
 import { uuid } from "@/lib/validations/primitives";
 import type { UserRole } from "@/lib/types";
@@ -184,26 +180,24 @@ export async function setConstructionMethod(
       if (error) throw migrationError(error);
     }
 
-    // Move checklists whose template no longer matches the floor's method.
-    const methods = await getProjectMethods(projectId);
-    const { data: progressions } = await admin
-      .from("project_progressions")
-      .select("id, floor_id, template:progression_templates(key)")
-      .eq("project_id", projectId)
-      .is("deleted_at", null);
-    let switched = 0;
-    let carried = 0;
-    let dropped = 0;
-    for (const p of (progressions ?? []) as unknown as Array<{ id: string; floor_id: string; template: { key: string } | null }>) {
-      const want = methods.floors.get(p.floor_id);
-      if (!want || methodOfTemplateKey(p.template?.key) === want) continue;
-      const result = await switchFloorChecklist(p.id, want, actor.userId);
-      if (result.switched) {
-        switched += 1;
-        carried += result.carried;
-        dropped += result.dropped;
+    // Move checklists whose template no longer matches the floor's method:
+    // one transaction in the database (migration 054).
+    const { data: counts, error: rpcError } = await admin.rpc("reconcile_construction_methods" as never, {
+      p_project: projectId,
+      p_actor: actor.userId,
+    } as never);
+    if (rpcError) {
+      if (/reconcile_construction_methods/.test(rpcError.message ?? "") || rpcError.code === "PGRST202") {
+        throw new PublicError("Saved. Checklists move to the new method after database migration 054 is run.");
       }
+      throw rpcError;
     }
+    const row = (Array.isArray(counts) ? counts[0] : counts) as
+      | { switched: number; carried: number; dropped: number }
+      | undefined;
+    const switched = Number(row?.switched ?? 0);
+    const carried = Number(row?.carried ?? 0);
+    const dropped = Number(row?.dropped ?? 0);
 
     await logAuditEvent({
       action: "construction_method.changed",

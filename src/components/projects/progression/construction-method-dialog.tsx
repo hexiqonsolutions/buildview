@@ -147,7 +147,14 @@ export function ConstructionMethodDialog({
     setNotice(null);
     setPending(null);
     startTransition(async () => {
-      const result = await setConstructionMethod({ projectId, target: change.target, method: change.method });
+      let result: Awaited<ReturnType<typeof setConstructionMethod>>;
+      try {
+        result = await setConstructionMethod({ projectId, target: change.target, method: change.method });
+      } catch {
+        setError("The change took too long or the connection dropped. Reopen this dialog to see what was saved.");
+        onChanged();
+        return;
+      }
       if (!result.ok) {
         setError(result.error);
         return;
