@@ -1453,16 +1453,22 @@ export async function switchFloorChecklist(
   let carried = 0;
   const rows = ((newTemplateSteps ?? []) as Array<{ id: string; step_number: number; step_key?: string | null; title: string }>).map(
     (t) => {
+      // Bulk insert: every row needs the same columns (missing ones become NULL,
+      // which NOT NULL columns like `source` reject).
       const base = {
         progression_id: created.id,
         template_step_id: t.id,
         step_number: t.step_number,
-        status: "pending",
       } as Record<string, unknown>;
+      for (const field of CARRY_FIELDS) base[field] = null;
+      base.status = "pending";
+      base.source = "manual";
       const match = oldByKey.get(keyOf(t) ?? "");
       if (!match) return base;
       carried += 1;
       for (const field of CARRY_FIELDS) if (field in match) base[field] = match[field];
+      base.source = base.source ?? "manual";
+      base.status = base.status ?? "pending";
       return base;
     }
   );
