@@ -1,5 +1,6 @@
 import type { ProgressionTrack } from "@/lib/progression/catalog";
 import type { ProjectCompletion } from "@/lib/progression/checklist-completion";
+import type { ConstructionMethod } from "@/lib/progression/methods";
 
 export type { ProgressionTrack };
 
@@ -85,6 +86,8 @@ export type ProjectProgressionView = {
   buildingName: string;
   floorName: string;
   templateKey: string;
+  /** Construction method of this checklist (from its template). */
+  method: ConstructionMethod;
   /** Planned schedule for this floor + track (YYYY-MM-DD), null when unset. */
   plannedStartDate: string | null;
   /** Deadline for this floor + track (YYYY-MM-DD), null when unset. */
@@ -116,6 +119,8 @@ export type FloorProgressionSummary = {
   plannedEndDate: string | null;
   /** True once any step in either track on this floor has Started. */
   activated: boolean;
+  /** Effective construction method of the floor. */
+  method: ConstructionMethod;
 };
 
 /** Physical floor summary pooled across both tracks (Overview / combined %). */
@@ -129,6 +134,8 @@ export type CombinedFloorSummary = {
   inProgressCount: number;
   totalCount: number;
   activated: boolean;
+  /** Effective construction method of the floor. */
+  method: ConstructionMethod;
 };
 
 export type TrackProgressionSummary = {
@@ -167,6 +174,10 @@ export type ProjectProgressionBundle = {
   /** Physical floors pooled across tracks. */
   combinedFloors: CombinedFloorSummary[];
   tracks: TrackProgressionSummary[];
+  /** Project default construction method. */
+  constructionMethod: ConstructionMethod;
+  /** Distinct methods used across floors (for labels and badges). */
+  methodsInUse: ConstructionMethod[];
   /** Selected checklist per track (independent Tower/Floor per section). */
   selectedByTrack: Record<ProgressionTrack, ProjectProgressionView | null>;
   /** Legacy alias: Post-Slab selection. */

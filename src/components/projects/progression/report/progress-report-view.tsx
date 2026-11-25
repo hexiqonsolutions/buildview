@@ -6,6 +6,7 @@ import {
 } from "@/lib/progression/completion";
 import { HEAT_LEGEND, heatFill, polygonCentroid } from "@/lib/progression/heat";
 import { formatDate } from "@/lib/utils";
+import { CONSTRUCTION_METHOD_LABELS } from "@/lib/progression/methods";
 
 /**
  * Printable progress report (Milestone 7). Server-rendered, light "paper" only,
@@ -63,6 +64,8 @@ export function ProgressReportView({ report }: { report: ProgressReport }) {
   const { summary, zones } = report;
   const zonedFloors = zones?.floors.filter((f) => f.zones.length > 0) ?? [];
   const { steps, zoneUpdates, notVerified: pendingInPeriod } = report.changeCounts;
+  const methodsInReport = [...new Set(report.floors.map((f) => f.method))];
+  const mixedMethods = methodsInReport.length > 1;
 
   return (
     <article className="report-paper mx-auto max-w-[210mm] bg-white px-4 py-6 text-slate-900 sm:px-[14mm] sm:py-[12mm]">
@@ -73,6 +76,9 @@ export function ProgressReportView({ report }: { report: ProgressReport }) {
           <h1 className="mt-1 font-display text-2xl font-bold leading-tight">{report.project.name}</h1>
           <p className="mt-1 text-sm text-slate-600">
             {[report.project.clientName, report.project.location].filter(Boolean).join(" · ") || "—"}
+          </p>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Construction method: {methodsInReport.map((m) => CONSTRUCTION_METHOD_LABELS[m]).join(", ") || "Conventional"}
           </p>
         </div>
         <dl className="shrink-0 text-xs text-slate-600 sm:text-right">
@@ -145,6 +151,7 @@ export function ProgressReportView({ report }: { report: ProgressReport }) {
               <th scope="col" className="py-1.5 pr-2 text-right font-semibold">Planned</th>
               <th scope="col" className="py-1.5 pr-2 text-right font-semibold">Variance</th>
               <th scope="col" className="py-1.5 pr-2 font-semibold">Status</th>
+              {mixedMethods ? <th scope="col" className="py-1.5 pr-2 font-semibold">Method</th> : null}
               <th scope="col" className="py-1.5 pr-2 font-semibold">Measured by</th>
               <th scope="col" className="py-1.5 font-semibold">Latest 360 scan</th>
             </tr>
@@ -161,6 +168,9 @@ export function ProgressReportView({ report }: { report: ProgressReport }) {
                 <td className="py-1.5 pr-2">
                   <StatusChip status={f.summary.status} />
                 </td>
+                {mixedMethods ? (
+                  <td className="py-1.5 pr-2 text-slate-600">{CONSTRUCTION_METHOD_LABELS[f.method]}</td>
+                ) : null}
                 <td className="py-1.5 pr-2 text-slate-600">{f.basis === "zones" ? "Zones" : "Checklist"}</td>
                 <td className="py-1.5">
                   {f.latestScan ? (
@@ -277,6 +287,11 @@ export function ProgressReportView({ report }: { report: ProgressReport }) {
           <p>
             <strong>Project %</strong> is the average of every floor&apos;s %, each floor counting equally. Floors
             with no recorded work count as 0%.
+          </p>
+          <p>
+            <strong>Checklists by method:</strong> each floor follows the checklist for its construction method
+            (Conventional: Pre-Slab and Post-Slab; Mivan and Hybrid: Structure cycle and Finishing). A floor&apos;s
+            % is its own steps ended ÷ its own total, so floors with different methods compare fairly.
           </p>
           <p>
             <strong>Floor %:</strong> on a floor with zones, each zone&apos;s % is the sum of each trade&apos;s stage

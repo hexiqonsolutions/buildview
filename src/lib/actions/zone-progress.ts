@@ -42,6 +42,7 @@ import {
 } from "@/lib/validations/zone-progress";
 import { getErrorMessage, PublicError } from "@/lib/errors/public";
 import { validateTemplate, type ActivityPlan } from "@/lib/progression/template";
+import { isConstructionMethod, type ConstructionMethod } from "@/lib/progression/methods";
 import { logAuditEvent } from "@/lib/activity/audit";
 import { logServerError } from "@/lib/errors/server";
 import { STORAGE_BUCKETS, type UserRole } from "@/lib/types";
@@ -92,6 +93,8 @@ export type ZoneProgressView =
       plans: ActivityPlan[];
       /** Trades, weights and stages: BuildView staff only (spec B5). */
       canEditTemplate: boolean;
+      /** Project construction method (its default trades apply). */
+      constructionMethod: ConstructionMethod;
     };
 
 const MIGRATION_MESSAGE =
@@ -242,6 +245,7 @@ export async function getZoneProgress(projectId: string): Promise<ZoneProgressVi
       naRules: data.naRules,
       plans: data.plans,
       canEditTemplate: isBuildViewStaffRole(actor.role),
+      constructionMethod: isConstructionMethod(data.method) ? data.method : "conventional",
       projectId,
       canRecord: canEditProgression(actor.role),
       canManage: canEditProgression(actor.role),
@@ -601,7 +605,7 @@ async function templateStaff(projectId: string | null) {
 }
 
 /** BuildView default trades / stages / N/A rules (for the editor). */
-export async function getDefaultTemplate(): Promise<{
+export async function getDefaultTemplate(method: ConstructionMethod = "conventional"): Promise<{
   activities: { key: string; name: string; weight: number }[];
   stages: { key: string; name: string; credit: number }[];
   naRules: { zoneType: string; activityKey: string }[];
@@ -615,7 +619,9 @@ export async function getDefaultTemplate(): Promise<{
       admin.from("completion_na_rules" as never).select("*").is("project_id", null),
     ]);
     return {
-      activities: ((a.data ?? []) as unknown as Array<{ key: string; name: string; weight: number }>).map((x) => ({
+      activities: ((a.data ?? []) as unknown as Array<{ key: string; name: string; weight: number; method?: string | null }>)
+        .filter((x) => (x.method ?? "conventional") === method)
+        .map((x) => ({
         key: x.key,
         name: x.name,
         weight: Number(x.weight),
@@ -643,6 +649,7 @@ export async function saveCompletionTemplate(input: unknown): Promise<Result> {
   const parsed = validate(saveTemplateSchema, input);
   if (!parsed.success) return { ok: false, error: parsed.error };
   const { projectId, activities, stages, naRules } = parsed.data;
+  const defaultsMethod = parsed.data.method ?? "conventional";
   try {
     await templateStaff(projectId);
     const checked = validateTemplate({ activities, stages });
@@ -655,16 +662,21 @@ export async function saveCompletionTemplate(input: unknown): Promise<Result> {
       return key ? [{ zone_type: r.zoneType, activity_key: key }] : [];
     });
 
+    const hasMethodColumn = !projectId && (await activitiesHaveMethod());
     for (const table of ["completion_activities", "completion_stages", "completion_na_rules"]) {
       const del = admin.from(table as never).delete();
+      // Default trades are per construction method; stages and N/A rules are shared.
       const { error } = projectId
         ? await del.eq("project_id", projectId)
-        : await del.is("project_id", null);
+        : table === "completion_activities" && hasMethodColumn
+          ? await del.is("project_id", null).eq("method", defaultsMethod)
+          : await del.is("project_id", null);
       if (error && !(table === "completion_na_rules" && isMissingTable(error))) throw error;
     }
     const { error: aErr } = await admin.from("completion_activities" as never).insert(
       template.activities.map((a) => ({
         project_id: projectId,
+        ...(hasMethodColumn ? { method: defaultsMethod } : {}),
         key: a.key,
         name: a.name,
         weight: a.weight,
@@ -778,4 +790,13 @@ export async function saveActivityPlans(input: unknown): Promise<Result> {
   } catch (err) {
     return fail("zones:plans", err, "Could not save the plan.");
   }
+}
+
+/** completion_activities.method exists (migration 053). */
+async function activitiesHaveMethod(): Promise<boolean> {
+  const { error } = await createServiceRoleClient()
+    .from("completion_activities" as never)
+    .select("method")
+    .limit(1);
+  return !error;
 }

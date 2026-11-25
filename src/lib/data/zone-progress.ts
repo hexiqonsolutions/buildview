@@ -30,18 +30,27 @@ export type ProjectZoneData = {
   naRules: { zoneType: string; activityKey: string }[];
   /** Planned start / end per trade per floor (migration 052). */
   plans: ActivityPlan[];
+  /** Project construction method (picks the default trades, migration 053). */
+  method: string;
 };
 
 type ActivityRow = { project_id: string | null; key: string; name: string; weight: number; sort_order: number };
 type StageRow = { project_id: string | null; key: string; name: string; credit: number; sort_order: number };
 
 /** Project override if it has any rows, else BuildView defaults. */
-function pickRows<T extends { project_id: string | null; sort_order: number }>(
+function pickRows<T extends { project_id: string | null; sort_order: number; method?: string | null }>(
   rows: T[],
-  projectId: string
+  projectId: string,
+  method?: string
 ): T[] {
   const own = rows.filter((r) => r.project_id === projectId);
-  return (own.length > 0 ? own : rows.filter((r) => r.project_id === null)).sort(
+  if (own.length > 0) return own.sort((a, b) => a.sort_order - b.sort_order);
+  const defaults = rows.filter((r) => r.project_id === null);
+  // Default trades per construction method (migration 053); untagged = conventional.
+  const forMethod = method
+    ? defaults.filter((r) => (r.method ?? "conventional") === method)
+    : defaults;
+  return (forMethod.length > 0 ? forMethod : defaults.filter((r) => (r.method ?? "conventional") === "conventional")).sort(
     (a, b) => a.sort_order - b.sort_order
   );
 }
@@ -134,6 +143,13 @@ export async function loadZoneData(projectIds: string[]): Promise<Map<string, Pr
     ])
   );
 
+  const methodByProject = new Map(
+    ((projectRes.data ?? []) as Array<{ id: string; construction_method?: string | null }>).map((p) => [
+      p.id,
+      p.construction_method ?? "conventional",
+    ])
+  );
+
   const naByZone = new Map<string, string[]>();
   for (const row of naRows) {
     const list = naByZone.get(row.zone_id) ?? [];
@@ -146,6 +162,7 @@ export async function loadZoneData(projectIds: string[]): Promise<Map<string, Pr
     const rules = ownRules.length > 0 ? ownRules : ruleRows.filter((r) => r.project_id === null);
     result.set(projectId, {
       templateSource: activityRows.some((a) => a.project_id === projectId) ? "project" : "default",
+      method: methodByProject.get(projectId) ?? "conventional",
       naRules: rules.map((r) => ({ zoneType: r.zone_type, activityKey: r.activity_key })),
       plans: planRows
         .filter((p) => p.project_id === projectId)
@@ -155,7 +172,7 @@ export async function loadZoneData(projectIds: string[]): Promise<Map<string, Pr
           start: p.planned_start,
           end: p.planned_end,
         })),
-      activities: pickRows(activityRows, projectId).map((a) => ({
+      activities: pickRows(activityRows, projectId, methodByProject.get(projectId)).map((a) => ({
         key: a.key,
         name: a.name,
         weight: Number(a.weight),

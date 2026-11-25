@@ -35,7 +35,8 @@ import {
 import { getErrorMessage, PublicError } from "@/lib/errors/public";
 import { logServerError } from "@/lib/errors/server";
 import { recordTimelineEntry } from "@/lib/timeline/auto-entry";
-import { PROGRESSION_TRACK_LABELS, type ProgressionTrack } from "@/lib/progression/catalog";
+import { type ProgressionTrack } from "@/lib/progression/catalog";
+import { methodOfTemplateKey, trackLabel as methodTrackLabel } from "@/lib/progression/methods";
 import type { ProjectProgressionBundle } from "@/lib/progression/types";
 import { USER_ROLE_LABELS, type UserRole } from "@/lib/types";
 
@@ -165,6 +166,8 @@ type StepContext = {
   title: string;
   phaseName: string;
   progressionId: string;
+  /** Checklist template key (its construction method). */
+  templateKey: string | null;
   buildingName: string;
   floorName: string;
   startedAt: string | null;
@@ -195,7 +198,7 @@ async function loadStepContext(
   const { data: stepRow, error } = await admin
     .from("project_progression_steps")
     .select(
-      "id, status, step_number, started_at, ended_at, completed_at, work_date, progression:project_progressions!inner(id, project_id, floor_id, building_id, track, deleted_at), template_step:progression_template_steps(step_number, title, phase_name)"
+      "id, status, step_number, started_at, ended_at, completed_at, work_date, progression:project_progressions!inner(id, project_id, floor_id, building_id, track, deleted_at, template:progression_templates(key)), template_step:progression_template_steps(step_number, title, phase_name)"
     )
     .eq("id", stepId)
     .maybeSingle();
@@ -209,6 +212,7 @@ async function loadStepContext(
     building_id: string | null;
     track: string;
     deleted_at: string | null;
+    template?: { key: string } | null;
   } | null;
 
   if (
@@ -241,6 +245,7 @@ async function loadStepContext(
     title: tpl?.title ?? "Step",
     phaseName: tpl?.phase_name ?? "",
     progressionId: progression.id,
+    templateKey: progression.template?.key ?? null,
     buildingName: building?.name ?? "Tower",
     floorName: (floorRow?.name as string) ?? "Floor",
     startedAt: (stepRow.started_at as string | null) ?? null,
@@ -343,7 +348,7 @@ async function transitionProgressionStep(input: unknown, transition: StepTransit
     if (logError) throw logError;
 
     const actorLabel = `${actor.fullName ?? "BuildView user"} (${USER_ROLE_LABELS[actor.role]})`;
-    const trackLabel = PROGRESSION_TRACK_LABELS[track];
+    const trackLabel = methodTrackLabel(track, methodOfTemplateKey(ctx.templateKey));
     const verb =
       transition === "start"
         ? "started"

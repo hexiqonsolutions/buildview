@@ -33,11 +33,9 @@ import {
   verifyProgressionStep,
   type ProgressionStepPatch,
 } from "@/lib/actions/progression";
-import {
-  PROGRESSION_TRACKS,
-  PROGRESSION_TRACK_LABELS,
-  type ProgressionTrack,
-} from "@/lib/progression/catalog";
+import { PROGRESSION_TRACKS, type ProgressionTrack } from "@/lib/progression/catalog";
+import { CONSTRUCTION_METHOD_LABELS, trackLabel, trackLabelFor } from "@/lib/progression/methods";
+import { ConstructionMethodControl } from "@/components/projects/progression/construction-method-dialog";
 import type {
   FloorProgressionSummary,
   ProjectProgressionBundle,
@@ -834,7 +832,8 @@ function TrackSection({
     [trackFloors]
   );
   const trackSummary = data.tracks.find((t) => t.track === track);
-  const label = PROGRESSION_TRACK_LABELS[track];
+  const label = selected ? trackLabel(track, selected.method) : trackLabelFor(track, data.methodsInUse ?? []);
+  const mixedMethods = (data.methodsInUse ?? []).length > 1;
 
   const [openPhases, setOpenPhases] = useState<Set<number>>(new Set());
   const [verifyOpen, setVerifyOpen] = useState(false);
@@ -955,6 +954,7 @@ function TrackSection({
               {floorsOfBuilding.map((floor) => (
                 <option key={floor.floorId} value={floor.floorId}>
                   {floor.floorName}
+                  {mixedMethods ? ` · ${CONSTRUCTION_METHOD_LABELS[floor.method]}` : ""}
                   {floor.activated ? ` (${floor.percent}%)` : ""}
                 </option>
               ))}
@@ -1612,7 +1612,7 @@ export function ProgressionPanel({
       );
       for (const f of overdue.slice(0, 3)) {
         insights.push(
-          `${PROGRESSION_TRACK_LABELS[f.track]} on ${f.buildingName} · ${f.floorName} is past its deadline (${formatDate(f.plannedEndDate)}).`
+          `${trackLabel(f.track, f.method)} on ${f.buildingName} · ${f.floorName} is past its deadline (${formatDate(f.plannedEndDate)}).`
         );
       }
     } else {
@@ -1622,7 +1622,7 @@ export function ProgressionPanel({
     }
     if (nextDeadline) {
       insights.push(
-        `Next deadline: ${PROGRESSION_TRACK_LABELS[nextDeadline.track]} on ${nextDeadline.buildingName} · ${nextDeadline.floorName} — ${formatDate(nextDeadline.plannedEndDate)} (in ${dayDiff(today, nextDeadline.plannedEndDate!)}d).`
+        `Next deadline: ${trackLabel(nextDeadline.track, nextDeadline.method)} on ${nextDeadline.buildingName} · ${nextDeadline.floorName} — ${formatDate(nextDeadline.plannedEndDate)} (in ${dayDiff(today, nextDeadline.plannedEndDate!)}d).`
       );
     }
     if (lowestFloor && lowestFloor.percent < 100) {
@@ -1884,7 +1884,7 @@ export function ProgressionPanel({
                             TRACK_THEMES[t.track].chip
                           )}
                         >
-                          {PROGRESSION_TRACK_LABELS[t.track]} Work
+                          {trackLabelFor(t.track, data.methodsInUse ?? [])} Work
                         </span>
                         <span className="font-display text-sm font-bold tabular-nums text-slate-900 dark:text-white">
                           {t.percent}%
@@ -1941,6 +1941,7 @@ export function ProgressionPanel({
                     plannedStartDate: null,
                     plannedEndDate: null,
                     activated: f.activated,
+                    method: f.method,
                   }))
                 ).map((group) => (
                   <div key={group.buildingId}>
@@ -2022,7 +2023,7 @@ export function ProgressionPanel({
                               : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
                           )}
                         >
-                          {PROGRESSION_TRACK_LABELS[t]}
+                          {trackLabelFor(t, data.methodsInUse ?? [])}
                         </button>
                       ))}
                     </div>
@@ -2145,7 +2146,7 @@ export function ProgressionPanel({
                     TRACK_THEMES[t].chip
                   )}
                 >
-                  {PROGRESSION_TRACK_LABELS[t]} · {summary?.percent ?? 0}%
+                  {trackLabelFor(t, data.methodsInUse ?? [])} · {summary?.percent ?? 0}%
                 </span>
               );
             })}
@@ -2157,7 +2158,12 @@ export function ProgressionPanel({
             </p>
           ) : null}
         </div>
-        <div className="shrink-0 sm:pt-0.5">
+        <div className="flex shrink-0 flex-wrap gap-2 sm:pt-0.5">
+          <ConstructionMethodControl
+            projectId={data.projectId}
+            methodsInUse={data.methodsInUse ?? [data.constructionMethod ?? "conventional"]}
+            onChanged={reloadBundle}
+          />
           <ProgressionExportControls projectId={data.projectId} />
         </div>
       </div>

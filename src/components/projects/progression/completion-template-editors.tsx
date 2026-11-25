@@ -27,6 +27,7 @@ import {
   type ActivityPlan,
 } from "@/lib/progression/template";
 import { cn } from "@/lib/utils";
+import { CONSTRUCTION_METHOD_LABELS } from "@/lib/progression/methods";
 
 type Ready = Extract<ZoneProgressView, { available: true }>;
 
@@ -107,7 +108,7 @@ export function TemplateEditorDialog({
     }
     let cancelled = false;
     setLoading(true);
-    getDefaultTemplate().then((t) => {
+    getDefaultTemplate(view.constructionMethod).then((t) => {
       if (cancelled) return;
       setLoading(false);
       if (!t) {
@@ -155,6 +156,7 @@ export function TemplateEditorDialog({
     startTransition(async () => {
       const result = await saveCompletionTemplate({
         projectId: scope === "project" ? view.projectId : null,
+        method: scope === "default" ? view.constructionMethod : undefined,
         activities: trades.map((t) => ({ key: t.key, name: t.name.trim(), weight: toNumber(t.weight) })),
         stages: stages.map((s) => ({ key: s.key, name: s.name.trim(), credit: toNumber(s.credit) })),
         naRules,
@@ -196,7 +198,7 @@ export function TemplateEditorDialog({
           {(
             [
               ["project", "This project"],
-              ["default", "BuildView defaults"],
+              ["default", `BuildView defaults · ${CONSTRUCTION_METHOD_LABELS[view.constructionMethod]}`],
             ] as const
           ).map(([value, label]) => (
             <button
@@ -221,7 +223,7 @@ export function TemplateEditorDialog({
             ? view.templateSource === "project"
               ? "This project has its own template. Saving changes only this project."
               : "This project uses the BuildView defaults. Saving here gives it its own copy."
-            : "Used by every project that doesn't have its own template."}
+            : `Used by every ${CONSTRUCTION_METHOD_LABELS[view.constructionMethod]} project that doesn't have its own template.`}
         </p>
 
         {loading ? (

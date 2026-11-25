@@ -12,7 +12,8 @@ import {
   isConstructionProjectForProgression,
 } from "@/lib/data/progression";
 import { getZoneProgress, type ZoneProgressView } from "@/lib/actions/zone-progress";
-import { PROGRESSION_TRACK_LABELS, type ProgressionTrack } from "@/lib/progression/catalog";
+import { type ProgressionTrack } from "@/lib/progression/catalog";
+import { trackLabel, type ConstructionMethod } from "@/lib/progression/methods";
 import { todayInIndia } from "@/lib/progression/checklist-completion";
 import type { CompletionSummary } from "@/lib/progression/completion";
 import type { SCurvePoint } from "@/lib/progression/s-curve";
@@ -35,6 +36,7 @@ export type ReportFloorRow = {
   summary: CompletionSummary;
   basis: "zones" | "checklist";
   latestScan: ReportEvidence | null;
+  method: ConstructionMethod;
 };
 
 export type ReportChange = {
@@ -150,11 +152,13 @@ async function loadProgressReport(projectId: string, from: string, to: string): 
         status: "no_schedule",
       },
       basis: bundle.zoneFloorPercents[f.floorId] != null ? "zones" : "checklist",
+      method: f.method,
       latestScan: scanEvidence(latest),
     };
   });
   const byName = new Intl.Collator("en", { numeric: true, sensitivity: "base" });
   floors.sort((a, b) => byName.compare(a.building, b.building) || byName.compare(a.floor, b.floor));
+  const methodByFloor = new Map(floors.map((f) => [f.floorId, f.method]));
   const floorLabel = new Map(floors.map((f) => [f.floorId, `${f.building} · ${f.floor}`]));
 
   // ---- changes in the period: checklist steps ended + zone updates
@@ -174,7 +178,10 @@ async function loadProgressReport(projectId: string, from: string, to: string): 
   for (const s of (stepRows ?? []) as unknown as StepRow[]) {
     const date = day(s.work_date) ?? day(s.ended_at) ?? day(s.completed_at);
     if (!date || date < from || date > to || !s.progression) continue;
-    const track = PROGRESSION_TRACK_LABELS[s.progression.track as ProgressionTrack] ?? s.progression.track;
+    const track = trackLabel(
+      s.progression.track as ProgressionTrack,
+      methodByFloor.get(s.progression.floor_id) ?? "conventional"
+    );
     changes.push({
       date,
       kind: "step",

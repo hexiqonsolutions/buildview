@@ -5,7 +5,6 @@ import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { canViewProgression } from "@/lib/auth/roles";
 import { canViewProject, getActiveActor } from "@/lib/auth/project-access";
 import {
-  PROGRESSION_TRACK_LABELS,
   PROGRESSION_TRACKS,
 } from "@/lib/progression/catalog";
 import { overallPercent } from "@/lib/progression/stats";
@@ -18,8 +17,10 @@ import type {
   ProgressionExportTrack,
 } from "@/lib/progression/export-types";
 import {
+  getProjectMethods,
   isConstructionProjectForProgression,
 } from "@/lib/data/progression";
+import { CONSTRUCTION_METHOD_LABELS, trackLabel as methodTrackLabel } from "@/lib/progression/methods";
 import { validate } from "@/lib/validations/parse";
 import { projectIdSchema } from "@/lib/validations/data";
 
@@ -130,6 +131,7 @@ export async function getProgressionExportPayload(
     .is("deleted_at", null);
 
   const progressionIds = (progressions ?? []).map((p) => p.id);
+  const floorMethods = (await getProjectMethods(projectId)).floors;
   const progressionByFloorTrack = new Map(
     (progressions ?? []).map((p) => [`${p.floor_id}:${p.track}`, p])
   );
@@ -296,7 +298,7 @@ export async function getProgressionExportPayload(
         floorTotal += totalCount;
         floorPeriod += periodCompletions;
 
-        const trackLabel = PROGRESSION_TRACK_LABELS[track];
+        const trackLabel = methodTrackLabel(track, floorMethods.get(floor.id) ?? "conventional");
         tracks.push({
           track,
           trackLabel,
@@ -349,6 +351,7 @@ export async function getProgressionExportPayload(
       exportFloors.push({
         floorId: floor.id,
         floorName: floor.name,
+        methodLabel: CONSTRUCTION_METHOD_LABELS[floorMethods.get(floor.id) ?? "conventional"],
         activated: floorActivated,
         percent: overallPercent(floorCompleted, floorTotal),
         completedCount: floorCompleted,

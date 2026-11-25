@@ -66,6 +66,7 @@ export function buildProgressionExcelXml(payload: ProgressionExportPayload): str
     row([
       "Building",
       "Floor",
+      "Method",
       "Activated",
       "Floor %",
       "Track",
@@ -85,6 +86,7 @@ export function buildProgressionExcelXml(payload: ProgressionExportPayload): str
           row([
             building.buildingName,
             floor.floorName,
+            floor.methodLabel ?? "Conventional",
             floor.activated ? "Yes" : "No",
             floor.percent,
             track.trackLabel,

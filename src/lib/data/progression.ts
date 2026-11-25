@@ -11,6 +11,14 @@ import {
 } from "@/lib/progression/checklist-completion";
 
 import { cache } from "react";
+import {
+  effectiveMethod,
+  isConstructionMethod,
+  methodOfTemplateKey,
+  stepKey,
+  templateKeyFor,
+  type ConstructionMethod,
+} from "@/lib/progression/methods";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { canEditProgression, canVerifyProgression, canViewProgression } from "@/lib/auth/roles";
@@ -84,18 +92,28 @@ async function loadIsConstructionProject(projectId: string): Promise<boolean> {
 type TemplateStepSeed = { id: string; step_number: number };
 
 async function getActiveTemplateSteps(
-  track: ProgressionTrack = "post_slab"
+  track: ProgressionTrack = "post_slab",
+  method: ConstructionMethod = "conventional"
 ): Promise<{
   templateId: string;
   steps: TemplateStepSeed[];
 } | null> {
   const admin = createServiceRoleClient();
-  const { data: template } = await admin
+  let { data: template } = await admin
     .from("progression_templates")
     .select("id")
-    .eq("key", PROGRESSION_TEMPLATE_KEYS[track])
+    .eq("key", templateKeyFor(method, track))
     .eq("is_active", true)
     .maybeSingle();
+  if (!template?.id && method !== "conventional") {
+    // Method templates arrive with migration 053; fall back until then.
+    ({ data: template } = await admin
+      .from("progression_templates")
+      .select("id")
+      .eq("key", PROGRESSION_TEMPLATE_KEYS[track])
+      .eq("is_active", true)
+      .maybeSingle());
+  }
 
   if (!template?.id) {
     console.warn(
@@ -118,13 +136,55 @@ async function getActiveTemplateSteps(
   return { templateId: template.id, steps: templateSteps };
 }
 
+export type ProjectMethods = {
+  project: ConstructionMethod;
+  /** Building's own setting (null = inherits the project). */
+  buildings: Map<string, ConstructionMethod | null>;
+  /** Floor's own setting (null = inherits the building). */
+  floorsOwn: Map<string, ConstructionMethod | null>;
+  /** Effective method per floor. */
+  floors: Map<string, ConstructionMethod>;
+};
+
+/** Construction method settings for a project (conventional before migration 053). */
+export async function getProjectMethods(projectId: string): Promise<ProjectMethods> {
+  const admin = createServiceRoleClient();
+  const [{ data: project }, { data: buildings }] = await Promise.all([
+    admin.from("projects").select("*").eq("id", projectId).maybeSingle(),
+    admin.from("buildings").select("*").eq("project_id", projectId).is("deleted_at", null),
+  ]);
+  const buildingRows = (buildings ?? []) as Array<{ id: string; construction_method?: string | null }>;
+  const { data: floors } = buildingRows.length
+    ? await admin
+        .from("floors")
+        .select("*")
+        .in("building_id", buildingRows.map((b) => b.id))
+        .is("deleted_at", null)
+    : { data: [] };
+  const projectMethod = effectiveMethod(
+    null,
+    null,
+    (project as { construction_method?: string | null } | null)?.construction_method
+  );
+  const own = (v: string | null | undefined) => (isConstructionMethod(v) ? v : null);
+  const buildingMap = new Map(buildingRows.map((b) => [b.id, own(b.construction_method)]));
+  const floorsOwn = new Map<string, ConstructionMethod | null>();
+  const effective = new Map<string, ConstructionMethod>();
+  for (const f of (floors ?? []) as Array<{ id: string; building_id: string; construction_method?: string | null }>) {
+    floorsOwn.set(f.id, own(f.construction_method));
+    effective.set(f.id, effectiveMethod(f.construction_method, buildingMap.get(f.building_id), projectMethod));
+  }
+  return { project: projectMethod, buildings: buildingMap, floorsOwn, floors: effective };
+}
+
 /** Create progression + pending steps for one floor + track (idempotent). */
 export async function ensureFloorProgression(
   projectId: string,
   floorId: string,
   buildingId: string,
   actorId?: string | null,
-  track: ProgressionTrack = "post_slab"
+  track: ProgressionTrack = "post_slab",
+  method?: ConstructionMethod
 ): Promise<string | null> {
   const admin = createServiceRoleClient();
 
@@ -138,7 +198,9 @@ export async function ensureFloorProgression(
 
   if (existing?.id) return existing.id;
 
-  const template = await getActiveTemplateSteps(track);
+  const floorMethod =
+    method ?? (await getProjectMethods(projectId)).floors.get(floorId) ?? "conventional";
+  const template = await getActiveTemplateSteps(track, floorMethod);
   if (!template) return null;
 
   const { data: created, error: createError } = await admin
@@ -217,10 +279,18 @@ async function ensureProjectFloorProgressions(
   const have = new Set(
     (existing ?? []).map((p) => `${p.floor_id as string}:${p.track as string}`)
   );
+  const methods = await getProjectMethods(projectId);
   for (const floor of floors ?? []) {
     for (const track of PROGRESSION_TRACKS) {
       if (have.has(`${floor.id}:${track}`)) continue;
-      await ensureFloorProgression(projectId, floor.id, floor.building_id, actorId, track);
+      await ensureFloorProgression(
+        projectId,
+        floor.id,
+        floor.building_id,
+        actorId,
+        track,
+        methods.floors.get(floor.id) ?? "conventional"
+      );
     }
   }
 }
@@ -458,6 +528,7 @@ async function loadFloorSummaries(
     ])
   );
   const progressionIds = (progressions ?? []).map((p) => p.id);
+  const floorMethods = (await getProjectMethods(projectId)).floors;
   const countsByProgression = new Map<
     string,
     { completed: number; inProgress: number; total: number; awaitingReview: number }
@@ -541,6 +612,7 @@ async function loadFloorSummaries(
         plannedStartDate: planned?.plannedStartDate ?? null,
         plannedEndDate: planned?.plannedEndDate ?? null,
         activated,
+        method: floorMethods.get(floor.id) ?? "conventional",
       });
     }
     combinedFloors.push({
@@ -553,6 +625,7 @@ async function loadFloorSummaries(
       totalCount: pooledTotal,
       percent: overallPercent(pooledCompleted, pooledTotal),
       activated,
+      method: floorMethods.get(floor.id) ?? "conventional",
     });
   }
 
@@ -672,6 +745,7 @@ async function loadFloorDetail(
     buildingName: meta.buildingName,
     floorName: meta.floorName,
     templateKey,
+    method: methodOfTemplateKey(templateKey),
     plannedStartDate:
       (templateRes.data?.planned_start_date as string | null | undefined) ?? null,
     plannedEndDate:
@@ -829,6 +903,8 @@ async function loadProjectProgressionBundle(
     floors: refreshed.floors,
     combinedFloors: refreshed.combinedFloors,
     tracks: summarizeTracks(refreshed.floors, refreshed.combinedFloors),
+    constructionMethod: (await getProjectMethods(projectId)).project,
+    methodsInUse: [...new Set(refreshed.combinedFloors.map((f) => f.method))],
     selectedByTrack: { pre_slab: preSelected, post_slab: postSelected },
     selected: postSelected,
     canEdit,
@@ -1266,4 +1342,135 @@ async function writeCompletionSnapshot(
   } catch {
     // Snapshots are best-effort.
   }
+}
+
+const CARRY_FIELDS = [
+  "status",
+  "started_at",
+  "started_by",
+  "ended_at",
+  "ended_by",
+  "completed_at",
+  "completed_by",
+  "work_date",
+  "note",
+  "evidence_tour_id",
+  "evidence_note",
+  "verification_status",
+  "verified_by",
+  "verified_at",
+  "verification_note",
+  "source",
+] as const;
+
+/**
+ * Move one floor + track checklist to another construction method's template.
+ * The old checklist is archived (soft-deleted, history kept). Steps that exist in
+ * both templates (same step key) keep their status, dates, evidence and
+ * verification; the rest start fresh. Service-role; callers check permission.
+ */
+export async function switchFloorChecklist(
+  progressionId: string,
+  method: ConstructionMethod,
+  actorId: string | null
+): Promise<{ switched: boolean; carried: number; dropped: number }> {
+  const admin = createServiceRoleClient();
+  const { data: old } = await admin
+    .from("project_progressions")
+    .select("*")
+    .eq("id", progressionId)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (!old) return { switched: false, carried: 0, dropped: 0 };
+  const oldRow = old as {
+    id: string;
+    project_id: string;
+    floor_id: string;
+    building_id: string;
+    template_id: string;
+    track: ProgressionTrack;
+    planned_start_date: string | null;
+    planned_end_date: string | null;
+  };
+
+  const template = await getActiveTemplateSteps(oldRow.track, method);
+  if (!template || template.templateId === oldRow.template_id) {
+    return { switched: false, carried: 0, dropped: 0 };
+  }
+
+  const [{ data: oldSteps }, { data: newTemplateSteps }] = await Promise.all([
+    admin
+      .from("project_progression_steps")
+      .select("*, template_step:progression_template_steps(step_key, title)")
+      .eq("progression_id", oldRow.id),
+    admin
+      .from("progression_template_steps")
+      .select("*")
+      .eq("template_id", template.templateId)
+      .order("step_number"),
+  ]);
+  type OldStep = Record<string, unknown> & {
+    status: string;
+    template_step: { step_key?: string | null; title: string } | null;
+  };
+  const keyOf = (t: { step_key?: string | null; title: string } | null | undefined) =>
+    t ? (t.step_key ?? stepKey(t.title)) : null;
+  const oldByKey = new Map<string, OldStep>();
+  for (const s of (oldSteps ?? []) as unknown as OldStep[]) {
+    const key = keyOf(s.template_step);
+    if (key && s.status !== "pending") oldByKey.set(key, s);
+  }
+  const startedOld = [...oldByKey.values()].length;
+
+  // Archive the old checklist first (one active checklist per floor + track).
+  const now = new Date().toISOString();
+  const { error: archiveError } = await admin
+    .from("project_progressions")
+    .update({ deleted_at: now, deleted_by: actorId })
+    .eq("id", oldRow.id);
+  if (archiveError) throw archiveError;
+
+  const { data: created, error: createError } = await admin
+    .from("project_progressions")
+    .insert({
+      project_id: oldRow.project_id,
+      floor_id: oldRow.floor_id,
+      building_id: oldRow.building_id,
+      template_id: template.templateId,
+      track: oldRow.track,
+      planned_start_date: oldRow.planned_start_date,
+      planned_end_date: oldRow.planned_end_date,
+      created_by: actorId,
+      updated_by: actorId,
+    })
+    .select("id")
+    .single();
+  if (createError || !created) {
+    await admin.from("project_progressions").update({ deleted_at: null, deleted_by: null }).eq("id", oldRow.id);
+    throw createError ?? new Error("Could not create the new checklist.");
+  }
+
+  let carried = 0;
+  const rows = ((newTemplateSteps ?? []) as Array<{ id: string; step_number: number; step_key?: string | null; title: string }>).map(
+    (t) => {
+      const base = {
+        progression_id: created.id,
+        template_step_id: t.id,
+        step_number: t.step_number,
+        status: "pending",
+      } as Record<string, unknown>;
+      const match = oldByKey.get(keyOf(t) ?? "");
+      if (!match) return base;
+      carried += 1;
+      for (const field of CARRY_FIELDS) if (field in match) base[field] = match[field];
+      return base;
+    }
+  );
+  const { error: stepsError } = await admin.from("project_progression_steps").insert(rows as never);
+  if (stepsError) {
+    await admin.from("project_progressions").delete().eq("id", created.id);
+    await admin.from("project_progressions").update({ deleted_at: null, deleted_by: null }).eq("id", oldRow.id);
+    throw stepsError;
+  }
+  return { switched: true, carried, dropped: startedOld - carried };
 }

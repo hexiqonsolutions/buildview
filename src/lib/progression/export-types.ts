@@ -32,6 +32,8 @@ export type ProgressionExportTrack = {
 export type ProgressionExportFloor = {
   floorId: string;
   floorName: string;
+  /** Construction method label (Conventional / Mivan / Hybrid). */
+  methodLabel?: string;
   activated: boolean;
   percent: number;
   completedCount: number;

@@ -355,3 +355,66 @@ test("plans: floor planned % is weighted by trade", () => {
   close(tpl.plannedFromActivityPlans(plans, acts, "F", "2026-01-06"), 12.5, "a half done, b not started");
   assert.equal(tpl.plannedFromActivityPlans(plans, acts, "G", "2026-01-06"), null);
 });
+
+// ---- construction methods (Conventional / Mivan / Hybrid)
+const methods = jiti(path.join(root, "src/lib/progression/methods.ts"));
+
+test("methods: floor override, then building, then project", () => {
+  assert.equal(methods.effectiveMethod(null, null, "mivan"), "mivan");
+  assert.equal(methods.effectiveMethod(null, "hybrid", "mivan"), "hybrid");
+  assert.equal(methods.effectiveMethod("conventional", "hybrid", "mivan"), "conventional");
+  assert.equal(methods.effectiveMethod(null, null, null), "conventional");
+  assert.equal(methods.effectiveMethod("bogus", null, undefined), "conventional");
+});
+
+test("methods: template keys round-trip to their method", () => {
+  for (const m of methods.CONSTRUCTION_METHODS) {
+    for (const t of ["pre_slab", "post_slab"]) {
+      assert.equal(methods.methodOfTemplateKey(methods.templateKeyFor(m, t)), m);
+    }
+  }
+  assert.equal(methods.templateKeyFor("conventional", "post_slab"), "post_slab_v1");
+});
+
+test("methods: every checklist is well formed", () => {
+  for (const t of methods.CHECKLIST_TEMPLATES) {
+    assert.ok(t.steps.length > 10, `${t.key} has steps`);
+    t.steps.forEach((s, i) => assert.equal(s.stepNumber, i + 1, `${t.key} numbering`));
+    const phases = new Set(t.phases.map((p) => p.number));
+    for (const s of t.steps) assert.ok(phases.has(s.phaseNumber), `${t.key} phase ${s.phaseNumber}`);
+  }
+  const keys = methods.CHECKLIST_TEMPLATES.map((t) => t.key);
+  assert.equal(new Set(keys).size, keys.length);
+});
+
+test("methods: Mivan has no blockwork or plaster; hybrid has internal blockwork only", () => {
+  const titles = (key) => methods.CHECKLIST_TEMPLATES.find((t) => t.key === key).steps.map((s) => s.title.toLowerCase());
+  const mivan = titles("post_slab_mivan_v1");
+  assert.ok(!mivan.some((t) => t.includes("blockwork") || /\bplaster\b/.test(t.replace("no plaster", ""))));
+  assert.ok(titles("pre_slab_mivan_v1").some((t) => t.includes("walls and slab poured together")));
+  const hybrid = titles("post_slab_hybrid_v1");
+  assert.ok(hybrid.some((t) => t.includes("blockwork / aac partitions for internal walls")));
+  assert.ok(!hybrid.some((t) => t.includes("external wall plaster")));
+});
+
+test("methods: shared finishing steps share keys with conventional (history carries over)", () => {
+  const keys = (key) => new Set(methods.CHECKLIST_TEMPLATES.find((t) => t.key === key).steps.map((s) => methods.stepKey(s.title)));
+  const conv = keys("post_slab_v1");
+  const mivan = keys("post_slab_mivan_v1");
+  const shared = [...mivan].filter((k) => conv.has(k));
+  assert.ok(shared.length >= 25, `shared ${shared.length}`);
+  assert.ok(shared.includes(methods.stepKey("Waterproofing upturns and pipe-junction treatment")));
+});
+
+test("methods: default trades sum to 100 per method", () => {
+  for (const [m, trades] of Object.entries(methods.DEFAULT_TRADES_BY_METHOD)) {
+    close(trades.reduce((s, t) => s + t.weight, 0), 100, m);
+  }
+  assert.ok(!methods.DEFAULT_TRADES_BY_METHOD.mivan.some((t) => t.key === "blockwork" || t.key === "plaster"));
+});
+
+test("methods: track labels, including mixed projects", () => {
+  assert.equal(methods.trackLabel("pre_slab", "mivan"), "Structure cycle");
+  assert.equal(methods.trackLabelFor("post_slab", ["conventional"]), "Post-Slab");
+  assert.equal(methods.trackLabelFor("post_slab", ["conventional", "mivan", "hybrid"]), "Post-Slab / Finishing");
+});

@@ -87,6 +87,8 @@ const zoneTypeEnum = z.enum(["flat", "unit", "room", "common", "other"]);
 export const saveTemplateSchema = z
   .object({
     projectId: uuid("Project ID").nullable(),
+    /** Which method's BuildView defaults (projectId null only). */
+    method: z.enum(["conventional", "mivan", "hybrid"]).optional(),
     activities: z
       .array(
         z
