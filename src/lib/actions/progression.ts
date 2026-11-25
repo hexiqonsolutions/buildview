@@ -716,12 +716,15 @@ export async function setProgressionStepEvidence(input: unknown) {
     if (tourId) {
       const { data: tour } = await admin
         .from("project_tours")
-        .select("id")
+        .select("id, floor_id")
         .eq("id", tourId)
         .eq("project_id", projectId)
         .is("deleted_at", null)
         .maybeSingle();
       if (!tour) return { ok: false as const, error: "That scan isn't part of this project." };
+      if ((tour as { floor_id: string | null }).floor_id !== floorId) {
+        return { ok: false as const, error: "Pick a scan of this floor. Scans of other floors can't be used as evidence here." };
+      }
     }
 
     const { error } = await admin
@@ -783,12 +786,13 @@ export async function verifyProgressionStep(input: unknown) {
     if (tourId) {
       const { data: tour } = await admin
         .from("project_tours")
-        .select("id")
+        .select("id, floor_id")
         .eq("id", tourId)
         .eq("project_id", projectId)
         .is("deleted_at", null)
         .maybeSingle();
-      if (tour) update.evidence_tour_id = tourId;
+      // Only a scan of this floor becomes the evidence.
+      if (tour && (tour as { floor_id: string | null }).floor_id === floorId) update.evidence_tour_id = tourId;
     }
 
     const { error } = await admin.from("project_progression_steps").update(update).eq("id", stepId);

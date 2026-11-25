@@ -21,9 +21,11 @@ export function scanDate(scan: ProgressionScan): string {
   return (scan.captureDate ?? scan.createdAt).slice(0, 10);
 }
 
-/** Floor scans first (newest first), then project-wide scans. */
+/** Only this floor's scans, newest first: evidence and verification are locked to the floor. */
 export function scansForFloor(scans: ProgressionScan[], floorId: string): ProgressionScan[] {
-  return [...scans.filter((s) => s.floorId === floorId), ...scans.filter((s) => s.floorId !== floorId)];
+  return scans
+    .filter((s) => s.floorId === floorId)
+    .sort((a, b) => scanDate(b).localeCompare(scanDate(a)));
 }
 
 function scanLabel(scan: ProgressionScan): string {
@@ -158,7 +160,6 @@ export function StepReviewStrip({
       <EvidencePickerDialog
         open={picking}
         scans={scansForFloor(scans, floorId)}
-        floorId={floorId}
         onOpenChange={setPicking}
         onPick={(tourId, note) => {
           setPicking(false);
@@ -180,13 +181,11 @@ export function StepReviewStrip({
 function EvidencePickerDialog({
   open,
   scans,
-  floorId,
   onOpenChange,
   onPick,
 }: {
   open: boolean;
   scans: ProgressionScan[];
-  floorId: string;
   onOpenChange: (open: boolean) => void;
   onPick: (tourId: string, note: string | null) => void;
 }) {
@@ -210,11 +209,15 @@ function EvidencePickerDialog({
             {scans.map((scan) => (
               <option key={scan.id} value={scan.id}>
                 {scanLabel(scan)}
-                {scan.floorId === floorId ? " (this floor)" : ""}
               </option>
             ))}
           </select>
         </label>
+        {scans.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-slate-300 p-3 text-sm text-slate-500 dark:border-slate-700">
+            No scans are linked to this floor yet. In Tour Manager, set a scan&apos;s tower and floor to use it here.
+          </p>
+        ) : null}
         <label className="block space-y-1.5 text-sm">
           <span className="font-medium text-slate-700 dark:text-slate-300">Where to look (optional)</span>
           <Textarea
@@ -331,7 +334,6 @@ export function VerifyFromScanDialog({
                   {ordered.map((s) => (
                     <option key={s.id} value={s.id}>
                       {scanLabel(s)}
-                      {s.floorId === floorId ? " (this floor)" : ""}
                     </option>
                   ))}
                 </select>
@@ -339,7 +341,8 @@ export function VerifyFromScanDialog({
               </>
             ) : (
               <p className="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
-                This project has no scans yet. Upload a virtual tour to verify against it.
+                No scans are linked to {floorLabel} yet. In Tour Manager, set a scan&apos;s tower and floor to
+                verify against it here.
               </p>
             )}
           </div>

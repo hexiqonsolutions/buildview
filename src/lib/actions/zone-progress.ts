@@ -62,7 +62,7 @@ export type ZoneFloorView = {
   label: string;
   /** Signed URL of the floor-plan image (migration 049), null when none. */
   planUrl: string | null;
-  /** Scans for this floor first (newest first), then project-wide scans. */
+  /** This floor's scans only, newest first. */
   scans: ZoneScanView[];
   /** Null when the floor has no zones (it uses the checklist). */
   percent: number | null;
@@ -206,10 +206,10 @@ export async function getZoneProgress(projectId: string): Promise<ZoneProgressVi
           floorId: floor.id as string,
           label: `${buildingName.get(floor.building_id as string) ?? "Building"} · ${floor.name}`,
           planUrl: planPath ? (planUrlByPath.get(planPath) ?? null) : null,
-          scans: [
-            ...tours.filter((t) => t.floorId === floor.id).map((t) => ({ ...t, onFloor: true })),
-            ...tours.filter((t) => t.floorId !== floor.id).map((t) => ({ ...t, onFloor: false })),
-          ].map(({ floorId: _floorId, ...rest }) => rest),
+          // Locked to the floor: a zone is verified against its own floor's scans only.
+          scans: tours
+            .filter((t) => t.floorId === floor.id)
+            .map(({ floorId: _floorId, ...rest }) => ({ ...rest, onFloor: true })),
           percent: r ? r.percent : null,
           zones: r?.zones ?? [],
           trades: r?.trades ?? {},
