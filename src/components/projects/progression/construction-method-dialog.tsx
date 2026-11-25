@@ -30,6 +30,22 @@ type Pending = { target: Target; method: ConstructionMethod | null; label: strin
 
 const INHERIT = "__inherit";
 
+/** Run a server action; if it hasn't answered in `timeoutMs`, try again (up to `attempts`). */
+async function withRetry<T>(fn: () => Promise<T>, attempts = 3, timeoutMs = 12_000): Promise<T> {
+  let lastError: unknown = new Error("No response");
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await Promise.race([
+        fn(),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), timeoutMs)),
+      ]);
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw lastError;
+}
+
 /** Method chip that opens the construction-method settings. */
 export function ConstructionMethodControl({
   projectId,
@@ -80,9 +96,15 @@ export function ConstructionMethodDialog({
     setError(null);
     setNotice(null);
     setPending(null);
-    getConstructionMethods(projectId).then((v) => {
-      if (!cancelled) setView(v);
-    });
+    // Page activity can abort an in-flight server action (it then never settles), so time out and retry.
+    withRetry(() => getConstructionMethods(projectId)).then(
+      (v) => {
+        if (!cancelled) setView(v);
+      },
+      () => {
+        if (!cancelled) setView({ available: false, reason: "Could not load the methods. Close and try again." });
+      }
+    );
     return () => {
       cancelled = true;
     };
