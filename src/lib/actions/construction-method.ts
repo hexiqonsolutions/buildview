@@ -216,7 +216,12 @@ export async function setConstructionMethod(
     return { ok: true, view: await getConstructionMethods(projectId), switched, carried, dropped };
   } catch (err) {
     logServerError("progression:method", err);
-    return { ok: false, error: getErrorMessage(err, "Could not change the construction method.") };
+    // Database reason helps staff fix setup issues (only staff / Client Admin reach here).
+    const dbReason =
+      err && typeof err === "object" && "message" in err && "code" in err
+        ? ` (${String((err as { message: unknown }).message).slice(0, 200)})`
+        : "";
+    return { ok: false, error: getErrorMessage(err, "Could not change the construction method.") + dbReason };
   }
 }
 
