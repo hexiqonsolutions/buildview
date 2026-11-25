@@ -60,10 +60,10 @@ async function assertProgressionReadable(projectId: string, actor: Actor): Promi
   );
 }
 
-/** True when the project's client portal is construction (not portfolio showcase). */
-export async function isConstructionProjectForProgression(
-  projectId: string
-): Promise<boolean> {
+/** True when the project's client portal is construction (not portfolio showcase). Cached per request. */
+export const isConstructionProjectForProgression = cache(loadIsConstructionProject);
+
+async function loadIsConstructionProject(projectId: string): Promise<boolean> {
   try {
     const admin = createServiceRoleClient();
     const { data } = await admin
@@ -384,6 +384,8 @@ type FloorSummariesResult = {
   floors: FloorProgressionSummary[];
   combinedFloors: CombinedFloorSummary[];
   pendingReviewCount?: number;
+  /** "floorId:track" for every checklist that exists. */
+  existing?: Set<string>;
 };
 
 /** Project switch: only verified steps count (migration 047). False before 047. */
@@ -466,13 +468,13 @@ async function loadFloorSummaries(
     const { data: steps } = await fetchAllRows((a, b) =>
       admin
         .from("project_progression_steps")
-        .select("*")
+        .select("id, progression_id, status, verification_status")
         .in("progression_id", progressionIds)
         .order("id")
         .range(a, b)
     );
 
-    for (const step of (steps ?? []) as Array<{
+    for (const step of (steps ?? []) as unknown as Array<{
       progression_id: string;
       status: string;
       verification_status?: string | null;
@@ -554,7 +556,12 @@ async function loadFloorSummaries(
     });
   }
 
-  return { floors: trackSummaries, combinedFloors, pendingReviewCount };
+  return {
+    floors: trackSummaries,
+    combinedFloors,
+    pendingReviewCount,
+    existing: new Set(progressionByFloorTrack.keys()),
+  };
 }
 
 async function loadFloorDetail(
@@ -727,7 +734,16 @@ async function loadProjectProgressionBundle(
   }
 
   const verifiedOnly = await getVerifiedOnly(projectId);
-  const { combinedFloors } = await loadFloorSummaries(projectId, verifiedOnly);
+  const admin = createServiceRoleClient();
+  // Independent of the summaries: start now, await later.
+  const toursPromise = admin
+    .from("project_tours")
+    .select("*")
+    .eq("project_id", projectId)
+    .is("deleted_at", null);
+  const zonePromise = loadZoneData([projectId]).catch(() => new Map());
+  const firstSummaries = await loadFloorSummaries(projectId, verifiedOnly);
+  const { combinedFloors } = firstSummaries;
   const canEdit = canEditProgression(actor.role);
   const wanted = normalizeSelections(selections);
 
@@ -757,13 +773,12 @@ async function loadProjectProgressionBundle(
     loadFor("post_slab", postPick.floorId),
   ]);
 
-  // Details may have seeded a missing track — refresh summaries for accurate totals.
-  const refreshed = await loadFloorSummaries(projectId, verifiedOnly);
-  const { data: tourRows } = await createServiceRoleClient()
-    .from("project_tours")
-    .select("*")
-    .eq("project_id", projectId)
-    .is("deleted_at", null);
+  // Details seed a missing checklist; only then re-read the summaries.
+  const seeded =
+    (prePick.floorId && !firstSummaries.existing?.has(`${prePick.floorId}:pre_slab`)) ||
+    (postPick.floorId && !firstSummaries.existing?.has(`${postPick.floorId}:post_slab`));
+  const refreshed = seeded ? await loadFloorSummaries(projectId, verifiedOnly) : firstSummaries;
+  const { data: tourRows } = await toursPromise;
   const scans: ProgressionScan[] = ((tourRows ?? []) as Array<{
     id: string;
     name: string;
@@ -783,7 +798,7 @@ async function loadProjectProgressionBundle(
       matterportUrl: t.matterport_url,
     }))
     .sort((a, b) => (b.captureDate ?? b.createdAt).localeCompare(a.captureDate ?? a.createdAt));
-  const zoneDataForProject = (await loadZoneData([projectId]).catch(() => new Map())).get(projectId);
+  const zoneDataForProject = (await zonePromise).get(projectId);
   const zoneResults = zoneFloorResults(zoneDataForProject, todayInIndia(), verifiedOnly);
   const zoneFloorPercents: Record<string, number> = {};
   for (const [floorId, r] of zoneResults) zoneFloorPercents[floorId] = r.percent;

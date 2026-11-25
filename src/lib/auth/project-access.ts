@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { isBuildViewStaffRole } from "@/lib/auth/roles";
@@ -11,8 +12,10 @@ type ProjectActor = {
   clientId: string | null;
 };
 
-/** The signed-in, active user's role and org, or null. */
-export async function getActiveActor(): Promise<ProjectActor | null> {
+/** The signed-in, active user's role and org, or null. Cached per request. */
+export const getActiveActor = cache(loadActiveActor);
+
+async function loadActiveActor(): Promise<ProjectActor | null> {
   const supabase = await createClient();
   const {
     data: { user },

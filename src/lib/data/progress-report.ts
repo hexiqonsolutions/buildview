@@ -96,6 +96,28 @@ async function loadProgressReport(projectId: string, from: string, to: string): 
   if (!(await isConstructionProjectForProgression(projectId))) return { ok: false, reason: "unavailable" };
 
   const admin = createServiceRoleClient();
+  const stepRowsPromise = fetchAllRows((a, b) =>
+    admin
+      .from("project_progression_steps")
+      .select(
+        "status, ended_at, completed_at, work_date, evidence_tour_id, verification_status, template_step:progression_template_steps(title, phase_name), progression:project_progressions!inner(project_id, floor_id, track, deleted_at)"
+      )
+      .eq("progression.project_id", projectId)
+      .is("progression.deleted_at", null)
+      .eq("status", "completed")
+      .order("id")
+      .range(a, b)
+  );
+  const obsRowsPromise = fetchAllRows((a, b) =>
+    admin
+      .from("progress_observations" as never)
+      .select("*")
+      .eq("project_id", projectId)
+      .gte("observed_on", from)
+      .lte("observed_on", to)
+      .order("id")
+      .range(a, b)
+  );
   const [bundle, history, zoneView, projectRes] = await Promise.all([
     getProjectProgressionFresh(projectId),
     getCompletionHistory(projectId).catch(() => null),
@@ -148,18 +170,7 @@ async function loadProgressReport(projectId: string, from: string, to: string): 
     template_step: { title: string; phase_name: string } | null;
     progression: { floor_id: string; track: string } | null;
   };
-  const { data: stepRows } = await fetchAllRows((a, b) =>
-    admin
-      .from("project_progression_steps")
-      .select(
-        "*, template_step:progression_template_steps(title, phase_name), progression:project_progressions!inner(project_id, floor_id, track, deleted_at)"
-      )
-      .eq("progression.project_id", projectId)
-      .is("progression.deleted_at", null)
-      .eq("status", "completed")
-      .order("id")
-      .range(a, b)
-  );
+  const { data: stepRows } = await stepRowsPromise;
   for (const s of (stepRows ?? []) as unknown as StepRow[]) {
     const date = day(s.work_date) ?? day(s.ended_at) ?? day(s.completed_at);
     if (!date || date < from || date > to || !s.progression) continue;
@@ -179,16 +190,7 @@ async function loadProgressReport(projectId: string, from: string, to: string): 
     for (const f of zones.floors) for (const z of f.zones) zoneInfo.set(z.id, { name: z.name, floorId: f.floorId });
     const activityName = new Map(zones.activities.map((a) => [a.key, a.name]));
     const stageName = new Map(zones.stages.map((st) => [st.key, st.name]));
-    const { data: obsRows } = await fetchAllRows((a, b) =>
-      admin
-        .from("progress_observations" as never)
-        .select("*")
-        .eq("project_id", projectId)
-        .gte("observed_on", from)
-        .lte("observed_on", to)
-        .order("id")
-        .range(a, b)
-    );
+    const { data: obsRows } = await obsRowsPromise;
     for (const o of (obsRows ?? []) as unknown as Array<{
       zone_id: string;
       activity_key: string;
