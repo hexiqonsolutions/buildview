@@ -44,6 +44,7 @@ import { getErrorMessage, PublicError } from "@/lib/errors/public";
 import { validateTemplate, type ActivityPlan } from "@/lib/progression/template";
 import { isConstructionMethod, type ConstructionMethod } from "@/lib/progression/methods";
 import { logAuditEvent } from "@/lib/activity/audit";
+import { notifyProjectTeam, progressionLink, teamMemberName } from "@/lib/notifications/team";
 import { logServerError } from "@/lib/errors/server";
 import { STORAGE_BUCKETS, type UserRole } from "@/lib/types";
 import { UPLOAD_RULES, verifyStoredUpload } from "@/lib/uploads/verify";
@@ -418,7 +419,7 @@ export async function recordObservation(input: unknown): Promise<Result> {
     const admin = createServiceRoleClient();
     const { data: zone } = await admin
       .from("progress_zones" as never)
-      .select("id")
+      .select("id, name, floor_id")
       .eq("id", zoneId)
       .eq("project_id", projectId)
       .is("deleted_at", null)
@@ -450,6 +451,18 @@ export async function recordObservation(input: unknown): Promise<Result> {
       if (isMissingTable(error)) return { ok: false, error: MIGRATION_MESSAGE };
       throw error;
     }
+    const zoneName = (zone as { name?: string }).name ?? "Zone";
+    const activityName = data.activities.find((a) => a.key === activityKey)?.name ?? activityKey;
+    const stageName = data.stages.find((s) => s.key === stageKey)?.name ?? stageKey;
+    await notifyProjectTeam({
+      projectId,
+      event: "zone_update",
+      actorId: actor.userId,
+      title: `${zoneName}: ${activityName} → ${stageName}`,
+      message: `${await teamMemberName(actor.userId)} updated ${activityName} in ${zoneName} to ${stageName}.`,
+      link: progressionLink(projectId),
+      dedupeKey: `${zoneId}:${activityKey}:${stageKey}`,
+    });
     return finish(projectId);
   } catch (err) {
     return fail("zones:observe", err, "Could not save the update.");
@@ -466,7 +479,7 @@ export async function verifyObservation(input: unknown): Promise<Result> {
     if (!canVerifyProgression(actor.role)) {
       return { ok: false, error: "Only BuildView staff or the Client Admin can verify progress." };
     }
-    const { error } = await createServiceRoleClient()
+    const { data: reviewed, error } = await createServiceRoleClient()
       .from("progress_observations" as never)
       .update({
         verification_status: decision,
@@ -474,8 +487,22 @@ export async function verifyObservation(input: unknown): Promise<Result> {
         verified_at: new Date().toISOString(),
       } as never)
       .eq("id", observationId)
-      .eq("project_id", projectId);
+      .eq("project_id", projectId)
+      .select("entered_by, activity_key, stage_key")
+      .maybeSingle();
     if (error) throw error;
+    const enteredBy = (reviewed as { entered_by?: string | null } | null)?.entered_by;
+    if (enteredBy) {
+      await notifyProjectTeam({
+        projectId,
+        event: "step_reviewed",
+        actorId: actor.userId,
+        recipients: [enteredBy],
+        title: `Zone update ${decision}`,
+        message: `Your ${(reviewed as unknown as { activity_key: string }).activity_key} update was ${decision} by ${await teamMemberName(actor.userId)}.`,
+        link: progressionLink(projectId),
+      });
+    }
     return finish(projectId);
   } catch (err) {
     return fail("zones:verify", err, "Could not save the verification.");

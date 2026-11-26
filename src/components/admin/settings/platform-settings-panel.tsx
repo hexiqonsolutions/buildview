@@ -193,6 +193,26 @@ export function PlatformSettingsPanel({
             }
           />
           <ToggleRow
+            label="Notify the team about site activity"
+            description="Checklist steps started or ended, zone updates, evidence and verification go to the project team: in the portal instantly, on WhatsApp instantly or in the 1 pm / 7 pm digest (each person chooses)."
+            checked={settings.notifications.onSiteActivity}
+            onChange={(onSiteActivity) =>
+              updateSettings({
+                notifications: { ...settings.notifications, onSiteActivity },
+              })
+            }
+          />
+          <ToggleRow
+            label="Notify the team about comments"
+            description="New comments go to the project team; replies go straight to the comment's author."
+            checked={settings.notifications.onComment}
+            onChange={(onComment) =>
+              updateSettings({
+                notifications: { ...settings.notifications, onComment },
+              })
+            }
+          />
+          <ToggleRow
             label="Alert staff on new tour viewers"
             description="When someone unlocks a shared Matterport tour, notify staff who can open Tour Viewers (in-app and email). Contact details stay on the admin page."
             checked={settings.notifications.onTourViewer}

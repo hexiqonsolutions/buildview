@@ -76,6 +76,7 @@ import {
 } from "@/lib/portal/invoice-notifications";
 import { PublicError } from "@/lib/errors/public";
 import { internalError, logServerError, toPublicMessage } from "@/lib/errors/server";
+import { notifyProjectTeam } from "@/lib/notifications/team";
 import { publicObjectPath, UPLOAD_RULES, verifyStoredUpload } from "@/lib/uploads/verify";
 import { STORAGE_BUCKETS } from "@/lib/types";
 
@@ -488,6 +489,18 @@ export async function createTour(data: {
     type: "project_update",
     link: portalMatterportLink(validated.project_id),
   });
+
+  // WhatsApp to the project team (the bell notification above already covers the portal).
+  await notifyProjectTeam({
+    projectId: validated.project_id,
+    event: "scan_uploaded",
+    actorId: user?.id ?? null,
+    inApp: false,
+    title: `New 360 scan: ${validated.name}`,
+    message: `${[spatial.building, spatial.floor].filter(Boolean).join(" · ") || "Project-wide"} scan "${validated.name}" is ready to view.`,
+    link: portalMatterportLink(validated.project_id),
+  });
+
 
   revalidatePath("/admin/tours");
   revalidatePath(`/admin/projects/${validated.project_id}`);

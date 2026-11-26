@@ -418,3 +418,43 @@ test("methods: track labels, including mixed projects", () => {
   assert.equal(methods.trackLabelFor("post_slab", ["conventional"]), "Post-Slab");
   assert.equal(methods.trackLabelFor("post_slab", ["conventional", "mivan", "hybrid"]), "Post-Slab / Finishing");
 });
+
+// ---- team notifications (WhatsApp defaults, quiet hours, digest)
+const teamEvents = jiti(path.join(root, "src/lib/notifications/team-events.ts"));
+
+test("team notifications: defaults keep routine activity in the digest", () => {
+  assert.equal(teamEvents.whatsappModeFor("step_ended", {}), "digest");
+  assert.equal(teamEvents.whatsappModeFor("scan_uploaded", {}), "instant");
+  assert.equal(teamEvents.whatsappModeFor("comment_reply", undefined), "instant");
+  assert.equal(teamEvents.whatsappModeFor("step_ended", { step_ended: "off" }), "off");
+  assert.equal(teamEvents.whatsappModeFor("step_ended", { step_ended: "bogus" }), "digest");
+});
+
+test("team notifications: quiet hours hold instant messages until 8 am IST", () => {
+  // 22:00 IST = 16:30 UTC → next day 08:00 IST = 02:30 UTC
+  const late = new Date("2026-11-26T16:30:00Z");
+  assert.equal(teamEvents.isQuietHours(late), true);
+  assert.equal(teamEvents.sendAfterFor(late).toISOString(), "2026-11-27T02:30:00.000Z");
+  // 06:00 IST = 00:30 UTC → same day 08:00 IST
+  const early = new Date("2026-11-27T00:30:00Z");
+  assert.equal(teamEvents.sendAfterFor(early).toISOString(), "2026-11-27T02:30:00.000Z");
+  // 14:00 IST = 08:30 UTC → now
+  const day = new Date("2026-11-27T08:30:00Z");
+  assert.equal(teamEvents.isQuietHours(day), false);
+  assert.equal(teamEvents.sendAfterFor(day).getTime(), day.getTime());
+});
+
+test("team notifications: digest counts per project with plurals", () => {
+  const items = [
+    { event: "step_ended", projectName: "Nahur", title: "" },
+    { event: "step_ended", projectName: "Nahur", title: "" },
+    { event: "step_started", projectName: "Nahur", title: "" },
+    { event: "scan_uploaded", projectName: "Nahur", title: "" },
+    { event: "comment", projectName: "Malhar", title: "" },
+  ];
+  const s = teamEvents.digestSummary(items);
+  assert.deepEqual(s, [
+    { projectName: "Nahur", line: "2 steps ended · 1 step started · 1 new scan" },
+    { projectName: "Malhar", line: "1 comment" },
+  ]);
+});

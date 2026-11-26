@@ -17,6 +17,14 @@ export const whatsappConfig = {
     onInvoicePaid: process.env.TWILIO_WA_TEMPLATE_INVOICE_PAID ?? "",
     onProjectRemoved: process.env.TWILIO_WA_TEMPLATE_PROJECT_REMOVED ?? "",
   },
+  /** Team activity templates (Utility): {{1}} title, {{2}} message, {{3}} link. */
+  teamTemplates: {
+    teamUpdate: process.env.TWILIO_WA_TEMPLATE_TEAM_UPDATE ?? "",
+    stepReview: process.env.TWILIO_WA_TEMPLATE_STEP_REVIEW ?? "",
+    commentReply: process.env.TWILIO_WA_TEMPLATE_COMMENT_REPLY ?? "",
+    scanUploaded: process.env.TWILIO_WA_TEMPLATE_SCAN_UPLOADED ?? "",
+    siteDigest: process.env.TWILIO_WA_TEMPLATE_SITE_DIGEST ?? "",
+  },
 } as const;
 
 export function isWhatsAppEnabled(): boolean {

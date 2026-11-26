@@ -7,7 +7,9 @@ export type NotificationRuleKey =
   | "onIssueUpdate"
   | "onProjectAssigned"
   | "onProjectRemoved"
-  | "onTourViewer";
+  | "onTourViewer"
+  | "onSiteActivity"
+  | "onComment";
 
 export type PlatformSettings = {
   companyName: string;
@@ -33,5 +35,9 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
     onProjectRemoved: true,
     /** Staff (tour_viewers permission) when a new share-gate viewer is recorded. */
     onTourViewer: true,
+    /** Checklist steps, zone updates, evidence and reviews → project team. */
+    onSiteActivity: true,
+    /** Comments and replies → project team. */
+    onComment: true,
   },
 };

@@ -34,6 +34,7 @@ import {
 } from "@/lib/validations/progression";
 import { getErrorMessage, PublicError } from "@/lib/errors/public";
 import { logServerError } from "@/lib/errors/server";
+import { notifyProjectTeam } from "@/lib/notifications/team";
 import { recordTimelineEntry } from "@/lib/timeline/auto-entry";
 import { type ProgressionTrack } from "@/lib/progression/catalog";
 import { methodOfTemplateKey, trackLabel as methodTrackLabel } from "@/lib/progression/methods";
@@ -355,6 +356,17 @@ async function transitionProgressionStep(input: unknown, transition: StepTransit
         : transition === "end"
           ? "completed"
           : "reset";
+    if (transition !== "reset") {
+      await notifyProjectTeam({
+        projectId,
+        event: transition === "start" ? "step_started" : "step_ended",
+        actorId: actor.userId,
+        title: `${ctx.buildingName} · ${ctx.floorName}: step ${verb}`,
+        message: `${trackLabel} step ${ctx.stepNumber} "${ctx.title}" ${verb} by ${actor.fullName ?? "a team member"}.`,
+        link: `/dashboard/projects/${projectId}?tab=progression`,
+        dedupeKey: `${stepId}:${transition}`,
+      });
+    }
     // Best-effort Timeline entry; skipRevalidate avoids a full project-page
     // refetch after every Start/End press (Timeline reads fresh on navigation).
     await recordTimelineEntry(
@@ -745,6 +757,18 @@ export async function setProgressionStepEvidence(input: unknown) {
       note: note ?? null,
     });
 
+    if (tourId) {
+      await notifyProjectTeam({
+        projectId,
+        event: "evidence_linked",
+        actorId: actor.userId,
+        title: `${ctx.buildingName} · ${ctx.floorName}: scan linked`,
+        message: `A 360 scan was linked as evidence for "${ctx.title}".`,
+        link: `/dashboard/projects/${projectId}?tab=progression`,
+        dedupeKey: `${stepId}:evidence`,
+      });
+    }
+
     return { ok: true as const, evidenceTourId: tourId, evidenceNote: tourId ? (note ?? null) : null };
   } catch (err) {
     logServerError("progressionStep:evidence", err);
@@ -809,6 +833,24 @@ export async function verifyProgressionStep(input: unknown) {
       actor_id: actor.userId,
       note: note ?? null,
     });
+
+    const { data: endedRow } = await admin
+      .from("project_progression_steps")
+      .select("ended_by, completed_by")
+      .eq("id", stepId)
+      .maybeSingle();
+    const doneBy = (endedRow?.ended_by ?? endedRow?.completed_by) as string | null | undefined;
+    if (doneBy) {
+      await notifyProjectTeam({
+        projectId,
+        event: "step_reviewed",
+        actorId: actor.userId,
+        recipients: [doneBy],
+        title: `${ctx.buildingName} · ${ctx.floorName}: step ${decision}`,
+        message: `"${ctx.title}" was ${decision} by ${actor.fullName ?? "a verifier"}${note ? `: ${note}` : "."}`,
+        link: `/dashboard/projects/${projectId}?tab=progression`,
+      });
+    }
 
     return {
       ok: true as const,

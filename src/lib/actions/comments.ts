@@ -14,6 +14,7 @@ import { canCommentOnProject, isBuildViewStaffRole } from "@/lib/auth/roles";
 import { currentUserCanViewProject } from "@/lib/auth/project-access";
 import { isClientAccountSuspended } from "@/lib/auth/client-suspension";
 import { logServerError, toPublicMessage } from "@/lib/errors/server";
+import { notifyProjectTeam, resolveProjectTeam, teamMemberName } from "@/lib/notifications/team";
 
 type CommentActionResult =
   | { ok: true }
@@ -333,7 +334,49 @@ export async function addProjectComment(data: {
     return fail(toPublicMessage("addProjectComment", err, "Failed to post comment. Please try again."));
   }
 
+  await notifyCommentTeam(validation.data.project_id, user.id, parentId, message);
   return { ok: true };
+}
+
+/** Comment → project team (digest by default); reply → the thread's author (instant). */
+async function notifyCommentTeam(projectId: string, actorId: string, parentId: string | null, message: string) {
+  try {
+    const author = await teamMemberName(actorId);
+    const preview = message.length > 160 ? `${message.slice(0, 159)}…` : message;
+    const link = `/dashboard/projects/${projectId}`;
+    let threadAuthor: string | null = null;
+    if (parentId) {
+      const { data } = await createServiceRoleClient()
+        .from("project_comments")
+        .select("created_by")
+        .eq("id", parentId)
+        .maybeSingle();
+      threadAuthor = (data?.created_by as string | null) ?? null;
+    }
+    if (threadAuthor && threadAuthor !== actorId) {
+      await notifyProjectTeam({
+        projectId,
+        event: "comment_reply",
+        actorId,
+        recipients: [threadAuthor],
+        title: `${author} replied to your comment`,
+        message: preview,
+        link,
+      });
+    }
+    const team = (await resolveProjectTeam(projectId, "comment")).filter((id) => id !== threadAuthor);
+    await notifyProjectTeam({
+      projectId,
+      event: "comment",
+      actorId,
+      recipients: team,
+      title: `New comment from ${author}`,
+      message: preview,
+      link,
+    });
+  } catch (err) {
+    logServerError("addProjectComment:notify", err);
+  }
 }
 
 export async function updateCommentStatus(

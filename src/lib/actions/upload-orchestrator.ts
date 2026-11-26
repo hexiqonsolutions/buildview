@@ -43,6 +43,7 @@ import { isBuildViewStaffRole } from "@/lib/auth/roles";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { PublicError } from "@/lib/errors/public";
 import { internalError } from "@/lib/errors/server";
+import { notifyProjectTeam } from "@/lib/notifications/team";
 
 export type UploadCategory =
   | "matterport"
@@ -219,6 +220,18 @@ export async function uploadMatterportWithAutomation(data: {
   } catch (err) {
     console.error("[uploadMatterportWithAutomation] notify failed:", err);
   }
+
+  // WhatsApp to the project team (the bell notification above already covers the portal).
+  await notifyProjectTeam({
+    projectId: parsed.data.project_id,
+    event: "scan_uploaded",
+    actorId: user?.id ?? null,
+    inApp: false,
+    title: `New 360 scan: ${parsed.data.name}`,
+    message: `${[spatial.building, spatial.floor].filter(Boolean).join(" · ") || "Project-wide"} scan "${parsed.data.name}" is ready to view.`,
+    link: portalMatterportLink(parsed.data.project_id, tour.id),
+  });
+
 
   revalidatePaths(parsed.data.project_id);
   return { tourId: tour.id };

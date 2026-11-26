@@ -32,6 +32,8 @@ const NOTIFICATION_RULE_KEYS = [
   "onProjectAssigned",
   "onProjectRemoved",
   "onTourViewer",
+  "onSiteActivity",
+  "onComment",
 ] as const satisfies readonly NotificationRuleKey[];
 
 const INVOICE_STATUSES = [

@@ -25,10 +25,14 @@ export function isWhatsAppCriticalRule(
   return Boolean(rule && (WHATSAPP_CRITICAL_RULES as readonly string[]).includes(rule));
 }
 
+export type TeamTemplateKey = keyof typeof whatsappConfig.teamTemplates;
+
 type SendWhatsAppParams = {
   toE164: string;
   body: string;
   rule?: WhatsAppCriticalRule;
+  /** Team activity template (team notifications); used when `rule` is absent. */
+  templateKey?: TeamTemplateKey;
   /** Content template variables: title, message, link */
   variables?: { title?: string; message?: string; link?: string };
 };
@@ -158,7 +162,9 @@ export async function sendWhatsAppMessage(
 
   const to = toWhatsAppAddress(params.toE164);
   const from = toWhatsAppAddress(whatsappConfig.from);
-  const configuredSid = templateSidForRule(params.rule);
+  const configuredSid = params.rule
+    ? templateSidForRule(params.rule)
+    : (whatsappConfig.teamTemplates[params.templateKey ?? "teamUpdate"] ?? "").trim();
 
   const contentAttempts = [
     configuredSid,

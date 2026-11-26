@@ -8,6 +8,7 @@ import {
   type ProfileActionState,
 } from "@/lib/actions/profile";
 import { ProfileAvatarEditor } from "@/components/dashboard/profile-avatar-editor";
+import { TeamWhatsAppPrefs } from "@/components/dashboard/team-whatsapp-prefs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -262,7 +263,7 @@ export function ProfileForm({ user, client }: ProfileFormProps) {
                         WhatsApp alerts
                       </p>
                       <p className="text-xs text-slate-500">
-                        High/critical issues, invoices, and project removal only
+                        Critical issues, invoices and project changes, plus project team activity (choose below)
                       </p>
                     </div>
                   </div>
@@ -321,6 +322,9 @@ export function ProfileForm({ user, client }: ProfileFormProps) {
               </Button>
             </div>
           </form>
+          <div className="mt-4">
+            <TeamWhatsAppPrefs />
+          </div>
         </TabsContent>
 
         <TabsContent value="theme" className="mt-6">

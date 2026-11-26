@@ -54,6 +54,11 @@ function rowToSettings(row: SettingsRow): PlatformSettings {
       onTourViewer:
         row.notification_rules?.onTourViewer ??
         DEFAULT_PLATFORM_SETTINGS.notifications.onTourViewer,
+      onSiteActivity:
+        row.notification_rules?.onSiteActivity ??
+        DEFAULT_PLATFORM_SETTINGS.notifications.onSiteActivity,
+      onComment:
+        row.notification_rules?.onComment ?? DEFAULT_PLATFORM_SETTINGS.notifications.onComment,
     },
   };
 }
