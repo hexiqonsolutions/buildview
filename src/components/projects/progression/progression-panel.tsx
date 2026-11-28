@@ -2138,7 +2138,19 @@ export function ProgressionPanel({
             {data.activatedFloorCount}/{data.floorCount} floors activated
           </p>
           <div className="mt-2 flex flex-wrap gap-1.5" aria-label="Track legend">
-            {PROGRESSION_TRACKS.map((t) => {
+            {"parts" in data.completion
+              ? (
+                  [
+                    ["Inside", data.completion.parts.inside.actual],
+                    ["Outside", data.completion.parts.outside.actual],
+                    ["Site", data.completion.parts.site.actual],
+                  ] as const
+                ).map(([label, value]) => (
+                  <span key={label} className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                    {label} · {Math.round(value)}%
+                  </span>
+                ))
+              : PROGRESSION_TRACKS.map((t) => {
               const summary = data.tracks.find((x) => x.track === t);
               return (
                 <span
@@ -2192,28 +2204,6 @@ export function ProgressionPanel({
       ) : data.progressionVersion === 2 ? (
         <div className="space-y-5">
           <SimpleChecklist projectId={data.projectId} onChanged={reloadBundle} />
-          <details className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-            <summary className="cursor-pointer text-sm font-medium text-slate-700 dark:text-slate-300">
-              More: planned dates, evidence and verification (detailed view)
-            </summary>
-            <div className="mt-4 space-y-5">
-              {PROGRESSION_TRACKS.map((track) => (
-                <TrackSection
-                  key={track}
-                  track={track}
-                  data={data}
-                  switching={switchingTrack === track}
-                  pendingKeys={pendingKeys}
-                  onSelectFloor={selectFloor}
-                  onTransition={onTransition}
-                  onSaveDates={onSaveDates}
-                  onSaveSchedule={onSaveSchedule}
-                  onEvidence={onEvidence}
-                  onReview={onReview}
-                />
-              ))}
-            </div>
-          </details>
         </div>
       ) : (
         <div className="space-y-5">

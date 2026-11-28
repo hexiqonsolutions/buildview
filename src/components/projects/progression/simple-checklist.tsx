@@ -28,6 +28,12 @@ import {
   getChecklistOverview,
   getStepPhotos,
   setChecklistStepNa,
+  setChecklistEvidence,
+  setChecklistSchedule,
+  updateChecklistStep,
+  verifyChecklistStep,
+  type ChecklistList,
+  type ChecklistScan,
   type ChecklistOverview,
   type ChecklistScope,
   type ChecklistStep,
@@ -72,6 +78,9 @@ export function SimpleChecklist({ projectId, onChanged }: { projectId: string; o
   const [photosFor, setPhotosFor] = useState<ChecklistStep | null>(null);
   const [picker, setPicker] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [filter, setFilter] = useState<Filter>("all");
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [planning, setPlanning] = useState<ChecklistList | null>(null);
 
   const scope: ChecklistScope | null = useMemo(() => {
     if (tab === "site") return { kind: "site" };
@@ -212,6 +221,8 @@ export function SimpleChecklist({ projectId, onChanged }: { projectId: string; o
         </div>
       </div>
 
+      {view && view.lists.length > 0 ? <ListsCard lists={view.lists} canEdit={canEdit} onPlan={setPlanning} /> : null}
+
       {/* Next up */}
       {next && canEdit ? (
         <div className="rounded-2xl border-2 border-[#4d7c0f]/30 bg-[#4d7c0f]/5 p-4">
@@ -235,6 +246,27 @@ export function SimpleChecklist({ projectId, onChanged }: { projectId: string; o
         </div>
       ) : null}
 
+      {/* Filter */}
+      {view && view.phases.length > 0 ? (
+        <div role="radiogroup" aria-label="Show steps" className="flex gap-1.5 overflow-x-auto pb-1">
+          {FILTERS.map((f) => (
+            <button
+              key={f.key}
+              type="button"
+              role="radio"
+              aria-checked={filter === f.key}
+              onClick={() => setFilter(f.key)}
+              className={cn(
+                "min-h-9 shrink-0 rounded-full border px-3 text-sm font-medium",
+                filter === f.key ? "border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900" : "border-slate-200 text-slate-700 dark:border-slate-700 dark:text-slate-300"
+              )}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
       {/* Phases */}
       {loading && !view ? (
         <div className="flex h-32 items-center justify-center text-sm text-slate-500">
@@ -247,7 +279,9 @@ export function SimpleChecklist({ projectId, onChanged }: { projectId: string; o
       ) : (
         <ul className="space-y-2">
           {view.phases.map((phase) => {
-            const isOpen = open.has(phase.key);
+            const shown = phase.steps.filter((s) => matchesFilter(s, filter));
+            if (filter !== "all" && shown.length === 0) return null;
+            const isOpen = filter !== "all" || open.has(phase.key);
             const done = phase.percent != null && phase.percent >= 100;
             return (
               <li key={phase.key} className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
@@ -282,16 +316,23 @@ export function SimpleChecklist({ projectId, onChanged }: { projectId: string; o
                 </button>
                 {isOpen ? (
                   <ul className="divide-y divide-slate-100 border-t border-slate-100 dark:divide-slate-800 dark:border-slate-800">
-                    {phase.steps.map((step) => (
+                    {shown.map((step) => (
                       <StepRow
                         key={step.id}
+                        projectId={projectId}
                         step={step}
+                        scans={view.scans}
                         canEdit={canEdit}
+                        canVerify={overview.canVerify}
                         busy={busy === step.id}
+                        expanded={expanded === step.id}
+                        onToggle={() => setExpanded((cur) => (cur === step.id ? null : step.id))}
                         onPrimary={() => setPending({ step, action: step.status === "in_progress" ? "done" : "start" })}
                         onUndo={() => runAction(step, "undo")}
                         onNa={() => toggleNa(step)}
                         onPhotos={() => setPhotosFor(step)}
+                        onChanged={() => void refresh()}
+                        onToast={setToast}
                       />
                     ))}
                   </ul>
@@ -336,6 +377,7 @@ export function SimpleChecklist({ projectId, onChanged }: { projectId: string; o
           }}
         />
       ) : null}
+      <ScheduleDialog projectId={projectId} list={planning} onClose={() => setPlanning(null)} onSaved={() => void refresh()} />
       <PlacePicker
         open={picker}
         tab={tab}
@@ -351,86 +393,390 @@ export function SimpleChecklist({ projectId, onChanged }: { projectId: string; o
   );
 }
 
+type Filter = "all" | "todo" | "doing" | "done" | "review";
+
+const FILTERS: { key: Filter; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "todo", label: "To do" },
+  { key: "doing", label: "In progress" },
+  { key: "done", label: "Done" },
+  { key: "review", label: "Needs review" },
+];
+
+function matchesFilter(step: ChecklistStep, f: Filter): boolean {
+  if (f === "all") return true;
+  if (f === "todo") return step.status === "pending" && !step.na;
+  if (f === "doing") return step.status === "in_progress";
+  if (f === "done") return step.status === "completed";
+  return step.status === "completed" && step.verification !== "verified";
+}
+
+function scheduleStatusLabel(actual: number | null, planned: number | null): { text: string; tone: string } | null {
+  if (planned == null || actual == null) return null;
+  if (actual >= 100) return { text: "Complete", tone: "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-100" };
+  if (actual >= planned) return { text: "On track", tone: "bg-lime-100 text-lime-900 dark:bg-lime-900/40 dark:text-lime-100" };
+  const behind = planned > 0 ? ((planned - actual) / planned) * 100 : 0;
+  return behind < 20
+    ? { text: `Behind ${Math.round(planned - actual)} pts`, tone: "bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-100" }
+    : { text: `Behind ${Math.round(planned - actual)} pts`, tone: "bg-red-100 text-red-900 dark:bg-red-900/40 dark:text-red-100" };
+}
+
+/** Each list here (Structure / Finishing, Outside, Site): actual vs planned and its dates. */
+function ListsCard({ lists, canEdit, onPlan }: { lists: ChecklistList[]; canEdit: boolean; onPlan: (list: ChecklistList) => void }) {
+  return (
+    <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
+      {lists.map((l) => {
+        const status = scheduleStatusLabel(l.percent, l.plannedPercent);
+        return (
+          <div key={l.progressionId} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-slate-900 dark:text-white">{l.name}</p>
+              <p className="text-xs text-slate-500">
+                {l.plannedStart && l.plannedEnd ? `Plan ${formatDate(l.plannedStart)} – ${formatDate(l.plannedEnd)}` : "No planned dates"}
+                {l.plannedPercent != null ? ` · planned ${Math.round(l.plannedPercent)}% today` : ""}
+              </p>
+            </div>
+            <span className="text-sm font-semibold tabular-nums text-slate-900 dark:text-white">{pct(l.percent)}</span>
+            {status ? <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", status.tone)}>{status.text}</span> : null}
+            {canEdit ? (
+              <button type="button" onClick={() => onPlan(l)} className="min-h-9 rounded-md px-2 text-sm font-medium text-slate-700 underline-offset-2 hover:underline dark:text-slate-200">
+                Plan dates
+              </button>
+            ) : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ScheduleDialog({ projectId, list, onClose, onSaved }: { projectId: string; list: ChecklistList | null; onClose: () => void; onSaved: () => void }) {
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    setStart(list?.plannedStart ?? "");
+    setEnd(list?.plannedEnd ?? "");
+    setError(null);
+  }, [list]);
+  async function save() {
+    if (!list) return;
+    setSaving(true);
+    const r = await setChecklistSchedule({ projectId, progressionId: list.progressionId, start: start || null, end: end || null });
+    setSaving(false);
+    if (!r.ok) setError(r.error);
+    else {
+      onClose();
+      onSaved();
+    }
+  }
+  return (
+    <Dialog open={Boolean(list)} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Plan dates</DialogTitle>
+          <DialogDescription>{list?.name}: planned % rises evenly from the start to the end date.</DialogDescription>
+        </DialogHeader>
+        <label className="grid gap-1 text-sm">
+          <span className="font-medium text-slate-700 dark:text-slate-300">Start</span>
+          <input type="date" value={start} onChange={(e) => setStart(e.target.value)} className="h-11 rounded-lg border border-input bg-background px-3 text-base" />
+        </label>
+        <label className="grid gap-1 text-sm">
+          <span className="font-medium text-slate-700 dark:text-slate-300">Finish</span>
+          <input type="date" value={end} min={start || undefined} onChange={(e) => setEnd(e.target.value)} className="h-11 rounded-lg border border-input bg-background px-3 text-base" />
+        </label>
+        {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="button" onClick={save} disabled={saving}>
+            {saving ? <Loader2 className="animate-spin" aria-hidden /> : null} Save
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function StepRow({
+  projectId,
   step,
+  scans,
   canEdit,
+  canVerify,
   busy,
+  expanded,
+  onToggle,
   onPrimary,
   onUndo,
   onNa,
   onPhotos,
+  onChanged,
+  onToast,
 }: {
+  projectId: string;
   step: ChecklistStep;
+  scans: ChecklistScan[];
   canEdit: boolean;
+  canVerify: boolean;
   busy: boolean;
+  expanded: boolean;
+  onToggle: () => void;
   onPrimary: () => void;
   onUndo: () => void;
   onNa: () => void;
   onPhotos: () => void;
+  onChanged: () => void;
+  onToast: (t: { kind: "ok" | "error"; text: string }) => void;
 }) {
   const photos = step.photos.start + step.photos.end;
   const meta =
     step.na
       ? "Not applicable here"
       : step.status === "completed"
-        ? `Done ${ago(step.endedAt)}${step.endedBy ? ` · ${step.endedBy}` : ""}`
+        ? `Done ${step.workDate ? formatDate(step.workDate) : ago(step.endedAt)}${step.endedBy ? ` · ${step.endedBy}` : ""}`
         : step.status === "in_progress"
           ? `Started ${ago(step.startedAt)}${step.startedBy ? ` · ${step.startedBy}` : ""}`
           : step.photoExpected
             ? "Photo recommended"
             : "";
   return (
-    <li className={cn("flex items-center gap-3 px-4 py-3", step.na && "opacity-60")}>
-      {step.status === "completed" ? (
-        <Check className="h-5 w-5 shrink-0 text-[#4d7c0f]" aria-label="Done" />
-      ) : step.status === "in_progress" ? (
-        <CircleDot className="h-5 w-5 shrink-0 text-amber-600" aria-label="In progress" />
-      ) : (
-        <Circle className="h-5 w-5 shrink-0 text-slate-300" aria-label="Not started" />
-      )}
-      <div className="min-w-0 flex-1">
-        <p className={cn("text-[15px] text-slate-900 dark:text-white", step.na && "line-through")}>{step.title}</p>
-        {meta || photos ? (
-          <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-slate-500">
-            {meta ? <span>{meta}</span> : null}
-            {photos ? (
-              <button type="button" onClick={onPhotos} className="inline-flex items-center gap-1 text-slate-600 underline-offset-2 hover:underline dark:text-slate-300">
-                <ImageIcon className="h-3.5 w-3.5" aria-hidden /> {photos} photo{photos === 1 ? "" : "s"}
+    <li className={cn(step.na && "opacity-60")}>
+      <div className="flex items-center gap-3 px-4 py-3">
+        {step.status === "completed" ? (
+          <Check className="h-5 w-5 shrink-0 text-[#4d7c0f]" aria-label="Done" />
+        ) : step.status === "in_progress" ? (
+          <CircleDot className="h-5 w-5 shrink-0 text-amber-600" aria-label="In progress" />
+        ) : (
+          <Circle className="h-5 w-5 shrink-0 text-slate-300" aria-label="Not started" />
+        )}
+        <button type="button" onClick={onToggle} aria-expanded={expanded} className="min-w-0 flex-1 text-left">
+          <span className={cn("block text-[15px] text-slate-900 dark:text-white", step.na && "line-through")}>{step.title}</span>
+          {meta || photos || step.verification || step.note || step.evidence ? (
+            <span className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-slate-500">
+              {meta ? <span>{meta}</span> : null}
+              {photos ? (
+                <span className="inline-flex items-center gap-1">
+                  <ImageIcon className="h-3.5 w-3.5" aria-hidden /> {photos}
+                </span>
+              ) : null}
+              {step.evidence ? <span>360 linked</span> : null}
+              {step.note ? <span>Note</span> : null}
+              {step.verification === "verified" ? <span className="text-emerald-700 dark:text-emerald-400">Verified</span> : null}
+              {step.verification === "rejected" ? <span className="text-red-700 dark:text-red-400">Rejected</span> : null}
+            </span>
+          ) : null}
+        </button>
+        {canEdit && !step.na && step.status !== "completed" ? (
+          <Button
+            type="button"
+            size="sm"
+            onClick={onPrimary}
+            disabled={busy}
+            className={cn("h-11 min-w-[88px] text-sm", step.status === "in_progress" ? "bg-[#4d7c0f] text-white hover:bg-[#3f6a0c]" : "bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900")}
+          >
+            {busy ? <Loader2 className="animate-spin" aria-hidden /> : null}
+            {step.status === "in_progress" ? "Done" : "Start"}
+          </Button>
+        ) : null}
+        {canEdit ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button type="button" aria-label={`More for ${step.title}`} className="inline-flex h-11 w-9 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">
+                <MoreVertical className="h-5 w-5" aria-hidden />
               </button>
-            ) : null}
-            {step.verification === "verified" ? <span className="text-emerald-700 dark:text-emerald-400">Verified</span> : null}
-            {step.verification === "rejected" ? <span className="text-red-700 dark:text-red-400">Rejected</span> : null}
-          </p>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={onToggle}>{expanded ? "Hide details" : "Details"}</DropdownMenuItem>
+              <DropdownMenuItem onSelect={onPhotos}>Photos</DropdownMenuItem>
+              {step.status !== "pending" ? <DropdownMenuItem onSelect={onUndo}>Undo last change</DropdownMenuItem> : null}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={onNa}>{step.na ? "Mark as applicable" : "Not applicable here"}</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         ) : null}
       </div>
-      {canEdit && !step.na && step.status !== "completed" ? (
-        <Button
-          type="button"
-          size="sm"
-          onClick={onPrimary}
-          disabled={busy}
-          className={cn("h-11 min-w-[88px] text-sm", step.status === "in_progress" ? "bg-[#4d7c0f] text-white hover:bg-[#3f6a0c]" : "bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900")}
-        >
-          {busy ? <Loader2 className="animate-spin" aria-hidden /> : null}
-          {step.status === "in_progress" ? "Done" : "Start"}
-        </Button>
-      ) : null}
-      {canEdit ? (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button type="button" aria-label={`More for ${step.title}`} className="inline-flex h-11 w-9 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">
-              <MoreVertical className="h-5 w-5" aria-hidden />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={onPhotos}>Photos</DropdownMenuItem>
-            {step.status !== "pending" ? <DropdownMenuItem onSelect={onUndo}>Undo last change</DropdownMenuItem> : null}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={onNa}>{step.na ? "Mark as applicable" : "Not applicable here"}</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+      {expanded ? (
+        <StepDetails projectId={projectId} step={step} scans={scans} canEdit={canEdit} canVerify={canVerify} onPhotos={onPhotos} onChanged={onChanged} onToast={onToast} />
       ) : null}
     </li>
+  );
+}
+
+function StepDetails({
+  projectId,
+  step,
+  scans,
+  canEdit,
+  canVerify,
+  onPhotos,
+  onChanged,
+  onToast,
+}: {
+  projectId: string;
+  step: ChecklistStep;
+  scans: ChecklistScan[];
+  canEdit: boolean;
+  canVerify: boolean;
+  onPhotos: () => void;
+  onChanged: () => void;
+  onToast: (t: { kind: "ok" | "error"; text: string }) => void;
+}) {
+  const [note, setNote] = useState(step.note ?? "");
+  const [workDate, setWorkDate] = useState(step.workDate ?? "");
+  const [reviewNote, setReviewNote] = useState("");
+  const [thumbs, setThumbs] = useState<StepPhoto[] | null>(null);
+  const [saving, setSaving] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (step.photos.start + step.photos.end === 0) {
+      setThumbs([]);
+      return;
+    }
+    getStepPhotos({ projectId, stepId: step.id }).then((r) => {
+      if (!cancelled) setThumbs(r.ok ? r.data : []);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId, step.id, step.photos.start, step.photos.end]);
+
+  async function run(key: string, fn: () => Promise<{ ok: boolean; error?: string }>, okText: string) {
+    setSaving(key);
+    const r = await fn();
+    setSaving(null);
+    if (!r.ok) onToast({ kind: "error", text: r.error ?? "Could not save." });
+    else {
+      onToast({ kind: "ok", text: okText });
+      onChanged();
+    }
+  }
+
+  const row = "grid gap-1 text-sm sm:grid-cols-[8.5rem_1fr] sm:items-center";
+  const lbl = "text-xs font-medium uppercase tracking-wide text-slate-500";
+  return (
+    <div className="space-y-3 bg-slate-50 px-4 pb-4 pt-3 text-sm dark:bg-slate-950/50">
+      <div className={row}>
+        <span className={lbl}>Started</span>
+        <span className="text-slate-800 dark:text-slate-200">{step.startedAt ? `${formatDate(step.startedAt)}${step.startedBy ? ` · ${step.startedBy}` : ""}` : "—"}</span>
+      </div>
+      <div className={row}>
+        <span className={lbl}>Done</span>
+        <span className="text-slate-800 dark:text-slate-200">{step.endedAt ? `${formatDate(step.endedAt)}${step.endedBy ? ` · ${step.endedBy}` : ""}` : "—"}</span>
+      </div>
+      {step.status !== "pending" ? (
+        <div className={row}>
+          <span className={lbl}>Work date</span>
+          {canEdit ? (
+            <span className="flex flex-wrap items-center gap-2">
+              <input type="date" value={workDate} max={new Date().toISOString().slice(0, 10)} onChange={(e) => setWorkDate(e.target.value)} className="h-10 rounded-lg border border-input bg-background px-2 text-base" aria-label="Work date" />
+              {workDate !== (step.workDate ?? "") ? (
+                <Button type="button" size="sm" variant="outline" disabled={saving === "date"} onClick={() => run("date", () => updateChecklistStep({ projectId, stepId: step.id, workDate: workDate || null }), "Date saved")}>
+                  Save date
+                </Button>
+              ) : null}
+            </span>
+          ) : (
+            <span>{step.workDate ? formatDate(step.workDate) : "—"}</span>
+          )}
+        </div>
+      ) : null}
+      <div className={row}>
+        <span className={lbl}>Photos</span>
+        <span className="flex flex-wrap items-center gap-2">
+          {thumbs === null ? (
+            <Loader2 className="h-4 w-4 animate-spin text-slate-400" aria-hidden />
+          ) : (
+            thumbs.slice(0, 4).map((p) => (
+              <a key={p.id} href={p.url} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-md border border-slate-200 dark:border-slate-800">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={p.url} alt={p.kind === "start" ? "At start" : "When done"} className="h-14 w-14 object-cover" loading="lazy" />
+              </a>
+            ))
+          )}
+          <Button type="button" size="sm" variant="outline" onClick={onPhotos}>
+            <Camera aria-hidden /> {thumbs && thumbs.length > 0 ? "All photos" : "Add photo"}
+          </Button>
+        </span>
+      </div>
+      <div className={row}>
+        <span className={lbl}>360 evidence</span>
+        {canEdit ? (
+          <span className="flex flex-wrap items-center gap-2">
+            <select
+              aria-label="360 scan as evidence"
+              value={step.evidence?.id ?? ""}
+              onChange={(e) => run("evidence", () => setChecklistEvidence({ projectId, stepId: step.id, tourId: e.target.value || null }), e.target.value ? "Scan linked" : "Scan removed")}
+              className="h-10 max-w-full rounded-lg border border-input bg-background px-2 text-sm"
+            >
+              <option value="">{scans.length ? "No scan linked" : "No scans for this place yet"}</option>
+              {scans.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                  {s.date ? ` · ${formatDate(s.date)}` : ""}
+                </option>
+              ))}
+            </select>
+            {step.evidence ? (
+              <a href={step.evidence.url} target="_blank" rel="noreferrer" className="text-sm font-medium underline underline-offset-2">
+                Open scan
+              </a>
+            ) : null}
+          </span>
+        ) : step.evidence ? (
+          <a href={step.evidence.url} target="_blank" rel="noreferrer" className="underline underline-offset-2">
+            {step.evidence.name}
+          </a>
+        ) : (
+          <span>—</span>
+        )}
+      </div>
+      <div className={row}>
+        <span className={lbl}>Note</span>
+        {canEdit ? (
+          <span className="grid gap-2">
+            <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} maxLength={1000} placeholder="e.g. Flat 302 kitchen pending" className="w-full rounded-lg border border-input bg-background px-3 py-2 text-base" aria-label="Note" />
+            {note !== (step.note ?? "") ? (
+              <Button type="button" size="sm" variant="outline" className="justify-self-start" disabled={saving === "note"} onClick={() => run("note", () => updateChecklistStep({ projectId, stepId: step.id, note: note || null }), "Note saved")}>
+                Save note
+              </Button>
+            ) : null}
+          </span>
+        ) : (
+          <span>{step.note || "—"}</span>
+        )}
+      </div>
+      <div className={row}>
+        <span className={lbl}>Review</span>
+        <span className="grid gap-2">
+          <span className="text-slate-800 dark:text-slate-200">
+            {step.verification === "verified"
+              ? `Verified${step.verifiedBy ? ` by ${step.verifiedBy}` : ""}`
+              : step.verification === "rejected"
+                ? `Rejected${step.verifiedBy ? ` by ${step.verifiedBy}` : ""}${step.verificationNote ? `: ${step.verificationNote}` : ""}`
+                : step.status === "completed"
+                  ? "Waiting for review"
+                  : "Reviewed once done"}
+          </span>
+          {canVerify && step.status === "completed" ? (
+            <span className="grid gap-2 sm:flex sm:items-center">
+              <input value={reviewNote} onChange={(e) => setReviewNote(e.target.value)} maxLength={500} placeholder="Note (needed to reject)" className="h-10 min-w-0 flex-1 rounded-lg border border-input bg-background px-3 text-base" aria-label="Review note" />
+              <span className="flex gap-2">
+                <Button type="button" size="sm" className="h-10 bg-[#4d7c0f] text-white hover:bg-[#3f6a0c]" disabled={saving === "verify"} onClick={() => run("verify", () => verifyChecklistStep({ projectId, stepId: step.id, decision: "verified", note: reviewNote || null }), "Verified")}>
+                  Verify
+                </Button>
+                <Button type="button" size="sm" variant="outline" className="h-10" disabled={saving === "verify" || !reviewNote.trim()} onClick={() => run("verify", () => verifyChecklistStep({ projectId, stepId: step.id, decision: "rejected", note: reviewNote }), "Rejected; the team was told")}>
+                  Reject
+                </Button>
+              </span>
+            </span>
+          ) : null}
+        </span>
+      </div>
+    </div>
   );
 }
 

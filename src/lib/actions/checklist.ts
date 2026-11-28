@@ -13,6 +13,7 @@ import { getErrorMessage, PublicError } from "@/lib/errors/public";
 import { logServerError } from "@/lib/errors/server";
 import { validate } from "@/lib/validations/parse";
 import { todayInIndia } from "@/lib/progression/checklist-completion";
+import { plannedPercent } from "@/lib/progression/completion";
 import { STORAGE_BUCKETS, type UserRole } from "@/lib/types";
 
 /**
@@ -34,7 +35,28 @@ export type ChecklistStep = {
   endedBy: string | null;
   photos: { start: number; end: number };
   verification: "verified" | "rejected" | null;
+  verifiedBy: string | null;
+  verificationNote: string | null;
+  /** Day the work was done (YYYY-MM-DD). */
+  workDate: string | null;
+  note: string | null;
+  /** 360 scan linked as evidence. */
+  evidence: { id: string; name: string; url: string } | null;
 };
+
+export type ChecklistList = {
+  progressionId: string;
+  templateId: string;
+  name: string;
+  track: string;
+  percent: number | null;
+  plannedStart: string | null;
+  plannedEnd: string | null;
+  /** Planned % today from the dates (null when no dates). */
+  plannedPercent: number | null;
+};
+
+export type ChecklistScan = { id: string; name: string; date: string | null; url: string };
 
 export type ChecklistPhase = { key: string; name: string; weight: number; percent: number | null; steps: ChecklistStep[] };
 
@@ -54,8 +76,10 @@ export type ChecklistOverview = {
 export type ChecklistView = {
   title: string;
   percent: number;
-  /** Lists shown here (Structure + Finishing on a floor), for "Edit steps". */
-  lists: { templateId: string; name: string; track: string }[];
+  /** Lists shown here (Structure + Finishing on a floor) with their dates. */
+  lists: ChecklistList[];
+  /** 360 scans of this floor / building / site, for evidence. */
+  scans: ChecklistScan[];
   phases: ChecklistPhase[];
   nextStepId: string | null;
 };
@@ -130,10 +154,10 @@ export async function getChecklist(input: { projectId: string; scope: ChecklistS
     else if (sc.kind === "building") q = q.eq("building_id", sc.buildingId).eq("track", "external" as never);
     else q = q.eq("track", "site" as never);
     const { data: progs } = await q;
-    const progRows = ((progs ?? []) as Array<{ id: string; track: string; template_id: string }>).sort(
+    const progRows = ((progs ?? []) as Array<{ id: string; track: string; template_id: string; planned_start_date: string | null; planned_end_date: string | null }>).sort(
       (a, b) => (a.track === "pre_slab" ? 0 : 1) - (b.track === "pre_slab" ? 0 : 1)
     );
-    if (progRows.length === 0) return { ok: true, data: { title: "", percent: 0, lists: [], phases: [], nextStepId: null } };
+    if (progRows.length === 0) return { ok: true, data: { title: "", percent: 0, lists: [], scans: [], phases: [], nextStepId: null } };
     const { data: tplRows } = await admin
       .from("progression_templates")
       .select("id, name")
@@ -159,9 +183,33 @@ export async function getChecklist(input: { projectId: string; scope: ChecklistS
       completed_at: string | null;
       completed_by: string | null;
       verification_status?: string | null;
+      verified_by?: string | null;
+      verification_note?: string | null;
+      work_date?: string | null;
+      note?: string | null;
+      evidence_tour_id?: string | null;
       na?: boolean;
     }>;
-    const userIds = [...new Set(stepRows.flatMap((s) => [s.started_by, s.ended_by ?? s.completed_by]).filter(Boolean))] as string[];
+    const userIds = [...new Set(stepRows.flatMap((s) => [s.started_by, s.ended_by ?? s.completed_by, s.verified_by ?? null]).filter(Boolean))] as string[];
+    // 360 scans for this scope (evidence is locked to the same floor / building / site).
+    let scansQ = admin.from("project_tours").select("*").eq("project_id", input.projectId).is("deleted_at", null);
+    if (sc.kind === "floor") scansQ = scansQ.eq("floor_id", sc.floorId);
+    else if (sc.kind === "building") scansQ = scansQ.eq("building_id", sc.buildingId).is("floor_id", null);
+    else scansQ = scansQ.is("floor_id", null).is("building_id", null);
+    const { data: scanRows } = await scansQ;
+    const scans: ChecklistScan[] = ((scanRows ?? []) as Array<{ id: string; name: string; capture_date: string | null; created_at: string; matterport_url: string; archived_at?: string | null }>)
+      .filter((t) => !t.archived_at)
+      .map((t) => ({ id: t.id, name: t.name, date: (t.capture_date ?? t.created_at)?.slice(0, 10) ?? null, url: t.matterport_url }))
+      .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
+    const evidenceIds = [...new Set(stepRows.map((s) => s.evidence_tour_id).filter(Boolean))] as string[];
+    const missingEvidence = evidenceIds.filter((id) => !scans.some((sc2) => sc2.id === id));
+    const { data: extraScans } = missingEvidence.length
+      ? await admin.from("project_tours").select("id, name, matterport_url").in("id", missingEvidence)
+      : { data: [] as { id: string; name: string; matterport_url: string }[] };
+    const scanById = new Map<string, { id: string; name: string; url: string }>([
+      ...scans.map((x) => [x.id, { id: x.id, name: x.name, url: x.url }] as const),
+      ...((extraScans ?? []) as { id: string; name: string; matterport_url: string }[]).map((x) => [x.id, { id: x.id, name: x.name, url: x.matterport_url }] as const),
+    ]);
     const [{ data: users }, photosRes] = await Promise.all([
       userIds.length ? admin.from("users").select("id, full_name").in("id", userIds) : Promise.resolve({ data: [] }),
       stepRows.length
@@ -206,6 +254,11 @@ export async function getChecklist(input: { projectId: string; scope: ChecklistS
           endedBy: (s.ended_by ?? s.completed_by) ? (name.get((s.ended_by ?? s.completed_by)!) ?? null) : null,
           photos: photoCount.get(s.id) ?? { start: 0, end: 0 },
           verification: (s.verification_status as ChecklistStep["verification"]) ?? null,
+          verifiedBy: s.verified_by ? (name.get(s.verified_by) ?? null) : null,
+          verificationNote: s.verification_note ?? null,
+          workDate: s.work_date ?? null,
+          note: s.note ?? null,
+          evidence: s.evidence_tour_id ? (scanById.get(s.evidence_tour_id) ?? null) : null,
         });
         phases.set(key, phase);
       }
@@ -229,7 +282,27 @@ export async function getChecklist(input: { projectId: string; scope: ChecklistS
       data: {
         title: "",
         percent: wSum > 0 ? vSum / wSum : 0,
-        lists: progRows.map((p) => ({ templateId: p.template_id, name: tplName.get(p.template_id) ?? p.track, track: p.track })),
+        lists: progRows.map((p) => {
+          const own = ordered.filter((ph) => ph.key.startsWith(`${p.track}:`));
+          let w = 0;
+          let v = 0;
+          for (const ph of own) {
+            if (ph.percent == null || ph.weight <= 0) continue;
+            w += ph.weight;
+            v += ph.weight * ph.percent;
+          }
+          return {
+            progressionId: p.id,
+            templateId: p.template_id,
+            name: tplName.get(p.template_id) ?? p.track,
+            track: p.track,
+            percent: w > 0 ? v / w : null,
+            plannedStart: p.planned_start_date,
+            plannedEnd: p.planned_end_date,
+            plannedPercent: plannedPercent(todayInIndia(), p.planned_start_date, p.planned_end_date),
+          };
+        }),
+        scans,
         phases: ordered.map(({ order: _o, ...p }) => p),
         nextStepId: next?.id ?? null,
       },
@@ -444,5 +517,146 @@ export async function moveProjectToV2(projectId: string): Promise<Result<{ creat
     return { ok: true, data: { created: Number(row?.created ?? 0), switched: Number(row?.switched ?? 0), carried: Number(row?.carried ?? 0) } };
   } catch (err) {
     return fail("moveV2", err, "Could not switch to the new checklists.");
+  }
+}
+
+// ---------------------------------------------------------- step details
+
+const detailsSchema = z
+  .object({
+    projectId: uuid,
+    stepId: uuid,
+    note: z.string().trim().max(1000).nullable().optional(),
+    workDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  })
+  .strict();
+
+/** Note and the day the work was done (editors). */
+export async function updateChecklistStep(input: unknown): Promise<Result<{ ok: true }>> {
+  const parsed = validate(detailsSchema, input);
+  if (!parsed.success) return { ok: false, error: parsed.error };
+  const d = parsed.data;
+  try {
+    const { role } = await access(d.projectId);
+    if (!canEditProgression(role)) throw new PublicError("You can view progress but not update it.");
+    if (!(await stepContext(d.projectId, d.stepId))) return { ok: false, error: "Step not found." };
+    if (d.workDate && d.workDate > todayInIndia()) return { ok: false, error: "The date can't be in the future." };
+    const patch: Record<string, unknown> = {};
+    if (d.note !== undefined) patch.note = d.note || null;
+    if (d.workDate !== undefined) patch.work_date = d.workDate;
+    if (Object.keys(patch).length === 0) return { ok: true, data: { ok: true } };
+    const { error } = await createServiceRoleClient().from("project_progression_steps").update(patch as never).eq("id", d.stepId);
+    if (error) throw error;
+    return { ok: true, data: { ok: true } };
+  } catch (err) {
+    return fail("details", err, "Could not save the change.");
+  }
+}
+
+const verifySchema = z.object({ projectId: uuid, stepId: uuid, decision: z.enum(["verified", "rejected"]), note: z.string().trim().max(500).nullable().optional() }).strict();
+
+/** Verify or reject a done step (staff / Client Admin). The person who did it is told. */
+export async function verifyChecklistStep(input: unknown): Promise<Result<{ ok: true }>> {
+  const parsed = validate(verifySchema, input);
+  if (!parsed.success) return { ok: false, error: parsed.error };
+  const d = parsed.data;
+  try {
+    const { actor, role } = await access(d.projectId);
+    if (!canVerifyProgression(role)) throw new PublicError("Only BuildView staff or the Client Admin can verify.");
+    const ctx = await stepContext(d.projectId, d.stepId);
+    if (!ctx) return { ok: false, error: "Step not found." };
+    if (ctx.row.status !== "completed") return { ok: false, error: "Only done steps can be verified." };
+    if (d.decision === "rejected" && !d.note) return { ok: false, error: "Say what needs fixing." };
+    const admin = createServiceRoleClient();
+    const { error } = await admin
+      .from("project_progression_steps")
+      .update({ verification_status: d.decision, verified_by: actor.userId, verified_at: new Date().toISOString(), verification_note: d.note ?? null } as never)
+      .eq("id", d.stepId);
+    if (error) throw error;
+    await admin.from("project_progression_logs").insert({
+      progression_id: ctx.row.progression.id,
+      step_id: d.stepId,
+      action: d.decision,
+      work_date: todayInIndia(),
+      actor_id: actor.userId,
+      note: d.note ?? null,
+    } as never);
+    const { data: row } = await admin.from("project_progression_steps").select("ended_by, completed_by").eq("id", d.stepId).maybeSingle();
+    const doneBy = (row?.ended_by ?? row?.completed_by) as string | null | undefined;
+    if (doneBy) {
+      await notifyProjectTeam({
+        projectId: d.projectId,
+        event: "step_reviewed",
+        actorId: actor.userId,
+        recipients: [doneBy],
+        title: `${ctx.where}: step ${d.decision}`,
+        message: `"${ctx.title}" was ${d.decision}${d.note ? `: ${d.note}` : "."}`,
+        link: `/dashboard/projects/${d.projectId}?tab=progression`,
+      });
+    }
+    return { ok: true, data: { ok: true } };
+  } catch (err) {
+    return fail("verify", err, "Could not save the review.");
+  }
+}
+
+const evidenceSchema = z.object({ projectId: uuid, stepId: uuid, tourId: uuid.nullable() }).strict();
+
+/** Link (or clear) a 360 scan of the same floor / building / site as evidence. */
+export async function setChecklistEvidence(input: unknown): Promise<Result<{ ok: true }>> {
+  const parsed = validate(evidenceSchema, input);
+  if (!parsed.success) return { ok: false, error: parsed.error };
+  const d = parsed.data;
+  try {
+    const { role } = await access(d.projectId);
+    if (!canEditProgression(role)) throw new PublicError("You can view progress but not update it.");
+    const ctx = await stepContext(d.projectId, d.stepId);
+    if (!ctx) return { ok: false, error: "Step not found." };
+    const admin = createServiceRoleClient();
+    if (d.tourId) {
+      const { data: tour } = await admin.from("project_tours").select("id, floor_id, building_id, project_id").eq("id", d.tourId).is("deleted_at", null).maybeSingle();
+      const t = tour as { floor_id: string | null; building_id: string | null; project_id: string } | null;
+      const prog = ctx.row.progression;
+      const sameScope =
+        t &&
+        t.project_id === d.projectId &&
+        (prog.floor_id ? t.floor_id === prog.floor_id : prog.building_id ? t.building_id === prog.building_id && !t.floor_id : !t.floor_id && !t.building_id);
+      if (!sameScope) return { ok: false, error: "Pick a scan of this floor / building." };
+    }
+    const { error } = await admin.from("project_progression_steps").update({ evidence_tour_id: d.tourId } as never).eq("id", d.stepId);
+    if (error) throw error;
+    return { ok: true, data: { ok: true } };
+  } catch (err) {
+    return fail("evidence", err, "Could not link the scan.");
+  }
+}
+
+const scheduleSchema = z
+  .object({
+    projectId: uuid,
+    progressionId: uuid,
+    start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+    end: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+  })
+  .strict()
+  .refine((v) => !v.start || !v.end || v.end >= v.start, "The end date must be after the start.");
+
+/** Planned start / end of one list (Structure, Finishing, Outside or Site). */
+export async function setChecklistSchedule(input: unknown): Promise<Result<{ ok: true }>> {
+  const parsed = validate(scheduleSchema, input);
+  if (!parsed.success) return { ok: false, error: parsed.error };
+  const d = parsed.data;
+  try {
+    const { actor, role } = await access(d.projectId);
+    if (!canEditProgression(role)) throw new PublicError("You can view progress but not plan it.");
+    const { error } = await createServiceRoleClient()
+      .from("project_progressions")
+      .update({ planned_start_date: d.start, planned_end_date: d.end, updated_by: actor.userId } as never)
+      .eq("id", d.progressionId)
+      .eq("project_id", d.projectId);
+    if (error) throw error;
+    return { ok: true, data: { ok: true } };
+  } catch (err) {
+    return fail("schedule", err, "Could not save the dates.");
   }
 }
