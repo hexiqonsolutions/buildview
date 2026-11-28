@@ -6,6 +6,7 @@ import { fetchAllRows } from "@/lib/supabase/fetch-all";
 import { canViewProject, getActiveActor } from "@/lib/auth/project-access";
 import { canVerifyProgression, canViewProgression } from "@/lib/auth/roles";
 import { getProjectMethods, isConstructionProjectForProgression } from "@/lib/data/progression";
+import { getProgressionVersion } from "@/lib/data/progression-v2";
 import { logAuditEvent } from "@/lib/activity/audit";
 import { getErrorMessage, PublicError } from "@/lib/errors/public";
 import { logServerError } from "@/lib/errors/server";
@@ -182,10 +183,18 @@ export async function setConstructionMethod(
 
     // Move checklists whose template no longer matches the floor's method:
     // one transaction in the database (migration 054).
-    const { data: counts, error: rpcError } = await admin.rpc("reconcile_construction_methods" as never, {
-      p_project: projectId,
-      p_actor: actor.userId,
-    } as never);
+    // v2 projects keep v2 lists (migration 057); v1 projects use the v1 move (054).
+    const v2 = (await getProgressionVersion(projectId)) === 2;
+    const { data: rawCounts, error: rpcError } = await admin.rpc(
+      (v2 ? "reconcile_progression_v2" : "reconcile_construction_methods") as never,
+      { p_project: projectId, p_actor: actor.userId } as never
+    );
+    const counts = v2
+      ? (Array.isArray(rawCounts) ? rawCounts : [rawCounts]).map((r) => {
+          const x = (r ?? {}) as { switched?: number; carried?: number };
+          return { switched: x.switched ?? 0, carried: x.carried ?? 0, dropped: 0 };
+        })
+      : rawCounts;
     if (rpcError) {
       if (/reconcile_construction_methods/.test(rpcError.message ?? "") || rpcError.code === "PGRST202") {
         throw new PublicError("Saved. Checklists move to the new method after database migration 054 is run.");

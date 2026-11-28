@@ -36,6 +36,8 @@ import {
 import { PROGRESSION_TRACKS, type ProgressionTrack } from "@/lib/progression/catalog";
 import { CONSTRUCTION_METHOD_LABELS, trackLabel, trackLabelFor } from "@/lib/progression/methods";
 import { ConstructionMethodControl } from "@/components/projects/progression/construction-method-dialog";
+import { SimpleChecklist } from "@/components/projects/progression/simple-checklist";
+import { MoveToV2Banner } from "@/components/projects/progression/move-to-v2-banner";
 import type {
   FloorProgressionSummary,
   ProjectProgressionBundle,
@@ -2187,8 +2189,35 @@ export function ProgressionPanel({
             Ask BuildView to add buildings and floors on this project.
           </p>
         </div>
+      ) : data.progressionVersion === 2 ? (
+        <div className="space-y-5">
+          <SimpleChecklist projectId={data.projectId} onChanged={reloadBundle} />
+          <details className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+            <summary className="cursor-pointer text-sm font-medium text-slate-700 dark:text-slate-300">
+              More: planned dates, evidence and verification (detailed view)
+            </summary>
+            <div className="mt-4 space-y-5">
+              {PROGRESSION_TRACKS.map((track) => (
+                <TrackSection
+                  key={track}
+                  track={track}
+                  data={data}
+                  switching={switchingTrack === track}
+                  pendingKeys={pendingKeys}
+                  onSelectFloor={selectFloor}
+                  onTransition={onTransition}
+                  onSaveDates={onSaveDates}
+                  onSaveSchedule={onSaveSchedule}
+                  onEvidence={onEvidence}
+                  onReview={onReview}
+                />
+              ))}
+            </div>
+          </details>
+        </div>
       ) : (
         <div className="space-y-5">
+          {data.canVerify ? <MoveToV2Banner projectId={data.projectId} onMoved={reloadBundle} /> : null}
           {PROGRESSION_TRACKS.map((track) => (
             <TrackSection
               key={track}
