@@ -1,6 +1,7 @@
 import type { ProgressionTrack } from "@/lib/progression/catalog";
 import type { ProjectCompletion } from "@/lib/progression/checklist-completion";
 import type { ConstructionMethod } from "@/lib/progression/methods";
+import type { V2Result } from "@/lib/progression/v2-completion";
 
 export type { ProgressionTrack };
 
@@ -155,8 +156,10 @@ export type ProjectProgressionBundle = {
   overallPercent: number;
   floorCount: number;
   activatedFloorCount: number;
-  /** Definable Completion result: actual, planned, variance, status, per-floor. */
-  completion: ProjectCompletion;
+  /** Definable Completion result: actual, planned, variance, status, per-floor (v2 adds parts / split). */
+  completion: ProjectCompletion | V2Result;
+  /** 1 = original lists, 2 = Progression v2 (Inside / Outside / Site). */
+  progressionVersion?: number;
   /** Only verified steps count toward % (project setting, migration 047). */
   verifiedOnly: boolean;
   /** Viewer may verify / reject steps and change verifiedOnly. */

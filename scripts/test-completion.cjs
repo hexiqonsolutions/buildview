@@ -514,3 +514,46 @@ test("analytics: link stats separate previews, count unlocks and returning", () 
   assert.equal(agg.istDay("2026-11-20T20:00:00Z"), "2026-11-21");
   assert.equal(agg.toCsv(["a"], [["=cmd"]]), "a\r\n'=cmd");
 });
+
+// ---- progression v2 (weighted phases, Inside / Outside / Site)
+const v2 = jiti(path.join(root, "src/lib/progression/v2-completion.ts"));
+const lib2 = jiti(path.join(root, "src/lib/progression/library-v2.ts"));
+
+test("v2 library: weights add to 100 per list and Inside sums to 100", () => {
+  const byKey = Object.fromEntries(lib2.V2_TEMPLATES.map((t) => [t.key, t.phases.reduce((s, p) => s + p.weight, 0)]));
+  for (const m of ["", "_mivan", "_hybrid"]) {
+    close(byKey[`pre_slab${m}_v2`] + byKey[`post_slab${m}_v2`], 100, `inside${m}`);
+    close(byKey[`external${m}_v2`], 100, `outside${m}`);
+  }
+  close(byKey.site_v2, 100, "site");
+  const fin = lib2.V2_TEMPLATES.find((t) => t.key === "post_slab_v2");
+  const wp = fin.phases.find((p) => p.name.startsWith("Waterproofing"));
+  assert.ok(wp.steps.length >= 8 && wp.steps.every((s) => s.photo), "waterproofing expects photos");
+  // Every v2 step key is unique within its list.
+  for (const t of lib2.V2_TEMPLATES) {
+    const keys = lib2.v2Rows(t).map((r) => r.stepKey);
+    assert.equal(new Set(keys).size, keys.length, t.key);
+  }
+});
+
+test("v2 %: phases weighted, N/A ignored, split across Inside / Outside / Site", () => {
+  const step = (status, o = {}) => ({ status, doneDate: status === "completed" ? "2026-11-01" : null, verified: false, na: false, ...o });
+  const floor = (id, phases) => ({ scope: "floor", floorId: id, buildingId: "B", track: "post_slab", plannedStart: null, plannedEnd: null, phases });
+  // Floor F1: structure 30 all done; finishing 70 half done (one phase 70: 1 of 2 steps, 1 N/A).
+  const lists = [
+    floor("F1", [{ number: 1, weight: 30, steps: [step("completed")] }]),
+    floor("F1", [{ number: 2, weight: 70, steps: [step("completed"), step("pending"), step("pending", { na: true })] }]),
+    { scope: "building", floorId: null, buildingId: "B", track: "external", plannedStart: null, plannedEnd: null, phases: [{ number: 1, weight: 100, steps: [step("completed"), step("pending"), step("pending"), step("pending")] }] },
+  ];
+  const r = v2.v2ProjectCompletion({ checklists: lists, floorIds: ["F1", "F2"], buildingIds: ["B"], split: { inside: 70, outside: 20, site: 10 }, date: "2026-11-28" });
+  close(r.floors[0].actual, 65, "F1 = 30 + 70×0.5");
+  close(r.floors[1].actual, 0, "unstarted floor");
+  close(r.parts.inside.actual, 32.5, "inside avg");
+  close(r.parts.outside.actual, 25, "outside");
+  // No site checklist → site left out, renormalised over 90.
+  close(r.actual, (32.5 * 70 + 25 * 20) / 90, "project");
+  // History: nothing done before Oct.
+  const early = v2.v2ProjectCompletion({ checklists: lists, floorIds: ["F1"], buildingIds: ["B"], split: { inside: 70, outside: 20, site: 10 }, date: "2026-10-01", asOf: true });
+  close(early.actual, 0, "as of Oct");
+  assert.deepEqual(v2.normaliseSplit({ inside: "60", outside: 30 }), { inside: 60, outside: 30, site: 10 });
+});

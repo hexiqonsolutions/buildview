@@ -11,6 +11,8 @@ import {
 } from "@/lib/progression/checklist-completion";
 
 import { cache } from "react";
+import { getProgressionVersion, loadV2ProjectData, v2CompletionFor } from "@/lib/data/progression-v2";
+import type { V2Result } from "@/lib/progression/v2-completion";
 import {
   effectiveMethod,
   isConstructionMethod,
@@ -879,12 +881,22 @@ async function loadProjectProgressionBundle(
   for (const [floorId, p] of zoneFloorPlanned(zoneDataForProject, todayInIndia())) {
     zoneFloorPlannedPercents[floorId] = p;
   }
-  const { overallPercent: overall, activatedFloorCount, completion } = aggregateProjectPercent(
+  const v1 = aggregateProjectPercent(
     refreshed.floors,
     refreshed.combinedFloors,
     zoneFloorPercents,
     zoneFloorPlannedPercents
   );
+  const { overallPercent: overall, activatedFloorCount } = v1;
+  let completion: ProjectCompletion | V2Result = v1.completion;
+  // Progression v2: weighted phases and the Inside / Outside / Site split.
+  const v2Data = (await getProgressionVersion(projectId)) === 2 ? await loadV2ProjectData(projectId) : null;
+  if (v2Data) {
+    completion = v2CompletionFor(v2Data, todayInIndia(), {
+      zoneActual: new Map(Object.entries(zoneFloorPercents)),
+      zonePlanned: new Map(Object.entries(zoneFloorPlannedPercents)),
+    });
+  }
   await writeCompletionSnapshot(projectId, completion, verifiedOnly);
 
   return {
@@ -893,6 +905,7 @@ async function loadProjectProgressionBundle(
     floorCount: refreshed.combinedFloors.length,
     activatedFloorCount,
     completion,
+    progressionVersion: v2Data ? 2 : 1,
     verifiedOnly,
     canVerify: canVerifyProgression(actor.role),
     pendingReviewCount: refreshed.pendingReviewCount ?? 0,
@@ -972,6 +985,32 @@ export async function getProjectProgressionFresh(
 export async function getProgressionPercentByProjectIds(
   projectIds: string[]
 ): Promise<Map<string, number>> {
+  const result = await v1PercentByProjectIds(projectIds);
+  // Progression v2 projects: weighted phases + Inside / Outside / Site split.
+  try {
+    const ids = projectIds.filter((id) => validate(projectIdSchema, id).success);
+    if (ids.length === 0) return result;
+    const { data: rows } = await createServiceRoleClient().from("projects").select("*").in("id", ids);
+    const v2Ids = ((rows ?? []) as Array<{ id: string; progression_version?: number }>)
+      .filter((r) => Number(r.progression_version ?? 1) === 2)
+      .map((r) => r.id);
+    if (v2Ids.length === 0) return result;
+    const today = todayInIndia();
+    const zoneData = await loadZoneData(v2Ids).catch(() => new Map());
+    for (const id of v2Ids) {
+      const data = await loadV2ProjectData(id);
+      if (!data) continue;
+      const zones = new Map<string, number>();
+      for (const [floorId, r] of zoneFloorResults(zoneData.get(id), today, data.verifiedOnly)) zones.set(floorId, r.percent);
+      result.set(id, Math.round(v2CompletionFor(data, today, { zoneActual: zones }).actual));
+    }
+  } catch (err) {
+    console.warn("[getProgressionPercentByProjectIds] v2 failed:", err);
+  }
+  return result;
+}
+
+async function v1PercentByProjectIds(projectIds: string[]): Promise<Map<string, number>> {
   const result = new Map<string, number>();
   const ids = projectIds.filter((id) => validate(projectIdSchema, id).success);
   if (ids.length === 0) return result;
@@ -1251,6 +1290,31 @@ export async function getCompletionHistory(projectId: string): Promise<Completio
   const admin = createServiceRoleClient();
   const verifiedOnly = await getVerifiedOnly(projectId);
 
+  if ((await getProgressionVersion(projectId)) === 2) {
+    const data = await loadV2ProjectData(projectId);
+    if (data) {
+      const zoneData = (await loadZoneData([projectId]).catch(() => new Map())).get(projectId);
+      const { data: snapRows } = await admin
+        .from("completion_snapshots" as never)
+        .select("*")
+        .eq("project_id", projectId)
+        .order("snapshot_date", { ascending: true })
+        .limit(400);
+      return {
+        points: v2HistoryPoints(data, todayInIndia(), (date) => {
+          const out = new Map<string, number>();
+          for (const [floorId, r] of zoneFloorResults(zoneData, date, verifiedOnly)) out.set(floorId, r.percent);
+          return out;
+        }),
+        snapshots: ((snapRows ?? []) as unknown as Array<{ snapshot_date: string; actual: number; planned: number | null }>).map((row) => ({
+          date: row.snapshot_date,
+          actual: Number(row.actual),
+          planned: row.planned != null ? Number(row.planned) : null,
+        })),
+      };
+    }
+  }
+
   const [{ data: progressions }, zoneMap, { data: snapshotRows }] = await Promise.all([
     admin
       .from("project_progressions")
@@ -1341,4 +1405,34 @@ async function writeCompletionSnapshot(
   } catch {
     // Snapshots are best-effort.
   }
+}
+
+/** v2 S-curve: actual (work ended by each date) vs planned, weekly-ish points. */
+function v2HistoryPoints(
+  data: Awaited<ReturnType<typeof loadV2ProjectData>> & object,
+  today: string,
+  zonesOn: (date: string) => Map<string, number>
+): SCurvePoint[] {
+  const starts: string[] = [];
+  const ends: string[] = [today];
+  for (const cl of data.checklists) {
+    if (cl.plannedStart) starts.push(cl.plannedStart.slice(0, 10));
+    if (cl.plannedEnd) ends.push(cl.plannedEnd.slice(0, 10));
+    for (const ph of cl.phases) for (const st of ph.steps) if (st.doneDate) starts.push(st.doneDate);
+  }
+  if (starts.length === 0) return [];
+  const DAY = 86_400_000;
+  const toMs = (d: string) => Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10));
+  const startMs = toMs(starts.sort()[0]);
+  const endMs = toMs(ends.sort().at(-1)!);
+  const stepDays = Math.max(7, Math.ceil(Math.max(1, (endMs - startMs) / DAY) / 39));
+  const dates: string[] = [];
+  for (let ms = startMs; ms < endMs; ms += stepDays * DAY) dates.push(new Date(ms).toISOString().slice(0, 10));
+  dates.push(new Date(endMs).toISOString().slice(0, 10));
+  if (!dates.includes(today)) dates.push(today);
+  dates.sort();
+  return dates.map((date) => {
+    const r = v2CompletionFor(data, date, { asOf: true, zoneActual: date <= today ? zonesOn(date) : undefined });
+    return { date, actual: date <= today ? r.actual : null, planned: r.planned };
+  });
 }
