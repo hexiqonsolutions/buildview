@@ -458,3 +458,59 @@ test("team notifications: digest counts per project with plurals", () => {
     { projectName: "Malhar", line: "1 comment" },
   ]);
 });
+
+// ---- traffic analytics classifiers
+const cls = jiti(path.join(root, "src/lib/analytics/classify.ts"));
+
+test("analytics: link previews and bots are not people", () => {
+  assert.equal(cls.botSource("WhatsApp/2.23.20.0 A"), "WhatsApp");
+  assert.equal(cls.botSource("facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)"), "Facebook");
+  assert.equal(cls.botSource("Mozilla/5.0 (compatible; Googlebot/2.1)"), "Google");
+  assert.equal(cls.botSource("curl/8.0"), "Other bot");
+  assert.equal(cls.botSource(""), "Unknown bot");
+  // People: mobile Chrome, Instagram in-app browser, iPhone Safari.
+  assert.equal(cls.botSource("Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 Chrome/125 Mobile Safari/537.36"), null);
+  assert.equal(cls.botSource("Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Instagram 330.0.0"), null);
+  assert.equal(cls.botSource("Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 Version/17.5 Mobile/15E148 Safari/604.1"), null);
+});
+
+test("analytics: device, referrer, UTM and source", () => {
+  assert.equal(cls.deviceClass("Mozilla/5.0 (iPhone; CPU iPhone OS 17_5) Mobile"), "mobile");
+  assert.equal(cls.deviceClass("Mozilla/5.0 (iPad; CPU OS 17_5)"), "tablet");
+  assert.equal(cls.deviceClass("Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/125"), "desktop");
+  assert.equal(cls.referrerHost("https://www.google.com/search?q=x"), "google.com");
+  assert.equal(cls.referrerHost("https://buildview-tawny.vercel.app/about", "buildview-tawny.vercel.app"), null);
+  const utm = cls.parseUtm("?utm_source=instagram&utm_medium=reel&utm_campaign=nov-launch");
+  assert.deepEqual(utm, { source: "instagram", medium: "reel", campaign: "nov-launch" });
+  assert.equal(cls.trafficSource(null, utm), "Instagram");
+  assert.equal(cls.trafficSource("l.instagram.com", cls.parseUtm("")), "Instagram");
+  assert.equal(cls.trafficSource(null, cls.parseUtm("")), "Direct");
+  assert.equal(cls.isMarketingPath("/real-estate-showcase"), true);
+  assert.equal(cls.isMarketingPath("/dashboard"), false);
+  assert.equal(cls.clampSeconds(999), 60);
+  assert.equal(cls.clampSeconds("abc"), 0);
+});
+
+const agg = jiti(path.join(root, "src/lib/analytics/aggregate.ts"));
+
+test("analytics: link stats separate previews, count unlocks and returning", () => {
+  const v = (o) => ({ share_id: "S", visitor_id: "a", is_preview: false, preview_source: null, visit_started_at: "2026-11-20T05:00:00Z", active_seconds: 0, unlocked_at: null, device: "mobile", country: "IN", referrer_host: null, ...o });
+  const rows = [
+    v({ visitor_id: "a", unlocked_at: "2026-11-20T05:01:00Z", active_seconds: 120 }),
+    v({ visitor_id: "a", visit_started_at: "2026-11-22T05:00:00Z", unlocked_at: "2026-11-22T05:01:00Z", active_seconds: 60 }),
+    v({ visitor_id: "b" }),
+    v({ visitor_id: "bot:WhatsApp", is_preview: true, preview_source: "WhatsApp" }),
+  ];
+  const s = agg.linkStats(rows);
+  assert.equal(s.opens, 3);
+  assert.equal(s.unique, 2);
+  assert.equal(s.unlocked, 1);
+  close(s.unlockRate, 50, "unlock rate");
+  close(s.avgSeconds, 90, "avg time");
+  assert.equal(s.returning, 1);
+  assert.equal(s.previews, 1);
+  const daily = agg.dailyOpens(rows, agg.dayRange("2026-11-20", "2026-11-22"));
+  assert.deepEqual(daily.map((d) => d.opens), [2, 0, 1]);
+  assert.equal(agg.istDay("2026-11-20T20:00:00Z"), "2026-11-21");
+  assert.equal(agg.toCsv(["a"], [["=cmd"]]), "a\r\n'=cmd");
+});

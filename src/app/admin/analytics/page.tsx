@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { WebsiteAnalyticsPanel } from "@/components/admin/analytics/website-analytics-panel";
 import { getAdminDashboardStats, getAdminOperationsStats } from "@/lib/data/dashboard";
 import { getAdminMarketingAuditStats } from "@/lib/data/marketing-audit";
 import { getAdminStorageStats } from "@/lib/data/storage";
@@ -81,6 +82,15 @@ export default async function AdminAnalyticsPage() {
       icon={FileText}
       showBanner={false}
     >
+      {/* Website visitors (first-party) */}
+      <section className="space-y-4">
+        <SectionHeading
+          title="Website visitors"
+          description="Landing page traffic: visitors, top pages, where they came from, campaigns and leads."
+        />
+        <WebsiteAnalyticsPanel />
+      </section>
+
       {/* Platform snapshot */}
       <section className="space-y-4">
         <SectionHeading

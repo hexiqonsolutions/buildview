@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { getTourLinkStats } from "@/lib/actions/traffic-analytics";
 import { useRouter } from "next/navigation";
 import {
   Camera,
@@ -69,6 +70,20 @@ export function MatterportManager({
   scanPercents?: Record<string, ScanChecklistPercent>;
 }) {
   const { hydrated, scope, clientProjects, project, projects } = useAdminWorkspace();
+  // Share-link traffic per tour ("23 opens · 9 unlocked").
+  const [linkStats, setLinkStats] = useState<Record<string, { opens: number; unlocked: number; lastOpened: string | null }>>({});
+  const tourIdsKey = tours.map((t) => t.id).join(",");
+  useEffect(() => {
+    let cancelled = false;
+    const ids = tourIdsKey ? tourIdsKey.split(",") : [];
+    if (ids.length === 0) return;
+    getTourLinkStats(ids).then((s) => {
+      if (!cancelled) setLinkStats(s);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [tourIdsKey]);
   const { lens, portalOfProject } = useAdminPortalLens();
   const [thumbnailTour, setThumbnailTour] = useState<TourRow | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<TourRow | null>(null);
@@ -326,6 +341,17 @@ export function MatterportManager({
                           </span>
                         ) : null}
                       </p>
+                      {linkStats[tour.id] ? (
+                        <Link
+                          href="/admin/tour-viewers"
+                          className="mt-1 inline-block text-xs text-slate-600 underline-offset-2 hover:underline dark:text-slate-300"
+                          title="Shared link traffic for this tour"
+                        >
+                          <span className="tabular-nums">{linkStats[tour.id].opens}</span> opens ·{" "}
+                          <span className="tabular-nums">{linkStats[tour.id].unlocked}</span> unlocked
+                          {linkStats[tour.id].lastOpened ? ` · last ${formatDate(linkStats[tour.id].lastOpened!)}` : ""}
+                        </Link>
+                      ) : null}
                     </div>
                     <div className="flex shrink-0 items-center gap-0.5">
                       <ShareTourDialog

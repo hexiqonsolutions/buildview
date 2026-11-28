@@ -28,6 +28,7 @@ import type {
   ProjectCommentWithUser,
 } from "@/lib/types";
 import { isShowcaseDashboard } from "@/lib/portal/dashboard-type";
+import { ProjectEngagementCard } from "@/components/portal/project-engagement-card";
 
 function TabLoading() {
   return (
@@ -283,6 +284,7 @@ export function ProjectDetailTabs({
     ) : null;
     return (
       <div className="mt-4 space-y-5 sm:mt-6 sm:space-y-8">
+        {projectId ? <ProjectEngagementCard projectId={projectId} /> : null}
         {property ? (
           <PropertyPage view={property} tour={tourPanel ?? undefined} />
         ) : (

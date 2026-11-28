@@ -1,6 +1,15 @@
 "use client";
 
 import { hasAnalyticsConsent } from "@/lib/analytics/consent";
+import { trackSiteEvent } from "@/lib/analytics/first-party";
+
+/** Our own (anonymous) website analytics names for the shared events. */
+const FIRST_PARTY_EVENT: Record<string, string> = {
+  Contact: "contact_submitted",
+  BookDemo: "book_demo",
+  SignUp: "sign_up",
+  CtaClick: "cta_click",
+};
 import {
   analyticsEvents,
   gaEventNames,
@@ -42,6 +51,8 @@ export function trackEvent(
   eventName: AnalyticsEventName | string,
   params?: TrackParams
 ): void {
+  const firstParty = FIRST_PARTY_EVENT[eventName];
+  if (firstParty) trackSiteEvent(firstParty);
   if (!hasAnalyticsConsent()) return;
 
   const known = Object.values(analyticsEvents).includes(

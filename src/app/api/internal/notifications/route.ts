@@ -1,6 +1,7 @@
 import { createHash, timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
 import { flushOutbox, runDigest } from "@/lib/notifications/team";
+import { pruneAnalytics } from "@/lib/analytics/record";
 
 /**
  * Scheduled team notifications (Vercel Cron, Authorization: Bearer $CRON_SECRET).
@@ -29,6 +30,7 @@ export async function GET(request: Request) {
   const task = new URL(request.url).searchParams.get("task") ?? "flush";
   const flushed = await flushOutbox({ limit: 500 });
   const digested = task === "digest" ? await runDigest() : null;
+  if (task === "flush") await pruneAnalytics();
   return NextResponse.json({ ok: true, task, flushed, digested, timestamp: new Date().toISOString() });
 }
 

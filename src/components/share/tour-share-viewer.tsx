@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { startHeartbeat, trackBeacon, trackRequest, visitorId } from "@/lib/analytics/first-party";
 import Link from "next/link";
 import { Building2, Calendar, Layers, Loader2, MapPin } from "lucide-react";
 import { BrandLogo } from "@/components/brand/brand-logo";
@@ -32,6 +33,24 @@ export function TourShareViewer({ meta }: { meta: TourSharePublicMeta }) {
   const [unavailable, setUnavailable] = useState(false);
   const [booting, setBooting] = useState(true);
   const [pending, startTransition] = useTransition();
+  const [visit, setVisit] = useState<{ visitId: string; vid: string } | null>(null);
+  const visitRef = useRef<{ visitId: string; vid: string } | null>(null);
+
+  // Count the open (anonymous), once per page load.
+  useEffect(() => {
+    const { vid } = visitorId();
+    void trackRequest<{ visitId?: string | null }>({
+      t: "share_open",
+      token: meta.token,
+      vid,
+      referrer: document.referrer,
+    }).then((r) => {
+      if (r?.visitId) {
+        visitRef.current = { visitId: r.visitId, vid };
+        setVisit(visitRef.current);
+      }
+    });
+  }, [meta.token]);
 
   const unlock = useCallback(
     (
@@ -49,6 +68,8 @@ export function TourShareViewer({ meta }: { meta: TourSharePublicMeta }) {
           email: viewerEmail,
           // Session restore: unlock without inserting another view row.
           recordView: options?.recordView !== false,
+          visitId: visitRef.current?.visitId ?? null,
+          visitorId: visitRef.current?.vid ?? null,
         });
         if (!result.ok) {
           if (result.unavailable) setUnavailable(true);
@@ -95,6 +116,15 @@ export function TourShareViewer({ meta }: { meta: TourSharePublicMeta }) {
     }
     setBooting(false);
   }, [meta.token, unlock]);
+
+  const unlocked = Boolean(tour);
+  useEffect(() => {
+    if (!unlocked || !visit) return;
+    return startHeartbeat(
+      (seconds) => trackBeacon({ t: "share_hb", visitId: visit.visitId, vid: visit.vid, seconds }),
+      30
+    );
+  }, [unlocked, visit]);
 
   if (unavailable) {
     return <TourShareUnavailable />;
@@ -187,6 +217,9 @@ export function TourShareViewer({ meta }: { meta: TourSharePublicMeta }) {
 
         <p className="text-center text-xs text-slate-500">
           Link expires {formatDate(meta.expiresAt)}. Powered by {siteConfig.name}.
+        </p>
+        <p className="text-center text-[11px] text-slate-400">
+          We record visits to this link to show the owner how it&apos;s used.
         </p>
       </div>
     );

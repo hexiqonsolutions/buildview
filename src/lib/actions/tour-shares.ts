@@ -1,5 +1,7 @@
 "use server";
 
+import { markShareUnlocked } from "@/lib/analytics/record";
+
 import { createHash, randomBytes } from "crypto";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
@@ -555,6 +557,9 @@ export async function recordTourShareView(input: {
   email: string;
   /** When false, unlock only — no insert (session restore). Default true. */
   recordView?: boolean;
+  /** First-party analytics visit to mark unlocked (optional). */
+  visitId?: string | null;
+  visitorId?: string | null;
 }): Promise<
   | { ok: true; tour: TourShareUnlocked; viewRecorded: boolean }
   | { ok: false; error: string; unavailable?: boolean }
@@ -600,6 +605,7 @@ export async function recordTourShareView(input: {
     }
 
     let viewRecorded = false;
+    let recordedViewId: string | null = null;
 
     if (shouldRecord) {
       const admin = createServiceRoleClient();
@@ -629,14 +635,19 @@ export async function recordTourShareView(input: {
       );
 
       if (!existing) {
-        const { error } = await admin.from("tour_share_views").insert({
-          share_id: loaded.share.id,
-          viewer_name: name,
-          viewer_email: email,
-          viewer_phone: phone,
-          user_agent: hdrs.get("user-agent")?.slice(0, 500) ?? null,
-          ip_hash: hashIp(ip),
-        });
+        const { data: insertedView, error } = await admin
+          .from("tour_share_views")
+          .insert({
+            share_id: loaded.share.id,
+            viewer_name: name,
+            viewer_email: email,
+            viewer_phone: phone,
+            user_agent: hdrs.get("user-agent")?.slice(0, 500) ?? null,
+            ip_hash: hashIp(ip),
+          })
+          .select("id")
+          .single();
+        if (insertedView?.id) recordedViewId = insertedView.id as string;
 
         if (error) {
           console.error("[tour-shares] record view failed:", error);
@@ -646,6 +657,13 @@ export async function recordTourShareView(input: {
         }
       }
     }
+
+    await markShareUnlocked({
+      visitId: input.visitId,
+      vid: input.visitorId,
+      shareId: loaded.share.id,
+      viewId: recordedViewId,
+    });
 
     // Staff notify only for a successful new insert. Failures / dedupe / restore
     // must not alert. Notification errors must never block tour unlock.

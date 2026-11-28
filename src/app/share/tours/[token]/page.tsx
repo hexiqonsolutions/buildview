@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { TourShareUnavailable, TourShareViewer } from "@/components/share/tour-share-viewer";
 import { getTourSharePublicMeta } from "@/lib/actions/tour-shares";
 import { siteConfig } from "@/lib/site-config";
+import { headers } from "next/headers";
+import { botSource } from "@/lib/analytics/classify";
+import { recordSharePreview } from "@/lib/analytics/record";
 
 type PageProps = {
   params: Promise<{ token: string }>;
@@ -30,6 +33,10 @@ export default async function PublicTourSharePage({ params }: PageProps) {
   if (!result.ok) {
     return <TourShareUnavailable />;
   }
+
+  // WhatsApp / Facebook / Slack link previews: counted separately, never as opens.
+  const hdrs = await headers();
+  if (botSource(hdrs.get("user-agent"))) await recordSharePreview(token, hdrs);
 
   return <TourShareViewer meta={result.meta} />;
 }
