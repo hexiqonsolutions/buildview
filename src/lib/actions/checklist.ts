@@ -97,8 +97,10 @@ async function access(projectId: string) {
   const actor = await getActiveActor();
   if (!actor) throw new PublicError("You must be signed in.");
   const role = actor.role as UserRole;
-  if (!canViewProgression(role) || !(await canViewProject(actor, projectId))) throw new PublicError("You don't have access to this project.");
-  if (!(await isConstructionProjectForProgression(projectId))) throw new PublicError("Progression is for Construction Intelligence projects.");
+  if (!canViewProgression(role)) throw new PublicError("You don't have access to this project.");
+  const [canView, isConstruction] = await Promise.all([canViewProject(actor, projectId), isConstructionProjectForProgression(projectId)]);
+  if (!canView) throw new PublicError("You don't have access to this project.");
+  if (!isConstruction) throw new PublicError("Progression is for Construction Intelligence projects.");
   return { actor, role };
 }
 
@@ -146,28 +148,30 @@ export async function getChecklist(input: { projectId: string; scope: ChecklistS
   const scope = validate(scopeSchema, input?.scope);
   if (!validate(uuid, input?.projectId).success || !scope.success) return { ok: false, error: "Invalid checklist." };
   try {
-    await access(input.projectId);
     const admin = createServiceRoleClient();
     let q = admin.from("project_progressions").select("*").eq("project_id", input.projectId).is("deleted_at", null);
     const sc = scope.data;
     if (sc.kind === "floor") q = q.eq("floor_id", sc.floorId).in("track", ["pre_slab", "post_slab"]);
     else if (sc.kind === "building") q = q.eq("building_id", sc.buildingId).eq("track", "external" as never);
     else q = q.eq("track", "site" as never);
-    const { data: progs } = await q;
+    // 360 scans for this scope (evidence is locked to the same floor / building / site).
+    let scansQ = admin.from("project_tours").select("*").eq("project_id", input.projectId).is("deleted_at", null);
+    if (sc.kind === "floor") scansQ = scansQ.eq("floor_id", sc.floorId);
+    else if (sc.kind === "building") scansQ = scansQ.eq("building_id", sc.buildingId).is("floor_id", null);
+    else scansQ = scansQ.is("floor_id", null).is("building_id", null);
+    // One round trip: permission check, checklists and scans together.
+    const [, { data: progs }, { data: scanRows }] = await Promise.all([access(input.projectId), q, scansQ]);
     const progRows = ((progs ?? []) as Array<{ id: string; track: string; template_id: string; planned_start_date: string | null; planned_end_date: string | null }>).sort(
       (a, b) => (a.track === "pre_slab" ? 0 : 1) - (b.track === "pre_slab" ? 0 : 1)
     );
     if (progRows.length === 0) return { ok: true, data: { title: "", percent: 0, lists: [], scans: [], phases: [], nextStepId: null } };
-    const { data: tplRows } = await admin
-      .from("progression_templates")
-      .select("id, name")
-      .in("id", [...new Set(progRows.map((p) => p.template_id))]);
-    const tplName = new Map(((tplRows ?? []) as { id: string; name: string }[]).map((t) => [t.id, t.name]));
-
-    const [{ data: steps }, { data: tpl }] = await Promise.all([
+    const templateIds = [...new Set(progRows.map((p) => p.template_id))];
+    const [{ data: steps }, { data: tpl }, { data: tplRows }] = await Promise.all([
       admin.from("project_progression_steps").select("*").in("progression_id", progRows.map((p) => p.id)),
-      admin.from("progression_template_steps").select("*").in("template_id", [...new Set(progRows.map((p) => p.template_id))]),
+      admin.from("progression_template_steps").select("*").in("template_id", templateIds),
+      admin.from("progression_templates").select("id, name").in("id", templateIds),
     ]);
+    const tplName = new Map(((tplRows ?? []) as { id: string; name: string }[]).map((t) => [t.id, t.name]));
     const tplById = new Map(
       ((tpl ?? []) as Array<{ id: string; title: string; phase_number: number; phase_name: string; phase_weight?: number | null; photo_expected?: boolean; hidden_at?: string | null; step_number: number }>).map((t) => [t.id, t])
     );
@@ -191,30 +195,24 @@ export async function getChecklist(input: { projectId: string; scope: ChecklistS
       na?: boolean;
     }>;
     const userIds = [...new Set(stepRows.flatMap((s) => [s.started_by, s.ended_by ?? s.completed_by, s.verified_by ?? null]).filter(Boolean))] as string[];
-    // 360 scans for this scope (evidence is locked to the same floor / building / site).
-    let scansQ = admin.from("project_tours").select("*").eq("project_id", input.projectId).is("deleted_at", null);
-    if (sc.kind === "floor") scansQ = scansQ.eq("floor_id", sc.floorId);
-    else if (sc.kind === "building") scansQ = scansQ.eq("building_id", sc.buildingId).is("floor_id", null);
-    else scansQ = scansQ.is("floor_id", null).is("building_id", null);
-    const { data: scanRows } = await scansQ;
     const scans: ChecklistScan[] = ((scanRows ?? []) as Array<{ id: string; name: string; capture_date: string | null; created_at: string; matterport_url: string; archived_at?: string | null }>)
       .filter((t) => !t.archived_at)
       .map((t) => ({ id: t.id, name: t.name, date: (t.capture_date ?? t.created_at)?.slice(0, 10) ?? null, url: t.matterport_url }))
       .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
     const evidenceIds = [...new Set(stepRows.map((s) => s.evidence_tour_id).filter(Boolean))] as string[];
     const missingEvidence = evidenceIds.filter((id) => !scans.some((sc2) => sc2.id === id));
-    const { data: extraScans } = missingEvidence.length
-      ? await admin.from("project_tours").select("id, name, matterport_url").in("id", missingEvidence)
-      : { data: [] as { id: string; name: string; matterport_url: string }[] };
-    const scanById = new Map<string, { id: string; name: string; url: string }>([
-      ...scans.map((x) => [x.id, { id: x.id, name: x.name, url: x.url }] as const),
-      ...((extraScans ?? []) as { id: string; name: string; matterport_url: string }[]).map((x) => [x.id, { id: x.id, name: x.name, url: x.matterport_url }] as const),
-    ]);
-    const [{ data: users }, photosRes] = await Promise.all([
+    const [{ data: users }, photosRes, { data: extraScans }] = await Promise.all([
       userIds.length ? admin.from("users").select("id, full_name").in("id", userIds) : Promise.resolve({ data: [] }),
       stepRows.length
         ? admin.from("step_photos" as never).select("step_id, kind").in("step_id", stepRows.map((s) => s.id))
         : Promise.resolve({ data: [], error: null }),
+      missingEvidence.length
+        ? admin.from("project_tours").select("id, name, matterport_url").in("id", missingEvidence)
+        : Promise.resolve({ data: [] as { id: string; name: string; matterport_url: string }[] }),
+    ]);
+    const scanById = new Map<string, { id: string; name: string; url: string }>([
+      ...scans.map((x) => [x.id, { id: x.id, name: x.name, url: x.url }] as const),
+      ...((extraScans ?? []) as { id: string; name: string; matterport_url: string }[]).map((x) => [x.id, { id: x.id, name: x.name, url: x.matterport_url }] as const),
     ]);
     const name = new Map(((users ?? []) as { id: string; full_name: string | null }[]).map((u) => [u.id, u.full_name]));
     const photoCount = new Map<string, { start: number; end: number }>();

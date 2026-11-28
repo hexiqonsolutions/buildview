@@ -72,7 +72,7 @@ export function SimpleChecklist({ projectId, onChanged }: { projectId: string; o
   const [view, setView] = useState<ChecklistView | null>(null);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState<Set<string>>(new Set());
-  const [busy, setBusy] = useState<string | null>(null);
+  const [busy] = useState<string | null>(null);
   const [toast, setToast] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [pending, setPending] = useState<PendingAction | null>(null);
   const [photosFor, setPhotosFor] = useState<ChecklistStep | null>(null);
@@ -97,20 +97,45 @@ export function SimpleChecklist({ projectId, onChanged }: { projectId: string; o
     } else setToast({ kind: "error", text: r.error });
   }, [projectId]);
 
+  // Lists already opened, by place: tab switches show them instantly, then refresh quietly.
+  const cacheRef = useRef(new Map<string, ChecklistView>());
+  const scopeKey = (sc: ChecklistScope) => (sc.kind === "floor" ? `f:${sc.floorId}` : sc.kind === "building" ? `b:${sc.buildingId}` : "site");
+  const currentKey = scope ? scopeKey(scope) : null;
+  const currentKeyRef = useRef<string | null>(null);
+  currentKeyRef.current = currentKey;
+
+  const fetchList = useCallback(
+    async (sc: ChecklistScope): Promise<ChecklistView | null> => {
+      const r = await getChecklist({ projectId, scope: sc });
+      if (!r.ok) {
+        if (currentKeyRef.current === scopeKey(sc)) setToast({ kind: "error", text: r.error });
+        return null;
+      }
+      cacheRef.current.set(scopeKey(sc), r.data);
+      return r.data;
+    },
+    [projectId]
+  );
+
+  const showList = useCallback((data: ChecklistView, openNext: boolean) => {
+    setView(data);
+    if (openNext) {
+      const nextPhase = data.phases.find((p) => p.steps.some((s) => s.id === data.nextStepId));
+      setOpen(new Set(nextPhase ? [nextPhase.key] : []));
+    }
+  }, []);
+
   const loadList = useCallback(async () => {
     if (!scope) return;
-    setLoading(true);
-    const r = await getChecklist({ projectId, scope });
+    const key = scopeKey(scope);
+    const cached = cacheRef.current.get(key);
+    if (cached) showList(cached, true);
+    else setLoading(true);
+    const fresh = await fetchList(scope);
+    if (currentKeyRef.current !== key) return;
     setLoading(false);
-    if (!r.ok) {
-      setToast({ kind: "error", text: r.error });
-      return;
-    }
-    setView(r.data);
-    // Open the phase that holds the next step.
-    const nextPhase = r.data.phases.find((p) => p.steps.some((s) => s.id === r.data.nextStepId));
-    setOpen(new Set(nextPhase ? [nextPhase.key] : []));
-  }, [projectId, scope]);
+    if (fresh) showList(fresh, !cached);
+  }, [scope, fetchList, showList]);
 
   useEffect(() => {
     void loadOverview();
@@ -124,27 +149,75 @@ export function SimpleChecklist({ projectId, onChanged }: { projectId: string; o
     return () => clearTimeout(t);
   }, [toast]);
 
+  // Preload the other tabs once the first list is shown, so switching is instant.
+  const preloaded = useRef(false);
+  useEffect(() => {
+    if (preloaded.current || !overview || !view) return;
+    preloaded.current = true;
+    const targets: ChecklistScope[] = [{ kind: "site" }];
+    if (buildingId) targets.unshift({ kind: "building", buildingId });
+    const t = setTimeout(async () => {
+      for (const sc of targets) if (!cacheRef.current.has(scopeKey(sc))) await fetchList(sc);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [overview, view, buildingId, fetchList]);
+
+  // Totals (header %, other floors) and the page above refresh shortly after
+  // the last change, not after every tap.
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const settle = useCallback(() => {
+    if (settleTimer.current) clearTimeout(settleTimer.current);
+    settleTimer.current = setTimeout(() => {
+      void loadOverview();
+      onChanged?.();
+    }, 2500);
+  }, [loadOverview, onChanged]);
+  useEffect(() => () => {
+    if (settleTimer.current) clearTimeout(settleTimer.current);
+  }, []);
+
   const refresh = useCallback(async () => {
-    await Promise.all([loadList(), loadOverview()]);
-    onChanged?.();
-  }, [loadList, loadOverview, onChanged]);
+    if (scope) cacheRef.current.delete(scopeKey(scope));
+    await loadList();
+    settle();
+  }, [loadList, settle, scope]);
+
+  /** Update one step on screen right away (the server confirms after). */
+  function patchStep(stepId: string, patch: Partial<ChecklistStep>) {
+    setView((v) => {
+      if (!v) return v;
+      const next = { ...v, phases: v.phases.map((p) => ({ ...p, steps: p.steps.map((st) => (st.id === stepId ? { ...st, ...patch } : st)) })) };
+      if (currentKey) cacheRef.current.set(currentKey, next);
+      return next;
+    });
+  }
 
   async function runAction(step: ChecklistStep, action: "start" | "done" | "undo", photo?: File | null) {
-    setBusy(step.id);
+    const now = new Date().toISOString();
+    const before = { status: step.status, startedAt: step.startedAt, endedAt: step.endedAt };
+    patchStep(
+      step.id,
+      action === "start"
+        ? { status: "in_progress", startedAt: now }
+        : action === "done"
+          ? { status: "completed", endedAt: now, startedAt: step.startedAt ?? now }
+          : step.status === "completed"
+            ? { status: "in_progress", endedAt: null }
+            : { status: "pending", startedAt: null }
+    );
+    setToast({ kind: "ok", text: `${action === "start" ? "Started" : action === "done" ? "Done" : "Undone"}: ${step.title}${photo ? " · photo uploading…" : ""}` });
     const r = await checklistStepAction({ projectId, stepId: step.id, action });
     if (!r.ok) {
-      setBusy(null);
+      patchStep(step.id, before);
       setToast({ kind: "error", text: r.error });
       return;
     }
-    setToast({ kind: "ok", text: `${action === "start" ? "Started" : action === "done" ? "Done" : "Undone"}: ${step.title}${photo ? " · photo uploading…" : ""}` });
-    await refresh();
-    setBusy(null);
+    void refresh();
     if (photo && action !== "undo") {
       try {
         await uploadStepPhoto(projectId, step.id, action === "start" ? "start" : "end", photo);
         setToast({ kind: "ok", text: `Photo saved: ${step.title}` });
-        await loadList();
+        void refresh();
       } catch (err) {
         setToast({ kind: "error", text: err instanceof Error ? err.message : "Photo upload failed." });
       }
@@ -152,11 +225,12 @@ export function SimpleChecklist({ projectId, onChanged }: { projectId: string; o
   }
 
   async function toggleNa(step: ChecklistStep) {
-    setBusy(step.id);
+    patchStep(step.id, { na: !step.na });
     const r = await setChecklistStepNa({ projectId, stepId: step.id, na: !step.na });
-    setBusy(null);
-    if (!r.ok) setToast({ kind: "error", text: r.error });
-    else await refresh();
+    if (!r.ok) {
+      patchStep(step.id, { na: step.na });
+      setToast({ kind: "error", text: r.error });
+    } else void refresh();
   }
 
   if (!overview) {
