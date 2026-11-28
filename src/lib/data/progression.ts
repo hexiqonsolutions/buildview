@@ -199,6 +199,20 @@ export async function ensureFloorProgression(
 
   if (existing?.id) return existing.id;
 
+  // v2 projects: create every missing checklist (floors, buildings, site) from
+  // the v2 lists in one database call, then return this floor's.
+  if ((await getProgressionVersion(projectId)) === 2) {
+    await admin.rpc("reconcile_progression_v2" as never, { p_project: projectId, p_actor: actorId ?? null } as never);
+    const { data: created } = await admin
+      .from("project_progressions")
+      .select("id")
+      .eq("floor_id", floorId)
+      .eq("track", track)
+      .is("deleted_at", null)
+      .maybeSingle();
+    return (created?.id as string | undefined) ?? null;
+  }
+
   const floorMethod =
     method ?? (await getProjectMethods(projectId)).floors.get(floorId) ?? "conventional";
   const template = await getActiveTemplateSteps(track, floorMethod);
