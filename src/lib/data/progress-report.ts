@@ -66,6 +66,10 @@ export type ProgressReport = {
   changeCounts: { steps: number; zoneUpdates: number; notVerified: number };
   changes: ReportChange[];
   changesTruncated: boolean;
+  /** v2: Inside / Outside / Site split and their %. */
+  parts: { inside: number; outside: number; site: number; split: { inside: number; outside: number; site: number } } | null;
+  /** Latest step photos in the period (before / after). */
+  photos: { url: string; kind: "start" | "end" | "other"; title: string; where: string; date: string }[];
 };
 
 const MAX_CHANGES = 300;
@@ -247,7 +251,57 @@ async function loadProgressReport(projectId: string, from: string, to: string): 
         notVerified: changes.filter((c) => c.status === "pending").length,
       },
       changes: changes.slice(0, MAX_CHANGES),
+      parts:
+        "parts" in bundle.completion
+          ? {
+              inside: bundle.completion.parts.inside.actual,
+              outside: bundle.completion.parts.outside.actual,
+              site: bundle.completion.parts.site.actual,
+              split: bundle.completion.split,
+            }
+          : null,
+      photos: await periodPhotos(projectId, from, to),
       changesTruncated: changes.length > MAX_CHANGES,
     },
   };
+}
+
+/** Up to 12 recent step photos in the period, with where and what. */
+async function periodPhotos(projectId: string, from: string, to: string): Promise<ProgressReport["photos"]> {
+  try {
+    const admin = createServiceRoleClient();
+    const { data } = await admin
+      .from("step_photos" as never)
+      .select("path, kind, created_at, step:project_progression_steps(template_step:progression_template_steps(title), progression:project_progressions(floor_id, building_id, track))")
+      .eq("project_id", projectId)
+      .gte("created_at", `${from}T00:00:00+05:30`)
+      .lte("created_at", `${to}T23:59:59+05:30`)
+      .order("created_at", { ascending: false })
+      .limit(12);
+    const rows = (data ?? []) as unknown as Array<{
+      path: string;
+      kind: "start" | "end" | "other";
+      created_at: string;
+      step: { template_step: { title: string } | null; progression: { floor_id: string | null; building_id: string | null; track: string } | null } | null;
+    }>;
+    if (rows.length === 0) return [];
+    const { data: signed } = await admin.storage.from("project-media").createSignedUrls(rows.map((r) => r.path), 7 * 24 * 3600);
+    const floorIds = [...new Set(rows.map((r) => r.step?.progression?.floor_id).filter(Boolean))] as string[];
+    const buildingIds = [...new Set(rows.map((r) => r.step?.progression?.building_id).filter(Boolean))] as string[];
+    const [{ data: floors }, { data: buildings }] = await Promise.all([
+      floorIds.length ? admin.from("floors").select("id, name, building_id").in("id", floorIds) : Promise.resolve({ data: [] }),
+      buildingIds.length ? admin.from("buildings").select("id, name").in("id", buildingIds) : Promise.resolve({ data: [] }),
+    ]);
+    const bName = new Map(((buildings ?? []) as { id: string; name: string }[]).map((b) => [b.id, b.name]));
+    const fLabel = new Map(((floors ?? []) as { id: string; name: string; building_id: string }[]).map((f) => [f.id, `${bName.get(f.building_id) ?? ""} · ${f.name}`.replace(/^ · /, "")]));
+    return rows
+      .map((r, i) => {
+        const prog = r.step?.progression;
+        const where = prog?.floor_id ? (fLabel.get(prog.floor_id) ?? "Floor") : prog?.track === "site" ? "Site works" : `${bName.get(prog?.building_id ?? "") ?? "Building"} · Outside`;
+        return { url: signed?.[i]?.signedUrl ?? "", kind: r.kind, title: r.step?.template_step?.title ?? "Step", where, date: r.created_at.slice(0, 10) };
+      })
+      .filter((p) => p.url);
+  } catch {
+    return [];
+  }
 }

@@ -265,6 +265,45 @@ export function ProgressReportView({ report }: { report: ProgressReport }) {
         </Section>
       ) : null}
 
+      {/* v2: Inside / Outside / Site */}
+      {report.parts ? (
+        <Section title="Inside, outside and site works" id="r-parts">
+          <div className="report-two grid gap-3 sm:grid-cols-3">
+            {(
+              [
+                ["Inside (floors)", report.parts.inside, report.parts.split.inside],
+                ["Outside (buildings)", report.parts.outside, report.parts.split.outside],
+                ["Site works", report.parts.site, report.parts.split.site],
+              ] as const
+            ).map(([label, value, weight]) => (
+              <div key={label} className="report-row rounded-lg border border-slate-200 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+                <p className="mt-1 font-display text-xl font-semibold tabular-nums">{formatPercent(value)}</p>
+                <p className="text-[11px] text-slate-500">counts {weight}% of the project</p>
+              </div>
+            ))}
+          </div>
+        </Section>
+      ) : null}
+
+      {/* Photos */}
+      {report.photos.length > 0 ? (
+        <Section title="Site photos from this period" id="r-photos">
+          <ul className="report-two grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {report.photos.map((ph) => (
+              <li key={ph.url} className="report-row">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={ph.url} alt={`${ph.title}, ${ph.where}`} className="aspect-[4/3] w-full rounded-md border border-slate-200 object-cover" />
+                <p className="mt-1 text-[11px] leading-snug text-slate-600">
+                  <span className="font-medium text-slate-800">{ph.kind === "start" ? "Before" : ph.kind === "end" ? "Done" : "Photo"}</span> · {ph.title}
+                  <span className="block text-slate-500">{ph.where} · {fmtDay(ph.date)}</span>
+                </p>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      ) : null}
+
       {/* Changes */}
       <Section title={`Changes ${fmtDay(report.from)} – ${fmtDay(report.to)}`} id="r-changes">
         {report.changes.length === 0 ? (
@@ -285,8 +324,10 @@ export function ProgressReportView({ report }: { report: ProgressReport }) {
       <Section title="How the % is calculated" id="r-method">
         <div className="space-y-2 text-[12px] leading-relaxed text-slate-700">
           <p>
-            <strong>Project %</strong> is the average of every floor&apos;s %, each floor counting equally. Floors
-            with no recorded work count as 0%.
+            <strong>Project %</strong>{" "}
+            {report.parts
+              ? `= Inside ${report.parts.split.inside}% + Outside ${report.parts.split.outside}% + Site works ${report.parts.split.site}%. Inside is the average of every floor; Outside the average of every building. Each list counts its phases by weight (e.g. structure 30%, waterproofing 8%); within a phase each step counts equally. Floors and buildings with no recorded work count as 0%.`
+              : "is the average of every floor's %, each floor counting equally. Floors with no recorded work count as 0%."}
           </p>
           <p>
             <strong>Checklists by method:</strong> each floor follows the checklist for its construction method

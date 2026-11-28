@@ -35,6 +35,7 @@ import {
   type StepPhoto,
 } from "@/lib/actions/checklist";
 import { uploadStepPhoto } from "@/lib/progression/photo-upload";
+import { EditStepsDialog } from "@/components/projects/progression/edit-steps-dialog";
 import { cn, formatDate } from "@/lib/utils";
 
 type Tab = "inside" | "outside" | "site";
@@ -70,6 +71,7 @@ export function SimpleChecklist({ projectId, onChanged }: { projectId: string; o
   const [pending, setPending] = useState<PendingAction | null>(null);
   const [photosFor, setPhotosFor] = useState<ChecklistStep | null>(null);
   const [picker, setPicker] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   const scope: ChecklistScope | null = useMemo(() => {
     if (tab === "site") return { kind: "site" };
@@ -198,9 +200,16 @@ export function SimpleChecklist({ projectId, onChanged }: { projectId: string; o
             </button>
           ))}
         </div>
-        <p className="mt-2 text-xs text-slate-500">
-          Project {pct(overview.percent)} = Inside {overview.split.inside}% · Outside {overview.split.outside}% · Site {overview.split.site}%
-        </p>
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs text-slate-500">
+            Project {pct(overview.percent)} = Inside {overview.split.inside}% · Outside {overview.split.outside}% · Site {overview.split.site}%
+          </p>
+          {overview.canManage && view && view.lists.length > 0 ? (
+            <button type="button" onClick={() => setEditing(true)} className="min-h-9 rounded-md px-2 text-sm font-medium text-slate-700 underline-offset-2 hover:underline dark:text-slate-200">
+              Edit steps
+            </button>
+          ) : null}
+        </div>
       </div>
 
       {/* Next up */}
@@ -315,6 +324,18 @@ export function SimpleChecklist({ projectId, onChanged }: { projectId: string; o
         }}
       />
       <PhotosDialog projectId={projectId} step={photosFor} onClose={() => setPhotosFor(null)} onAdded={loadList} canEdit={canEdit} />
+      {view ? (
+        <EditStepsDialog
+          projectId={projectId}
+          lists={view.lists}
+          open={editing}
+          onOpenChange={setEditing}
+          onSaved={(text) => {
+            setToast({ kind: "ok", text });
+            void refresh();
+          }}
+        />
+      ) : null}
       <PlacePicker
         open={picker}
         tab={tab}

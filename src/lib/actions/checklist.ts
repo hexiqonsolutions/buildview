@@ -54,6 +54,8 @@ export type ChecklistOverview = {
 export type ChecklistView = {
   title: string;
   percent: number;
+  /** Lists shown here (Structure + Finishing on a floor), for "Edit steps". */
+  lists: { templateId: string; name: string; track: string }[];
   phases: ChecklistPhase[];
   nextStepId: string | null;
 };
@@ -131,7 +133,12 @@ export async function getChecklist(input: { projectId: string; scope: ChecklistS
     const progRows = ((progs ?? []) as Array<{ id: string; track: string; template_id: string }>).sort(
       (a, b) => (a.track === "pre_slab" ? 0 : 1) - (b.track === "pre_slab" ? 0 : 1)
     );
-    if (progRows.length === 0) return { ok: true, data: { title: "", percent: 0, phases: [], nextStepId: null } };
+    if (progRows.length === 0) return { ok: true, data: { title: "", percent: 0, lists: [], phases: [], nextStepId: null } };
+    const { data: tplRows } = await admin
+      .from("progression_templates")
+      .select("id, name")
+      .in("id", [...new Set(progRows.map((p) => p.template_id))]);
+    const tplName = new Map(((tplRows ?? []) as { id: string; name: string }[]).map((t) => [t.id, t.name]));
 
     const [{ data: steps }, { data: tpl }] = await Promise.all([
       admin.from("project_progression_steps").select("*").in("progression_id", progRows.map((p) => p.id)),
@@ -222,6 +229,7 @@ export async function getChecklist(input: { projectId: string; scope: ChecklistS
       data: {
         title: "",
         percent: wSum > 0 ? vSum / wSum : 0,
+        lists: progRows.map((p) => ({ templateId: p.template_id, name: tplName.get(p.template_id) ?? p.track, track: p.track })),
         phases: ordered.map(({ order: _o, ...p }) => p),
         nextStepId: next?.id ?? null,
       },

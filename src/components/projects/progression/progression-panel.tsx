@@ -2132,7 +2132,7 @@ export function ProgressionPanel({
           <p className="text-sm text-slate-500">
             Overall project{" "}
             <span className="font-semibold tabular-nums text-slate-800 dark:text-slate-200">
-              {data.overallPercent}%
+              {data.progressionVersion === 2 ? Math.round(data.completion.actual) : data.overallPercent}%
             </span>
             {" · "}
             {data.activatedFloorCount}/{data.floorCount} floors activated
